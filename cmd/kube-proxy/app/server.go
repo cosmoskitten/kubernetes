@@ -106,6 +106,12 @@ func (s *ProxyServer) Run(_ []string) error {
 	// And wire loadBalancer to handle changes to endpoints to services
 	endpointsConfig.RegisterHandler(loadBalancer)
 
+	dnsHandler := proxy.NewDNSHandler()
+	dnsServiceHandler := &proxy.DNSServiceHandler{dnsHandler}
+	dnsEndpointHandler := &proxy.DNSEndpointHandler{dnsHandler}
+	serviceConfig.RegisterHandler(dnsServiceHandler)
+	endpointsConfig.RegisterHandler(dnsEndpointHandler)
+
 	// Note: RegisterHandler() calls need to happen before creation of Sources because sources
 	// only notify on changes, and the initial update (on process start) may be lost if no handlers
 	// are registered yet.
@@ -145,6 +151,13 @@ func (s *ProxyServer) Run(_ []string) error {
 			}
 		}, 5*time.Second)
 	}
+
+	go func() {
+		err := proxy.ServeDNS(dnsHandler)
+		if err != nil {
+			glog.Errorf("Starting DNS server failed: %v", err)
+		}
+	}()
 
 	// Just loop forever for now...
 	proxier.SyncLoop()
