@@ -91,7 +91,8 @@ func initExample(cmdNamespace string, resource string, f *cmdutil.Factory, cmd *
 		return nil, err
 	}
 
-	obj, err := api.Scheme.New(version, kind)
+	exFetcher := cmdutil.NewStaticExampleFetcher(api.Scheme)
+	obj, _, err := exFetcher.NewExample(version, kind)
 	if err != nil {
 		return nil, err
 	}
