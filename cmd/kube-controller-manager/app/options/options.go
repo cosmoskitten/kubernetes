@@ -60,6 +60,7 @@ func NewCMServer() *CMServer {
 			PVClaimBinderSyncPeriod:           unversioned.Duration{10 * time.Minute},
 			HorizontalPodAutoscalerSyncPeriod: unversioned.Duration{30 * time.Second},
 			DeploymentControllerSyncPeriod:    unversioned.Duration{30 * time.Second},
+			APIServerHealthCheckPeriod:        unversioned.Duration{0},
 			MinResyncPeriod:                   unversioned.Duration{12 * time.Hour},
 			RegisterRetryCount:                10,
 			PodEvictionTimeout:                unversioned.Duration{5 * time.Minute},
@@ -78,9 +79,10 @@ func NewCMServer() *CMServer {
 					IncrementTimeoutHostPath: 30,
 				},
 			},
-			KubeAPIQPS:     20.0,
-			KubeAPIBurst:   30,
-			LeaderElection: leaderelection.DefaultLeaderElectionConfiguration(),
+			KubeAPIQPS:             20.0,
+			KubeAPIBurst:           30,
+			LeaderElection:         leaderelection.DefaultLeaderElectionConfiguration(),
+			MasterServiceNamespace: "default",
 		},
 	}
 	return &s
@@ -116,6 +118,7 @@ func (s *CMServer) AddFlags(fs *pflag.FlagSet) {
 	fs.IntVar(&s.TerminatedPodGCThreshold, "terminated-pod-gc-threshold", s.TerminatedPodGCThreshold, "Number of terminated pods that can exist before the terminated pod garbage collector starts deleting terminated pods. If <= 0, the terminated pod garbage collector is disabled.")
 	fs.DurationVar(&s.HorizontalPodAutoscalerSyncPeriod.Duration, "horizontal-pod-autoscaler-sync-period", s.HorizontalPodAutoscalerSyncPeriod.Duration, "The period for syncing the number of pods in horizontal pod autoscaler.")
 	fs.DurationVar(&s.DeploymentControllerSyncPeriod.Duration, "deployment-controller-sync-period", s.DeploymentControllerSyncPeriod.Duration, "Period for syncing the deployments.")
+	fs.DurationVar(&s.APIServerHealthCheckPeriod.Duration, "apiserver-health-check-period", s.APIServerHealthCheckPeriod, "Period for checking the the health of all API servers (set to 0 to disable)")
 	fs.DurationVar(&s.PodEvictionTimeout.Duration, "pod-eviction-timeout", s.PodEvictionTimeout.Duration, "The grace period for deleting pods on failed nodes.")
 	fs.Float32Var(&s.DeletingPodsQps, "deleting-pods-qps", 0.1, "Number of nodes per second on which pods are deleted in case of node failure.")
 	fs.IntVar(&s.DeletingPodsBurst, "deleting-pods-burst", 10, "Number of nodes on which pods are bursty deleted in case of node failure. For more details look into RateLimiter.")
@@ -140,5 +143,6 @@ func (s *CMServer) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&s.RootCAFile, "root-ca-file", s.RootCAFile, "If set, this root certificate authority will be included in service account's token secret. This must be a valid PEM-encoded CA bundle.")
 	fs.Float32Var(&s.KubeAPIQPS, "kube-api-qps", s.KubeAPIQPS, "QPS to use while talking with kubernetes apiserver")
 	fs.IntVar(&s.KubeAPIBurst, "kube-api-burst", s.KubeAPIBurst, "Burst to use while talking with kubernetes apiserver")
+	fs.StringVar(&s.MasterServiceNamespace, "master-service-namespace", s.MasterServiceNamespace, "The namespace from which the kubernetes master services should be injected into pods")
 	leaderelection.BindFlags(&s.LeaderElection, fs)
 }
