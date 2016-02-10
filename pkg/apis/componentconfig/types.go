@@ -474,6 +474,11 @@ type KubeControllerManagerConfiguration struct {
 	HorizontalPodAutoscalerSyncPeriod unversioned.Duration `json:"horizontalPodAutoscalerSyncPeriod"`
 	// deploymentControllerSyncPeriod is the period for syncing the deployments.
 	DeploymentControllerSyncPeriod unversioned.Duration `json:"deploymentControllerSyncPeriod"`
+	// apiServerHealthCheckPeriod is the period for checking the health of the API servers.
+	// If <= 0, the API server health checks are disabled.  In order to work, the
+	// controller manager must be able to reach all of the API servers as specified in the
+	// "kubernetes" auto-created endpoints list.
+	APIServerHealthCheckPeriod unversioned.Duration `json:"apiServerHealthCheckPeriod"`
 	// podEvictionTimeout is the grace period for deleting pods on failed nodes.
 	PodEvictionTimeout unversioned.Duration `json:"podEvictionTimeout"`
 	// deletingPodsQps is the number of nodes per second on which pods are deleted in
@@ -522,6 +527,9 @@ type KubeControllerManagerConfiguration struct {
 	VolumeConfiguration VolumeConfiguration `json:"volumeConfiguration"`
 	// How long to wait between starting controller managers
 	ControllerStartInterval unversioned.Duration `json:"controllerStartInterval"`
+	// masterServiceNamespace is the namespace from which the kubernetes
+	// master services should be injected into pods.
+	MasterServiceNamespace string `json:"masterServiceNamespace"`
 }
 
 // VolumeConfiguration contains *all* enumerated flags meant to configure all volume
