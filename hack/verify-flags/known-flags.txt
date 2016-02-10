@@ -17,6 +17,7 @@ api-servers
 api-token
 api-version
 apiserver-count
+apiserver-health-check-period
 auth-path
 authorization-mode
 authorization-policy-file
