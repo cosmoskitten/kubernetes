@@ -47,6 +47,7 @@ import (
 	"k8s.io/kubernetes/pkg/controller/deployment"
 	endpointcontroller "k8s.io/kubernetes/pkg/controller/endpoint"
 	"k8s.io/kubernetes/pkg/controller/gc"
+	healthzcheckcontroller "k8s.io/kubernetes/pkg/controller/healthzcheck"
 	"k8s.io/kubernetes/pkg/controller/job"
 	namespacecontroller "k8s.io/kubernetes/pkg/controller/namespace"
 	nodecontroller "k8s.io/kubernetes/pkg/controller/node"
@@ -131,8 +132,13 @@ func Run(s *options.CMServer) error {
 		glog.Fatal(server.ListenAndServe())
 	}()
 
+	eventBroadcaster := record.NewBroadcaster()
+	eventBroadcaster.StartLogging(glog.Infof)
+	eventBroadcaster.StartRecordingToSink(kubeClient.Events(""))
+	recorder := eventBroadcaster.NewRecorder(api.EventSource{Component: "controller-manager"})
+
 	run := func(stop <-chan struct{}) {
-		err := StartControllers(s, kubeClient, kubeconfig, stop)
+		err := StartControllers(s, kubeClient, kubeconfig, recorder, stop)
 		glog.Fatalf("error running controllers: %v", err)
 		panic("unreachable")
 	}
@@ -141,11 +147,6 @@ func Run(s *options.CMServer) error {
 		run(nil)
 		panic("unreachable")
 	}
-
-	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartLogging(glog.Infof)
-	eventBroadcaster.StartRecordingToSink(kubeClient.Events(""))
-	recorder := eventBroadcaster.NewRecorder(api.EventSource{Component: "controller-manager"})
 
 	id, err := os.Hostname()
 	if err != nil {
@@ -173,7 +174,7 @@ func Run(s *options.CMServer) error {
 	panic("unreachable")
 }
 
-func StartControllers(s *options.CMServer, kubeClient *client.Client, kubeconfig *client.Config, stop <-chan struct{}) error {
+func StartControllers(s *options.CMServer, kubeClient *client.Client, kubeconfig *client.Config, recorder record.EventRecorder, stop <-chan struct{}) error {
 	go endpointcontroller.NewEndpointController(clientset.NewForConfigOrDie(client.AddUserAgent(kubeconfig, "endpoint-controller")), ResyncPeriod(s)).
 		Run(s.ConcurrentEndpointSyncs, wait.NeverStop)
 
@@ -349,6 +350,22 @@ func StartControllers(s *options.CMServer, kubeClient *client.Client, kubeconfig
 		clientset.NewForConfigOrDie(client.AddUserAgent(kubeconfig, "service-account-controller")),
 		serviceaccountcontroller.DefaultServiceAccountsControllerOptions(),
 	).Run()
+
+	if s.HealthCheckControllerSyncPeriod > 0 {
+		config := client.AddUserAgent(kubeconfig, "healthchecker-controller")
+
+		checkerTransport, err := client.TransportFor(config)
+		if err != nil {
+			panic(err)
+		}
+		httpClient := &http.Client{Transport: checkerTransport}
+		healthChecker := healthzcheckcontroller.NewHTTPSHealthzChecker(httpClient, "healthz")
+
+		healthCheckClient := clientset.NewForConfigOrDie(config)
+		checkController := healthzcheckcontroller.NewAPIServerHealthCheckController(
+			healthCheckClient.Core().Endpoints("default"), healthChecker, "kubernetes", recorder)
+		checkController.Run(s.HealthCheckControllerSyncPeriod)
+	}
 
 	select {}
 }

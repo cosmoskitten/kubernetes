@@ -133,6 +133,7 @@ grace-period
 ha-domain
 healthz-bind-address
 healthz-port
+health-check-controller-sync-peroid
 horizontal-pod-autoscaler-sync-period
 host-ipc-sources
 host-network-sources

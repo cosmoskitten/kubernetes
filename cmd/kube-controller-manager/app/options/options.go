@@ -53,6 +53,7 @@ type CMServer struct {
 	TerminatedPodGCThreshold          int
 	HorizontalPodAutoscalerSyncPeriod time.Duration
 	DeploymentControllerSyncPeriod    time.Duration
+	HealthCheckControllerSyncPeriod   time.Duration
 	MinResyncPeriod                   time.Duration
 	RegisterRetryCount                int
 	NodeMonitorGracePeriod            time.Duration
@@ -112,6 +113,7 @@ func NewCMServer() *CMServer {
 		PVClaimBinderSyncPeriod:           10 * time.Minute,
 		HorizontalPodAutoscalerSyncPeriod: 30 * time.Second,
 		DeploymentControllerSyncPeriod:    30 * time.Second,
+		HealthCheckControllerSyncPeriod:   0,
 		MinResyncPeriod:                   12 * time.Hour,
 		RegisterRetryCount:                10,
 		PodEvictionTimeout:                5 * time.Minute,
@@ -165,6 +167,7 @@ func (s *CMServer) AddFlags(fs *pflag.FlagSet) {
 	fs.IntVar(&s.TerminatedPodGCThreshold, "terminated-pod-gc-threshold", s.TerminatedPodGCThreshold, "Number of terminated pods that can exist before the terminated pod garbage collector starts deleting terminated pods. If <= 0, the terminated pod garbage collector is disabled.")
 	fs.DurationVar(&s.HorizontalPodAutoscalerSyncPeriod, "horizontal-pod-autoscaler-sync-period", s.HorizontalPodAutoscalerSyncPeriod, "The period for syncing the number of pods in horizontal pod autoscaler.")
 	fs.DurationVar(&s.DeploymentControllerSyncPeriod, "deployment-controller-sync-period", s.DeploymentControllerSyncPeriod, "Period for syncing the deployments.")
+	fs.DurationVar(&s.HealthCheckControllerSyncPeriod, "health-check-controller-sync-peroid", s.HealthCheckControllerSyncPeriod, "Period for checking the the health of all API servers (set to 0 to disable)")
 	fs.DurationVar(&s.PodEvictionTimeout, "pod-eviction-timeout", s.PodEvictionTimeout, "The grace period for deleting pods on failed nodes.")
 	fs.Float32Var(&s.DeletingPodsQps, "deleting-pods-qps", 0.1, "Number of nodes per second on which pods are deleted in case of node failure.")
 	fs.IntVar(&s.DeletingPodsBurst, "deleting-pods-burst", 10, "Number of nodes on which pods are bursty deleted in case of node failure. For more details look into RateLimiter.")
