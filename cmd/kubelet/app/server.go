@@ -362,6 +362,7 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.KubeletDeps) (err error) {
 		}
 	}
 
+	var nodeName types.NodeName
 	if kubeDeps == nil {
 		var kubeClient, eventClient *clientset.Clientset
 		var externalKubeClient clientgoclientset.Interface
@@ -379,11 +380,12 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.KubeletDeps) (err error) {
 			}
 		}
 
+		nodeName, err = getNodeName(cloud, nodeutil.GetHostname(s.HostnameOverride))
+		if err != nil {
+			return err
+		}
+
 		if s.BootstrapKubeconfig != "" {
-			nodeName, err := getNodeName(cloud, nodeutil.GetHostname(s.HostnameOverride))
-			if err != nil {
-				return err
-			}
 			if err := bootstrapClientCert(s.KubeConfig.Value(), s.BootstrapKubeconfig, s.CertDirectory, nodeName); err != nil {
 				return err
 			}
@@ -445,9 +447,11 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.KubeletDeps) (err error) {
 	}
 
 	if kubeDeps.Auth == nil {
-		nodeName, err := getNodeName(kubeDeps.Cloud, nodeutil.GetHostname(s.HostnameOverride))
-		if err != nil {
-			return err
+		if nodeName == "" {
+			nodeName, err = getNodeName(kubeDeps.Cloud, nodeutil.GetHostname(s.HostnameOverride))
+			if err != nil {
+				return err
+			}
 		}
 
 		auth, err := buildAuth(nodeName, kubeDeps.ExternalKubeClient, s.KubeletConfiguration)
