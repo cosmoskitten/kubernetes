@@ -491,10 +491,7 @@ func Convert_v1_PodTemplateSpec_To_api_PodTemplateSpec(in *PodTemplateSpec, out 
 		in.Spec.InitContainers = values
 
 		// Call defaulters explicitly until annotations are removed
-		for i := range in.Spec.InitContainers {
-			c := &in.Spec.InitContainers[i]
-			SetDefaults_Container(c)
-		}
+		SetDefaults_InitContainers(in.Spec.InitContainers)
 	}
 
 	if err := autoConvert_v1_PodTemplateSpec_To_api_PodTemplateSpec(in, out, s); err != nil {
@@ -625,10 +622,7 @@ func Convert_v1_Pod_To_api_Pod(in *Pod, out *api.Pod, s conversion.Scope) error 
 		// back to the caller.
 		in.Spec.InitContainers = values
 		// Call defaulters explicitly until annotations are removed
-		for i := range in.Spec.InitContainers {
-			c := &in.Spec.InitContainers[i]
-			SetDefaults_Container(c)
-		}
+		SetDefaults_InitContainers(in.Spec.InitContainers)
 	}
 	// If there is a beta annotation, copy to alpha key.
 	// See commit log for PR #31026 for why we do this.
