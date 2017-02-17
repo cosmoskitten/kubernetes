@@ -8,12 +8,18 @@ load(
 
 go_library(
     name = "go_default_library",
-    srcs = ["group_version.go"],
+    srcs = [
+        "annotations.go",
+        "group_version.go",
+    ],
 )
 
 go_test(
     name = "go_default_test",
-    srcs = ["group_version_test.go"],
+    srcs = [
+        "annotations_test.go",
+        "group_version_test.go",
+    ],
     library = ":go_default_library",
 )
 

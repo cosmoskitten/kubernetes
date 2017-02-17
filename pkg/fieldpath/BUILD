@@ -12,7 +12,10 @@ go_library(
         "doc.go",
         "fieldpath.go",
     ],
-    deps = ["//vendor/k8s.io/apimachinery/pkg/api/meta:go_default_library"],
+    deps = [
+        "//pkg/api/util:go_default_library",
+        "//vendor/k8s.io/apimachinery/pkg/api/meta:go_default_library",
+    ],
 )
 
 go_test(
