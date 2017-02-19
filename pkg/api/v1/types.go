@@ -2038,6 +2038,10 @@ type PodAffinityTerm struct {
 	// for affinity and for RequiredDuringScheduling pod anti-affinity, empty topologyKey is not allowed.
 	// +optional
 	TopologyKey string `json:"topologyKey,omitempty" protobuf:"bytes,3,opt,name=topologyKey"`
+	// The max number of pod per node/topologyKey; only available for
+	// hard pod anti-affinity (RequiredDuringSchedulingIgnoredDuringExecution). The default value is 1.
+	// +optional
+	MaxPodsPerTopologyKey int32 `json:"maxPodsPerTopologyKey,omitempty" protobuf:"varint,4,opt,name=maxPodsPerTopologyKey"`
 }
 
 // Node affinity is a group of node affinity scheduling rules.

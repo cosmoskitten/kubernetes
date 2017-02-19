@@ -182,6 +182,28 @@ func SetDefaults_PodSpec(obj *PodSpec) {
 		obj.SchedulerName = DefaultSchedulerName
 	}
 }
+func SetDefaults_Affinity(affinity *Affinity) {
+	if affinity != nil {
+		// If pod anti-affinity is not nil, UPDATE default value of MaxPodsPerTopologyKey to 1.
+		if affinity.PodAntiAffinity != nil {
+			antiAffinity := affinity.PodAntiAffinity
+			for i := range antiAffinity.RequiredDuringSchedulingIgnoredDuringExecution {
+				term := &antiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[i]
+				if term.MaxPodsPerTopologyKey < 1 {
+					term.MaxPodsPerTopologyKey = 1
+				}
+			}
+		}
+		// If pod affinity is not nil, SET value of MaxPodsPerTopologyKey to 1.
+		if affinity.PodAffinity != nil {
+			affinity := affinity.PodAffinity
+			for i := range affinity.RequiredDuringSchedulingIgnoredDuringExecution {
+				affinity.RequiredDuringSchedulingIgnoredDuringExecution[i].MaxPodsPerTopologyKey = 1
+			}
+		}
+		// The `MaxPodsPerToplogyKey` in preferred affinity will be ignored.
+	}
+}
 func SetDefaults_Probe(obj *Probe) {
 	if obj.TimeoutSeconds == 0 {
 		obj.TimeoutSeconds = 1

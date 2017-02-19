@@ -1826,6 +1826,10 @@ type PodAffinityTerm struct {
 	// for affinity and for RequiredDuringScheduling pod anti-affinity, empty topologyKey is not allowed.
 	// +optional
 	TopologyKey string
+	// The max number of pod per node/topologyKey; only available for
+	// hard pod anti-affinity (RequiredDuringSchedulingIgnoredDuringExecution). The default value is 1.
+	// +optional
+	MaxPodsPerTopologyKey int32
 }
 
 // Node affinity is a group of node affinity scheduling rules.
