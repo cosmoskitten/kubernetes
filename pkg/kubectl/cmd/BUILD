@@ -1,8 +1,4 @@
-load(
-    "@io_bazel_rules_go//go:def.bzl",
-    "go_library",
-    "go_test",
-)
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "go_default_library",
@@ -11,6 +7,7 @@ go_library(
         "annotate.go",
         "apiversions.go",
         "apply.go",
+        "apply_diff_last_applied.go",
         "apply_edit_last_applied.go",
         "apply_set_last_applied.go",
         "apply_view_last_applied.go",
@@ -62,9 +59,7 @@ go_library(
         "top_pod.go",
         "version.go",
     ],
-    visibility = [
-        "//build/visible_to:pkg_kubectl_cmd_CONSUMERS",
-    ],
+    visibility = ["//visibility:public"],
     deps = [
         "//pkg/api:go_default_library",
         "//pkg/api/validation:go_default_library",
@@ -82,6 +77,7 @@ go_library(
         "//pkg/kubectl/cmd/set:go_default_library",
         "//pkg/kubectl/cmd/templates:go_default_library",
         "//pkg/kubectl/cmd/util:go_default_library",
+        "//pkg/kubectl/cmd/util/diff:go_default_library",
         "//pkg/kubectl/cmd/util/editor:go_default_library",
         "//pkg/kubectl/cmd/util/openapi:go_default_library",
         "//pkg/kubectl/metricsutil:go_default_library",
@@ -93,6 +89,7 @@ go_library(
         "//pkg/kubectl/util/term:go_default_library",
         "//pkg/printers:go_default_library",
         "//pkg/printers/internalversion:go_default_library",
+        "//pkg/util/i18n:go_default_library",
         "//pkg/util/interrupt:go_default_library",
         "//pkg/util/taints:go_default_library",
         "//pkg/version:go_default_library",
@@ -184,11 +181,6 @@ go_test(
         "top_pod_test.go",
         "top_test.go",
     ],
-    data = [
-        "testdata",
-        "//examples:config",
-        "//test/fixtures",
-    ],
     library = ":go_default_library",
     deps = [
         "//pkg/api:go_default_library",
@@ -209,6 +201,7 @@ go_test(
         "//pkg/kubectl/util/term:go_default_library",
         "//pkg/printers:go_default_library",
         "//pkg/printers/internalversion:go_default_library",
+        "//pkg/util/file:go_default_library",
         "//pkg/util/strings:go_default_library",
         "//vendor/github.com/spf13/cobra:go_default_library",
         "//vendor/github.com/stretchr/testify/assert:go_default_library",
@@ -244,6 +237,7 @@ filegroup(
     name = "package-srcs",
     srcs = glob(["**"]),
     tags = ["automanaged"],
+    visibility = ["//visibility:private"],
 )
 
 filegroup(
@@ -260,7 +254,5 @@ filegroup(
         "//pkg/kubectl/cmd/util:all-srcs",
     ],
     tags = ["automanaged"],
-    visibility = [
-        "//build/visible_to:pkg_kubectl_cmd_CONSUMERS",
-    ],
+    visibility = ["//visibility:public"],
 )

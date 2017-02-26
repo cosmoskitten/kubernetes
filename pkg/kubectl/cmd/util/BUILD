@@ -1,14 +1,11 @@
-load(
-    "@io_bazel_rules_go//go:def.bzl",
-    "go_library",
-    "go_test",
-)
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "go_default_library",
     srcs = [
         "cached_discovery.go",
         "clientcache.go",
+        "cmdtools.go",
         "factory.go",
         "factory_builder.go",
         "factory_client_access.go",
@@ -17,9 +14,7 @@ go_library(
         "printing.go",
         "shortcut_restmapper.go",
     ],
-    visibility = [
-        "//build/visible_to:pkg_kubectl_cmd_util_CONSUMERS",
-    ],
+    visibility = ["//visibility:public"],
     deps = [
         "//federation/apis/federation:go_default_library",
         "//federation/client/clientset_generated/federation_clientset:go_default_library",
@@ -37,6 +32,7 @@ go_library(
         "//pkg/kubectl/cmd/util/openapi/validation:go_default_library",
         "//pkg/kubectl/plugins:go_default_library",
         "//pkg/kubectl/resource:go_default_library",
+        "//pkg/kubectl/util/term:go_default_library",
         "//pkg/kubectl/validation:go_default_library",
         "//pkg/printers:go_default_library",
         "//pkg/printers/internalversion:go_default_library",
@@ -79,18 +75,13 @@ go_test(
     name = "go_default_test",
     srcs = [
         "cached_discovery_test.go",
+        "cmdtools_test.go",
         "factory_object_mapping_test.go",
         "factory_test.go",
         "helpers_test.go",
         "shortcut_restmapper_test.go",
     ],
-    data = [
-        "//api/swagger-spec",
-    ],
     library = ":go_default_library",
-    visibility = [
-        "//build/visible_to:COMMON_testing",
-    ],
     deps = [
         "//pkg/api:go_default_library",
         "//pkg/api/testapi:go_default_library",
@@ -135,17 +126,19 @@ filegroup(
     name = "package-srcs",
     srcs = glob(["**"]),
     tags = ["automanaged"],
+    visibility = ["//visibility:private"],
 )
 
 filegroup(
     name = "all-srcs",
     srcs = [
         ":package-srcs",
+        "//pkg/kubectl/cmd/util/diff:all-srcs",
         "//pkg/kubectl/cmd/util/editor:all-srcs",
         "//pkg/kubectl/cmd/util/jsonmerge:all-srcs",
         "//pkg/kubectl/cmd/util/openapi:all-srcs",
         "//pkg/kubectl/cmd/util/sanity:all-srcs",
     ],
     tags = ["automanaged"],
-    visibility = ["//build/visible_to:pkg_kubectl_cmd_util_CONSUMERS"],
+    visibility = ["//visibility:public"],
 )
