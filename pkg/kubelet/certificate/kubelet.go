@@ -26,17 +26,18 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	clientset "k8s.io/client-go/kubernetes"
 	clientcertificates "k8s.io/client-go/kubernetes/typed/certificates/v1beta1"
+	"k8s.io/client-go/util/certificate"
 	"k8s.io/kubernetes/pkg/apis/componentconfig"
 )
 
 // NewKubeletServerCertificateManager creates a certificate manager for the kubelet when retrieving a server certificate
 // or returns an error.
-func NewKubeletServerCertificateManager(kubeClient clientset.Interface, kubeCfg *componentconfig.KubeletConfiguration, nodeName types.NodeName, ips []net.IP, hostnames []string) (Manager, error) {
+func NewKubeletServerCertificateManager(kubeClient clientset.Interface, kubeCfg *componentconfig.KubeletConfiguration, nodeName types.NodeName, ips []net.IP, hostnames []string) (certificate.Manager, error) {
 	var certSigningRequestClient clientcertificates.CertificateSigningRequestInterface
 	if kubeClient != nil && kubeClient.Certificates() != nil {
 		certSigningRequestClient = kubeClient.Certificates().CertificateSigningRequests()
 	}
-	certificateStore, err := NewFileStore(
+	certificateStore, err := certificate.NewFileStore(
 		"kubelet-server",
 		kubeCfg.CertDirectory,
 		kubeCfg.CertDirectory,
@@ -45,7 +46,7 @@ func NewKubeletServerCertificateManager(kubeClient clientset.Interface, kubeCfg 
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize server certificate store: %v", err)
 	}
-	m, err := NewManager(&Config{
+	m, err := certificate.NewManager(&certificate.Config{
 		CertificateSigningRequestClient: certSigningRequestClient,
 		Template: &x509.CertificateRequest{
 			Subject: pkix.Name{
@@ -81,8 +82,8 @@ func NewKubeletServerCertificateManager(kubeClient clientset.Interface, kubeCfg 
 // client that can be used to sign new certificates (or rotate). It answers with
 // whatever certificate it is initialized with. If a CSR client is set later, it
 // may begin rotating/renewing the client cert
-func NewKubeletClientCertificateManager(certDirectory string, nodeName types.NodeName, certData []byte, keyData []byte, certFile string, keyFile string) (Manager, error) {
-	certificateStore, err := NewFileStore(
+func NewKubeletClientCertificateManager(certDirectory string, nodeName types.NodeName, certData []byte, keyData []byte, certFile string, keyFile string) (certificate.Manager, error) {
+	certificateStore, err := certificate.NewFileStore(
 		"kubelet-client",
 		certDirectory,
 		certDirectory,
@@ -91,7 +92,7 @@ func NewKubeletClientCertificateManager(certDirectory string, nodeName types.Nod
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize client certificate store: %v", err)
 	}
-	m, err := NewManager(&Config{
+	m, err := certificate.NewManager(&certificate.Config{
 		Template: &x509.CertificateRequest{
 			Subject: pkix.Name{
 				CommonName:   fmt.Sprintf("system:node:%s", nodeName),

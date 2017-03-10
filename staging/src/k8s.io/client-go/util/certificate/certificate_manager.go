@@ -175,7 +175,7 @@ func (m *manager) SetCertificateSigningRequestClient(certSigningRequestClient ce
 		m.certSigningRequestClient = certSigningRequestClient
 		return nil
 	}
-	return fmt.Errorf("CertificateSigningRequestClient is already set.")
+	return fmt.Errorf("property CertificateSigningRequestClient is already set.")
 }
 
 // Start will start the background work of rotating the certificates.
