@@ -28,6 +28,7 @@ import (
 	"k8s.io/kubernetes/pkg/util/exec"
 	"k8s.io/kubernetes/pkg/util/mount"
 	"k8s.io/kubernetes/pkg/volume"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	volumeutil "k8s.io/kubernetes/pkg/volume/util"
 )
 
@@ -68,9 +69,13 @@ func (attacher *cinderDiskAttacher) Attach(spec *volume.Spec, nodeName types.Nod
 
 	volumeID := volumeSource.VolumeID
 
-	instanceid, err := attacher.nodeInstanceID(nodeName)
+	instanceid, err := getNodeInstanceID(attacher.host, nodeName)
 	if err != nil {
-		return "", err
+		glog.Warningf("failed to get node instance ID from node spec,err:%+v", err)
+		instanceid, err = attacher.nodeInstanceID(nodeName)
+		if err != nil {
+			return "", err
+		}
 	}
 
 	pending, volumeStatus, err := attacher.cinderProvider.OperationPending(volumeID)
@@ -137,9 +142,13 @@ func (attacher *cinderDiskAttacher) VolumesAreAttached(specs []*volume.Spec, nod
 		volumeSpecMap[volumeSource.VolumeID] = spec
 	}
 
-	instanceid, err := attacher.nodeInstanceID(nodeName)
+	instanceid, err := getNodeInstanceID(attacher.host, nodeName)
 	if err != nil {
-		return volumesAttachedCheck, err
+		glog.Warningf("failed to get node instance ID from node spec,err:%+v", err)
+		instanceid, err = attacher.nodeInstanceID(nodeName)
+		if err != nil {
+			return volumesAttachedCheck, err
+		}
 	}
 
 	attachedResult, err := attacher.cinderProvider.DisksAreAttached(volumeIDList, instanceid)
@@ -252,6 +261,7 @@ func (attacher *cinderDiskAttacher) MountDevice(spec *volume.Spec, devicePath st
 type cinderDiskDetacher struct {
 	mounter        mount.Interface
 	cinderProvider CinderProvider
+	host           volume.VolumeHost
 }
 
 var _ volume.Detacher = &cinderDiskDetacher{}
@@ -264,18 +274,24 @@ func (plugin *cinderPlugin) NewDetacher() (volume.Detacher, error) {
 	return &cinderDiskDetacher{
 		mounter:        plugin.host.GetMounter(),
 		cinderProvider: cinder,
+		host:           plugin.host,
 	}, nil
 }
 
 func (detacher *cinderDiskDetacher) Detach(deviceMountPath string, nodeName types.NodeName) error {
 	volumeID := path.Base(deviceMountPath)
-	instances, res := detacher.cinderProvider.Instances()
-	if !res {
-		return fmt.Errorf("failed to list openstack instances")
-	}
-	instanceid, err := instances.InstanceID(nodeName)
-	if ind := strings.LastIndex(instanceid, "/"); ind >= 0 {
-		instanceid = instanceid[(ind + 1):]
+
+	instanceid, err := getNodeInstanceID(detacher.host, nodeName)
+	if err != nil {
+		glog.Warningf("failed to get node instance ID from node spec,err:%+v", err)
+		instances, res := detacher.cinderProvider.Instances()
+		if !res {
+			return fmt.Errorf("failed to list openstack instances")
+		}
+		instanceid, err = instances.InstanceID(nodeName)
+		if ind := strings.LastIndex(instanceid, "/"); ind >= 0 {
+			instanceid = instanceid[(ind + 1):]
+		}
 	}
 
 	attached, err := detacher.cinderProvider.DiskIsAttached(volumeID, instanceid)
@@ -318,3 +334,24 @@ func (attacher *cinderDiskAttacher) nodeInstanceID(nodeName types.NodeName) (str
 	}
 	return instanceid, nil
 }
+
+//Get the node instanceID from node spec
+func getNodeInstanceID(host volume.VolumeHost, nodeName types.NodeName) (string, error) {
+	kclient := host.GetKubeClient()
+	if kclient == nil {
+		return "", fmt.Errorf("Cannot get kube client")
+	}
+
+	node, err := kclient.Core().Nodes().Get(string(nodeName), metav1.GetOptions{})
+	if err != nil {
+		return "", fmt.Errorf("Can't get node spec:%+v", err)
+	}
+
+	instanceid := node.Spec.ProviderID
+	if ind := strings.LastIndex(instanceid, "/"); ind >= 0 {
+		instanceid = instanceid[(ind + 1):]
+	}
+
+	return instanceid, nil
+}
+
