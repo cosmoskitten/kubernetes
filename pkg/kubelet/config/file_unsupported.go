@@ -19,8 +19,12 @@ limitations under the License.
 // Reads the pod configuration from file or a directory of files.
 package config
 
-import "errors"
+import (
+	"errors"
 
-func (s *sourceFile) watch() error {
-	return errors.New("source file is unsupported in this build")
+	"github.com/golang/glog"
+)
+
+func (s *sourceFileListerWatcher) watch() {
+	glog.Errorf("watching source file is unsupported in this build")
 }

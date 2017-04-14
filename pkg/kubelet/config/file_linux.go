@@ -29,6 +29,7 @@ import (
 	"golang.org/x/exp/inotify"
 
 	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 	kubetypes "k8s.io/kubernetes/pkg/kubelet/types"
 )
 
@@ -40,7 +41,15 @@ const (
 	podDelete
 )
 
-func (s *sourceFile) watch() error {
+func (s *sourceFileListerWatcher) watch() {
+	go wait.Forever(func() {
+		if err := s.doWatch(); err != nil {
+			glog.Errorf("unable to read config path %q: %v", s.path, err)
+		}
+	}, s.period)
+}
+
+func (s *sourceFileListerWatcher) doWatch() error {
 	_, err := os.Stat(s.path)
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -62,11 +71,6 @@ func (s *sourceFile) watch() error {
 		return fmt.Errorf("unable to create inotify for path %q: %v", s.path, err)
 	}
 
-	// Reset store with config files already existing when starting
-	if err := s.resetStoreFromPath(); err != nil {
-		return fmt.Errorf("unable to read config path %q: %v", s.path, err)
-	}
-
 	for {
 		select {
 		case event := <-w.Event:
@@ -80,7 +84,7 @@ func (s *sourceFile) watch() error {
 	}
 }
 
-func (s *sourceFile) processEvent(e *inotify.Event) error {
+func (s *sourceFileListerWatcher) processEvent(e *inotify.Event) error {
 	// Ignore file start with dots
 	if strings.HasPrefix(filepath.Base(e.Name), ".") {
 		glog.V(4).Infof("Ignored pod manifest: %s, because it starts with dots", e.Name)
@@ -116,6 +120,8 @@ func (s *sourceFile) processEvent(e *inotify.Event) error {
 			return s.store.Add(pod)
 		}
 	case podDelete:
+		s.locker.Lock()
+		defer s.locker.Unlock()
 		if objKey, keyExist := s.fileKeyMapping[e.Name]; keyExist {
 			pod, podExist, err := s.store.GetByKey(objKey)
 			if err != nil {
@@ -123,7 +129,11 @@ func (s *sourceFile) processEvent(e *inotify.Event) error {
 			} else if !podExist {
 				return fmt.Errorf("the pod with key %s doesn't exist in cache", objKey)
 			} else {
-				return s.store.Delete(pod)
+				err = s.store.Delete(pod)
+				if err == nil {
+					delete(s.fileKeyMapping, e.Name)
+				}
+				return err
 			}
 		}
 	}
