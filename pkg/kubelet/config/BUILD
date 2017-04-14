@@ -57,6 +57,7 @@ go_test(
         "common_test.go",
         "config_test.go",
         "file_linux_test.go",
+        "file_test.go",
         "http_test.go",
     ],
     library = ":go_default_library",
