@@ -63,6 +63,8 @@ go_test(
         "apiserver_test.go",
         "common_test.go",
         "config_test.go",
+        "file_linux_test.go",
+        "file_test.go",
         "http_test.go",
     ] + select({
         "@io_bazel_rules_go//go/platform:linux_amd64": [
