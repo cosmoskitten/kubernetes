@@ -77,7 +77,7 @@ func TestDiscoverGPUS(t *testing.T) {
 	foundGPUs, err := expectedGPUs(testProc)
 	as := assert.New(t)
 	as.Nil(err)
-	as.Equal(foundGPUs, 2)
+	as.Equal(foundGPUs, true)
 	testGpuManager := &nvidiaGPUManager{
 		allGPUs: sets.NewString(),
 	}

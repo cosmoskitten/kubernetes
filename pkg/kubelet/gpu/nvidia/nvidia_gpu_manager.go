@@ -26,6 +26,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/golang/glog"
 
@@ -103,11 +104,19 @@ func (ngm *nvidiaGPUManager) Start() error {
 	if !os.IsNotExist(err) {
 		ngm.defaultDevices = append(ngm.defaultDevices, nvidiaUVMToolsDevice)
 	}
-
-	if err := ngm.discoverGPUs(devicesProcFile, devDirectory); err != nil {
-		return err
-	}
-
+	// retry discoverGPUs indefinitely in case drivers have not been installed
+	go func() {
+		var err error
+		for {
+			if err := ngm.discoverGPUs(devicesProcFile, devDirectory); err == nil {
+				return
+			}
+			glog.Errorf("failed to discover Nvidia GPUs: %v", err)
+			time.Sleep(time.Minute)
+		}
+	}()
+	// It's possible that the runtime isn't available now.
+	ngm.allocated = ngm.gpusInUse()
 	// We ignore errors when identifying allocated GPUs because it is possible that the runtime interfaces may be not be logically up.
 	return nil
 }
@@ -196,8 +205,8 @@ func (ngm *nvidiaGPUManager) updateAllocatedGPUs() {
 // we want more features, features like schedule containers according to GPU family
 // name.
 func (ngm *nvidiaGPUManager) discoverGPUs(devicesFile string, devDir string) error {
-	expected, err := expectedGPUs(devicesFile)
-	if err != nil {
+	found, err := expectedGPUs(devicesFile)
+	if err != nil || !found {
 		return err
 	}
 	reg := regexp.MustCompile(nvidiaDeviceRE)
@@ -215,8 +224,8 @@ func (ngm *nvidiaGPUManager) discoverGPUs(devicesFile string, devDir string) err
 			foundGPUs.Insert(f.Name())
 		}
 	}
-	if foundGPUs.Len() != expected {
-		err := fmt.Errorf("expected %d GPUs, found %d", expected, foundGPUs.Len())
+	if foundGPUs.Len() == 0 {
+		err := fmt.Errorf("expected GPUs, but did not find any under %q", devDir)
 		return err
 	}
 	for _, gpuToAdd := range foundGPUs.List() {
@@ -226,29 +235,28 @@ func (ngm *nvidiaGPUManager) discoverGPUs(devicesFile string, devDir string) err
 	return nil
 }
 
-// expectedGPUs reads the devices procfile and determines how many GPUs we should find
+// expectedGPUs reads the devices procfile and determines if we shuold find GPUs
 // when discoverGPUs is called
 // TODO: This most likely will count dead GPUs and should be refactored if we
 // switch to NVML health-checking
 // related https://github.com/kubernetes/community/pull/414
-func expectedGPUs(procFile string) (int, error) {
-	var expectedGpuCount = 0
+func expectedGPUs(procFile string) (bool, error) {
 	contents, err := os.Open(procFile)
-	defer contents.Close()
 	if err != nil {
-		return 0, err
+		return false, err
 	}
+	defer contents.Close()
 	scanner := bufio.NewScanner(contents)
 	scanner.Split(bufio.ScanLines)
 	for scanner.Scan() {
 		s := scanner.Bytes()
 		fields := bytes.SplitN(s, []byte{'\t'}, 3)
 		if bytes.HasPrefix(fields[1], []byte(nvidiaVendorID)) {
-			expectedGpuCount++
+			return true, nil
 		}
 
 	}
-	return expectedGpuCount, nil
+	return false, nil
 }
 
 // gpusInUse returns a list of GPUs in use along with the respective pods that are using it.
