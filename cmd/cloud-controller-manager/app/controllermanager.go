@@ -45,6 +45,7 @@ import (
 	"k8s.io/kubernetes/pkg/cloudprovider"
 	"k8s.io/kubernetes/pkg/controller"
 	nodecontroller "k8s.io/kubernetes/pkg/controller/cloud"
+	pvlcontroller "k8s.io/kubernetes/pkg/controller/persistentvolumelabel"
 	routecontroller "k8s.io/kubernetes/pkg/controller/route"
 	servicecontroller "k8s.io/kubernetes/pkg/controller/service"
 	"k8s.io/kubernetes/pkg/util/configz"
@@ -218,6 +219,12 @@ func StartControllers(s *options.CloudControllerManagerServer, kubeconfig *restc
 		s.NodeStatusUpdateFrequency.Duration)
 
 	nodeController.Run()
+	time.Sleep(wait.Jitter(s.ControllerStartInterval.Duration, ControllerStartJitter))
+
+	// Start the PersistentVolumeLabelController
+	pvlController := pvlcontroller.NewPersistentVolumeLabelController(client("pvl-controller"), cloud)
+	threads := 5
+	go pvlController.Run(threads, stop)
 	time.Sleep(wait.Jitter(s.ControllerStartInterval.Duration, ControllerStartJitter))
 
 	// Start the service controller
