@@ -128,6 +128,12 @@ func (m *DefaultRESTMapper) Add(kind schema.GroupVersionKind, scope RESTScope) {
 	m.kindToScope[kind] = scope
 }
 
+// Specifically written for test cases to perform tests on resources.
+func (m *DefaultRESTMapper) AddCustomResource(singular, plural schema.GroupVersionResource) {
+	m.singularToPlural[singular] = plural
+	m.pluralToSingular[plural] = singular
+}
+
 // unpluralizedSuffixes is a list of resource suffixes that are the same plural and singular
 // This is only is only necessary because some bits of code are lazy and don't actually use the RESTMapper like they should.
 // TODO eliminate this so that different callers can correctly map to resources.  This probably means updating all

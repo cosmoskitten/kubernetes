@@ -24,6 +24,7 @@ limitations under the License.
 package testapi
 
 import (
+	"errors"
 	"fmt"
 	"mime"
 	"os"
@@ -447,6 +448,34 @@ func (g TestGroup) RESTMapper() meta.RESTMapper {
 	return api.Registry.RESTMapper()
 }
 
+func (g TestGroup) CustomRESTMapper() meta.RESTMapper {
+	LikelyGV := []schema.GroupVersion{{Group: "storage.k8s.io", Version: "v1"}, {Group: "extensions", Version: "v1beta1"}}
+
+	scheme := runtime.NewScheme()
+
+	customRestMapper := meta.NewDefaultRESTMapper(LikelyGV, func(version schema.GroupVersion) (*meta.VersionInterfaces, error) {
+		return &meta.VersionInterfaces{
+			ObjectConvertor:  scheme,
+			MetadataAccessor: meta.NewAccessor(),
+		}, versionErrIfFalse(version == LikelyGV[0] || version == LikelyGV[1])
+	})
+
+	// ADD the resources to the customRestMapper.
+	singular := schema.GroupVersionResource{Group: "storage.k8s.io", Version: "v1", Resource: "sc"}
+	plural := schema.GroupVersionResource{Group: "storage.k8s.io", Version: "v1", Resource: "scs"}
+	customRestMapper.AddCustomResource(singular, plural)
+
+	singular = schema.GroupVersionResource{Group: "storage.k8s.io", Version: "v1", Resource: "storageclass"}
+	plural = schema.GroupVersionResource{Group: "storage.k8s.io", Version: "v1", Resource: "storageclasses"}
+	customRestMapper.AddCustomResource(singular, plural)
+
+	singular = schema.GroupVersionResource{Group: "extensions", Version: "v1beta1", Resource: "daemonset"}
+	plural = schema.GroupVersionResource{Group: "extensions", Version: "v1beta1", Resource: "daemonsets"}
+	customRestMapper.AddCustomResource(singular, plural)
+
+	return customRestMapper
+}
+
 // ExternalGroupVersions returns all external group versions allowed for the server.
 func ExternalGroupVersions() schema.GroupVersions {
 	versions := []schema.GroupVersion{}
@@ -483,6 +512,15 @@ func GetCodecForObject(obj runtime.Object) (runtime.Codec, error) {
 		return serializer.Serializer, nil
 	}
 	return nil, fmt.Errorf("unexpected kind: %v", kind)
+}
+
+var versionErr = errors.New("not a version")
+
+func versionErrIfFalse(b bool) error {
+	if b {
+		return nil
+	}
+	return versionErr
 }
 
 func NewTestGroup(external, internal schema.GroupVersion, internalTypes map[string]reflect.Type, externalTypes map[string]reflect.Type) TestGroup {
