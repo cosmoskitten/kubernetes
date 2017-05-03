@@ -1343,10 +1343,14 @@ func (kl *Kubelet) GetClusterDNS(pod *v1.Pod) ([]string, []string, bool, error) 
 		// "nameservers" are not specified is to "use the nameserver on the
 		// local machine". A nameserver setting of localhost is equivalent to
 		// this documented behavior.
-		if kl.resolverConfig == "" {
+		switch {
+		case kl.resolverConfig == "" && (kl.nodeIP == nil || kl.nodeIP.To4() != nil):
 			hostDNS = []string{"127.0.0.1"}
 			hostSearch = []string{"."}
-		} else {
+		case kl.resolverConfig == "" && kl.nodeIP.To16() != nil:
+			hostDNS = []string{"::1"}
+			hostSearch = []string{"."}
+		default:
 			hostSearch = kl.formDNSSearchForDNSDefault(hostSearch, pod)
 		}
 		return hostDNS, hostSearch, useClusterFirstPolicy, nil
