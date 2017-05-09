@@ -208,6 +208,7 @@ func newTestKubeletWithImageList(
 
 	mockCadvisor := &cadvisortest.Mock{}
 	kubelet.cadvisor = mockCadvisor
+	fakeRuntime.Cadvisor = mockCadvisor
 
 	fakeMirrorClient := podtest.NewFakeMirrorClient()
 	secretManager := secret.NewSimpleSecretManager(kubelet.kubeClient)
