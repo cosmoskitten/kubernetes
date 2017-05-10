@@ -447,7 +447,23 @@ func (m *kubeGenericRuntimeManager) computePodContainerChanges(pod *v1.Pod, podS
 	// check the status of containers.
 	for index, container := range pod.Spec.Containers {
 		containerStatus := podStatus.FindContainerStatusByName(container.Name)
-		if containerStatus == nil || containerStatus.State != kubecontainer.ContainerStateRunning {
+		containerRef, err := kubecontainer.GenerateContainerRef(pod, &container)
+		if err != nil {
+			glog.Errorf("Couldn't make a ref to pod %q, container %v: '%v'", format.Pod(pod), container.Name, err)
+		}
+
+		if containerStatus == nil {
+			changes.ContainersToStart[index] = fmt.Sprintf("Starting container %+v.", container)
+			continue
+		} else if containerStatus.State != kubecontainer.ContainerStateRunning {
+			// TODO: is there a better place to report failed containers?
+			exitMessage := fmt.Sprintf("Container %q exited with status %d.", container.Name, containerStatus.ExitCode)
+			if containerStatus.ExitCode == 0 {
+				m.recorder.Eventf(containerRef, v1.EventTypeNormal, events.ExitSuccess, exitMessage)
+			} else {
+				m.recorder.Eventf(containerRef, v1.EventTypeWarning, events.ExitFailure, exitMessage)
+			}
+
 			if kubecontainer.ShouldContainerBeRestarted(&container, pod, podStatus) {
 				message := fmt.Sprintf("Container %+v is dead, but RestartPolicy says that we should restart it.", container)
 				glog.Info(message)
@@ -455,10 +471,14 @@ func (m *kubeGenericRuntimeManager) computePodContainerChanges(pod *v1.Pod, podS
 			}
 			continue
 		}
+
 		if sandboxChanged {
 			if pod.Spec.RestartPolicy != v1.RestartPolicyNever {
-				message := fmt.Sprintf("Container %+v's pod sandbox is dead, the container will be recreated.", container)
-				glog.Info(message)
+				// The container string can be a full object serialization for logging, but
+				// the Event object should just stick to the container's name.
+				message := "Container %+v's pod sandbox is dead, the container will be recreated."
+				glog.Infof(message, container)
+				m.recorder.Eventf(containerRef, v1.EventTypeWarning, events.ContainerRestarting, message, container.Name)
 				changes.ContainersToStart[index] = message
 			}
 			continue
@@ -471,6 +491,7 @@ func (m *kubeGenericRuntimeManager) computePodContainerChanges(pod *v1.Pod, podS
 			if pod.Spec.RestartPolicy != v1.RestartPolicyNever {
 				message := fmt.Sprintf("Failed to initialize pod. %q will be restarted.", container.Name)
 				glog.V(1).Info(message)
+				m.recorder.Eventf(containerRef, v1.EventTypeWarning, events.ContainerRestarting, message)
 				changes.ContainersToStart[index] = message
 			}
 			continue
@@ -482,6 +503,7 @@ func (m *kubeGenericRuntimeManager) computePodContainerChanges(pod *v1.Pod, podS
 			message := fmt.Sprintf("Pod %q container %q hash changed (%d vs %d), it will be killed and re-created.",
 				pod.Name, container.Name, containerStatus.Hash, expectedHash)
 			glog.Info(message)
+			m.recorder.Eventf(containerRef, v1.EventTypeNormal, events.ContainerRestarting, message)
 			changes.ContainersToStart[index] = message
 			continue
 		}
@@ -494,6 +516,7 @@ func (m *kubeGenericRuntimeManager) computePodContainerChanges(pod *v1.Pod, podS
 		if pod.Spec.RestartPolicy != v1.RestartPolicyNever {
 			message := fmt.Sprintf("pod %q container %q is unhealthy, it will be killed and re-created.", format.Pod(pod), container.Name)
 			glog.Info(message)
+			m.recorder.Eventf(containerRef, v1.EventTypeWarning, events.ContainerRestarting, message)
 			changes.ContainersToStart[index] = message
 		}
 	}
@@ -548,7 +571,7 @@ func (m *kubeGenericRuntimeManager) SyncPod(pod *v1.Pod, _ v1.PodStatus, podStat
 			glog.Errorf("Couldn't make a ref to pod %q: '%v'", format.Pod(pod), err)
 		}
 		if podContainerChanges.SandboxID != "" {
-			m.recorder.Eventf(ref, v1.EventTypeNormal, "SandboxChanged", "Pod sandbox changed, it will be killed and re-created.")
+			m.recorder.Eventf(ref, v1.EventTypeWarning, "SandboxChanged", "Pod sandbox changed, it will be killed and re-created.")
 		} else {
 			glog.V(4).Infof("SyncPod received new pod %q, will create a new sandbox for it", format.Pod(pod))
 		}
