@@ -63,6 +63,7 @@ type Interface interface {
 	AttachToContainer(string, dockertypes.ContainerAttachOptions, StreamOptions) error
 	ResizeContainerTTY(id string, height, width int) error
 	ResizeExecTTY(id string, height, width int) error
+	WaitForContainer(id string) error
 }
 
 // Get a *dockerapi.Client, either using the endpoint passed in, or using

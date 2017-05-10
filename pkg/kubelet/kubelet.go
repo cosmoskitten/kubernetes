@@ -1396,6 +1396,10 @@ func (kl *Kubelet) syncPod(o syncPodOptions) error {
 	podStatus := o.podStatus
 	updateType := o.updateType
 
+	// Fetch the pull secrets for the pod, get the pull Secrets a little early than usual as we may want to
+	// supply it to killPod.
+	pullSecrets := kl.getPullSecretsForPod(pod)
+
 	// if we want to kill a pod, do it now!
 	if updateType == kubetypes.SyncPodKill {
 		killPodOptions := o.killPodOptions
@@ -1405,7 +1409,7 @@ func (kl *Kubelet) syncPod(o syncPodOptions) error {
 		apiPodStatus := killPodOptions.PodStatusFunc(pod, podStatus)
 		kl.statusManager.SetPodStatus(pod, apiPodStatus)
 		// we kill the pod with the specified grace period since this is a termination
-		if err := kl.killPod(pod, nil, podStatus, killPodOptions.PodTerminationGracePeriodSecondsOverride); err != nil {
+		if err := kl.killPod(pod, nil, podStatus, killPodOptions.PodTerminationGracePeriodSecondsOverride, pullSecrets); err != nil {
 			// there was an error killing the pod, so we return that error directly
 			utilruntime.HandleError(err)
 			return err
@@ -1471,7 +1475,7 @@ func (kl *Kubelet) syncPod(o syncPodOptions) error {
 	// Kill pod if it should not be running
 	if !runnable.Admit || pod.DeletionTimestamp != nil || apiPodStatus.Phase == v1.PodFailed {
 		var syncErr error
-		if err := kl.killPod(pod, nil, podStatus, nil); err != nil {
+		if err := kl.killPod(pod, nil, podStatus, nil, pullSecrets); err != nil {
 			syncErr = fmt.Errorf("error killing pod: %v", err)
 			utilruntime.HandleError(syncErr)
 		} else {
@@ -1511,7 +1515,7 @@ func (kl *Kubelet) syncPod(o syncPodOptions) error {
 		// exists or the pod is running for the first time
 		podKilled := false
 		if !pcm.Exists(pod) && !firstSync {
-			if err := kl.killPod(pod, nil, podStatus, nil); err == nil {
+			if err := kl.killPod(pod, nil, podStatus, nil, pullSecrets); err == nil {
 				podKilled = true
 			}
 		}
@@ -1570,9 +1574,6 @@ func (kl *Kubelet) syncPod(o syncPodOptions) error {
 		glog.Errorf("Unable to mount volumes for pod %q: %v; skipping pod", format.Pod(pod), err)
 		return err
 	}
-
-	// Fetch the pull secrets for the pod
-	pullSecrets := kl.getPullSecretsForPod(pod)
 
 	// Call the container runtime's SyncPod callback
 	result := kl.containerRuntime.SyncPod(pod, apiPodStatus, podStatus, pullSecrets, kl.backOff)
