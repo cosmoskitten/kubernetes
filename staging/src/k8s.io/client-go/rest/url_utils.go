@@ -33,10 +33,7 @@ func DefaultServerURL(host string, defaultTLS bool) (*url.URL, error) {
 	}
 	base := host
 	hostURL, err := url.Parse(base)
-	if err != nil {
-		return nil, err
-	}
-	if hostURL.Scheme == "" {
+	if err != nil || hostURL.Scheme == "" || hostURL.Host == "" {
 		scheme := "http://"
 		if defaultTLS {
 			scheme = "https://"

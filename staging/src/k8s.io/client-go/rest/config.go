@@ -361,11 +361,11 @@ func InClusterConfig() (*Config, error) {
 // still possible.
 func IsConfigTransportTLS(config Config) (bool, error) {
 	hosts, _, err := defaultServerUrlsFor(&config)
-	allHttps := 0
 	// TODO Propagate errors from defaultServerUrlsFor
 	if err != nil {
 		return false, nil
 	}
+	allHttps := 0
 	for _, host := range hosts {
 		if host.Scheme == "https" {
 			allHttps++
