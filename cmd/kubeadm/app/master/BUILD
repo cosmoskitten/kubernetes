@@ -14,6 +14,8 @@ go_library(
         "apiclient.go",
         "manifests.go",
         "selfhosted.go",
+        "selfhosted_etcd.go",
+        "selfhosted_proxy.go",
     ],
     tags = ["automanaged"],
     deps = [
@@ -21,19 +23,28 @@ go_library(
         "//cmd/kubeadm/app/apis/kubeadm/v1alpha1:go_default_library",
         "//cmd/kubeadm/app/constants:go_default_library",
         "//cmd/kubeadm/app/images:go_default_library",
+        "//cmd/kubeadm/app/master/spec:go_default_library",
         "//cmd/kubeadm/app/util/kubeconfig:go_default_library",
         "//pkg/bootstrap/api:go_default_library",
         "//pkg/kubeapiserver/authorizer/modes:go_default_library",
         "//pkg/kubectl/cmd/util:go_default_library",
         "//pkg/util/version:go_default_library",
+        "//vendor/github.com/coreos/etcd/clientv3:go_default_library",
         "//vendor/github.com/ghodss/yaml:go_default_library",
+        "//vendor/k8s.io/apimachinery/pkg/api/errors:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/api/resource:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
+        "//vendor/k8s.io/apimachinery/pkg/runtime:go_default_library",
+        "//vendor/k8s.io/apimachinery/pkg/runtime/schema:go_default_library",
+        "//vendor/k8s.io/apimachinery/pkg/runtime/serializer:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/util/intstr:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/util/wait:go_default_library",
         "//vendor/k8s.io/client-go/kubernetes:go_default_library",
         "//vendor/k8s.io/client-go/pkg/api/v1:go_default_library",
         "//vendor/k8s.io/client-go/pkg/apis/extensions/v1beta1:go_default_library",
+        "//vendor/k8s.io/client-go/pkg/apis/rbac/v1beta1:go_default_library",
+        "//vendor/k8s.io/client-go/rest:go_default_library",
+        "//vendor/k8s.io/client-go/tools/clientcmd:go_default_library",
     ],
 )
 
@@ -60,6 +71,9 @@ filegroup(
 
 filegroup(
     name = "all-srcs",
-    srcs = [":package-srcs"],
+    srcs = [
+        ":package-srcs",
+        "//cmd/kubeadm/app/master/spec:all-srcs",
+    ],
     tags = ["automanaged"],
 )
