@@ -43,8 +43,8 @@ func TestGetCoreImage(t *testing.T) {
 		{getCoreImageTest{o: "override"}, "override"},
 		{getCoreImageTest{
 			i: KubeEtcdImage,
-			c: &kubeadmapi.MasterConfiguration{}},
-			fmt.Sprintf("%s/%s-%s:%s", gcrPrefix, "etcd", runtime.GOARCH, etcdVersion),
+			c: &kubeadmapi.MasterConfiguration{Etcd: kubeadmapi.Etcd{Cluster: kubeadmapi.EtcdCluster{Version: testversion}}}},
+			fmt.Sprintf("quay.io/coreos/etcd:%s", testversion),
 		},
 		{getCoreImageTest{
 			i: KubeAPIServerImage,

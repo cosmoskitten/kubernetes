@@ -541,7 +541,7 @@ func TestGetAPIServerCommand(t *testing.T) {
 				"--requestheader-allowed-names=front-proxy-client",
 				"--authorization-mode=RBAC",
 				"--advertise-address=1.2.3.4",
-				"--etcd-servers=http://127.0.0.1:2379",
+				"--etcd-servers=http://127.0.0.1:12379",
 			},
 		},
 		{
@@ -573,7 +573,7 @@ func TestGetAPIServerCommand(t *testing.T) {
 				"--requestheader-allowed-names=front-proxy-client",
 				"--authorization-mode=RBAC",
 				"--advertise-address=4.3.2.1",
-				"--etcd-servers=http://127.0.0.1:2379",
+				"--etcd-servers=http://127.0.0.1:12379",
 			},
 		},
 		{
@@ -606,7 +606,7 @@ func TestGetAPIServerCommand(t *testing.T) {
 				"--requestheader-allowed-names=front-proxy-client",
 				"--authorization-mode=RBAC",
 				"--advertise-address=4.3.2.1",
-				"--etcd-servers=http://127.0.0.1:2379",
+				"--etcd-servers=http://127.0.0.1:12379",
 				"--etcd-certfile=fiz",
 				"--etcd-keyfile=faz",
 			},
@@ -643,7 +643,7 @@ func TestGetAPIServerCommand(t *testing.T) {
 				"--requestheader-allowed-names=front-proxy-client",
 				"--authorization-mode=RBAC",
 				"--advertise-address=4.3.2.1",
-				"--etcd-servers=http://127.0.0.1:2379",
+				"--etcd-servers=http://127.0.0.1:12379",
 				"--etcd-certfile=fiz",
 				"--etcd-keyfile=faz",
 			},
@@ -740,13 +740,19 @@ func TestGetEtcdCommand(t *testing.T) {
 	}{
 		{
 			cfg: &kubeadmapi.MasterConfiguration{
-				Etcd: kubeadmapi.Etcd{DataDir: "/var/lib/etcd"},
+				Etcd: kubeadmapi.Etcd{DataDir: "/var/foo/etcd"},
 			},
 			expected: []string{
 				"etcd",
-				"--listen-client-urls=http://127.0.0.1:2379",
-				"--advertise-client-urls=http://127.0.0.1:2379",
-				"--data-dir=/var/lib/etcd",
+				"--name=boot-etcd",
+				"--listen-client-urls=http://0.0.0.0:12379",
+				"--listen-peer-urls=http://0.0.0.0:12380",
+				"--advertise-client-urls=http://$(MY_POD_IP):12379",
+				"--initial-advertise-peer-urls=http://$(MY_POD_IP):12380",
+				"--initial-cluster=boot-etcd=http://$(MY_POD_IP):12380",
+				"--initial-cluster-token=bootkube",
+				"--initial-cluster-state=new",
+				"--data-dir=/var/foo/etcd",
 			},
 		},
 		{
@@ -761,20 +767,15 @@ func TestGetEtcdCommand(t *testing.T) {
 			},
 			expected: []string{
 				"etcd",
+				"--name=boot-etcd",
 				"--listen-client-urls=http://10.0.1.10:2379",
+				"--listen-peer-urls=http://0.0.0.0:12380",
 				"--advertise-client-urls=http://10.0.1.10:2379",
+				"--initial-advertise-peer-urls=http://$(MY_POD_IP):12380",
+				"--initial-cluster=boot-etcd=http://$(MY_POD_IP):12380",
+				"--initial-cluster-token=bootkube",
+				"--initial-cluster-state=new",
 				"--data-dir=/var/lib/etcd",
-			},
-		},
-		{
-			cfg: &kubeadmapi.MasterConfiguration{
-				Etcd: kubeadmapi.Etcd{DataDir: "/etc/foo"},
-			},
-			expected: []string{
-				"etcd",
-				"--listen-client-urls=http://127.0.0.1:2379",
-				"--advertise-client-urls=http://127.0.0.1:2379",
-				"--data-dir=/etc/foo",
 			},
 		},
 	}
