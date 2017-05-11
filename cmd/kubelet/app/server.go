@@ -861,6 +861,12 @@ func RunKubelet(kubeFlags *options.KubeletFlags, kubeCfg *componentconfig.Kubele
 		}
 	}
 
+	// set up /var/lib/kubelet sharing
+	err = kubeDeps.Mounter.MakeShared(kubeCfg.RootDirectory)
+	if err != nil {
+		return err
+	}
+
 	// process pods and exit.
 	if runOnce {
 		if _, err := k.RunOnce(podCfg.Updates()); err != nil {
