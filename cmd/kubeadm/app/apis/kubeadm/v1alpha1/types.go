@@ -76,6 +76,13 @@ type Etcd struct {
 	KeyFile   string            `json:"keyFile"`
 	DataDir   string            `json:"dataDir"`
 	ExtraArgs map[string]string `json:"extraArgs"`
+	Cluster   EtcdCluster       `json:"cluster"`
+}
+
+type EtcdCluster struct {
+	ServiceIP string `json:"serviceIP"`
+	Size      int    `json:"size"`
+	Version   string `json:"version"`
 }
 
 type NodeConfiguration struct {

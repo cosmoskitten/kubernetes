@@ -74,6 +74,8 @@ const (
 	APICallRetryInterval = 500 * time.Millisecond
 	// DiscoveryRetryInterval specifies how long kubeadm should wait before retrying to connect to the master when doing discovery
 	DiscoveryRetryInterval = 5 * time.Second
+	// EtcdClusterTimeout specifies how long kubeadm should wait before giving up
+	EtcdClusterTimeout = 60 * time.Second
 
 	// Minimum amount of nodes the Service subnet should allow.
 	// We need at least ten, because the DNS service is always at the tenth cluster clusterIP
@@ -92,6 +94,9 @@ const (
 
 	// DefaultAdmissionControl specifies the default admission control options that will be used
 	DefaultAdmissionControl = "NamespaceLifecycle,LimitRanger,ServiceAccount,PersistentVolumeLabel,DefaultStorageClass,ResourceQuota,DefaultTolerationSeconds"
+
+	// DefaultEtcdIPSuffix specifies the offset value for the service CIDR that will make the etcd service IPv4
+	DefaultEtcdIPSuffix = 15
 )
 
 var (

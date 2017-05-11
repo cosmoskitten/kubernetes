@@ -83,6 +83,13 @@ type Etcd struct {
 	KeyFile   string
 	DataDir   string
 	ExtraArgs map[string]string
+	Cluster   EtcdCluster
+}
+
+type EtcdCluster struct {
+	ServiceIP string
+	Size      int
+	Version   string
 }
 
 type NodeConfiguration struct {
