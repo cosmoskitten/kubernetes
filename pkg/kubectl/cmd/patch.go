@@ -30,7 +30,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/apimachinery/pkg/util/yaml"
@@ -50,7 +49,8 @@ var patchTypes = map[string]types.PatchType{"json": types.JSONPatchType, "merge"
 type PatchOptions struct {
 	resource.FilenameOptions
 
-	Local bool
+	Local  bool
+	DryRun bool
 
 	OutputFormat string
 }
@@ -98,6 +98,7 @@ func NewCmdPatch(f cmdutil.Factory, out io.Writer) *cobra.Command {
 		Example: patchExample,
 		Run: func(cmd *cobra.Command, args []string) {
 			options.OutputFormat = cmdutil.GetFlagString(cmd, "output")
+			options.DryRun = cmdutil.GetFlagBool(cmd, "dry-run")
 			err := RunPatch(f, out, cmd, args, options)
 			cmdutil.CheckErr(err)
 		},
@@ -109,6 +110,7 @@ func NewCmdPatch(f cmdutil.Factory, out io.Writer) *cobra.Command {
 	cmd.Flags().String("type", "strategic", fmt.Sprintf("The type of patch being provided; one of %v", sets.StringKeySet(patchTypes).List()))
 	cmdutil.AddPrinterFlags(cmd)
 	cmdutil.AddRecordFlag(cmd)
+	cmdutil.AddDryRunFlag(cmd)
 	cmdutil.AddInclude3rdPartyFlags(cmd)
 
 	usage := "identifying the resource to update"
@@ -177,8 +179,8 @@ func RunPatch(f cmdutil.Factory, out io.Writer, cmd *cobra.Command, args []strin
 			return err
 		}
 
-		if !options.Local {
-			dataChangedMsg := "not patched"
+		dataChangedMsg := "not patched"
+		if !options.Local && !options.DryRun {
 			helper := resource.NewHelper(client, mapping)
 			patchedObj, err := helper.Patch(namespace, name, patchType, patchBytes)
 			if err != nil {
@@ -200,15 +202,7 @@ func RunPatch(f cmdutil.Factory, out io.Writer, cmd *cobra.Command, args []strin
 			}
 			count++
 
-			oldData, err := json.Marshal(info.Object)
-			if err != nil {
-				return err
-			}
-			newData, err := json.Marshal(patchedObj)
-			if err != nil {
-				return err
-			}
-			if !reflect.DeepEqual(oldData, newData) {
+			if !reflect.DeepEqual(info.Object, patchedObj) {
 				dataChangedMsg = "patched"
 			}
 
@@ -226,7 +220,13 @@ func RunPatch(f cmdutil.Factory, out io.Writer, cmd *cobra.Command, args []strin
 
 		count++
 
-		originalObjJS, err := runtime.Encode(unstructured.UnstructuredJSONScheme, info.VersionedObject)
+		var obj runtime.Object
+		if info.VersionedObject != nil {
+			obj = info.VersionedObject
+		} else {
+			obj = info.Object
+		}
+		originalObjJS, err := runtime.Encode(unstructured.UnstructuredJSONScheme, obj)
 		if err != nil {
 			return err
 		}
@@ -238,6 +238,11 @@ func RunPatch(f cmdutil.Factory, out io.Writer, cmd *cobra.Command, args []strin
 		if err != nil {
 			return err
 		}
+
+		if !reflect.DeepEqual(obj, targetObj) {
+			dataChangedMsg = "patched"
+		}
+
 		// TODO: if we ever want to go generic, this allows a clean -o yaml without trying to print columns or anything
 		// rawExtension := &runtime.Unknown{
 		//	Raw: originalPatchedObjJS,
@@ -245,7 +250,12 @@ func RunPatch(f cmdutil.Factory, out io.Writer, cmd *cobra.Command, args []strin
 		if err := info.Refresh(targetObj, true); err != nil {
 			return err
 		}
-		return cmdutil.PrintResourceInfoForCommand(cmd, info, f, out)
+
+		if len(options.OutputFormat) > 0 && options.OutputFormat != "name" {
+			return cmdutil.PrintResourceInfoForCommand(cmd, info, f, out)
+		}
+		cmdutil.PrintSuccess(mapper, options.OutputFormat == "name", out, info.Mapping.Resource, info.Name, options.DryRun, dataChangedMsg)
+		return nil
 	})
 	if err != nil {
 		return err
