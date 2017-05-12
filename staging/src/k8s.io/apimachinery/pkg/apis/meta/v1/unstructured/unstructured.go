@@ -406,10 +406,6 @@ func (u *Unstructured) GetDeletionTimestamp() *metav1.Time {
 }
 
 func (u *Unstructured) SetDeletionTimestamp(timestamp *metav1.Time) {
-	if timestamp == nil {
-		u.setNestedField(nil, "metadata", "deletionTimestamp")
-		return
-	}
 	ts, _ := timestamp.MarshalQueryParameter()
 	u.setNestedField(ts, "metadata", "deletionTimestamp")
 }
