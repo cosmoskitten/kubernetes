@@ -74,6 +74,10 @@ func CreateSelfHostedControlPlane(cfg *kubeadmapi.MasterConfiguration, client *c
 		return err
 	}
 
+	if err := launchSelfHostedProxy(cfg, client); err != nil {
+		return err
+	}
+
 	if err := launchEtcdOperator(cfg, client); err != nil {
 		return err
 	}
