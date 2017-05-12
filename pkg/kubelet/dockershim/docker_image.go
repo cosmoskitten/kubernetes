@@ -94,9 +94,7 @@ func (ds *dockerService) RemoveImage(image *runtimeapi.ImageSpec) error {
 	imageInspect, err := ds.client.InspectImageByID(image.Image)
 	if err == nil && imageInspect != nil && len(imageInspect.RepoTags) > 1 {
 		for _, tag := range imageInspect.RepoTags {
-			if _, err = ds.client.RemoveImage(tag,
-				dockertypes.ImageRemoveOptions{
-					PruneChildren: true}); err != nil {
+			if _, err = ds.client.RemoveImage(tag, dockertypes.ImageRemoveOptions{PruneChildren: true}); err != nil {
 				return err
 			}
 		}

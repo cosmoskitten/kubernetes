@@ -65,7 +65,7 @@ func TestRunOnce(t *testing.T) {
 	fakeSecretManager := secret.NewFakeManager()
 	podManager := kubepod.NewBasicPodManager(
 		podtest.NewFakeMirrorClient(), fakeSecretManager)
-	diskSpaceManager, _ := newDiskSpaceManager(cadvisor, DiskSpacePolicy{})
+	diskSpaceManager, _ := newDiskSpaceManager(cadvisor, nil, DiskSpacePolicy{})
 	fakeRuntime := &containertest.FakeRuntime{Cadvisor: cadvisor}
 	basePath, err := utiltesting.MkTmpdir("kubelet")
 	if err != nil {

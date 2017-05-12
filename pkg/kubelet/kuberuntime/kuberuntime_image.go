@@ -18,7 +18,6 @@ package kuberuntime
 
 import (
 	"github.com/golang/glog"
-	cadvisorapiv2 "github.com/google/cadvisor/info/v2"
 
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/kubernetes/pkg/api/v1"
@@ -149,28 +148,12 @@ func (m *kubeGenericRuntimeManager) ImageStats() (*kubecontainer.ImageStats, err
 }
 
 // ImageFsInfo gets filesytem information of images.
-func (m *kubeGenericRuntimeManager) ImageFsInfo() (cadvisorapiv2.FsInfo, error) {
+func (m *kubeGenericRuntimeManager) ImageFsInfo() (runtimeapi.FsInfo, error) {
 	imageFSInfo, err := m.imageService.ImageFsInfo()
 	if err != nil {
 		glog.Errorf("ImageFsInfo failed: %v", err)
-		return cadvisorapiv2.FsInfo{}, err
+		return runtimeapi.FsInfo{}, err
 	}
 
-	fsInfo := cadvisorapiv2.FsInfo{
-		Device:     imageFSInfo.Device,
-		Mountpoint: imageFSInfo.Path,
-		Capacity:   imageFSInfo.CapacityBytes.GetValue(),
-		Available:  imageFSInfo.AvailableBytes.GetValue(),
-		Usage:      imageFSInfo.UsedBytes.GetValue(),
-	}
-	if imageFSInfo.InodesCapacity != nil {
-		inodes := imageFSInfo.InodesCapacity.GetValue()
-		fsInfo.Inodes = &inodes
-	}
-	if imageFSInfo.InodesAvailable != nil {
-		inodesFree := imageFSInfo.InodesAvailable.GetValue()
-		fsInfo.InodesFree = &inodesFree
-	}
-
-	return fsInfo, nil
+	return *imageFSInfo, nil
 }

@@ -25,7 +25,6 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	cadvisorapiv2 "github.com/google/cadvisor/info/v2"
 
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/flowcontrol"
@@ -160,7 +159,7 @@ type ImageService interface {
 	// Returns Image statistics.
 	ImageStats() (*ImageStats, error)
 	// ImageFsInfo gets filesytem information of images.
-	ImageFsInfo() (cadvisorapiv2.FsInfo, error)
+	ImageFsInfo() (runtimeapi.FsInfo, error)
 }
 
 type ContainerAttacher interface {
