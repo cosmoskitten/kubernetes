@@ -334,6 +334,7 @@ func (m *ReplicaSetControllerRefManager) AdoptReplicaSet(rs *extensions.ReplicaS
 	if err := m.CanAdopt(); err != nil {
 		return fmt.Errorf("can't adopt ReplicaSet %v/%v (%v): %v", rs.Namespace, rs.Name, rs.UID, err)
 	}
+	rs.Finalizers = append(rs.Finalizers, metav1.FinalizerDeleteDependents)
 	// Note that ValidateOwnerReferences() will reject this patch if another
 	// OwnerReference exists with controller=true.
 	addControllerPatch := fmt.Sprintf(
