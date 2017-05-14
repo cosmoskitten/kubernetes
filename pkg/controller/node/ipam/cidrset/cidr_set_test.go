@@ -47,8 +47,10 @@ func TestCIDRSetFullyAllocated(t *testing.T) {
 	}
 	for _, tc := range cases {
 		_, clusterCIDR, _ := net.ParseCIDR(tc.clusterCIDRStr)
-		a := NewCIDRSet(clusterCIDR, tc.subNetMaskSize)
-
+		a, err := NewCIDRSet(clusterCIDR, tc.subNetMaskSize)
+		if err != nil {
+			t.Fatalf("unexpected error: %v for %v", err, tc.description)
+		}
 		p, err := a.AllocateNext()
 		if err != nil {
 			t.Fatalf("unexpected error: %v for %v", err, tc.description)
@@ -133,7 +135,10 @@ func TestIndexToCIDRBlock(t *testing.T) {
 	}
 	for _, tc := range cases {
 		_, clusterCIDR, _ := net.ParseCIDR(tc.clusterCIDRStr)
-		a := NewCIDRSet(clusterCIDR, tc.subnetMaskSize)
+		a, err := NewCIDRSet(clusterCIDR, tc.subnetMaskSize)
+		if err != nil {
+			t.Fatalf("error for %v ", tc.description)
+		}
 		cidr := a.indexToCIDRBlock(tc.index)
 		if cidr.String() != tc.CIDRBlock {
 			t.Fatalf("error for %v index %d %s", tc.description, tc.index, cidr.String())
@@ -157,7 +162,10 @@ func TestCIDRSet_RandomishAllocation(t *testing.T) {
 	}
 	for _, tc := range cases {
 		_, clusterCIDR, _ := net.ParseCIDR(tc.clusterCIDRStr)
-		a := NewCIDRSet(clusterCIDR, 24)
+		a, err := NewCIDRSet(clusterCIDR, 24)
+		if err != nil {
+			t.Fatalf("Error allocating CIDRSet for %v", tc.description)
+		}
 		// allocate all the CIDRs
 		var cidrs []*net.IPNet
 
@@ -169,7 +177,7 @@ func TestCIDRSet_RandomishAllocation(t *testing.T) {
 			}
 		}
 
-		var err error
+		//var err error
 		_, err = a.AllocateNext()
 		if err == nil {
 			t.Fatalf("expected error because of fully-allocated range for %v", tc.description)
@@ -215,8 +223,10 @@ func TestCIDRSet_AllocationOccupied(t *testing.T) {
 	}
 	for _, tc := range cases {
 		_, clusterCIDR, _ := net.ParseCIDR(tc.clusterCIDRStr)
-		a := NewCIDRSet(clusterCIDR, 24)
-
+		a, err := NewCIDRSet(clusterCIDR, 24)
+		if err != nil {
+			t.Fatalf("Error allocating CIDRSet for %v", tc.description)
+		}
 		// allocate all the CIDRs
 		var cidrs []*net.IPNet
 		var numCIDRs = 256
@@ -229,7 +239,7 @@ func TestCIDRSet_AllocationOccupied(t *testing.T) {
 			}
 		}
 
-		var err error
+		//var err error
 		_, err = a.AllocateNext()
 		if err == nil {
 			t.Fatalf("expected error because of fully-allocated range for %v", tc.description)
@@ -394,8 +404,10 @@ func TestGetBitforCIDR(t *testing.T) {
 			t.Fatalf("unexpected error: %v for %v", err, tc.description)
 		}
 
-		cs := NewCIDRSet(clusterCIDR, tc.subNetMaskSize)
-
+		cs, err := NewCIDRSet(clusterCIDR, tc.subNetMaskSize)
+		if err != nil {
+			t.Fatalf("Error allocating CIDRSet for %v", tc.description)
+		}
 		_, subnetCIDR, err := net.ParseCIDR(tc.subNetCIDRStr)
 		if err != nil {
 			t.Fatalf("unexpected error: %v for %v", err, tc.description)
@@ -562,7 +574,10 @@ func TestOccupy(t *testing.T) {
 			t.Fatalf("unexpected error: %v for %v", err, tc.description)
 		}
 
-		cs := NewCIDRSet(clusterCIDR, tc.subNetMaskSize)
+		cs, err := NewCIDRSet(clusterCIDR, tc.subNetMaskSize)
+		if err != nil {
+			t.Fatalf("Error allocating CIDRSet for %v", tc.description)
+		}
 
 		_, subnetCIDR, err := net.ParseCIDR(tc.subNetCIDRStr)
 		if err != nil {
@@ -629,7 +644,13 @@ func TestCIDRSetv6(t *testing.T) {
 	}
 	for _, tc := range cases {
 		_, clusterCIDR, _ := net.ParseCIDR(tc.clusterCIDRStr)
-		a := NewCIDRSet(clusterCIDR, tc.subNetMaskSize)
+		a, err := NewCIDRSet(clusterCIDR, tc.subNetMaskSize)
+		if err != nil {
+			if tc.expectErr {
+				continue
+			}
+			t.Fatalf("Error allocating CIDRSet for %v", tc.description)
+		}
 
 		p, err := a.AllocateNext()
 		if err == nil && tc.expectErr {

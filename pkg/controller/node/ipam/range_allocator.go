@@ -77,9 +77,13 @@ func NewCIDRRangeAllocator(client clientset.Interface, clusterCIDR *net.IPNet, s
 		glog.Fatalf("kubeClient is nil when starting NodeController")
 	}
 
+	set, err := cidrset.NewCIDRSet(clusterCIDR, subNetMaskSize)
+	if err != nil {
+		return nil, err
+	}
 	ra := &rangeAllocator{
 		client:                client,
-		cidrs:                 cidrset.NewCIDRSet(clusterCIDR, subNetMaskSize),
+		cidrs:                 set,
 		clusterCIDR:           clusterCIDR,
 		nodeCIDRUpdateChannel: make(chan nodeAndCIDR, cidrUpdateQueueSize),
 		recorder:              recorder,
