@@ -88,6 +88,7 @@ func TestDeploymentController(t *testing.T) {
 
 	cluster1 := NewCluster("cluster1", apiv1.ConditionTrue)
 	cluster2 := NewCluster("cluster2", apiv1.ConditionTrue)
+	cluster3 := NewCluster("cluster3", apiv1.ConditionTrue)
 
 	fakeClient := &fakefedclientset.Clientset{}
 	// Add an update reactor on fake client to return the desired updated object.
@@ -109,6 +110,14 @@ func TestDeploymentController(t *testing.T) {
 	_ = RegisterFakeWatch(pods, &cluster2Client.Fake)
 	RegisterFakeList(deployments, &cluster2Client.Fake, &extensionsv1.DeploymentList{Items: []extensionsv1.Deployment{}})
 	cluster2CreateChan := RegisterFakeCopyOnCreate(deployments, &cluster2Client.Fake, cluster2Watch)
+	cluster2UpdateChan := RegisterFakeCopyOnUpdate(deployments, &cluster2Client.Fake, cluster2Watch)
+
+	cluster3Client := &fakekubeclientset.Clientset{}
+	cluster3Watch := RegisterFakeWatch(deployments, &cluster3Client.Fake)
+	_ = RegisterFakeWatch(pods, &cluster3Client.Fake)
+	RegisterFakeList(deployments, &cluster3Client.Fake, &extensionsv1.DeploymentList{Items: []extensionsv1.Deployment{}})
+	cluster3CreateChan := RegisterFakeCopyOnCreate(deployments, &cluster3Client.Fake, cluster3Watch)
+	// cluster3UpdateChan := RegisterFakeCopyOnUpdate(deployments, &cluster3Client.Fake, cluster3Watch)
 
 	deploymentController := NewDeploymentController(fakeClient)
 	clientFactory := func(cluster *fedv1.Cluster) (kubeclientset.Interface, error) {
@@ -116,6 +125,8 @@ func TestDeploymentController(t *testing.T) {
 		case cluster1.Name:
 			return cluster1Client, nil
 		case cluster2.Name:
+			return cluster2Client, nil
+		case cluster3.Name:
 			return cluster2Client, nil
 		default:
 			return nil, fmt.Errorf("Unknown cluster")
@@ -174,6 +185,23 @@ func TestDeploymentController(t *testing.T) {
 	deploymentsWatch.Add(dep2)
 	assert.NoError(t, CheckObjectFromChan(cluster1CreateChan, checkDeployment(dep2, 6)))
 	assert.NoError(t, CheckObjectFromChan(cluster2CreateChan, checkDeployment(dep2, 3)))
+
+	// Add new deployment with non-default replica placement preferences.
+	dep3 := newDeploymentWithReplicas("deployment3", 6)
+	dep3.Annotations = make(map[string]string)
+	dep3.Annotations[FedDeploymentPreferencesAnnotation] = `{"rebalance": true,
+		  "clusters": {
+		    "*": {"weight": 1}
+		}}`
+	deploymentsWatch.Add(dep3)
+	assert.NoError(t, CheckObjectFromChan(cluster1CreateChan, checkDeployment(dep3, 3)))
+	assert.NoError(t, CheckObjectFromChan(cluster2CreateChan, checkDeployment(dep3, 3)))
+
+	clusterWatch.Add(cluster3)
+	assert.NoError(t, CheckObjectFromChan(cluster1UpdateChan, checkDeployment(dep3, 2)))
+	assert.NoError(t, CheckObjectFromChan(cluster2UpdateChan, checkDeployment(dep3, 2)))
+	assert.NoError(t, CheckObjectFromChan(cluster3CreateChan, checkDeployment(dep3, 2)))
+
 }
 
 func newDeploymentWithReplicas(name string, replicas int32) *extensionsv1.Deployment {
