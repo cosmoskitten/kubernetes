@@ -25,6 +25,13 @@ import (
 	utiliptables "k8s.io/kubernetes/pkg/util/iptables"
 )
 
+type fakeProtocol byte
+
+const (
+	ProtocolIpv4 fakeProtocol = iota + 1
+	ProtocolIpv6
+)
+
 type fakeChain struct {
 	name  utiliptables.Chain
 	rules []string
@@ -36,12 +43,14 @@ type fakeTable struct {
 }
 
 type fakeIPTables struct {
-	tables map[string]*fakeTable
+	protocol fakeProtocol
+	tables   map[string]*fakeTable
 }
 
-func NewFakeIPTables() *fakeIPTables {
+func NewFakeIPTables(protocol fakeProtocol) *fakeIPTables {
 	return &fakeIPTables{
-		tables: make(map[string]*fakeTable, 0),
+		protocol: protocol,
+		tables:   make(map[string]*fakeTable, 0),
 	}
 }
 
@@ -176,8 +185,11 @@ func normalizeRule(rule string) (string, error) {
 		arg := remaining[:end]
 
 		// Normalize un-prefixed IP addresses like iptables does
-		if net.ParseIP(arg) != nil {
+		if addr := net.ParseIP(arg); addr != nil && addr.To4() != nil {
 			arg = arg + "/32"
+		}
+		if addr := net.ParseIP(arg); addr != nil && addr.To16() != nil {
+			arg = arg + "/128"
 		}
 
 		if len(normalized) > 0 {
@@ -218,7 +230,7 @@ func (f *fakeIPTables) DeleteRule(tableName utiliptables.Table, chainName utilip
 }
 
 func (f *fakeIPTables) IsIpv6() bool {
-	return false
+	return f.protocol == ProtocolIpv6
 }
 
 func saveChain(chain *fakeChain, data *bytes.Buffer) {
