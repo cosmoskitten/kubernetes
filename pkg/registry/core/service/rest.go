@@ -37,6 +37,7 @@ import (
 	"k8s.io/apiserver/pkg/registry/rest"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/api/annotations"
 	"k8s.io/kubernetes/pkg/api/helper"
 	apiservice "k8s.io/kubernetes/pkg/api/service"
 	"k8s.io/kubernetes/pkg/api/validation"
@@ -322,8 +323,8 @@ func (rs *REST) healthCheckNodePortUpdate(oldService, service *api.Service) (boo
 		if oldHealthCheckNodePort != newHealthCheckNodePort {
 			glog.Warningf("Attempt to change value of health check node port DENIED")
 			var fldPath *field.Path
-			if _, ok := service.Annotations[apiservice.BetaAnnotationHealthCheckNodePort]; ok {
-				fldPath = field.NewPath("metadata", "annotations").Key(apiservice.BetaAnnotationHealthCheckNodePort)
+			if _, ok := service.Annotations[annotations.BetaAnnotationHealthCheckNodePort]; ok {
+				fldPath = field.NewPath("metadata", "annotations").Key(annotations.BetaAnnotationHealthCheckNodePort)
 			} else {
 				fldPath = field.NewPath("spec", "healthCheckNodePort")
 			}

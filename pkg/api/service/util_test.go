@@ -25,6 +25,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kubernetes/pkg/api"
+	apiannotations "k8s.io/kubernetes/pkg/api/annotations"
 	netsets "k8s.io/kubernetes/pkg/util/net/sets"
 
 	"github.com/davecgh/go-spew/spew"
@@ -33,7 +34,7 @@ import (
 func TestGetLoadBalancerSourceRanges(t *testing.T) {
 	checkError := func(v string) {
 		annotations := make(map[string]string)
-		annotations[AnnotationLoadBalancerSourceRangesKey] = v
+		annotations[apiannotations.AnnotationLoadBalancerSourceRangesKey] = v
 		svc := api.Service{}
 		svc.Annotations = annotations
 		_, err := GetLoadBalancerSourceRanges(&svc)
@@ -56,7 +57,7 @@ func TestGetLoadBalancerSourceRanges(t *testing.T) {
 
 	checkOK := func(v string) netsets.IPNet {
 		annotations := make(map[string]string)
-		annotations[AnnotationLoadBalancerSourceRangesKey] = v
+		annotations[apiannotations.AnnotationLoadBalancerSourceRangesKey] = v
 		svc := api.Service{}
 		svc.Annotations = annotations
 		cidrs, err := GetLoadBalancerSourceRanges(&svc)
@@ -101,7 +102,7 @@ func TestGetLoadBalancerSourceRanges(t *testing.T) {
 	}
 	// check SourceRanges annotation is empty
 	annotations := make(map[string]string)
-	annotations[AnnotationLoadBalancerSourceRangesKey] = ""
+	annotations[apiannotations.AnnotationLoadBalancerSourceRangesKey] = ""
 	svc = api.Service{}
 	svc.Annotations = annotations
 	cidrs, err = GetLoadBalancerSourceRanges(&svc)
@@ -226,7 +227,7 @@ func TestNeedsHealthCheck(t *testing.T) {
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: map[string]string{
-				BetaAnnotationExternalTraffic: "invalid",
+				apiannotations.BetaAnnotationExternalTraffic: "invalid",
 			},
 		},
 	})
@@ -236,7 +237,7 @@ func TestNeedsHealthCheck(t *testing.T) {
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: map[string]string{
-				BetaAnnotationExternalTraffic: AnnotationValueExternalTrafficGlobal,
+				apiannotations.BetaAnnotationExternalTraffic: apiannotations.AnnotationValueExternalTrafficGlobal,
 			},
 		},
 	})
@@ -246,7 +247,7 @@ func TestNeedsHealthCheck(t *testing.T) {
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: map[string]string{
-				BetaAnnotationExternalTraffic: AnnotationValueExternalTrafficLocal,
+				apiannotations.BetaAnnotationExternalTraffic: apiannotations.AnnotationValueExternalTrafficLocal,
 			},
 		},
 	})
@@ -291,8 +292,8 @@ func TestGetServiceHealthCheckNodePort(t *testing.T) {
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: map[string]string{
-				BetaAnnotationExternalTraffic:     AnnotationValueExternalTrafficLocal,
-				BetaAnnotationHealthCheckNodePort: "34567",
+				apiannotations.BetaAnnotationExternalTraffic:     apiannotations.AnnotationValueExternalTrafficLocal,
+				apiannotations.BetaAnnotationHealthCheckNodePort: "34567",
 			},
 		},
 	})
@@ -350,7 +351,7 @@ func TestSetDefaultExternalTrafficPolicyIfNeeded(t *testing.T) {
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
-						BetaAnnotationExternalTraffic: AnnotationValueExternalTrafficLocal,
+						apiannotations.BetaAnnotationExternalTraffic: apiannotations.AnnotationValueExternalTrafficLocal,
 					},
 				},
 			},
@@ -360,7 +361,7 @@ func TestSetDefaultExternalTrafficPolicyIfNeeded(t *testing.T) {
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
-						BetaAnnotationExternalTraffic: AnnotationValueExternalTrafficLocal,
+						apiannotations.BetaAnnotationExternalTraffic: apiannotations.AnnotationValueExternalTrafficLocal,
 					},
 				},
 			},
@@ -372,7 +373,7 @@ func TestSetDefaultExternalTrafficPolicyIfNeeded(t *testing.T) {
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
-						BetaAnnotationExternalTraffic: AnnotationValueExternalTrafficGlobal,
+						apiannotations.BetaAnnotationExternalTraffic: apiannotations.AnnotationValueExternalTrafficGlobal,
 					},
 				},
 			},
@@ -382,7 +383,7 @@ func TestSetDefaultExternalTrafficPolicyIfNeeded(t *testing.T) {
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
-						BetaAnnotationExternalTraffic: AnnotationValueExternalTrafficGlobal,
+						apiannotations.BetaAnnotationExternalTraffic: apiannotations.AnnotationValueExternalTrafficGlobal,
 					},
 				},
 			},
@@ -419,7 +420,7 @@ func TestClearExternalTrafficPolicy(t *testing.T) {
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
-						BetaAnnotationExternalTraffic: AnnotationValueExternalTrafficLocal,
+						apiannotations.BetaAnnotationExternalTraffic: apiannotations.AnnotationValueExternalTrafficLocal,
 					},
 				},
 			},
@@ -428,7 +429,7 @@ func TestClearExternalTrafficPolicy(t *testing.T) {
 
 	for i, tc := range testCases {
 		ClearExternalTrafficPolicy(tc.inputService)
-		if _, ok := tc.inputService.Annotations[BetaAnnotationExternalTraffic]; ok ||
+		if _, ok := tc.inputService.Annotations[apiannotations.BetaAnnotationExternalTraffic]; ok ||
 			tc.inputService.Spec.ExternalTrafficPolicy != "" {
 			t.Errorf("%v: failed to clear ExternalTrafficPolicy", i)
 			spew.Dump(tc)
@@ -471,7 +472,7 @@ func TestSetServiceHealthCheckNodePort(t *testing.T) {
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
-						BetaAnnotationExternalTraffic: AnnotationValueExternalTrafficGlobal,
+						apiannotations.BetaAnnotationExternalTraffic: apiannotations.AnnotationValueExternalTrafficGlobal,
 					},
 				},
 			},
@@ -485,7 +486,7 @@ func TestSetServiceHealthCheckNodePort(t *testing.T) {
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
-						BetaAnnotationExternalTraffic: AnnotationValueExternalTrafficGlobal,
+						apiannotations.BetaAnnotationExternalTraffic: apiannotations.AnnotationValueExternalTrafficGlobal,
 					},
 				},
 			},
@@ -501,7 +502,7 @@ func TestSetServiceHealthCheckNodePort(t *testing.T) {
 				t.Errorf("%v: got HealthCheckNodePort %v, want %v", i, tc.inputService.Spec.HealthCheckNodePort, tc.hcNodePort)
 			}
 		} else {
-			l, ok := tc.inputService.Annotations[BetaAnnotationHealthCheckNodePort]
+			l, ok := tc.inputService.Annotations[apiannotations.BetaAnnotationHealthCheckNodePort]
 			if tc.hcNodePort == 0 {
 				if ok {
 					t.Errorf("%v: HealthCheckNodePort set, want it to be cleared", i)

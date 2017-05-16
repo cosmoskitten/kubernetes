@@ -42,6 +42,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/api/annotations"
 	"k8s.io/kubernetes/pkg/api/helper"
 	apiservice "k8s.io/kubernetes/pkg/api/service"
 	"k8s.io/kubernetes/pkg/api/v1"
@@ -2722,7 +2723,7 @@ func ValidateService(service *api.Service) field.ErrorList {
 	}
 
 	// Validate SourceRange field and annotation
-	_, ok := service.Annotations[apiservice.AnnotationLoadBalancerSourceRangesKey]
+	_, ok := service.Annotations[annotations.AnnotationLoadBalancerSourceRangesKey]
 	if len(service.Spec.LoadBalancerSourceRanges) > 0 || ok {
 		var fieldPath *field.Path
 		var val string
@@ -2730,8 +2731,8 @@ func ValidateService(service *api.Service) field.ErrorList {
 			fieldPath = specPath.Child("LoadBalancerSourceRanges")
 			val = fmt.Sprintf("%v", service.Spec.LoadBalancerSourceRanges)
 		} else {
-			fieldPath = field.NewPath("metadata", "annotations").Key(apiservice.AnnotationLoadBalancerSourceRangesKey)
-			val = service.Annotations[apiservice.AnnotationLoadBalancerSourceRangesKey]
+			fieldPath = field.NewPath("metadata", "annotations").Key(annotations.AnnotationLoadBalancerSourceRangesKey)
+			val = service.Annotations[annotations.AnnotationLoadBalancerSourceRangesKey]
 		}
 		if service.Spec.Type != api.ServiceTypeLoadBalancer {
 			allErrs = append(allErrs, field.Invalid(fieldPath, "", "may only be used when `type` is 'LoadBalancer'"))
@@ -2792,20 +2793,20 @@ func validateServiceExternalTrafficFieldsValue(service *api.Service) field.Error
 	allErrs := field.ErrorList{}
 
 	// Check beta annotations.
-	if l, ok := service.Annotations[apiservice.BetaAnnotationExternalTraffic]; ok {
-		if l != apiservice.AnnotationValueExternalTrafficLocal &&
-			l != apiservice.AnnotationValueExternalTrafficGlobal {
-			allErrs = append(allErrs, field.Invalid(field.NewPath("metadata", "annotations").Key(apiservice.BetaAnnotationExternalTraffic), l,
-				fmt.Sprintf("ExternalTraffic must be %v or %v", apiservice.AnnotationValueExternalTrafficLocal, apiservice.AnnotationValueExternalTrafficGlobal)))
+	if l, ok := service.Annotations[annotations.BetaAnnotationExternalTraffic]; ok {
+		if l != annotations.AnnotationValueExternalTrafficLocal &&
+			l != annotations.AnnotationValueExternalTrafficGlobal {
+			allErrs = append(allErrs, field.Invalid(field.NewPath("metadata", "annotations").Key(annotations.BetaAnnotationExternalTraffic), l,
+				fmt.Sprintf("ExternalTraffic must be %v or %v", annotations.AnnotationValueExternalTrafficLocal, annotations.AnnotationValueExternalTrafficGlobal)))
 		}
 	}
-	if l, ok := service.Annotations[apiservice.BetaAnnotationHealthCheckNodePort]; ok {
+	if l, ok := service.Annotations[annotations.BetaAnnotationHealthCheckNodePort]; ok {
 		p, err := strconv.Atoi(l)
 		if err != nil {
-			allErrs = append(allErrs, field.Invalid(field.NewPath("metadata", "annotations").Key(apiservice.BetaAnnotationHealthCheckNodePort), l,
+			allErrs = append(allErrs, field.Invalid(field.NewPath("metadata", "annotations").Key(annotations.BetaAnnotationHealthCheckNodePort), l,
 				"HealthCheckNodePort must be a valid port number"))
 		} else if p <= 0 {
-			allErrs = append(allErrs, field.Invalid(field.NewPath("metadata", "annotations").Key(apiservice.BetaAnnotationHealthCheckNodePort), l,
+			allErrs = append(allErrs, field.Invalid(field.NewPath("metadata", "annotations").Key(annotations.BetaAnnotationHealthCheckNodePort), l,
 				"HealthCheckNodePort must be greater than 0"))
 		}
 	}
@@ -2844,8 +2845,8 @@ func (s *serviceExternalTrafficStatus) useBetaHealthCheckWithGA() bool {
 
 func getServiceExternalTrafficStatus(service *api.Service) *serviceExternalTrafficStatus {
 	s := serviceExternalTrafficStatus{}
-	_, s.betaExternalTrafficIsSet = service.Annotations[apiservice.BetaAnnotationExternalTraffic]
-	_, s.betaHealthCheckIsSet = service.Annotations[apiservice.BetaAnnotationHealthCheckNodePort]
+	_, s.betaExternalTrafficIsSet = service.Annotations[annotations.BetaAnnotationExternalTraffic]
+	_, s.betaHealthCheckIsSet = service.Annotations[annotations.BetaAnnotationHealthCheckNodePort]
 	s.gaExternalTrafficIsSet = service.Spec.ExternalTrafficPolicy != ""
 	s.gaHealthCheckIsSet = service.Spec.HealthCheckNodePort != 0
 	return &s
@@ -2859,15 +2860,15 @@ func validateServiceExternalTrafficAPIVersion(service *api.Service) field.ErrorL
 	status := getServiceExternalTrafficStatus(service)
 
 	if status.useBetaExternalTrafficWithGA() {
-		fieldPath := field.NewPath("metadata", "annotations").Key(apiservice.BetaAnnotationExternalTraffic)
+		fieldPath := field.NewPath("metadata", "annotations").Key(annotations.BetaAnnotationExternalTraffic)
 		msg := fmt.Sprintf("please replace the beta annotation with 'ExternalTrafficPolicy' field")
-		allErrs = append(allErrs, field.Invalid(fieldPath, apiservice.BetaAnnotationExternalTraffic, msg))
+		allErrs = append(allErrs, field.Invalid(fieldPath, annotations.BetaAnnotationExternalTraffic, msg))
 	}
 
 	if status.useBetaHealthCheckWithGA() {
-		fieldPath := field.NewPath("metadata", "annotations").Key(apiservice.BetaAnnotationHealthCheckNodePort)
+		fieldPath := field.NewPath("metadata", "annotations").Key(annotations.BetaAnnotationHealthCheckNodePort)
 		msg := fmt.Sprintf("please replace the beta annotation with 'HealthCheckNodePort' field")
-		allErrs = append(allErrs, field.Invalid(fieldPath, apiservice.BetaAnnotationHealthCheckNodePort, msg))
+		allErrs = append(allErrs, field.Invalid(fieldPath, annotations.BetaAnnotationHealthCheckNodePort, msg))
 	}
 
 	return allErrs

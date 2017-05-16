@@ -31,6 +31,7 @@ import (
 	"k8s.io/apiserver/pkg/registry/rest"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/api/annotations"
 	"k8s.io/kubernetes/pkg/api/service"
 	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/registry/core/service/ipallocator"
@@ -1002,7 +1003,7 @@ func TestServiceRegistryExternalTrafficHealthCheckNodePortAllocationBeta(t *test
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "external-lb-esipp",
 			Annotations: map[string]string{
-				service.BetaAnnotationExternalTraffic: service.AnnotationValueExternalTrafficLocal,
+				annotations.BetaAnnotationExternalTraffic: annotations.AnnotationValueExternalTrafficLocal,
 			},
 		},
 		Spec: api.ServiceSpec{
@@ -1077,8 +1078,8 @@ func TestServiceRegistryExternalTrafficHealthCheckNodePortUserAllocationBeta(t *
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "external-lb-esipp",
 			Annotations: map[string]string{
-				service.BetaAnnotationExternalTraffic:     service.AnnotationValueExternalTrafficLocal,
-				service.BetaAnnotationHealthCheckNodePort: "30200",
+				annotations.BetaAnnotationExternalTraffic:     annotations.AnnotationValueExternalTrafficLocal,
+				annotations.BetaAnnotationHealthCheckNodePort: "30200",
 			},
 		},
 		Spec: api.ServiceSpec{
@@ -1143,8 +1144,8 @@ func TestServiceRegistryExternalTrafficHealthCheckNodePortNegativeBeta(t *testin
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "external-lb-esipp",
 			Annotations: map[string]string{
-				service.BetaAnnotationExternalTraffic:     service.AnnotationValueExternalTrafficLocal,
-				service.BetaAnnotationHealthCheckNodePort: "-1",
+				annotations.BetaAnnotationExternalTraffic:     annotations.AnnotationValueExternalTrafficLocal,
+				annotations.BetaAnnotationHealthCheckNodePort: "-1",
 			},
 		},
 		Spec: api.ServiceSpec{
@@ -1206,7 +1207,7 @@ func TestServiceRegistryExternalTrafficGlobalBeta(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "external-lb-esipp",
 			Annotations: map[string]string{
-				service.BetaAnnotationExternalTraffic: service.AnnotationValueExternalTrafficGlobal,
+				annotations.BetaAnnotationExternalTraffic: annotations.AnnotationValueExternalTrafficGlobal,
 			},
 		},
 		Spec: api.ServiceSpec{
@@ -1276,7 +1277,7 @@ func TestServiceRegistryExternalTrafficAnnotationClusterIP(t *testing.T) {
 	svc := &api.Service{
 		ObjectMeta: metav1.ObjectMeta{Name: "external-lb-esipp",
 			Annotations: map[string]string{
-				service.BetaAnnotationExternalTraffic: service.AnnotationValueExternalTrafficGlobal,
+				annotations.BetaAnnotationExternalTraffic: annotations.AnnotationValueExternalTrafficGlobal,
 			},
 		},
 		Spec: api.ServiceSpec{
@@ -1298,6 +1299,6 @@ func TestServiceRegistryExternalTrafficAnnotationClusterIP(t *testing.T) {
 	// Make sure that ClusterIP services do not have the health check node port allocated
 	port := service.GetServiceHealthCheckNodePort(created_service)
 	if port != 0 {
-		t.Errorf("Unexpected allocation of health check node port annotation %s", service.BetaAnnotationHealthCheckNodePort)
+		t.Errorf("Unexpected allocation of health check node port annotation %s", annotations.BetaAnnotationHealthCheckNodePort)
 	}
 }
