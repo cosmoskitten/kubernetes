@@ -44,6 +44,7 @@ go_library(
         "//vendor/k8s.io/apimachinery/pkg/util/rand:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/util/validation/field:go_default_library",
         "//vendor/k8s.io/client-go/pkg/api:go_default_library",
+        "//vendor/k8s.io/client-go/pkg/api/annotations:go_default_library",
         "//vendor/k8s.io/client-go/pkg/apis/extensions:go_default_library",
         "//vendor/k8s.io/client-go/pkg/util:go_default_library",
         "//vendor/k8s.io/client-go/pkg/util/parsers:go_default_library",
