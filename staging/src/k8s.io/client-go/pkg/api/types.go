@@ -2230,6 +2230,8 @@ type PodStatus struct {
 	// when we have done this.
 	// +optional
 	ContainerStatuses []ContainerStatus
+	// The list has one entry per Debug Container run in this pod.
+	DebugContainerStatuses []ContainerStatus
 }
 
 // PodStatusResult is a wrapper for PodStatus returned by kubelet that can be encode/decoded
@@ -3246,6 +3248,32 @@ type PodExecOptions struct {
 	Command []string
 }
 
+// PodDebugOptions is the query options to a Pod's debug call
+type PodDebugOptions struct {
+	metav1.TypeMeta
+
+	// Stdin if true indicates that stdin is to be redirected for the exec call
+	Stdin bool
+
+	// Stdout if true indicates that stdout is to be redirected for the exec call
+	Stdout bool
+
+	// Stderr if true indicates that stderr is to be redirected for the exec call
+	Stderr bool
+
+	// TTY if true indicates that a tty will be allocated for the exec call
+	TTY bool
+
+	// Name of Debug Container
+	Container string
+
+	// Command is the remote command to execute; argv array; not executed within a shell.
+	Command []string
+
+	// Container image to use in the Debug Container to be run in the Pod.
+	Image string
+}
+
 // PodPortForwardOptions is the query options to a Pod's port forward call
 type PodPortForwardOptions struct {
 	metav1.TypeMeta
@@ -3736,6 +3764,9 @@ const (
 	// Name of header that specifies a request ID used to associate the error
 	// and data streams for a single forwarded connection
 	PortForwardRequestIDHeader = "requestID"
+
+	// Container Image for Debug Container
+	DebugImageParam = "image"
 )
 
 // Type and constants for component health validation.

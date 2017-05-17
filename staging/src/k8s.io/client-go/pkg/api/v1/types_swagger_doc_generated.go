@@ -1256,6 +1256,21 @@ func (PodCondition) SwaggerDoc() map[string]string {
 	return map_PodCondition
 }
 
+var map_PodDebugOptions = map[string]string{
+	"":          "PodDebugOptions is the query options to a Pod's debug call",
+	"stdin":     "Redirect the standard input stream of the pod for this call. Defaults to false.",
+	"stdout":    "Redirect the standard output stream of the pod for this call. Defaults to true.",
+	"stderr":    "Redirect the standard error stream of the pod for this call. Defaults to true.",
+	"tty":       "TTY if true indicates that a tty will be allocated for the exec call. Defaults to false.",
+	"container": "Name of Debug Container Defaults to only container if there is only one container in the pod.",
+	"command":   "Command is the remote command to execute. argv array. Not executed within a shell.",
+	"image":     "Container image to use in the Debug Container to be run in the Pod.",
+}
+
+func (PodDebugOptions) SwaggerDoc() map[string]string {
+	return map_PodDebugOptions
+}
+
 var map_PodExecOptions = map[string]string{
 	"":          "PodExecOptions is the query options to a Pod's remote exec call.",
 	"stdin":     "Redirect the standard input stream of the pod for this call. Defaults to false.",
@@ -1368,17 +1383,18 @@ func (PodSpec) SwaggerDoc() map[string]string {
 }
 
 var map_PodStatus = map[string]string{
-	"":                      "PodStatus represents information about the status of a pod. Status may trail the actual state of a system.",
-	"phase":                 "Current condition of the pod. More info: http://kubernetes.io/docs/user-guide/pod-states#pod-phase",
-	"conditions":            "Current service state of pod. More info: http://kubernetes.io/docs/user-guide/pod-states#pod-conditions",
-	"message":               "A human readable message indicating details about why the pod is in this condition.",
-	"reason":                "A brief CamelCase message indicating details about why the pod is in this state. e.g. 'OutOfDisk'",
-	"hostIP":                "IP address of the host to which the pod is assigned. Empty if not yet scheduled.",
-	"podIP":                 "IP address allocated to the pod. Routable at least within the cluster. Empty if not yet allocated.",
-	"startTime":             "RFC 3339 date and time at which the object was acknowledged by the Kubelet. This is before the Kubelet pulled the container image(s) for the pod.",
-	"initContainerStatuses": "The list has one entry per init container in the manifest. The most recent successful init container will have ready = true, the most recently started container will have startTime set. More info: http://kubernetes.io/docs/user-guide/pod-states#container-statuses",
-	"containerStatuses":     "The list has one entry per container in the manifest. Each entry is currently the output of `docker inspect`. More info: http://kubernetes.io/docs/user-guide/pod-states#container-statuses",
-	"qosClass":              "The Quality of Service (QOS) classification assigned to the pod based on resource requirements See PodQOSClass type for available QOS classes More info: https://github.com/kubernetes/kubernetes/blob/master/docs/design/resource-qos.md",
+	"":                       "PodStatus represents information about the status of a pod. Status may trail the actual state of a system.",
+	"phase":                  "Current condition of the pod. More info: http://kubernetes.io/docs/user-guide/pod-states#pod-phase",
+	"conditions":             "Current service state of pod. More info: http://kubernetes.io/docs/user-guide/pod-states#pod-conditions",
+	"message":                "A human readable message indicating details about why the pod is in this condition.",
+	"reason":                 "A brief CamelCase message indicating details about why the pod is in this state. e.g. 'OutOfDisk'",
+	"hostIP":                 "IP address of the host to which the pod is assigned. Empty if not yet scheduled.",
+	"podIP":                  "IP address allocated to the pod. Routable at least within the cluster. Empty if not yet allocated.",
+	"startTime":              "RFC 3339 date and time at which the object was acknowledged by the Kubelet. This is before the Kubelet pulled the container image(s) for the pod.",
+	"initContainerStatuses":  "The list has one entry per init container in the manifest. The most recent successful init container will have ready = true, the most recently started container will have startTime set. More info: http://kubernetes.io/docs/user-guide/pod-states#container-statuses",
+	"containerStatuses":      "The list has one entry per container in the manifest. Each entry is currently the output of `docker inspect`. More info: http://kubernetes.io/docs/user-guide/pod-states#container-statuses",
+	"debugContainerStatuses": "The list has one entry for every debug container that's been attached to this pod. Each entry is currently the output of `docker inspect`. More info: http://kubernetes.io/docs/user-guide/pod-states#container-statuses",
+	"qosClass":               "The Quality of Service (QOS) classification assigned to the pod based on resource requirements See PodQOSClass type for available QOS classes More info: https://github.com/kubernetes/kubernetes/blob/master/docs/design/resource-qos.md",
 }
 
 func (PodStatus) SwaggerDoc() map[string]string {

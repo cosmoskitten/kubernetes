@@ -37,8 +37,10 @@ import (
 	"k8s.io/apiserver/pkg/registry/generic"
 	"k8s.io/apiserver/pkg/storage"
 	"k8s.io/apiserver/pkg/storage/names"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/validation"
+	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/kubelet/client"
 	"k8s.io/kubernetes/pkg/kubelet/qos"
 )
@@ -374,6 +376,25 @@ func streamParams(params url.Values, opts runtime.Object) error {
 		for _, c := range opts.Command {
 			params.Add("command", c)
 		}
+	case *api.PodDebugOptions:
+		if opts.Stdin {
+			params.Add(api.ExecStdinParam, "1")
+		}
+		if opts.Stdout {
+			params.Add(api.ExecStdoutParam, "1")
+		}
+		if opts.Stderr {
+			params.Add(api.ExecStderrParam, "1")
+		}
+		if opts.TTY {
+			params.Add(api.ExecTTYParam, "1")
+		}
+		for _, c := range opts.Command {
+			params.Add("command", c)
+		}
+		if opts.Image != "" {
+			params.Add(api.DebugImageParam, opts.Image)
+		}
 	case *api.PodAttachOptions:
 		if opts.Stdin {
 			params.Add(api.ExecStdinParam, "1")
@@ -423,6 +444,52 @@ func ExecLocation(
 	opts *api.PodExecOptions,
 ) (*url.URL, http.RoundTripper, error) {
 	return streamLocation(getter, connInfo, ctx, name, opts, opts.Container, "exec")
+}
+
+// DebugLocation returns the debug URL for a pod container.
+func DebugLocation(
+	getter ResourceGetter,
+	connInfo client.ConnectionInfoGetter,
+	ctx genericapirequest.Context,
+	name string,
+	opts *api.PodDebugOptions,
+) (*url.URL, http.RoundTripper, error) {
+	if !utilfeature.DefaultFeatureGate.Enabled(features.DebugContainers) {
+		return nil, nil, errors.NewBadRequest("debug containers feature disabled")
+	}
+
+	pod, err := getPod(getter, ctx, name)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if opts.Container == "" {
+		return nil, nil, errors.NewBadRequest(fmt.Sprintf("a new container name must be specified for pod %s", name))
+	}
+	if podHasContainerWithName(pod, opts.Container) {
+		return nil, nil, errors.NewBadRequest(fmt.Sprintf("container %s already exists for pod %s", opts.Container, name))
+	}
+
+	nodeName := types.NodeName(pod.Spec.NodeName)
+	if len(nodeName) == 0 {
+		// If pod has not been assigned a host, return an empty location
+		return nil, nil, errors.NewBadRequest(fmt.Sprintf("pod %s does not have a host assigned", name))
+	}
+	nodeInfo, err := connInfo.GetConnectionInfo(nodeName)
+	if err != nil {
+		return nil, nil, err
+	}
+	params := url.Values{}
+	if err := streamParams(params, opts); err != nil {
+		return nil, nil, err
+	}
+	loc := &url.URL{
+		Scheme:   nodeInfo.Scheme,
+		Host:     net.JoinHostPort(nodeInfo.Hostname, nodeInfo.Port),
+		Path:     fmt.Sprintf("/podDebug/%s/%s/%s", pod.Namespace, pod.Name, opts.Container),
+		RawQuery: params.Encode(),
+	}
+	return loc, nodeInfo.Transport, nil
 }
 
 func streamLocation(

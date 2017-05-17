@@ -4865,6 +4865,13 @@ The resulting set of endpoints can be viewed as:<br>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">debugContainerStatuses</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The list has one entry for every debug container that&#8217;s been attached to this pod. Each entry is currently the output of <code>docker inspect</code>. More info: <a href="http://kubernetes.io/docs/user-guide/pod-states#container-statuses">http://kubernetes.io/docs/user-guide/pod-states#container-statuses</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">false</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#_v1_containerstatus">v1.ContainerStatus</a> array</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">qosClass</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The Quality of Service (QOS) classification assigned to the pod based on resource requirements See PodQOSClass type for available QOS classes More info: <a href="https://github.com/kubernetes/kubernetes/blob/master/docs/design/resource-qos.md">https://github.com/kubernetes/kubernetes/blob/master/docs/design/resource-qos.md</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">false</p></td>
@@ -9948,7 +9955,7 @@ Examples:<br>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2017-05-15 00:09:19 UTC
+Last updated 2017-05-20 19:32:01 UTC
 </div>
 </div>
 </body>
