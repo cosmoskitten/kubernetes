@@ -2780,6 +2780,26 @@ func describeNodeResource(nodeNonTerminatedPodsList *api.PodList, node *api.Node
 	w.Write(LEVEL_1, "%s (%d%%)\t%s (%d%%)\t%s (%d%%)\t%s (%d%%)\n",
 		cpuReqs.String(), int64(fractionCpuReqs), cpuLimits.String(), int64(fractionCpuLimits),
 		memoryReqs.String(), int64(fractionMemoryReqs), memoryLimits.String(), int64(fractionMemoryLimits))
+
+	oirResource := make([]string, 0, len(allocatable))
+	for resource := range allocatable {
+		if helper.IsOpaqueIntResourceName(resource) {
+			oirResource = append(oirResource, string(resource))
+		}
+	}
+	sort.Strings(oirResource)
+	for _, oir := range oirResource {
+		shortOirName := strings.Replace(oir, api.ResourceOpaqueIntPrefix, "OIR-", -1)
+		shortOirRequests := shortOirName + " Requests"
+		shortOirLimits := shortOirName + " Limits"
+		shortOirRequestsDash := string(bytes.Repeat([]byte("-"), len(shortOirRequests)))
+		shortOirLimitsDash := string(bytes.Repeat([]byte("-"), len(shortOirLimits)))
+
+		w.Write(LEVEL_1, "%s\t%s\n", shortOirRequests, shortOirLimits)
+		w.Write(LEVEL_1, "%s\t%s\n", shortOirRequestsDash, shortOirLimitsDash)
+		oirReqs, oirLimits := reqs[api.ResourceName(oir)], limits[api.ResourceName(oir)]
+		w.Write(LEVEL_1, "%s\t%s\n", oirReqs.String(), oirLimits.String())
+	}
 	return nil
 }
 
