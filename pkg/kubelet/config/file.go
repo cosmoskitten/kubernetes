@@ -78,7 +78,7 @@ func new(path string, nodeName types.NodeName, period time.Duration, updates cha
 
 func (s *sourceFile) run() {
 	go wait.Forever(func() {
-		if err := s.fullScan(); err != nil {
+		if err := s.reloadConfig(); err != nil {
 			glog.Errorf("unable to read config path %q: %v", s.path, err)
 		}
 	}, s.period)
@@ -90,7 +90,7 @@ func (s *sourceFile) applyDefaults(pod *api.Pod, source string) error {
 	return applyDefaults(pod, source, true, s.nodeName)
 }
 
-func (s *sourceFile) fullScan() error {
+func (s *sourceFile) reloadConfig() error {
 	path := s.path
 	statInfo, err := os.Stat(path)
 	if err != nil {
