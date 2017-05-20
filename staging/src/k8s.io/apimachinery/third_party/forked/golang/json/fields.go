@@ -20,12 +20,12 @@ import (
 // Finds the patchStrategy and patchMergeKey struct tag fields on a given
 // struct field given the struct type and the JSON name of the field.
 // TODO: fix the returned errors to be introspectable.
-func LookupPatchMetadata(t reflect.Type, jsonField string) (reflect.Type, string, string, error) {
+func LookupPatchMetadata(t reflect.Type, jsonField string) (reflect.Type, string, []string, error) {
 	if t.Kind() == reflect.Map {
-		return t.Elem(), "", "", nil
+		return t.Elem(), "", nil, nil
 	}
 	if t.Kind() != reflect.Struct {
-		return nil, "", "", fmt.Errorf("merging an object in json but data type is not map or struct, instead is: %s",
+		return nil, "", nil, fmt.Errorf("merging an object in json but data type is not map or struct, instead is: %s",
 			t.Kind().String())
 	}
 	jf := []byte(jsonField)
@@ -51,10 +51,10 @@ func LookupPatchMetadata(t reflect.Type, jsonField string) (reflect.Type, string
 			tjf = tjf.Type.Field(f.index[i])
 		}
 		patchStrategy := tjf.Tag.Get("patchStrategy")
-		patchMergeKey := tjf.Tag.Get("patchMergeKey")
-		return tjf.Type, patchStrategy, patchMergeKey, nil
+		patchMergeKeys := tjf.Tag.Get("patchMergeKey")
+		return tjf.Type, patchStrategy, strings.Split(patchMergeKeys, ","), nil
 	}
-	return nil, "", "", fmt.Errorf("unable to find api field in struct %s for the json field %q", t.Name(), jsonField)
+	return nil, "", nil, fmt.Errorf("unable to find api field in struct %s for the json field %q", t.Name(), jsonField)
 }
 
 // A field represents a single field found in a struct.
