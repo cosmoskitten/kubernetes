@@ -43,7 +43,7 @@ func TestExtractFromBadDataFile(t *testing.T) {
 
 	ch := make(chan interface{}, 1)
 	c := new(fileName, "localhost", time.Millisecond, ch)
-	err = c.fullScan()
+	err = c.reloadConfig()
 	if err == nil {
 		t.Fatalf("expected error, got nil")
 	}
@@ -59,12 +59,15 @@ func TestExtractFromEmptyDir(t *testing.T) {
 
 	ch := make(chan interface{}, 1)
 	c := new(dirName, "localhost", time.Millisecond, ch)
-	err = c.fullScan()
+	err = c.reloadConfig()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	update := (<-ch).(kubetypes.PodUpdate)
+	update, ok := (<-ch).(kubetypes.PodUpdate)
+	if !ok {
+		t.Fatalf("unexpected type")
+	}
 	expected := CreatePodUpdate(kubetypes.SET, kubetypes.FileSource)
 	if !apiequality.Semantic.DeepEqual(expected, update) {
 		t.Fatalf("expected %#v, Got %#v", expected, update)
