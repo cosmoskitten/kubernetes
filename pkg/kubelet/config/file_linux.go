@@ -130,7 +130,7 @@ func (s *sourceFile) processEvent(e *inotify.Event) error {
 				return fmt.Errorf("the pod with key %s doesn't exist in cache", objKey)
 			} else {
 				err = s.store.Delete(pod)
-				if err != nil {
+				if err == nil {
 					delete(s.fileKeyMapping, e.Name)
 				}
 				return err
