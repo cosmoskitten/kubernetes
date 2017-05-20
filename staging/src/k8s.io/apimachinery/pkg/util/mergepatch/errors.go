@@ -27,8 +27,8 @@ var (
 	ErrBadPatchFormatForPrimitiveList = errors.New("Invalid patch format of primitive list")
 )
 
-func ErrNoMergeKey(m map[string]interface{}, k string) error {
-	return fmt.Errorf("map: %v does not contain declared merge key: %s", m, k)
+func ErrNoMergeKey(m map[string]interface{}, k ...string) error {
+	return fmt.Errorf("map: %v does not contain declared merge key: %v", m, k)
 }
 
 func ErrBadArgType(expected, actual string) error {

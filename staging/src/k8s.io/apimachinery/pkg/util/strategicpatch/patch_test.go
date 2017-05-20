@@ -70,18 +70,21 @@ type StrategicMergePatchTestCaseData struct {
 	// TwoWayResult is the expected object after applying the two-way patch on current object.
 	// If nil, Modified is used.
 	TwoWayResult map[string]interface{}
+	// ExpectedError is the string that the error message should contain
+	ExpectedError string
 }
 
 // The meaning of each field is the same as StrategicMergePatchTestCaseData's.
 // The difference is that all the fields in StrategicMergePatchRawTestCaseData are json-encoded data.
 type StrategicMergePatchRawTestCaseData struct {
-	Original     []byte
-	Modified     []byte
-	Current      []byte
-	TwoWay       []byte
-	ThreeWay     []byte
-	Result       []byte
-	TwoWayResult []byte
+	Original      []byte
+	Modified      []byte
+	Current       []byte
+	TwoWay        []byte
+	ThreeWay      []byte
+	Result        []byte
+	TwoWayResult  []byte
+	ExpectedError string
 }
 
 type MergeItem struct {
@@ -89,6 +92,7 @@ type MergeItem struct {
 	Value             string
 	Other             string
 	MergingList       []MergeItem `patchStrategy:"merge" patchMergeKey:"name"`
+	MergingListTwoMK  []MergeItem `patchStrategy:"merge" patchMergeKey:"name,value"`
 	NonMergingList    []MergeItem
 	MergingIntList    []int `patchStrategy:"merge"`
 	NonMergingIntList []int
@@ -114,6 +118,27 @@ testCases:
         - name: 1
         - name: 2
         - name: 3
+  - description: sort one multiMK list of maps
+    original:
+      MergingListTwoMK:
+        - name: 2
+          value: 1
+        - name: 1
+          value: 2
+        - name: 1
+          value: 1
+        - name: 2
+          value: 2
+    sorted:
+      MergingListTwoMK:
+        - name: 1
+          value: 1
+        - name: 1
+          value: 2
+        - name: 2
+          value: 1
+        - name: 2
+          value: 2
   - description: sort lists of maps but not nested lists of maps
     original:
       mergingList:
@@ -357,6 +382,16 @@ testCases:
       mergingList:
         - name: 2
           value: a
+  - description: not all merge keys presents
+    original:
+      mergingListTwoMK:
+        - name: 1
+          value: a
+    twoWay:
+      mergingListTwoMK:
+        - name: 1
+          other: x
+    expectedError: does not contain declared merge key
 `)
 
 func TestCustomStrategicMergePatch(t *testing.T) {
@@ -369,7 +404,7 @@ func TestCustomStrategicMergePatch(t *testing.T) {
 
 	for _, c := range tc.TestCases {
 		original, expectedTwoWayPatch, _, expectedResult := twoWayTestCaseToJSONOrFail(t, c)
-		testPatchApplication(t, original, expectedTwoWayPatch, expectedResult, c.Description)
+		testPatchApplication(t, original, expectedTwoWayPatch, expectedResult, c.Description, c.ExpectedError)
 	}
 }
 
@@ -1871,6 +1906,344 @@ testCases:
     result:
       name: modified-name
       other: current-other
+  - description: add field to map in merging list with 2 merge keys
+    original:
+      mergingListTwoMK:
+        - name: 1
+          value: a
+        - name: 1
+          value: b
+    twoWay:
+      mergingListTwoMK:
+        - name: 1
+          value: a
+          simpleMap: {}
+    modified:
+      mergingListTwoMK:
+        - name: 1
+          value: a
+          simpleMap: {}
+        - name: 1
+          value: b
+    current:
+      mergingListTwoMK:
+        - name: 1
+          value: a
+          other: x
+        - name: 1
+          value: b
+    threeWay:
+      mergingListTwoMK:
+        - name: 1
+          value: a
+          simpleMap: {}
+    result:
+      mergingListTwoMK:
+        - name: 1
+          value: a
+          other: x
+          simpleMap: {}
+        - name: 1
+          value: b
+  - description: add field to map in merging list with 2 merge keys with conflict
+    original:
+      mergingListTwoMK:
+        - name: 1
+          value: a
+          other: x
+        - name: 1
+          value: b
+    twoWay:
+      mergingListTwoMK:
+        - name: 1
+          value: a
+          simpleMap: {}
+    modified:
+      mergingListTwoMK:
+        - name: 1
+          value: a
+          other: x
+          simpleMap: {}
+        - name: 1
+          value: b
+    current:
+      mergingListTwoMK:
+        - name: 1
+          value: a
+          other: y
+        - name: 1
+          value: b
+    threeWay:
+      mergingListTwoMK:
+        - name: 1
+          value: a
+          other: x
+          simpleMap: {}
+    result:
+      mergingListTwoMK:
+        - name: 1
+          value: a
+          other: x
+          simpleMap: {}
+        - name: 1
+          value: b
+  - description: delete field to map in merging list with 2 merge keys
+    original:
+      mergingListTwoMK:
+        - name: 1
+          value: a
+          simpleMap: {}
+        - name: 1
+          value: b
+    twoWay:
+      mergingListTwoMK:
+        - name: 1
+          value: a
+          simpleMap: null
+    modified:
+      mergingListTwoMK:
+        - name: 1
+          value: a
+        - name: 1
+          value: b
+    current:
+      mergingListTwoMK:
+        - name: 1
+          value: a
+          other: x
+          simpleMap: {}
+        - name: 1
+          value: b
+    threeWay:
+      mergingListTwoMK:
+        - name: 1
+          value: a
+          simpleMap: null
+    result:
+      mergingListTwoMK:
+        - name: 1
+          value: a
+          other: x
+        - name: 1
+          value: b
+  - description: delete field to map in merging list with 2 merge keys with conflict
+    original:
+      mergingListTwoMK:
+        - name: 1
+          value: a
+          other: x
+          simpleMap: {}
+        - name: 1
+          value: b
+    twoWay:
+      mergingListTwoMK:
+        - name: 1
+          value: a
+          simpleMap: null
+    modified:
+      mergingListTwoMK:
+        - name: 1
+          value: a
+          other: x
+        - name: 1
+          value: b
+    current:
+      mergingListTwoMK:
+        - name: 1
+          value: a
+          other: y
+          simpleMap: {}
+        - name: 1
+          value: b
+    threeWay:
+      mergingListTwoMK:
+        - name: 1
+          value: a
+          other: x
+          simpleMap: null
+    result:
+      mergingListTwoMK:
+        - name: 1
+          value: a
+          other: x
+        - name: 1
+          value: b
+  - description: change field to map in merging list with 2 merge keys
+    original:
+      mergingListTwoMK:
+        - name: 1
+          value: a
+          other: x
+        - name: 1
+          value: b
+    twoWay:
+      mergingListTwoMK:
+        - name: 1
+          value: a
+          other: y
+    modified:
+      mergingListTwoMK:
+        - name: 1
+          value: a
+          other: y
+        - name: 1
+          value: b
+    current:
+      mergingListTwoMK:
+        - name: 1
+          value: a
+          other: x
+          simpleMap: {}
+        - name: 1
+          value: b
+    threeWay:
+      mergingListTwoMK:
+        - name: 1
+          value: a
+          other: y
+    result:
+      mergingListTwoMK:
+        - name: 1
+          value: a
+          other: y
+          simpleMap: {}
+        - name: 1
+          value: b
+  - description: change field to map in merging list with 2 merge keys with conflict
+    original:
+      mergingListTwoMK:
+        - name: 1
+          value: a
+          other: x
+          nonMergingIntList:
+            - 1
+        - name: 1
+          value: b
+    twoWay:
+      mergingListTwoMK:
+        - name: 1
+          value: a
+          other: y
+    modified:
+      mergingListTwoMK:
+        - name: 1
+          value: a
+          other: y
+          nonMergingIntList:
+            - 1
+        - name: 1
+          value: b
+    current:
+      mergingListTwoMK:
+        - name: 1
+          value: a
+          other: x
+          nonMergingIntList:
+            - 2
+        - name: 1
+          value: b
+    threeWay:
+      mergingListTwoMK:
+        - name: 1
+          value: a
+          other: y
+          nonMergingIntList:
+            - 1
+    result:
+      mergingListTwoMK:
+        - name: 1
+          value: a
+          other: y
+          nonMergingIntList:
+            - 1
+        - name: 1
+          value: b
+  - description: add an item in merging list with 2 merge keys
+    original:
+      mergingListTwoMK:
+        - name: 1
+          value: a
+        - name: 1
+          value: c
+    twoWay:
+      mergingListTwoMK:
+        - name: 1
+          value: b
+          other: y
+    modified:
+      mergingListTwoMK:
+        - name: 1
+          value: a
+        - name: 1
+          value: b
+          other: y
+        - name: 1
+          value: c
+    current:
+      mergingListTwoMK:
+        - name: 1
+          value: a
+          other: x
+        - name: 1
+          value: c
+    threeWay:
+      mergingListTwoMK:
+        - name: 1
+          value: b
+          other: y
+    result:
+      mergingListTwoMK:
+        - name: 1
+          value: a
+          other: x
+        - name: 1
+          value: b
+          other: y
+        - name: 1
+          value: c
+  - description: delete an item in merging list with 2 merge keys
+    original:
+      mergingListTwoMK:
+        - name: 1
+          value: a
+        - name: 1
+          value: b
+          other: y
+        - name: 1
+          value: c
+    twoWay:
+      mergingListTwoMK:
+        - name: 1
+          value: b
+          $patch: delete
+    modified:
+      mergingListTwoMK:
+        - name: 1
+          value: a
+        - name: 1
+          value: c
+    current:
+      mergingListTwoMK:
+        - name: 1
+          value: a
+          other: x
+        - name: 1
+          value: b
+          other: y
+        - name: 1
+          value: c
+    threeWay:
+      mergingListTwoMK:
+        - name: 1
+          value: b
+          $patch: delete
+    result:
+      mergingListTwoMK:
+        - name: 1
+          value: a
+          other: x
+        - name: 1
+          value: c
 `)
 
 var strategicMergePatchRawTestCases = []StrategicMergePatchRawTestCase{
@@ -2046,7 +2419,7 @@ func testTwoWayPatch(t *testing.T, c StrategicMergePatchTestCase) {
 	}
 
 	testPatchCreation(t, expectedPatch, actualPatch, c.Description)
-	testPatchApplication(t, original, actualPatch, expectedResult, c.Description)
+	testPatchApplication(t, original, actualPatch, expectedResult, c.Description, c.ExpectedError)
 }
 
 func testTwoWayPatchForRawTestCase(t *testing.T, c StrategicMergePatchRawTestCase) {
@@ -2060,7 +2433,7 @@ func testTwoWayPatchForRawTestCase(t *testing.T, c StrategicMergePatchRawTestCas
 	}
 
 	testPatchCreation(t, expectedPatch, actualPatch, c.Description)
-	testPatchApplication(t, original, actualPatch, expectedResult, c.Description)
+	testPatchApplication(t, original, actualPatch, expectedResult, c.Description, c.ExpectedError)
 }
 
 func twoWayTestCaseToJSONOrFail(t *testing.T, c StrategicMergePatchTestCase) ([]byte, []byte, []byte, []byte) {
@@ -2110,7 +2483,7 @@ func testThreeWayPatch(t *testing.T, c StrategicMergePatchTestCase) {
 			}
 
 			testPatchCreation(t, expected, actual, c.Description)
-			testPatchApplication(t, current, actual, result, c.Description)
+			testPatchApplication(t, current, actual, result, c.Description, c.ExpectedError)
 		}
 
 		return
@@ -2123,7 +2496,7 @@ func testThreeWayPatch(t *testing.T, c StrategicMergePatchTestCase) {
 	}
 
 	testPatchCreation(t, expected, actual, c.Description)
-	testPatchApplication(t, current, actual, result, c.Description)
+	testPatchApplication(t, current, actual, result, c.Description, c.ExpectedError)
 }
 
 func testThreeWayPatchForRawTestCase(t *testing.T, c StrategicMergePatchRawTestCase) {
@@ -2151,7 +2524,7 @@ func testThreeWayPatchForRawTestCase(t *testing.T, c StrategicMergePatchRawTestC
 			}
 
 			testPatchCreation(t, expected, actual, c.Description)
-			testPatchApplication(t, current, actual, result, c.Description)
+			testPatchApplication(t, current, actual, result, c.Description, c.ExpectedError)
 		}
 
 		return
@@ -2164,7 +2537,7 @@ func testThreeWayPatchForRawTestCase(t *testing.T, c StrategicMergePatchRawTestC
 	}
 
 	testPatchCreation(t, expected, actual, c.Description)
-	testPatchApplication(t, current, actual, result, c.Description)
+	testPatchApplication(t, current, actual, result, c.Description, c.ExpectedError)
 }
 
 func threeWayTestCaseToJSONOrFail(t *testing.T, c StrategicMergePatchTestCase) ([]byte, []byte, []byte, []byte, []byte) {
@@ -2198,8 +2571,14 @@ func testPatchCreation(t *testing.T, expected, actual []byte, description string
 	}
 }
 
-func testPatchApplication(t *testing.T, original, patch, expected []byte, description string) {
+func testPatchApplication(t *testing.T, original, patch, expected []byte, description, expectedError string) {
 	result, err := StrategicMergePatch(original, patch, mergeItem)
+	if len(expectedError) != 0 {
+		if err != nil && strings.Contains(err.Error(), expectedError) {
+			return
+		}
+		t.Fatalf("expected error should contains:\n%s\nin test case: %s\nbut got:\n%s\n", expectedError, description, err)
+	}
 	if err != nil {
 		t.Errorf("error: %s\nin test case: %s\ncannot apply patch:\n%s\nto original:\n%s\n",
 			err, description, jsonToYAMLOrError(patch), jsonToYAMLOrError(original))
