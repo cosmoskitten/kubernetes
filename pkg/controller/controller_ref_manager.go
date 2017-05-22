@@ -340,7 +340,7 @@ func (m *ReplicaSetControllerRefManager) AdoptReplicaSet(rs *extensions.ReplicaS
 		`{"metadata":{
 			"ownerReferences":[{"apiVersion":"%s","kind":"%s","name":"%s","uid":"%s","controller":true,"blockOwnerDeletion":true}],
 			"uid":"%s",
-		    "finalizers": ["foregroundDeletion"],
+		    "finalizers": ["foregroundDeletion"]
 			}
 		}`,
 		m.controllerKind.GroupVersion(), m.controllerKind.Kind,
