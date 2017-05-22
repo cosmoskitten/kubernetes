@@ -32,6 +32,7 @@ import (
 	"k8s.io/kubernetes/plugin/pkg/scheduler/algorithm"
 	"k8s.io/kubernetes/plugin/pkg/scheduler/algorithm/predicates"
 	schedulerapi "k8s.io/kubernetes/plugin/pkg/scheduler/api"
+	"k8s.io/kubernetes/plugin/pkg/scheduler/metrics"
 	"k8s.io/kubernetes/plugin/pkg/scheduler/schedulercache"
 )
 
@@ -44,7 +45,7 @@ type FitError struct {
 
 var ErrNoNodesAvailable = fmt.Errorf("no nodes available to schedule pods")
 
-const NoNodeAvailableMsg = "No nodes are available that match all of the following predicates:"
+const NoNodeAvailableMsg = "No nodes are available that match all of the following predicates"
 
 // Error returns detailed information of why the pod failed to fit on each node
 func (f *FitError) Error() string {
@@ -104,25 +105,26 @@ func (g *genericScheduler) Schedule(pod *v1.Pod, nodeLister algorithm.NodeLister
 	}
 
 	trace.Step("Computing predicates")
+	startPredicateEvalTime := time.Now()
 	filteredNodes, failedPredicateMap, err := findNodesThatFit(pod, g.cachedNodeInfoMap, nodes, g.predicates, g.extenders, g.predicateMetaProducer, g.equivalenceCache)
 	if err != nil {
 		return "", err
 	}
-
 	if len(filteredNodes) == 0 {
 		return "", &FitError{
 			Pod:              pod,
 			FailedPredicates: failedPredicateMap,
 		}
 	}
-
+	metrics.SchedulingAlgorithmPredicateEvaluationDuration.Observe(metrics.SinceInMicroseconds(startPredicateEvalTime))
 	trace.Step("Prioritizing")
+	startPriorityEvalTime := time.Now()
 	metaPrioritiesInterface := g.priorityMetaProducer(pod, g.cachedNodeInfoMap)
 	priorityList, err := PrioritizeNodes(pod, g.cachedNodeInfoMap, metaPrioritiesInterface, g.prioritizers, filteredNodes, g.extenders)
 	if err != nil {
 		return "", err
 	}
-
+	metrics.SchedulingAlgorithmPriorityEvaluationDuration.Observe(metrics.SinceInMicroseconds(startPriorityEvalTime))
 	trace.Step("Selecting host")
 	return g.selectHost(priorityList)
 }

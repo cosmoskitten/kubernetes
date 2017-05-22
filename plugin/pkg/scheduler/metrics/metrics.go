@@ -25,8 +25,6 @@ import (
 
 const schedulerSubsystem = "scheduler"
 
-var BindingSaturationReportInterval = 1 * time.Second
-
 var (
 	E2eSchedulingLatency = prometheus.NewHistogram(
 		prometheus.HistogramOpts{
@@ -41,6 +39,22 @@ var (
 			Subsystem: schedulerSubsystem,
 			Name:      "scheduling_algorithm_latency_microseconds",
 			Help:      "Scheduling algorithm latency",
+			Buckets:   prometheus.ExponentialBuckets(1000, 2, 15),
+		},
+	)
+	SchedulingAlgorithmPredicateEvaluationDuration = prometheus.NewHistogram(
+		prometheus.HistogramOpts{
+			Subsystem: schedulerSubsystem,
+			Name:      "scheduling_algorithm_predicate_evaluation",
+			Help:      "Scheduling algorithm predicate evaluation duration",
+			Buckets:   prometheus.ExponentialBuckets(1000, 2, 15),
+		},
+	)
+	SchedulingAlgorithmPriorityEvaluationDuration = prometheus.NewHistogram(
+		prometheus.HistogramOpts{
+			Subsystem: schedulerSubsystem,
+			Name:      "scheduling_algorithm_priority_evaluation",
+			Help:      "Scheduling algorithm priority evaluation duration",
 			Buckets:   prometheus.ExponentialBuckets(1000, 2, 15),
 		},
 	)
@@ -63,6 +77,8 @@ func Register() {
 		prometheus.MustRegister(E2eSchedulingLatency)
 		prometheus.MustRegister(SchedulingAlgorithmLatency)
 		prometheus.MustRegister(BindingLatency)
+		prometheus.MustRegister(SchedulingAlgorithmPredicateEvaluationDuration)
+		prometheus.MustRegister(SchedulingAlgorithmPriorityEvaluationDuration)
 	})
 }
 
