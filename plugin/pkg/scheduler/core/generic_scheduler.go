@@ -32,7 +32,9 @@ import (
 	"k8s.io/kubernetes/plugin/pkg/scheduler/algorithm"
 	"k8s.io/kubernetes/plugin/pkg/scheduler/algorithm/predicates"
 	schedulerapi "k8s.io/kubernetes/plugin/pkg/scheduler/api"
+	"k8s.io/kubernetes/plugin/pkg/scheduler/metrics"
 	"k8s.io/kubernetes/plugin/pkg/scheduler/schedulercache"
+	"math"
 )
 
 type FailedPredicateMap map[string][]algorithm.PredicateFailureReason
@@ -44,7 +46,10 @@ type FitError struct {
 
 var ErrNoNodesAvailable = fmt.Errorf("no nodes available to schedule pods")
 
-const NoNodeAvailableMsg = "No nodes are available that match all of the following predicates:"
+const (
+	NoNodeAvailableMsg = "No nodes are available that match all of the following predicates:"
+	Micro              = math.Pow(10, ^-6)
+)
 
 // Error returns detailed information of why the pod failed to fit on each node
 func (f *FitError) Error() string {
@@ -104,25 +109,30 @@ func (g *genericScheduler) Schedule(pod *v1.Pod, nodeLister algorithm.NodeLister
 	}
 
 	trace.Step("Computing predicates")
+	startPredicateEvalTime := time.Now()
 	filteredNodes, failedPredicateMap, err := findNodesThatFit(pod, g.cachedNodeInfoMap, nodes, g.predicates, g.extenders, g.predicateMetaProducer, g.equivalenceCache)
 	if err != nil {
 		return "", err
 	}
-
 	if len(filteredNodes) == 0 {
 		return "", &FitError{
 			Pod:              pod,
 			FailedPredicates: failedPredicateMap,
 		}
 	}
-
+	endPredicateEvalTime := time.Now()
+	// Prometheus gauge accepts float64 for Set. But, if we cast the output of time.Sub(XXX) fn to float, we end up multiplying with giga(10^9),
+	// so multiplying it with Micro as normalizing factor to get in millisec.
+	metrics.SchedulingAlgorithmPredicateEvaluationDuration.Set(float64(endPredicateEvalTime.Sub(startPredicateEvalTime) * Micro))
 	trace.Step("Prioritizing")
+	startPriorityEvalTime := time.Now()
 	metaPrioritiesInterface := g.priorityMetaProducer(pod, g.cachedNodeInfoMap)
 	priorityList, err := PrioritizeNodes(pod, g.cachedNodeInfoMap, metaPrioritiesInterface, g.prioritizers, filteredNodes, g.extenders)
 	if err != nil {
 		return "", err
 	}
-
+	endPriorityEvalTime := time.Now()
+	metrics.SchedulingAlgorithmPriorityEvaluationDuration.Set(float64(endPriorityEvalTime.Sub(startPriorityEvalTime) * Micro))
 	trace.Step("Selecting host")
 	return g.selectHost(priorityList)
 }
