@@ -72,7 +72,7 @@ func ConstructFirewallForLBService(svc *v1.Service, nodesTags []string) *compute
 }
 
 func MakeHealthCheckFirewallNameForLBService(clusterId, name string, isNodesHealthCheck bool) string {
-	return MakeFirewallNameForLBService(gcecloud.MakeHealthCheckFirewallNameSuffix(clusterId, name, isNodesHealthCheck))
+	return gcecloud.MakeHealthCheckFirewallName(clusterId, name, isNodesHealthCheck)
 }
 
 // ConstructHealthCheckFirewallForLBService returns the expected GCE firewall rule for a loadbalancer type service

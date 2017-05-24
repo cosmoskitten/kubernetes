@@ -214,23 +214,18 @@ func getNodesHealthCheckPath() string {
 // makeNodesHealthCheckName returns name of the health check resource used by
 // the GCE load balancers (l4) for performing health checks on nodes.
 func makeNodesHealthCheckName(clusterId string) string {
-	return "k8s-" + makeNodesHealthCheckNameSuffix(clusterId)
+	return fmt.Sprintf("k8s-%v-node", clusterId)
 }
 
-// makeNodesHealthCheckNameSuffix returns suffix of the resource name
-// used by the GCE load balancers (l4) for performing health checks on nodes.
-func makeNodesHealthCheckNameSuffix(clusterId string) string {
-	return fmt.Sprintf("%v-nodes-hc", clusterId)
-}
-
-// MakeHealthCheckFirewallNameSuffix returns suffix of the firewall name
-// used by the GCE load balancers (l4) for performing health checks.
-func MakeHealthCheckFirewallNameSuffix(clusterId, hcName string, isNodesHealthCheck bool) string {
-	fwNameSuffix := hcName + "-hc"
+// MakeHealthCheckFirewallName returns the firewall name used by the GCE load
+// balancers (l4) for performing health checks.
+func MakeHealthCheckFirewallName(clusterId, hcName string, isNodesHealthCheck bool) string {
+	// TODO: Change below fwName to match the proposed schema: k8s-{clusterid}-{namespace}-{name}-{shortid}-hc.
+	fwName := "k8s-" + hcName + "-hc"
 	if isNodesHealthCheck {
-		fwNameSuffix = makeNodesHealthCheckNameSuffix(clusterId)
+		fwName = makeNodesHealthCheckName(clusterId) + "-hc"
 	}
-	return fwNameSuffix
+	return fwName
 }
 
 // isAtLeastMinNodesHealthCheckVersion checks if a version is higher than
