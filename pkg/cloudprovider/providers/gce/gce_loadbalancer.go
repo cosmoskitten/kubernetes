@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -290,13 +289,13 @@ func (gce *GCECloud) EnsureLoadBalancer(clusterName string, apiService *v1.Servi
 		// without needing to be deleted and recreated.
 		if firewallExists {
 			glog.Infof("EnsureLoadBalancer(%v(%v)): updating firewall", loadBalancerName, serviceName)
-			if err := gce.updateFirewall(loadBalancerName, gce.region, desc, sourceRanges, ports, hosts); err != nil {
+			if err := gce.updateFirewall(makeFirewallName(loadBalancerName), gce.region, desc, sourceRanges, ports, hosts); err != nil {
 				return nil, err
 			}
 			glog.Infof("EnsureLoadBalancer(%v(%v)): updated firewall", loadBalancerName, serviceName)
 		} else {
 			glog.Infof("EnsureLoadBalancer(%v(%v)): creating firewall", loadBalancerName, serviceName)
-			if err := gce.createFirewall(loadBalancerName, gce.region, desc, sourceRanges, ports, hosts); err != nil {
+			if err := gce.createFirewall(makeFirewallName(loadBalancerName), gce.region, desc, sourceRanges, ports, hosts); err != nil {
 				return nil, err
 			}
 			glog.Infof("EnsureLoadBalancer(%v(%v)): created firewall", loadBalancerName, serviceName)
@@ -386,7 +385,7 @@ func (gce *GCECloud) EnsureLoadBalancer(clusterName string, apiService *v1.Servi
 			createInstances = createInstances[:maxTargetPoolCreateInstances]
 		}
 		// Pass healthchecks to createTargetPool which needs them as health check links in the target pool
-		if err := gce.createTargetPool(loadBalancerName, serviceName.String(), gce.region, createInstances, affinityType, hcToCreate); err != nil {
+		if err := gce.createTargetPool(loadBalancerName, serviceName.String(), ipAddress, gce.region, createInstances, affinityType, hcToCreate); err != nil {
 			return nil, fmt.Errorf("failed to create target pool %s: %v", loadBalancerName, err)
 		}
 		if hcToCreate != nil {
@@ -474,7 +473,7 @@ func (gce *GCECloud) EnsureLoadBalancerDeleted(clusterName string, service *v1.S
 	}
 
 	errs := utilerrors.AggregateGoroutines(
-		func() error { return gce.deleteFirewall(loadBalancerName, gce.region) },
+		func() error { return gce.deleteFirewall(makeFirewallName(loadBalancerName), gce.region) },
 		// Even though we don't hold on to static IPs for load balancers, it's
 		// possible that EnsureLoadBalancer left one around in a failed
 		// creation/update attempt, so make sure we clean it up here just in case.
@@ -583,10 +582,9 @@ func (gce *GCECloud) deleteTargetPool(name, region string, hcNames ...string) er
 			}
 			// If health check is deleted without error, it means no load-balancer is using it.
 			// So we should delete the health check firewall as well.
-			fwNameSuffix := MakeHealthCheckFirewallNameSuffix(clusterId, hcName, isNodesHealthCheck)
-			fwName := makeFirewallName(fwNameSuffix)
+			fwName := MakeHealthCheckFirewallName(clusterId, hcName, isNodesHealthCheck)
 			glog.Infof("Deleting firewall %v.", fwName)
-			if err := gce.DeleteFirewall(fwNameSuffix); err != nil {
+			if err := gce.DeleteFirewall(fwName); err != nil {
 				if isHTTPErrorCode(err, http.StatusNotFound) {
 					glog.V(4).Infof("Firewall %v is already deleted.", fwName)
 					return nil
@@ -602,7 +600,7 @@ func (gce *GCECloud) deleteTargetPool(name, region string, hcNames ...string) er
 	return nil
 }
 
-func (gce *GCECloud) createTargetPool(name, serviceName, region string, hosts []*gceInstance, affinityType v1.ServiceAffinity, hc *compute.HttpHealthCheck) error {
+func (gce *GCECloud) createTargetPool(name, serviceName, ipAddress, region string, hosts []*gceInstance, affinityType v1.ServiceAffinity, hc *compute.HttpHealthCheck) error {
 	// health check management is coupled with targetPools to prevent leaks. A
 	// target pool is the only thing that requires a health check, so we delete
 	// associated checks on teardown, and ensure checks on setup.
@@ -615,7 +613,7 @@ func (gce *GCECloud) createTargetPool(name, serviceName, region string, hosts []
 			gce.nodesHealthCheckLock.Lock()
 			defer gce.nodesHealthCheckLock.Unlock()
 		}
-		if err := gce.ensureHttpHealthCheckFirewall(gce.region, hosts, hc.Name, int32(hc.Port), isNodesHealthCheck); err != nil {
+		if err := gce.ensureHttpHealthCheckFirewall(serviceName, ipAddress, gce.region, hosts, hc.Name, int32(hc.Port), isNodesHealthCheck); err != nil {
 			return err
 		}
 		var err error
@@ -918,7 +916,7 @@ func (gce *GCECloud) firewallNeedsUpdate(name, serviceName, region, ipAddress st
 	for ix := range ports {
 		allowedPorts[ix] = strconv.Itoa(int(ports[ix].Port))
 	}
-	if !slicesEqual(allowedPorts, fw.Allowed[0].Ports) {
+	if !equalStringSets(allowedPorts, fw.Allowed[0].Ports) {
 		return true, true, nil
 	}
 	// The service controller already verified that the protocol matches on all ports, no need to check.
@@ -937,9 +935,12 @@ func (gce *GCECloud) firewallNeedsUpdate(name, serviceName, region, ipAddress st
 	return true, false, nil
 }
 
-func (gce *GCECloud) ensureHttpHealthCheckFirewall(region string, hosts []*gceInstance, hcName string, hcPort int32, isNodesHealthCheck bool) error {
+func (gce *GCECloud) ensureHttpHealthCheckFirewall(serviceName, ipAddress, region string, hosts []*gceInstance, hcName string, hcPort int32, isNodesHealthCheck bool) error {
 	// Prepare the firewall params for creating / checking.
-	desc := "Firewall for health checks from load-balancer."
+	desc := `{"kubernetes.io/loadbalancer-nodes-healthcheck"}`
+	if !isNodesHealthCheck {
+		desc = makeFirewallDescription(serviceName, ipAddress)
+	}
 	sourceRanges := lbSrcRngsFlag.ipn
 	ports := []v1.ServicePort{{Protocol: "tcp", Port: hcPort}}
 
@@ -947,15 +948,14 @@ func (gce *GCECloud) ensureHttpHealthCheckFirewall(region string, hosts []*gceIn
 	if err != nil {
 		return fmt.Errorf("error getting cluster ID: %v", err)
 	}
-	fwNameSuffix := MakeHealthCheckFirewallNameSuffix(clusterId, hcName, isNodesHealthCheck)
-	fwName := makeFirewallName(fwNameSuffix)
+	fwName := MakeHealthCheckFirewallName(clusterId, hcName, isNodesHealthCheck)
 	fw, err := gce.service.Firewalls.Get(gce.projectID, fwName).Do()
 	if err != nil {
 		if !isHTTPErrorCode(err, http.StatusNotFound) {
 			return fmt.Errorf("error getting firewall for health checks: %v", err)
 		}
 		glog.Infof("Creating firewall %v for health checks.", fwName)
-		if err := gce.createFirewall(fwNameSuffix, region, desc, sourceRanges, ports, hosts); err != nil {
+		if err := gce.createFirewall(fwName, region, desc, sourceRanges, ports, hosts); err != nil {
 			return err
 		}
 		glog.Infof("Created firewall %v for health checks.", fwName)
@@ -963,30 +963,18 @@ func (gce *GCECloud) ensureHttpHealthCheckFirewall(region string, hosts []*gceIn
 	}
 	// Validate firewall fields.
 	if fw.Description != desc ||
-		!sameStringArray(fw.SourceRanges, sourceRanges.StringSlice()) ||
-		!sameStringArray(packProtocolsPortsFromFirewallAlloweds(fw.Allowed), packProtocolsPortsFromServicePorts(ports)) {
+		len(fw.Allowed) != 1 ||
+		fw.Allowed[0].IPProtocol != string(ports[0].Protocol) ||
+		!equalStringSets(fw.Allowed[0].Ports, []string{string(ports[0].Port)}) ||
+		!equalStringSets(fw.SourceRanges, sourceRanges.StringSlice()) {
 		glog.Warningf("Firewall %v exists but parameters have drifted - updating...", fwName)
-		if err := gce.updateFirewall(fwNameSuffix, region, desc, sourceRanges, ports, hosts); err != nil {
+		if err := gce.updateFirewall(fwName, region, desc, sourceRanges, ports, hosts); err != nil {
 			glog.Warningf("Failed to reconcile firewall %v parameters.", fwName)
 			return err
 		}
 		glog.V(4).Infof("Corrected firewall %v parameters successful", fwName)
 	}
 	return nil
-}
-
-func slicesEqual(x, y []string) bool {
-	if len(x) != len(y) {
-		return false
-	}
-	sort.Strings(x)
-	sort.Strings(y)
-	for i := range x {
-		if x[i] != y[i] {
-			return false
-		}
-	}
-	return true
 }
 
 func (gce *GCECloud) createForwardingRule(name, serviceName, region, ipAddress string, ports []v1.ServicePort) error {
@@ -1071,7 +1059,7 @@ func (gce *GCECloud) firewallObject(name, region, desc string, sourceRanges nets
 	}
 
 	firewall := &compute.Firewall{
-		Name:         makeFirewallName(name),
+		Name:         name,
 		Description:  desc,
 		Network:      gce.networkURL,
 		SourceRanges: sourceRanges.StringSlice(),
@@ -1241,17 +1229,16 @@ func (gce *GCECloud) ensureStaticIP(name, serviceName, region, existingIP string
 
 func (gce *GCECloud) deleteFirewall(name, region string) error {
 	mc := newFirewallMetricContext("delete", region)
-	fwName := makeFirewallName(name)
-	op, err := gce.service.Firewalls.Delete(gce.projectID, fwName).Do()
+	op, err := gce.service.Firewalls.Delete(gce.projectID, name).Do()
 
 	if err != nil && isHTTPErrorCode(err, http.StatusNotFound) {
 		glog.V(2).Infof("Firewall %s already deleted. Continuing to delete other resources.", name)
 	} else if err != nil {
-		glog.Warningf("Failed to delete firewall %s, got error %v", fwName, err)
+		glog.Warningf("Failed to delete firewall %s, got error %v", name, err)
 		return mc.Observe(err)
 	} else {
 		if err := gce.waitForGlobalOp(op, mc); err != nil {
-			glog.Warningf("Failed waiting for Firewall %s to be deleted.  Got error: %v", fwName, err)
+			glog.Warningf("Failed waiting for Firewall %s to be deleted.  Got error: %v", name, err)
 			return err
 		}
 	}

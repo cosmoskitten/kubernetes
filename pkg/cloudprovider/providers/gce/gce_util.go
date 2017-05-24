@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"sort"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/types"
@@ -123,4 +124,18 @@ func splitProviderID(providerID string) (project, zone, instance string, err err
 		return "", "", "", errors.New("error splitting providerID")
 	}
 	return matches[1], matches[2], matches[3], nil
+}
+
+func equalStringSets(x, y []string) bool {
+	if len(x) != len(y) {
+		return false
+	}
+	sort.Strings(x)
+	sort.Strings(y)
+	for i := range x {
+		if x[i] != y[i] {
+			return false
+		}
+	}
+	return true
 }
