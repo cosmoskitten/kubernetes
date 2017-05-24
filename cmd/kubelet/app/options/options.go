@@ -232,7 +232,9 @@ func (c *kubeletConfiguration) addFlags(fs *pflag.FlagSet) {
 	fs.MarkDeprecated("low-diskspace-threshold-mb", "Use --eviction-hard instead. Will be removed in a future version.")
 	fs.DurationVar(&c.VolumeStatsAggPeriod.Duration, "volume-stats-agg-period", c.VolumeStatsAggPeriod.Duration, "Specifies interval for kubelet to calculate and cache the volume disk usage for all pods and volumes.  To disable volume calculations, set to 0.")
 	fs.StringVar(&c.NetworkPluginName, "network-plugin", c.NetworkPluginName, "<Warning: Alpha feature> The name of the network plugin to be invoked for various events in kubelet/pod lifecycle")
+	//TODO(#46410): Remove the network-plugin-dir flag.
 	fs.StringVar(&c.NetworkPluginDir, "network-plugin-dir", c.NetworkPluginDir, "<Warning: Alpha feature> The full path of the directory in which to search for network plugins or CNI config")
+	fs.MarkDeprecated("network-plugin-dir", "Use --cni-bin-dir instead. This flag will be removed in a future version.")
 	fs.StringVar(&c.CNIConfDir, "cni-conf-dir", c.CNIConfDir, "<Warning: Alpha feature> The full path of the directory in which to search for CNI config files. Default: /etc/cni/net.d")
 	fs.StringVar(&c.CNIBinDir, "cni-bin-dir", c.CNIBinDir, "<Warning: Alpha feature> The full path of the directory in which to search for CNI plugin binaries. Default: /opt/cni/bin")
 	fs.Int32Var(&c.NetworkPluginMTU, "network-plugin-mtu", c.NetworkPluginMTU, "<Warning: Alpha feature> The MTU to be passed to the network plugin, to override the default. Set to 0 to use the default 1460 MTU.")
