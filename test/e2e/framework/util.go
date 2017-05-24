@@ -5178,7 +5178,7 @@ func CleanupGCEResources(loadBalancerName string) (retErr error) {
 	if err := DeleteGCEStaticIP(loadBalancerName); err != nil {
 		Logf("%v", err)
 	}
-	hcNames := []string{}
+	var hcNames []string
 	hc, getErr := gceCloud.GetHttpHealthCheck(loadBalancerName)
 	if getErr != nil && !IsGoogleAPIHTTPErrorCode(getErr, http.StatusNotFound) {
 		retErr = fmt.Errorf("%v\n%v", retErr, getErr)

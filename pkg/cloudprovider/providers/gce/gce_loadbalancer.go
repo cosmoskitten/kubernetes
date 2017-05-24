@@ -367,7 +367,7 @@ func (gce *GCECloud) EnsureLoadBalancer(clusterName string, apiService *v1.Servi
 	}
 	if tpExists && tpNeedsUpdate {
 		// Pass healthchecks to deleteTargetPool to cleanup health checks after cleaning up the target pool itself.
-		hcNames := []string{}
+		var hcNames []string
 		if hcToDelete != nil {
 			hcNames = append(hcNames, hcToDelete.Name)
 		}
@@ -451,7 +451,7 @@ func (gce *GCECloud) EnsureLoadBalancerDeleted(clusterName string, service *v1.S
 	glog.V(2).Infof("EnsureLoadBalancerDeleted(%v, %v, %v, %v, %v)", clusterName, service.Namespace, service.Name, loadBalancerName,
 		gce.region)
 
-	hcNames := []string{}
+	var hcNames []string
 	if path, _ := apiservice.GetServiceHealthCheckPathPort(service); path != "" {
 		hcToDelete, err := gce.GetHttpHealthCheck(loadBalancerName)
 		if err != nil && !isHTTPErrorCode(err, http.StatusNotFound) {
@@ -566,15 +566,18 @@ func (gce *GCECloud) deleteTargetPool(name, region string, hcNames ...string) er
 				if isInUsedByError(err) {
 					glog.V(4).Infof("Health check %v is in used: %v.", hcName, err)
 					return nil
-				} else if isHTTPErrorCode(err, http.StatusNotFound) {
-					// We attempt to remove nodes health chekcs on every non-OnlyLocal LB
-					// deletion to prevent leaking regardless of node version, so this could
-					// happen.
-					glog.V(4).Infof("Health check %v is already deleted.", hcName)
-					return nil
+				} else if !isHTTPErrorCode(err, http.StatusNotFound) {
+					glog.Warningf("Failed to delete health check %v: %v", hcName, err)
+					return err
 				}
-				glog.Warningf("Failed to delete health check %v: %v", hcName, err)
-				return err
+				// StatusNotFound could happen when:
+				// - This is the first attempt but we pass in a healthcheck that is already deleted
+				//   to prevent leaking.
+				// - This is the first attempt but user manually deleted the heathcheck.
+				// - This is a retry and in previous round we failed to delete the healthcheck firewall
+				//   after deleted the healthcheck.
+				// We continue to delete the healthcheck firewall to prevent leaking.
+				glog.V(4).Infof("Health check %v is already deleted.", hcName)
 			}
 			clusterId, err := gce.ClusterId.GetId()
 			if err != nil {
