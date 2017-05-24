@@ -1,5 +1,5 @@
 /*
-Copyright 2014 The Kubernetes Authors.
+Copyright 2017 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -58,7 +58,7 @@ type ClusterId struct {
 	clusterId  *string
 }
 
-// Continually watches for changes to the cluser id config map
+// Continually watches for changes to the cluster id config map
 func (gce *GCECloud) watchClusterId() {
 	gce.ClusterId = ClusterId{
 		cfgMapKey: fmt.Sprintf("%v/%v", UIDNamespace, UIDConfigMapName),
@@ -78,7 +78,7 @@ func (gce *GCECloud) watchClusterId() {
 			}
 
 			glog.V(4).Infof("Observed new configmap for clusterid: %v, %v; setting local values", m.Name, m.Data)
-			gce.ClusterId.setIds(m)
+			gce.ClusterId.update(m)
 		},
 		UpdateFunc: func(old, cur interface{}) {
 			m, ok := cur.(*v1.ConfigMap)
@@ -97,7 +97,7 @@ func (gce *GCECloud) watchClusterId() {
 			}
 
 			glog.V(4).Infof("Observed updated configmap for clusterid %v, %v; setting local values", m.Name, m.Data)
-			gce.ClusterId.setIds(m)
+			gce.ClusterId.update(m)
 		},
 	}
 
@@ -195,7 +195,7 @@ func (ci *ClusterId) getOrInitialize() error {
 	}
 
 	glog.V(2).Infof("Created a config map containing clusterid: %v", newId)
-	ci.setIds(cfg)
+	ci.update(cfg)
 	return nil
 }
 
@@ -214,11 +214,11 @@ func (ci *ClusterId) getConfigMap() (bool, error) {
 		glog.Error(err)
 		return false, err
 	}
-	ci.setIds(m)
+	ci.update(m)
 	return true, nil
 }
 
-func (ci *ClusterId) setIds(m *v1.ConfigMap) {
+func (ci *ClusterId) update(m *v1.ConfigMap) {
 	ci.idLock.Lock()
 	defer ci.idLock.Unlock()
 	if clusterId, exists := m.Data[UIDCluster]; exists {
