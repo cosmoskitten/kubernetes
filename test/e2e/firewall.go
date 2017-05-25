@@ -54,9 +54,9 @@ var _ = framework.KubeDescribe("Firewall rule", func() {
 		serviceName := "firewall-test-loadbalancer"
 
 		By("Fetching cluster ID")
-		clusterId, err := framework.GetClusterId(cs)
+		clusterID, err := framework.GetClusterID(cs)
 		Expect(err).NotTo(HaveOccurred())
-		framework.Logf("Fetched cluster ID: %v", clusterId)
+		framework.Logf("Fetched cluster ID: %v", clusterID)
 
 		jig := framework.NewServiceTestJig(cs, serviceName)
 		nodesNames := jig.GetNodesNames(framework.MaxNodesForEndpointsTests)
@@ -77,7 +77,7 @@ var _ = framework.KubeDescribe("Firewall rule", func() {
 			})
 			Expect(cs.Core().Services(svc.Namespace).Delete(svc.Name, nil)).NotTo(HaveOccurred())
 			By("Waiting for the local traffic health check firewall rule to be deleted")
-			localHCFwName := framework.MakeHealthCheckFirewallNameForLBService(clusterId, cloudprovider.GetLoadBalancerName(svc), false)
+			localHCFwName := framework.MakeHealthCheckFirewallNameForLBService(clusterID, cloudprovider.GetLoadBalancerName(svc), false)
 			_, err := framework.WaitForFirewallRuleExistOrNot(gceCloud, localHCFwName, false, framework.LoadBalancerCleanupTimeout)
 			Expect(err).NotTo(HaveOccurred())
 		}()
@@ -91,7 +91,7 @@ var _ = framework.KubeDescribe("Firewall rule", func() {
 		Expect(framework.VerifyFirewallRule(fw, lbFw, cloudConfig.Network, false)).NotTo(HaveOccurred())
 
 		By("Checking if service's nodes health check firewall rule is correct")
-		nodesHCFw := framework.ConstructHealthCheckFirewallForLBService(clusterId, svc, nodeTags.Items, true)
+		nodesHCFw := framework.ConstructHealthCheckFirewallForLBService(clusterID, svc, nodeTags.Items, true)
 		fw, err = gceCloud.GetFirewall(nodesHCFw.Name)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(framework.VerifyFirewallRule(fw, nodesHCFw, cloudConfig.Network, false)).NotTo(HaveOccurred())
@@ -107,7 +107,7 @@ var _ = framework.KubeDescribe("Firewall rule", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		By("Waiting for the correct local traffic health check firewall rule to be created")
-		localHCFw := framework.ConstructHealthCheckFirewallForLBService(clusterId, svc, nodeTags.Items, false)
+		localHCFw := framework.ConstructHealthCheckFirewallForLBService(clusterID, svc, nodeTags.Items, false)
 		fw, err = framework.WaitForFirewallRuleExistOrNot(gceCloud, localHCFw.Name, true, framework.LoadBalancerCreateTimeoutDefault)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(framework.VerifyFirewallRule(fw, localHCFw, cloudConfig.Network, false)).NotTo(HaveOccurred())

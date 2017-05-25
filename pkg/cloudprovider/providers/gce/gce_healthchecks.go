@@ -213,17 +213,17 @@ func getNodesHealthCheckPath() string {
 
 // makeNodesHealthCheckName returns name of the health check resource used by
 // the GCE load balancers (l4) for performing health checks on nodes.
-func makeNodesHealthCheckName(clusterId string) string {
-	return fmt.Sprintf("k8s-%v-node", clusterId)
+func makeNodesHealthCheckName(clusterID string) string {
+	return fmt.Sprintf("k8s-%v-node", clusterID)
 }
 
 // MakeHealthCheckFirewallName returns the firewall name used by the GCE load
 // balancers (l4) for performing health checks.
-func MakeHealthCheckFirewallName(clusterId, hcName string, isNodesHealthCheck bool) string {
-	// TODO: Change below fwName to match the proposed schema: k8s-{clusterid}-{namespace}-{name}-{shortid}-hc.
+func MakeHealthCheckFirewallName(clusterID, hcName string, isNodesHealthCheck bool) string {
+	// TODO: Change below fwName to match the proposed schema: k8s-{clusteriD}-{namespace}-{name}-{shortid}-hc.
 	fwName := "k8s-" + hcName + "-hc"
 	if isNodesHealthCheck {
-		fwName = makeNodesHealthCheckName(clusterId) + "-hc"
+		fwName = makeNodesHealthCheckName(clusterID) + "-hc"
 	}
 	return fwName
 }

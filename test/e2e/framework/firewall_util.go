@@ -71,17 +71,17 @@ func ConstructFirewallForLBService(svc *v1.Service, nodesTags []string) *compute
 	return &fw
 }
 
-func MakeHealthCheckFirewallNameForLBService(clusterId, name string, isNodesHealthCheck bool) string {
-	return gcecloud.MakeHealthCheckFirewallName(clusterId, name, isNodesHealthCheck)
+func MakeHealthCheckFirewallNameForLBService(clusterID, name string, isNodesHealthCheck bool) string {
+	return gcecloud.MakeHealthCheckFirewallName(clusterID, name, isNodesHealthCheck)
 }
 
 // ConstructHealthCheckFirewallForLBService returns the expected GCE firewall rule for a loadbalancer type service
-func ConstructHealthCheckFirewallForLBService(clusterId string, svc *v1.Service, nodesTags []string, isNodesHealthCheck bool) *compute.Firewall {
+func ConstructHealthCheckFirewallForLBService(clusterID string, svc *v1.Service, nodesTags []string, isNodesHealthCheck bool) *compute.Firewall {
 	if svc.Spec.Type != v1.ServiceTypeLoadBalancer {
 		Failf("can not construct firewall rule for non-loadbalancer type service")
 	}
 	fw := compute.Firewall{}
-	fw.Name = MakeHealthCheckFirewallNameForLBService(clusterId, cloudprovider.GetLoadBalancerName(svc), isNodesHealthCheck)
+	fw.Name = MakeHealthCheckFirewallNameForLBService(clusterID, cloudprovider.GetLoadBalancerName(svc), isNodesHealthCheck)
 	fw.TargetTags = nodesTags
 	fw.SourceRanges = gcecloud.LoadBalancerSrcRanges()
 	healthCheckPort := gcecloud.GetNodesHealthCheckPort()
@@ -378,18 +378,18 @@ func WaitForFirewallRuleExistOrNot(gceCloud *gcecloud.GCECloud, fwName string, e
 	return fw, nil
 }
 
-func GetClusterId(c clientset.Interface) (string, error) {
+func GetClusterID(c clientset.Interface) (string, error) {
 	cm, err := c.Core().ConfigMaps(metav1.NamespaceSystem).Get(gcecloud.UIDConfigMapName, metav1.GetOptions{})
 	if err != nil || cm == nil {
 		return "", fmt.Errorf("error fetching cluster ID: %v", err)
 	}
-	clusterId, clusterIdExists := cm.Data[gcecloud.UIDCluster]
-	providerId, providerIdExists := cm.Data[gcecloud.UIDProvider]
-	if !clusterIdExists {
+	clusterID, clusterIDExists := cm.Data[gcecloud.UIDCluster]
+	providerID, providerIDExists := cm.Data[gcecloud.UIDProvider]
+	if !clusterIDExists {
 		return "", fmt.Errorf("cluster ID not set")
 	}
-	if providerIdExists && providerId != clusterId {
-		return providerId, nil
+	if providerIDExists && providerID != clusterID {
+		return providerID, nil
 	}
-	return clusterId, nil
+	return clusterID, nil
 }

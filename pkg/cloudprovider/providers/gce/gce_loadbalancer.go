@@ -310,7 +310,7 @@ func (gce *GCECloud) EnsureLoadBalancer(clusterName string, apiService *v1.Servi
 		glog.Infof("Target pool %v for Service %v/%v doesn't exist", loadBalancerName, apiService.Namespace, apiService.Name)
 	}
 
-	clusterId, err := gce.ClusterId.GetId()
+	clusterID, err := gce.ClusterID.GetID()
 	if err != nil {
 		return nil, fmt.Errorf("error getting cluster ID %s: %v", loadBalancerName, err)
 	}
@@ -329,7 +329,7 @@ func (gce *GCECloud) EnsureLoadBalancer(clusterName string, apiService *v1.Servi
 			// target pool to use local traffic health check.
 			glog.V(2).Infof("Updating from nodes health checks to local traffic health checks for service %v LB %v", apiService.Name, loadBalancerName)
 			if supportsNodesHealthCheck {
-				hcToDelete = makeHttpHealthCheck(makeNodesHealthCheckName(clusterId), getNodesHealthCheckPath(), GetNodesHealthCheckPort())
+				hcToDelete = makeHttpHealthCheck(makeNodesHealthCheckName(clusterID), getNodesHealthCheckPath(), GetNodesHealthCheckPort())
 			}
 			tpNeedsUpdate = true
 		}
@@ -345,7 +345,7 @@ func (gce *GCECloud) EnsureLoadBalancer(clusterName string, apiService *v1.Servi
 			tpNeedsUpdate = true
 		}
 		if supportsNodesHealthCheck {
-			hcToCreate = makeHttpHealthCheck(makeNodesHealthCheckName(clusterId), getNodesHealthCheckPath(), GetNodesHealthCheckPort())
+			hcToCreate = makeHttpHealthCheck(makeNodesHealthCheckName(clusterID), getNodesHealthCheckPath(), GetNodesHealthCheckPort())
 		}
 	}
 	// Now we get to some slightly more interesting logic.
@@ -460,7 +460,7 @@ func (gce *GCECloud) EnsureLoadBalancerDeleted(clusterName string, service *v1.S
 		}
 		hcNames = append(hcNames, hcToDelete.Name)
 	} else {
-		clusterId, err := gce.ClusterId.GetId()
+		clusterID, err := gce.ClusterID.GetID()
 		if err != nil {
 			return fmt.Errorf("error getting cluster ID %s: %v", loadBalancerName, err)
 		}
@@ -469,7 +469,7 @@ func (gce *GCECloud) EnsureLoadBalancerDeleted(clusterName string, service *v1.S
 		// using local traffic health check or nodes health check. Attempt to delete
 		// both to prevent leaking.
 		hcNames = append(hcNames, loadBalancerName)
-		hcNames = append(hcNames, makeNodesHealthCheckName(clusterId))
+		hcNames = append(hcNames, makeNodesHealthCheckName(clusterID))
 	}
 
 	errs := utilerrors.AggregateGoroutines(
@@ -579,13 +579,13 @@ func (gce *GCECloud) deleteTargetPool(name, region string, hcNames ...string) er
 				// We continue to delete the healthcheck firewall to prevent leaking.
 				glog.V(4).Infof("Health check %v is already deleted.", hcName)
 			}
-			clusterId, err := gce.ClusterId.GetId()
+			clusterID, err := gce.ClusterID.GetID()
 			if err != nil {
 				return fmt.Errorf("error getting cluster ID: %v", err)
 			}
 			// If health check is deleted without error, it means no load-balancer is using it.
 			// So we should delete the health check firewall as well.
-			fwName := MakeHealthCheckFirewallName(clusterId, hcName, isNodesHealthCheck)
+			fwName := MakeHealthCheckFirewallName(clusterID, hcName, isNodesHealthCheck)
 			glog.Infof("Deleting firewall %v.", fwName)
 			if err := gce.DeleteFirewall(fwName); err != nil {
 				if isHTTPErrorCode(err, http.StatusNotFound) {
@@ -939,20 +939,20 @@ func (gce *GCECloud) firewallNeedsUpdate(name, serviceName, region, ipAddress st
 }
 
 func (gce *GCECloud) ensureHttpHealthCheckFirewall(serviceName, ipAddress, region string, hosts []*gceInstance, hcName string, hcPort int32, isNodesHealthCheck bool) error {
-	clusterId, err := gce.ClusterId.GetId()
+	clusterID, err := gce.ClusterID.GetID()
 	if err != nil {
 		return fmt.Errorf("error getting cluster ID: %v", err)
 	}
 
 	// Prepare the firewall params for creating / checking.
-	desc := fmt.Sprintf(`{"kubernetes.io/cluster-id":"%s"}`, clusterId)
+	desc := fmt.Sprintf(`{"kubernetes.io/cluster-id":"%s"}`, clusterID)
 	if !isNodesHealthCheck {
 		desc = makeFirewallDescription(serviceName, ipAddress)
 	}
 	sourceRanges := lbSrcRngsFlag.ipn
 	ports := []v1.ServicePort{{Protocol: "tcp", Port: hcPort}}
 
-	fwName := MakeHealthCheckFirewallName(clusterId, hcName, isNodesHealthCheck)
+	fwName := MakeHealthCheckFirewallName(clusterID, hcName, isNodesHealthCheck)
 	fw, err := gce.service.Firewalls.Get(gce.projectID, fwName).Do()
 	if err != nil {
 		if !isHTTPErrorCode(err, http.StatusNotFound) {
