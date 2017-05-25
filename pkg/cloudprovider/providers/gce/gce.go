@@ -91,7 +91,10 @@ type GCECloud struct {
 	nodeInstancePrefix       string   // If non-"", an advisory prefix for all nodes in the cluster
 	useMetadataServer        bool
 	operationPollRateLimiter flowcontrol.RateLimiter
-	nodesHealthCheckLock     sync.Mutex
+	// sharedResourceLock is used to allow the controller to assemble a full
+	// load balancer and prevent other load balancers that are being deleted
+	// from taking shared resources out.
+	sharedResourceLock sync.Mutex
 }
 
 type Config struct {
@@ -235,7 +238,7 @@ func CreateGCECloud(projectID, region, zone string, managedZones []string, netwo
 		nodeInstancePrefix:       nodeInstancePrefix,
 		useMetadataServer:        useMetadataServer,
 		operationPollRateLimiter: operationPollRateLimiter,
-		nodesHealthCheckLock:     sync.Mutex{},
+		sharedResourceLock:       sync.Mutex{},
 	}, nil
 }
 

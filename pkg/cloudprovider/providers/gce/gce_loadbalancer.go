@@ -557,8 +557,8 @@ func (gce *GCECloud) deleteTargetPool(name, region string, hcNames ...string) er
 			if isNodesHealthCheck {
 				// Lock to prevent deleting necessary nodes health check before it gets attached
 				// to target pool.
-				gce.nodesHealthCheckLock.Lock()
-				defer gce.nodesHealthCheckLock.Unlock()
+				gce.sharedResourceLock.Lock()
+				defer gce.sharedResourceLock.Unlock()
 			}
 			glog.Infof("Deleting health check %v", hcName)
 			if err := gce.DeleteHttpHealthCheck(hcName); err != nil {
@@ -613,8 +613,8 @@ func (gce *GCECloud) createTargetPool(name, serviceName, ipAddress, region strin
 		isNodesHealthCheck := hc.Name != name
 		if isNodesHealthCheck {
 			// Lock to prevent necessary nodes health check / firewall gets deleted.
-			gce.nodesHealthCheckLock.Lock()
-			defer gce.nodesHealthCheckLock.Unlock()
+			gce.sharedResourceLock.Lock()
+			defer gce.sharedResourceLock.Unlock()
 		}
 		if err := gce.ensureHttpHealthCheckFirewall(serviceName, ipAddress, gce.region, hosts, hc.Name, int32(hc.Port), isNodesHealthCheck); err != nil {
 			return err
