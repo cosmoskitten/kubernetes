@@ -18,6 +18,7 @@ package framework
 
 import (
 	"fmt"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -358,7 +359,7 @@ func VerifyFirewallRule(res, exp *compute.Firewall, network string, portsSubset 
 	return nil
 }
 
-func WaitForFirewallRuleExistOrNot(gceCloud *gcecloud.GCECloud, fwName string, exist bool, timeout time.Duration) (*compute.Firewall, error) {
+func WaitForFirewallRule(gceCloud *gcecloud.GCECloud, fwName string, exist bool, timeout time.Duration) (*compute.Firewall, error) {
 	Logf("Waiting up to %v for firewall %v exist=%v", timeout, fwName, exist)
 	var fw *compute.Firewall
 	var err error
@@ -366,7 +367,8 @@ func WaitForFirewallRuleExistOrNot(gceCloud *gcecloud.GCECloud, fwName string, e
 	condition := func() (bool, error) {
 		fw, err = gceCloud.GetFirewall(fwName)
 		if err != nil && exist ||
-			err == nil && !exist {
+			err == nil && !exist ||
+			err != nil && !exist && !IsGoogleAPIHTTPErrorCode(err, http.StatusNotFound) {
 			return false, nil
 		}
 		return true, nil
@@ -381,14 +383,14 @@ func WaitForFirewallRuleExistOrNot(gceCloud *gcecloud.GCECloud, fwName string, e
 func GetClusterID(c clientset.Interface) (string, error) {
 	cm, err := c.Core().ConfigMaps(metav1.NamespaceSystem).Get(gcecloud.UIDConfigMapName, metav1.GetOptions{})
 	if err != nil || cm == nil {
-		return "", fmt.Errorf("error fetching cluster ID: %v", err)
+		return "", fmt.Errorf("error getting cluster ID: %v", err)
 	}
 	clusterID, clusterIDExists := cm.Data[gcecloud.UIDCluster]
 	providerID, providerIDExists := cm.Data[gcecloud.UIDProvider]
 	if !clusterIDExists {
 		return "", fmt.Errorf("cluster ID not set")
 	}
-	if providerIDExists && providerID != clusterID {
+	if providerIDExists {
 		return providerID, nil
 	}
 	return clusterID, nil

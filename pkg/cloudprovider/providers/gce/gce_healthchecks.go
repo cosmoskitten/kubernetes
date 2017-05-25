@@ -17,7 +17,6 @@ limitations under the License.
 package gce
 
 import (
-	"flag"
 	"fmt"
 	"time"
 
@@ -32,15 +31,8 @@ import (
 const (
 	minNodesHealthCheckVersion = "1.7.0"
 	nodesHealthCheckPath       = "/healthz"
+	lbNodesHealthCheckPortFlag = ports.ProxyHealthzPort
 )
-
-var (
-	lbNodesHealthCheckPortFlag int
-)
-
-func init() {
-	flag.IntVar(&lbNodesHealthCheckPortFlag, "cloud-provider-gce-lb-nodes-healthcheck-port", ports.ProxyHealthzPort, "Port opened on nodes for LB health checks")
-}
 
 func newHealthcheckMetricContext(request string) *metricContext {
 	return &metricContext{
@@ -202,7 +194,7 @@ func (gce *GCECloud) ListHealthChecks() (*compute.HealthCheckList, error) {
 // GetNodesHealthCheckPort returns the health check port used by the GCE load
 // balancers (l4) for performing health checks on nodes.
 func GetNodesHealthCheckPort() int32 {
-	return int32(lbNodesHealthCheckPortFlag)
+	return lbNodesHealthCheckPortFlag
 }
 
 // getNodesHealthCheckPath returns the health check path used by the GCE load

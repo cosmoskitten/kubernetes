@@ -21,10 +21,10 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
-	"sort"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"cloud.google.com/go/compute/metadata"
 	compute "google.golang.org/api/compute/v1"
@@ -130,12 +130,7 @@ func equalStringSets(x, y []string) bool {
 	if len(x) != len(y) {
 		return false
 	}
-	sort.Strings(x)
-	sort.Strings(y)
-	for i := range x {
-		if x[i] != y[i] {
-			return false
-		}
-	}
-	return true
+	xString := sets.NewString(x...)
+	yString := sets.NewString(y...)
+	return xString.Equal(yString)
 }

@@ -53,10 +53,10 @@ var _ = framework.KubeDescribe("Firewall rule", func() {
 		firewallTestSourceRanges := []string{"0.0.0.0/1", "128.0.0.0/1"}
 		serviceName := "firewall-test-loadbalancer"
 
-		By("Fetching cluster ID")
+		By("Getting cluster ID")
 		clusterID, err := framework.GetClusterID(cs)
 		Expect(err).NotTo(HaveOccurred())
-		framework.Logf("Fetched cluster ID: %v", clusterID)
+		framework.Logf("Got cluster ID: %v", clusterID)
 
 		jig := framework.NewServiceTestJig(cs, serviceName)
 		nodesNames := jig.GetNodesNames(framework.MaxNodesForEndpointsTests)
@@ -78,7 +78,7 @@ var _ = framework.KubeDescribe("Firewall rule", func() {
 			Expect(cs.Core().Services(svc.Namespace).Delete(svc.Name, nil)).NotTo(HaveOccurred())
 			By("Waiting for the local traffic health check firewall rule to be deleted")
 			localHCFwName := framework.MakeHealthCheckFirewallNameForLBService(clusterID, cloudprovider.GetLoadBalancerName(svc), false)
-			_, err := framework.WaitForFirewallRuleExistOrNot(gceCloud, localHCFwName, false, framework.LoadBalancerCleanupTimeout)
+			_, err := framework.WaitForFirewallRule(gceCloud, localHCFwName, false, framework.LoadBalancerCleanupTimeout)
 			Expect(err).NotTo(HaveOccurred())
 		}()
 		svcExternalIP := svc.Status.LoadBalancer.Ingress[0].IP
@@ -103,12 +103,12 @@ var _ = framework.KubeDescribe("Firewall rule", func() {
 		})
 
 		By("Waiting for the nodes health check firewall rule to be deleted")
-		_, err = framework.WaitForFirewallRuleExistOrNot(gceCloud, nodesHCFw.Name, false, framework.LoadBalancerCleanupTimeout)
+		_, err = framework.WaitForFirewallRule(gceCloud, nodesHCFw.Name, false, framework.LoadBalancerCleanupTimeout)
 		Expect(err).NotTo(HaveOccurred())
 
 		By("Waiting for the correct local traffic health check firewall rule to be created")
 		localHCFw := framework.ConstructHealthCheckFirewallForLBService(clusterID, svc, nodeTags.Items, false)
-		fw, err = framework.WaitForFirewallRuleExistOrNot(gceCloud, localHCFw.Name, true, framework.LoadBalancerCreateTimeoutDefault)
+		fw, err = framework.WaitForFirewallRule(gceCloud, localHCFw.Name, true, framework.LoadBalancerCreateTimeoutDefault)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(framework.VerifyFirewallRule(fw, localHCFw, cloudConfig.Network, false)).NotTo(HaveOccurred())
 

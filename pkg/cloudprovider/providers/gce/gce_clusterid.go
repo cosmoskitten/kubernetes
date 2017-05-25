@@ -123,7 +123,7 @@ func (ci *ClusterID) GetID() (string, error) {
 	}
 
 	// If provider ID is set, (Federation is enabled) use this field
-	if ci.providerID != nil && *ci.providerID != *ci.clusterID {
+	if ci.providerID != nil {
 		return *ci.providerID, nil
 	}
 

@@ -91,9 +91,10 @@ type GCECloud struct {
 	nodeInstancePrefix       string   // If non-"", an advisory prefix for all nodes in the cluster
 	useMetadataServer        bool
 	operationPollRateLimiter flowcontrol.RateLimiter
-	// sharedResourceLock is used to allow the controller to assemble a full
-	// load balancer and prevent other load balancers that are being deleted
-	// from taking shared resources out.
+	// sharedResourceLock is used to serialize GCE operations that may mutate shared state to
+	// prevent inconsistencies. For example, load balancers manipulation methods will take the
+	// lock to prevent shared resources from being prematurely deleted while the operation is
+	// in progress.
 	sharedResourceLock sync.Mutex
 }
 
