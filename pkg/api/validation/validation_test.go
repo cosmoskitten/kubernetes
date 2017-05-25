@@ -3051,7 +3051,7 @@ func TestValidateVolumeMounts(t *testing.T) {
 }
 
 func TestValidateProbe(t *testing.T) {
-	handler := api.Handler{Exec: &api.ExecAction{Command: []string{"echo"}}}
+	handler := api.Handler{RetryPolicy: "Never", Exec: &api.ExecAction{Command: []string{"echo"}}}
 	// These fields must be positive.
 	positiveFields := [...]string{"InitialDelaySeconds", "TimeoutSeconds", "PeriodSeconds", "SuccessThreshold", "FailureThreshold"}
 	successCases := []*api.Probe{nil}
@@ -3082,12 +3082,15 @@ func TestValidateProbe(t *testing.T) {
 
 func TestValidateHandler(t *testing.T) {
 	successCases := []api.Handler{
-		{Exec: &api.ExecAction{Command: []string{"echo"}}},
-		{HTTPGet: &api.HTTPGetAction{Path: "/", Port: intstr.FromInt(1), Host: "", Scheme: "HTTP"}},
-		{HTTPGet: &api.HTTPGetAction{Path: "/foo", Port: intstr.FromInt(65535), Host: "host", Scheme: "HTTP"}},
-		{HTTPGet: &api.HTTPGetAction{Path: "/", Port: intstr.FromString("port"), Host: "", Scheme: "HTTP"}},
-		{HTTPGet: &api.HTTPGetAction{Path: "/", Port: intstr.FromString("port"), Host: "", Scheme: "HTTP", HTTPHeaders: []api.HTTPHeader{{Name: "Host", Value: "foo.example.com"}}}},
-		{HTTPGet: &api.HTTPGetAction{Path: "/", Port: intstr.FromString("port"), Host: "", Scheme: "HTTP", HTTPHeaders: []api.HTTPHeader{{Name: "X-Forwarded-For", Value: "1.2.3.4"}, {Name: "X-Forwarded-For", Value: "5.6.7.8"}}}},
+		{RetryPolicy: "Never", Exec: &api.ExecAction{Command: []string{"echo"}}},
+		{RetryPolicy: "Always", Exec: &api.ExecAction{Command: []string{"echo"}}},
+		{RetryPolicy: "Never", HTTPGet: &api.HTTPGetAction{Path: "/", Port: intstr.FromInt(1), Host: "", Scheme: "HTTP"}},
+		{RetryPolicy: "OnFailure", HTTPGet: &api.HTTPGetAction{Path: "/foo", Port: intstr.FromInt(65535), Host: "host", Scheme: "HTTP"}},
+		{RetryPolicy: "Never", HTTPGet: &api.HTTPGetAction{Path: "/", Port: intstr.FromInt(1), Host: "", Scheme: "HTTP"}},
+		{RetryPolicy: "Never", HTTPGet: &api.HTTPGetAction{Path: "/foo", Port: intstr.FromInt(65535), Host: "host", Scheme: "HTTP"}},
+		{RetryPolicy: "Never", HTTPGet: &api.HTTPGetAction{Path: "/", Port: intstr.FromString("port"), Host: "", Scheme: "HTTP"}},
+		{RetryPolicy: "Never", HTTPGet: &api.HTTPGetAction{Path: "/", Port: intstr.FromString("port"), Host: "", Scheme: "HTTP", HTTPHeaders: []api.HTTPHeader{{Name: "Host", Value: "foo.example.com"}}}},
+		{RetryPolicy: "Never", HTTPGet: &api.HTTPGetAction{Path: "/", Port: intstr.FromString("port"), Host: "", Scheme: "HTTP", HTTPHeaders: []api.HTTPHeader{{Name: "X-Forwarded-For", Value: "1.2.3.4"}, {Name: "X-Forwarded-For", Value: "5.6.7.8"}}}},
 	}
 	for _, h := range successCases {
 		if errs := validateHandler(&h, field.NewPath("field")); len(errs) != 0 {
@@ -3098,6 +3101,8 @@ func TestValidateHandler(t *testing.T) {
 	errorCases := []api.Handler{
 		{},
 		{Exec: &api.ExecAction{Command: []string{}}},
+		{RetryPolicy: "123"},
+		{RetryPolicy: "always"},
 		{HTTPGet: &api.HTTPGetAction{Path: "", Port: intstr.FromInt(0), Host: ""}},
 		{HTTPGet: &api.HTTPGetAction{Path: "/foo", Port: intstr.FromInt(65536), Host: "host"}},
 		{HTTPGet: &api.HTTPGetAction{Path: "", Port: intstr.FromString(""), Host: ""}},
@@ -3179,7 +3184,8 @@ func TestValidateContainers(t *testing.T) {
 			Image: "image",
 			Lifecycle: &api.Lifecycle{
 				PreStop: &api.Handler{
-					Exec: &api.ExecAction{Command: []string{"ls", "-l"}},
+					Exec:        &api.ExecAction{Command: []string{"ls", "-l"}},
+					RetryPolicy: "Never",
 				},
 			},
 			ImagePullPolicy:          "IfNotPresent",
@@ -3368,7 +3374,8 @@ func TestValidateContainers(t *testing.T) {
 				Image: "image",
 				Lifecycle: &api.Lifecycle{
 					PreStop: &api.Handler{
-						Exec: &api.ExecAction{},
+						Exec:        &api.ExecAction{},
+						RetryPolicy: "Never",
 					},
 				},
 				ImagePullPolicy:          "IfNotPresent",
@@ -3381,7 +3388,8 @@ func TestValidateContainers(t *testing.T) {
 				Image: "image",
 				Lifecycle: &api.Lifecycle{
 					PreStop: &api.Handler{
-						HTTPGet: &api.HTTPGetAction{},
+						HTTPGet:     &api.HTTPGetAction{},
+						RetryPolicy: "Never",
 					},
 				},
 				ImagePullPolicy:          "IfNotPresent",
@@ -3394,7 +3402,8 @@ func TestValidateContainers(t *testing.T) {
 				Image: "image",
 				Lifecycle: &api.Lifecycle{
 					PreStop: &api.Handler{
-						TCPSocket: &api.TCPSocketAction{},
+						TCPSocket:   &api.TCPSocketAction{},
+						RetryPolicy: "Never",
 					},
 				},
 				ImagePullPolicy:          "IfNotPresent",
@@ -3410,6 +3419,7 @@ func TestValidateContainers(t *testing.T) {
 						TCPSocket: &api.TCPSocketAction{
 							Port: intstr.FromInt(0),
 						},
+						RetryPolicy: "Never",
 					},
 				},
 				ImagePullPolicy:          "IfNotPresent",
@@ -3421,7 +3431,7 @@ func TestValidateContainers(t *testing.T) {
 				Name:  "life-123",
 				Image: "image",
 				Lifecycle: &api.Lifecycle{
-					PreStop: &api.Handler{},
+					PreStop: &api.Handler{RetryPolicy: "Never"},
 				},
 				ImagePullPolicy:          "IfNotPresent",
 				TerminationMessagePolicy: "File",
@@ -3433,7 +3443,8 @@ func TestValidateContainers(t *testing.T) {
 				Image: "image",
 				LivenessProbe: &api.Probe{
 					Handler: api.Handler{
-						TCPSocket: &api.TCPSocketAction{},
+						TCPSocket:   &api.TCPSocketAction{},
+						RetryPolicy: "Never",
 					},
 				},
 				ImagePullPolicy:          "IfNotPresent",
@@ -3445,7 +3456,7 @@ func TestValidateContainers(t *testing.T) {
 				Name:  "life-123",
 				Image: "image",
 				LivenessProbe: &api.Probe{
-					Handler: api.Handler{},
+					Handler: api.Handler{RetryPolicy: "Never"},
 				},
 				ImagePullPolicy:          "IfNotPresent",
 				TerminationMessagePolicy: "File",
