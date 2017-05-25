@@ -1799,6 +1799,8 @@ type Handler struct {
 	// TODO: implement a realistic TCP lifecycle hook
 	// +optional
 	TCPSocket *TCPSocketAction `json:"tcpSocket,omitempty" protobuf:"bytes,3,opt,name=tcpSocket"`
+	// +optional
+	IsRetryUntilSuccess bool `json:"isRetryUntilSuccess,omitempty" protobuf:"bytes,4,opt,name=isRetryUntilSuccess"`
 }
 
 // Lifecycle describes actions that the management system should take in response to container lifecycle

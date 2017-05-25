@@ -4259,7 +4259,7 @@
      "preStop": {
       "$ref": "v1.Handler",
       "description": "PreStop is called immediately before a container is terminated. The container is terminated after the handler completes. The reason for termination is passed to the handler. Regardless of the outcome of the handler, the container is eventually terminated. Other management of the container blocks until the hook completes. More info: https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#container-hooks"
-     }
+     },
     }
    },
    "v1.Handler": {
@@ -4277,6 +4277,10 @@
      "tcpSocket": {
       "$ref": "v1.TCPSocketAction",
       "description": "TCPSocket specifies an action involving a TCP port. TCP hooks not yet supported"
+     },
+     "isRetryUntilSuccess": {
+      "type": "boolean",
+      "description": "If set ,PreStop Hook will retry until success or timeout quite."
      }
     }
    },
