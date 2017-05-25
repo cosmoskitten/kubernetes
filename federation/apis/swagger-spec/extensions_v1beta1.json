@@ -6380,6 +6380,10 @@
       "$ref": "v1.TCPSocketAction",
       "description": "TCPSocket specifies an action involving a TCP port. TCP hooks not yet supported"
      },
+     "retryPolicy": {
+      "type": "string",
+      "description": "Retrypolicy picks a value from three values (Always, OnFail, Never) as a retry strategy."
+     },
      "initialDelaySeconds": {
       "type": "integer",
       "format": "int32",
@@ -6516,6 +6520,10 @@
      "tcpSocket": {
       "$ref": "v1.TCPSocketAction",
       "description": "TCPSocket specifies an action involving a TCP port. TCP hooks not yet supported"
+     },
+     "retryPolicy": {
+      "type": "string",
+      "description": "Retrypolicy picks a value from three values (Always, OnFail, Never) as a retry strategy."
      }
     }
    },

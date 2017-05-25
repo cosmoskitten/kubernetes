@@ -1064,6 +1064,7 @@ var _ = framework.KubeDescribe("Services", func() {
 					Exec: &v1.ExecAction{
 						Command: []string{"/bin/false"},
 					},
+					RetryPolicy: v1.RetryPolicyNever,
 				},
 			},
 			Lifecycle: &v1.Lifecycle{
@@ -1071,6 +1072,7 @@ var _ = framework.KubeDescribe("Services", func() {
 					Exec: &v1.ExecAction{
 						Command: []string{"/bin/sleep", fmt.Sprintf("%d", terminateSeconds)},
 					},
+					RetryPolicy: v1.RetryPolicyNever,
 				},
 			},
 		}, nil)
