@@ -26,9 +26,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/spf13/cobra"
+
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/rest/fake"
@@ -51,15 +55,19 @@ func TestDeleteObjectByTuple(t *testing.T) {
 		APIRegistry:          api.Registry,
 		NegotiatedSerializer: unstructuredSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
-			switch p, m := req.URL.Path, req.Method; {
+			switch p, m, o := req.URL.Path, req.Method, parseDeleteOptions(req.Body); {
 
 			// replication controller with cascade off
 			case p == "/namespaces/test/replicationcontrollers/redis-master-controller" && m == "DELETE":
 				return &http.Response{StatusCode: 200, Header: defaultHeader(), Body: objBody(codec, &rc.Items[0])}, nil
 
-			// secret with cascade on, but no client-side reaper
-			case p == "/namespaces/test/secrets/mysecret" && m == "DELETE":
+				// secret with cascade on, but no client-side reaper.
+				// Return 200 for first DELETE request.
+			case p == "/namespaces/test/secrets/mysecret" && m == "DELETE" && o.Preconditions == nil:
 				return &http.Response{StatusCode: 200, Header: defaultHeader(), Body: objBody(codec, &rc.Items[0])}, nil
+				// Return 404 for subsequent DELETE requests with precondition.
+			case p == "/namespaces/test/secrets/mysecret" && m == "DELETE" && o.Preconditions != nil:
+				return &http.Response{StatusCode: 404, Header: defaultHeader(), Body: objBody(codec, &rc.Items[0])}, nil
 
 			default:
 				// Ensures no GET is performed when deleting by name
@@ -91,17 +99,24 @@ func TestDeleteObjectByTuple(t *testing.T) {
 	}
 }
 
-func hasExpectedOrphanDependents(body io.ReadCloser, expectedOrphanDependents *bool) bool {
-	if body == nil || expectedOrphanDependents == nil {
-		return body == nil && expectedOrphanDependents == nil
+func parseDeleteOptions(body io.ReadCloser) *metav1.DeleteOptions {
+	if body == nil {
+		return nil
 	}
 	var parsedBody metav1.DeleteOptions
 	rawBody, _ := ioutil.ReadAll(body)
 	json.Unmarshal(rawBody, &parsedBody)
-	if parsedBody.OrphanDependents == nil {
+	return &parsedBody
+}
+
+func hasExpectedOrphanDependents(options *metav1.DeleteOptions, expectedOrphanDependents *bool) bool {
+	if options == nil || expectedOrphanDependents == nil {
+		return options == nil && expectedOrphanDependents == nil
+	}
+	if options.OrphanDependents == nil {
 		return false
 	}
-	return *expectedOrphanDependents == *parsedBody.OrphanDependents
+	return *expectedOrphanDependents == *options.OrphanDependents
 }
 
 // Tests that DeleteOptions.OrphanDependents is appropriately set while deleting objects.
@@ -116,11 +131,15 @@ func TestOrphanDependentsInDeleteObject(t *testing.T) {
 		APIRegistry:          api.Registry,
 		NegotiatedSerializer: unstructuredSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
-			switch p, m, b := req.URL.Path, req.Method, req.Body; {
-
-			case p == "/namespaces/test/secrets/mysecret" && m == "DELETE" && hasExpectedOrphanDependents(b, expectedOrphanDependents):
-
+			switch p, m, o := req.URL.Path, req.Method, parseDeleteOptions(req.Body); {
+			// Return 200 for first DELETE request.
+			case p == "/namespaces/test/secrets/mysecret" && m == "DELETE" && hasExpectedOrphanDependents(o, expectedOrphanDependents) && o.Preconditions == nil:
 				return &http.Response{StatusCode: 200, Header: defaultHeader(), Body: objBody(codec, &rc.Items[0])}, nil
+
+				// Return 404 for subsequent requests with preconditions.
+			case p == "/namespaces/test/secrets/mysecret" && m == "DELETE" && hasExpectedOrphanDependents(o, expectedOrphanDependents) && o.Preconditions != nil:
+				return &http.Response{StatusCode: 404, Header: defaultHeader(), Body: objBody(codec, &rc.Items[0])}, nil
+
 			default:
 				return nil, nil
 			}
@@ -238,6 +257,122 @@ func TestDeleteObject(t *testing.T) {
 	if buf.String() != "replicationcontroller/redis-master\n" {
 		t.Errorf("unexpected output: %s", buf.String())
 	}
+}
+
+func TestWaitForDelete(t *testing.T) {
+	initTestErrorHandler(t)
+	_, _, rc := testData()
+
+	f, tf, codec, _ := cmdtesting.NewAPIFactory()
+	tf.Printer = &testPrinter{}
+	requests := []*http.Request{}
+	tf.UnstructuredClient = &fake.RESTClient{
+		APIRegistry:          api.Registry,
+		NegotiatedSerializer: unstructuredSerializer,
+		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+			switch m := req.Method; {
+			case m == "DELETE" && len(requests) < 2:
+				requests = append(requests, req)
+				return &http.Response{StatusCode: 200, Header: defaultHeader(), Body: objBody(codec, &rc.Items[0])}, nil
+			case m == "DELETE" && len(requests) == 2:
+				requests = append(requests, req)
+				return &http.Response{StatusCode: 404, Header: defaultHeader(), Body: objBody(codec, &rc.Items[0])}, nil
+			default:
+				t.Fatalf("unexpected request: %#v\n%#v", req.URL, req)
+				return nil, nil
+			}
+		}),
+	}
+	tf.Namespace = "test"
+	trueVar := true
+	falseVar := false
+
+	testCases := []struct {
+		name                 string
+		cascade              *bool
+		wait                 *bool
+		expectedOutput       string
+		expectedNumOfDelReqs int
+	}{
+		{
+			// No wait when when wait if false.
+			"secret/mysecret",
+			&falseVar,
+			&falseVar,
+			"secret/mysecret\n",
+			1,
+		},
+		{
+			// No wait when cascade is false.
+			"secret/mysecret",
+			&falseVar,
+			nil,
+			"secret/mysecret\n",
+			1,
+		},
+		{
+			// No wait when wait is false.
+			"secret/mysecret",
+			nil,
+			&falseVar,
+			"secret/mysecret\n",
+			1,
+		},
+		{
+			// Waits when both wait and cascade are true.
+			"secret/mysecret",
+			&trueVar,
+			&trueVar,
+			"secret/mysecret\n",
+			3,
+		},
+		{
+			// Should not wait for ns deletion by default.
+			"namespaces/myns",
+			nil,
+			nil,
+			"namespace/myns\n",
+			1,
+		},
+		{
+			// Should wait for ns deletion when --wait is set to true.
+			"namespaces/myns",
+			nil,
+			&trueVar,
+			"namespace/myns\n",
+			3,
+		},
+	}
+	for i, c := range testCases {
+		requests = []*http.Request{}
+		buf, errBuf := bytes.NewBuffer([]byte{}), bytes.NewBuffer([]byte{})
+		cmd := NewCmdDelete(f, buf, errBuf)
+		cmd.Flags().Set("namespace", "test")
+		setFlag(cmd, "wait", c.wait)
+		setFlag(cmd, "cascade", c.cascade)
+		cmd.Flags().Set("output", "name")
+		cmd.Run(cmd, []string{c.name})
+
+		if buf.String() != c.expectedOutput {
+			t.Errorf("%d: unexpected output: %s, expected: %s", i, buf.String(), c.expectedOutput)
+		}
+		if c.expectedNumOfDelReqs != len(requests) {
+			t.Errorf("%d: unexpected number of DELETE requests: %d, expected: %d", i, len(requests), c.expectedNumOfDelReqs)
+		}
+	}
+}
+
+func setFlag(cmd *cobra.Command, flagName string, value *bool) {
+	if value == nil {
+		return
+	}
+	switch *value {
+	case true:
+		cmd.Flags().Set(flagName, "true")
+	case false:
+		cmd.Flags().Set(flagName, "false")
+	}
+
 }
 
 type fakeReaper struct {
@@ -725,6 +860,52 @@ func TestResourceErrors(t *testing.T) {
 		}
 		if buf.Len() > 0 {
 			t.Errorf("buffer should be empty: %s", string(buf.Bytes()))
+		}
+	}
+}
+
+func TestGetUID(t *testing.T) {
+	_, svcItems, _ := testData()
+	svc := &svcItems.Items[0]
+	statusUID := "status-uid"
+	status := &metav1.Status{
+		Details: &metav1.StatusDetails{
+			UID: types.UID(statusUID),
+		},
+	}
+	testCases := []struct {
+		obj         runtime.Object
+		expectedUID string
+		expectedErr bool
+	}{
+		{
+			svc,
+			string(svc.ObjectMeta.UID),
+			false,
+		},
+		{
+			status,
+			statusUID,
+			false,
+		},
+		{
+			nil,
+			"",
+			true,
+		},
+		{
+			&metav1.Status{},
+			"",
+			true,
+		},
+	}
+	for i, c := range testCases {
+		uid, err := getUID(c.obj)
+		if c.expectedErr == true && err == nil || c.expectedErr == false && err != nil {
+			t.Errorf("%d: Unexpected err: %s, expected err: %t", i, err, c.expectedErr)
+		}
+		if !c.expectedErr && uid != c.expectedUID {
+			t.Errorf("%d: Unexpected uid: %s, expected uid: %s", i, uid, c.expectedUID)
 		}
 	}
 }
