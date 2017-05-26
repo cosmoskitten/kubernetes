@@ -241,7 +241,7 @@ type KubeletDeps struct {
 	Writer             kubeio.Writer
 	VolumePlugins      []volume.VolumePlugin
 	TLSOptions         *server.TLSOptions
-	MountOptions       KubeletMountOptions
+	MountOptions       *KubeletMountOptions
 }
 
 // KubeletMountOptions is a hacky way how to add a new --test-mount-propagation
@@ -494,7 +494,7 @@ func NewMainKubelet(kubeCfg *componentconfig.KubeletConfiguration, kubeDeps *Kub
 		iptablesMasqueradeBit:                   int(kubeCfg.IPTablesMasqueradeBit),
 		iptablesDropBit:                         int(kubeCfg.IPTablesDropBit),
 		experimentalHostUserNamespaceDefaulting: utilfeature.DefaultFeatureGate.Enabled(features.ExperimentalHostUserNamespaceDefaultingGate),
-		enableMountPropagation:                  kubeDeps.MountOptions.EnableMountPropagation,
+		enableMountPropagation:                  kubeDeps.MountOptions != nil && kubeDeps.MountOptions.EnableMountPropagation,
 	}
 
 	secretManager := secret.NewCachingSecretManager(
@@ -826,6 +826,9 @@ func NewMainKubelet(kubeCfg *componentconfig.KubeletConfiguration, kubeDeps *Kub
 	if klet.gpuManager == nil {
 		klet.gpuManager = gpu.NewGPUManagerStub()
 	}
+
+	klet.admitHandlers.AddPodAdmitHandler(newMountPropagationAdmissionHandler(klet.enableMountPropagation))
+
 	// Finally, put the most recent version of the config on the Kubelet, so
 	// people can see how it was configured.
 	klet.kubeletConfiguration = *kubeCfg
