@@ -19,12 +19,14 @@ package core
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/clock"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/apiserver/pkg/admission"
@@ -69,13 +71,14 @@ func listPodsByNamespaceFuncUsingClient(kubeClient clientset.Interface) generic.
 
 // NewPodEvaluator returns an evaluator that can evaluate pods
 // if the specified shared informer factory is not nil, evaluator may use it to support listing functions.
-func NewPodEvaluator(kubeClient clientset.Interface, f informers.SharedInformerFactory) quota.Evaluator {
+func NewPodEvaluator(kubeClient clientset.Interface, f informers.SharedInformerFactory, clock clock.Clock) quota.Evaluator {
 	listFuncByNamespace := listPodsByNamespaceFuncUsingClient(kubeClient)
 	if f != nil {
 		listFuncByNamespace = generic.ListResourceUsingInformerFunc(f, v1.SchemeGroupVersion.WithResource("pods"))
 	}
 	return &podEvaluator{
 		listFuncByNamespace: listFuncByNamespace,
+		clock:               clock,
 	}
 }
 
@@ -83,6 +86,8 @@ func NewPodEvaluator(kubeClient clientset.Interface, f informers.SharedInformerF
 type podEvaluator struct {
 	// knows how to list pods
 	listFuncByNamespace generic.ListFuncByNamespace
+	// used to track time
+	clock clock.Clock
 }
 
 // Constraints verifies that all required resources are present on the pod
@@ -149,6 +154,16 @@ func (p *podEvaluator) MatchingResources(input []api.ResourceName) []api.Resourc
 
 // Usage knows how to measure usage associated with pods
 func (p *podEvaluator) Usage(item runtime.Object) (api.ResourceList, error) {
+	// is this pod something we should quota?
+	pod, err := toInternalPodOrError(item)
+	if err != nil {
+		return api.ResourceList{}, err
+	}
+	// if this pod is not subject to quota, charge nothing
+	if !QuotaPod(pod, p.clock) {
+		return api.ResourceList{}, nil
+	}
+	// delegate to normal usage
 	return PodUsageFunc(item)
 }
 
@@ -234,8 +249,8 @@ func PodUsageFunc(obj runtime.Object) (api.ResourceList, error) {
 	if err != nil {
 		return api.ResourceList{}, err
 	}
-	// by convention, we do not quota pods that have reached an end-of-life state
-	if !QuotaPod(pod) {
+	// if a pod is terminal, it has no usage
+	if api.PodFailed == pod.Status.Phase || api.PodSucceeded == pod.Status.Phase {
 		return api.ResourceList{}, nil
 	}
 	requests := api.ResourceList{}
@@ -269,12 +284,45 @@ func isTerminating(pod *api.Pod) bool {
 }
 
 // QuotaPod returns true if the pod is eligible to track against a quota
-func QuotaPod(pod *api.Pod) bool {
-	return !(api.PodFailed == pod.Status.Phase || api.PodSucceeded == pod.Status.Phase)
+// A pod is eligible for quota, unless any of the following are true:
+//  - pod has a terminal phase (failed or succeeded)
+//  - pod has been marked for deletion and grace period has expired.
+func QuotaPod(pod *api.Pod, clock clock.Clock) bool {
+	// if pod is terminal, ignore it for quota
+	if api.PodFailed == pod.Status.Phase || api.PodSucceeded == pod.Status.Phase {
+		return false
+	}
+	// if pods are stuck terminating (for example, a node is lost), we do not want
+	// to charge the user for that pod in quota because it could prevent them from
+	// scaling up new pods to service their application.
+	if pod.DeletionTimestamp != nil && pod.DeletionGracePeriodSeconds != nil {
+		now := clock.Now()
+		deletionTime := pod.DeletionTimestamp.Time
+		gracePeriod := time.Duration(*pod.DeletionGracePeriodSeconds) * time.Second
+		if now.After(deletionTime.Add(gracePeriod)) {
+			return false
+		}
+	}
+	return true
 }
 
 // QuotaV1Pod returns true if the pod is eligible to track against a quota
 // if it's not in a terminal state according to its phase.
-func QuotaV1Pod(pod *v1.Pod) bool {
-	return !(v1.PodFailed == pod.Status.Phase || v1.PodSucceeded == pod.Status.Phase)
+func QuotaV1Pod(pod *v1.Pod, clock clock.Clock) bool {
+	// if pod is terminal, ignore it for quota
+	if v1.PodFailed == pod.Status.Phase || v1.PodSucceeded == pod.Status.Phase {
+		return false
+	}
+	// if pods are stuck terminating (for example, a node is lost), we do not want
+	// to charge the user for that pod in quota because it could prevent them from
+	// scaling up new pods to service their application.
+	if pod.DeletionTimestamp != nil && pod.DeletionGracePeriodSeconds != nil {
+		now := clock.Now()
+		deletionTime := pod.DeletionTimestamp.Time
+		gracePeriod := time.Duration(*pod.DeletionGracePeriodSeconds) * time.Second
+		if now.After(deletionTime.Add(gracePeriod)) {
+			return false
+		}
+	}
+	return true
 }
