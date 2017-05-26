@@ -17,13 +17,14 @@ limitations under the License.
 package node
 
 import (
+	"encoding/json"
 	"fmt"
-	"net"
-	"sync"
-
+	"github.com/golang/glog"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/apimachinery/pkg/util/wait"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	clientv1 "k8s.io/client-go/pkg/api/v1"
@@ -31,8 +32,8 @@ import (
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
-
-	"github.com/golang/glog"
+	"net"
+	"sync"
 )
 
 // TODO: figure out the good setting for those constants.
@@ -224,7 +225,7 @@ func (r *rangeAllocator) updateCIDRAllocation(data nodeAndCIDR) error {
 	var node *v1.Node
 	defer r.removeNodeFromProcessing(data.nodeName)
 	for rep := 0; rep < podCIDRUpdateRetry; rep++ {
-		// TODO: change it to using PATCH instead of full Node updates.
+
 		node, err = r.client.Core().Nodes().Get(data.nodeName, metav1.GetOptions{})
 		if err != nil {
 			glog.Errorf("Failed while getting node %v to retry updating Node.Spec.PodCIDR: %v", data.nodeName, err)
@@ -239,9 +240,20 @@ func (r *rangeAllocator) updateCIDRAllocation(data nodeAndCIDR) error {
 			}
 			return nil
 		}
+		oldData, err := json.Marshal(node)
+		if err != nil {
+			return fmt.Errorf("failed to marshal old node %#v for node %q: %v", node, data.nodeName, err)
+		}
+
 		node.Spec.PodCIDR = data.cidr.String()
-		if _, err := r.client.Core().Nodes().Update(node); err != nil {
-			glog.Errorf("Failed while updating Node.Spec.PodCIDR (%d retries left): %v", podCIDRUpdateRetry-rep-1, err)
+
+		newData, err := json.Marshal(node)
+		if err != nil {
+			return fmt.Errorf("failed to marshal modified node %#v for node %q: %v", node, data.nodeName, err)
+		}
+
+		if err := patchNode(r.client, oldData, newData, data.nodeName); err != nil {
+			glog.Errorf("Failed while patching Node.Spec.PodCIDR (%d retries left): %v", podCIDRUpdateRetry-rep-1, err)
 		} else {
 			break
 		}
@@ -258,5 +270,15 @@ func (r *rangeAllocator) updateCIDRAllocation(data nodeAndCIDR) error {
 			}
 		}
 	}
+	return err
+}
+
+func patchNode(c clientset.Interface, oldData, newData []byte, nodeName string) error {
+	patchBytes, err := strategicpatch.CreateTwoWayMergePatch(oldData, newData, v1.Node{})
+	if err != nil {
+		return fmt.Errorf("failed to create patch for node %q: %v", nodeName, err)
+	}
+
+	_, err = c.Core().Nodes().Patch(string(nodeName), types.StrategicMergePatchType, patchBytes)
 	return err
 }
