@@ -19,6 +19,8 @@ package exec
 import (
 	"fmt"
 	"io"
+	"reflect"
+	"strings"
 )
 
 // A simple scripted Interface type.
@@ -142,4 +144,70 @@ func (fake *FakeExitError) Exited() bool {
 
 func (fake *FakeExitError) ExitStatus() int {
 	return fake.Status
+}
+
+func commandAsStringSlice(command interface{}) []string {
+	if args, ok := command.([]string); ok {
+		return args
+	} else if commandstr, ok := command.(string); ok {
+		return strings.Split(commandstr, " ")
+	}
+	panic("command must be []string or string")
+}
+
+func outputAsBytes(output interface{}) []byte {
+	if outputBytes, ok := output.([]byte); ok {
+		return outputBytes
+	} else if outputStr, ok := output.(string); ok {
+		return []byte(outputStr)
+	} else if output == nil {
+		return nil
+	}
+	panic("output must be []byte or string")
+}
+
+func (fake *FakeExec) expectFakeCmd(command interface{}, fcmd *FakeCmd) {
+	expectedArgv := commandAsStringSlice(command)
+	fake.CommandScript = append(fake.CommandScript,
+		func(cmd string, args ...string) Cmd {
+			InitFakeCmd(fcmd, cmd, args...)
+			if !reflect.DeepEqual(expectedArgv, fcmd.Argv) {
+				panic(fmt.Sprintf("Wrong Exec: expected %v got %v", expectedArgv, fcmd.Argv))
+			}
+			return fcmd
+		},
+	)
+}
+
+// ExpectCombinedOutput "predicts" a call to fake.Command(...).CombinedOutput() with the
+// given command, and provides the result of that call.
+// command is either a string (command line) or a []string (argv) indicating the expected command.
+// output and err will be returned as the result of CombinedOutput() on the command.
+// output can be either a []byte or a string (which will be converted to a []byte).
+func (fake *FakeExec) ExpectCombinedOutput(command interface{}, output interface{}, err error) {
+	fake.expectFakeCmd(command, &FakeCmd{
+		CombinedOutputScript: []FakeCombinedOutputAction{
+			func() ([]byte, error) { return outputAsBytes(output), err },
+		},
+	})
+}
+
+// ExpectRun "predicts" a call to fake.Command(...).Run() with the
+// given command, and provides the result of that call.
+// command is either a string (command line) or a []string (argv) indicating the expected command.
+// stdout, stderr, and err will be returned as the result of Run() on the command.
+// stdout and stderr can be either a []byte or a string (which will be converted to a []byte).
+func (fake *FakeExec) ExpectRun(command interface{}, stdout interface{}, stderr interface{}, err error) {
+	fake.expectFakeCmd(command, &FakeCmd{
+		RunScript: []FakeRunAction{
+			func() ([]byte, []byte, error) { return outputAsBytes(stdout), outputAsBytes(stderr), err },
+		},
+	})
+}
+
+// AssertExpectedCommands ensures that all of the commands added to fake via ExpectCombinedOutput and ExpectRun were actually executed
+func (fake *FakeExec) AssertExpectedCommands() {
+	if fake.CommandCalls != len(fake.CommandScript) {
+		panic(fmt.Sprintf("Only used %d of %d expected commands", fake.CommandCalls, len(fake.CommandScript)))
+	}
 }
