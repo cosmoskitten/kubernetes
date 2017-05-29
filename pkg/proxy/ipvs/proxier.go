@@ -696,7 +696,7 @@ func (proxier *Proxier) syncProxyRules(reason syncReason) {
 					}
 
 					// If the packet was able to reach the end of firewall chain, then it did not get DNATed.
-					// It means the packet cannot go thru the firewall, then DROP it.
+					// It means the packet cannot go through the firewall, then DROP it.
 					writeLine(natRules, append(args, "-j", string(KubeMarkDropChain))...)
 				}
 
@@ -820,7 +820,7 @@ func (proxier *Proxier) syncProxyRules(reason syncReason) {
 		glog.Errorf("Error syncing healtcheck services: %v", err)
 	}
 	if err := proxier.healthChecker.SyncEndpoints(hcEndpoints); err != nil {
-		glog.Errorf("Error syncing healthcheck endoints: %v", err)
+		glog.Errorf("Error syncing healthcheck endpoints: %v", err)
 	}
 
 	// Finish housekeeping.
@@ -851,7 +851,7 @@ func (proxier *Proxier) ensureKubeServiceChain() {
 	}
 }
 
-// Join all words with spaces, terminate with newline and write to buf.
+// Join all words with spaces, terminate with newline and write to buff.
 func writeLine(buf *bytes.Buffer, words ...string) {
 	buf.WriteString(strings.Join(words, " ") + "\n")
 }

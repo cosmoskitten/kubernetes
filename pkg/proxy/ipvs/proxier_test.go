@@ -189,7 +189,7 @@ func TestNodePort(t *testing.T) {
 
 	fp.syncProxyRules(syncReasonForce)
 
-	// Tcheck ipvs service and destinations
+	// Check ipvs service and destinations
 	services, err := ipvs.GetServices()
 	if err != nil {
 		t.Errorf("Failed to get ipvs services, err: %v")
@@ -247,7 +247,7 @@ func TestNodePortNoEndpoint(t *testing.T) {
 
 	fp.syncProxyRules(syncReasonForce)
 
-	// Tcheck ipvs service and destinations
+	// Check ipvs service and destinations
 	services, err := ipvs.GetServices()
 	if err != nil {
 		t.Errorf("Failed to get ipvs services, err: %v")
