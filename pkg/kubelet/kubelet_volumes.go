@@ -69,6 +69,8 @@ func (kl *Kubelet) newVolumeMounterFromPlugins(spec *volume.Spec, pod *v1.Pod, o
 	if err != nil {
 		return nil, fmt.Errorf("can't use volume plugins for %s: %v", spec.Name(), err)
 	}
+
+	opts.Containerized = kl.kubeletConfiguration.Containerized
 	physicalMounter, err := plugin.NewMounter(spec, pod, opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to instantiate mounter for volume: %s using plugin: %s with a root cause: %v", spec.Name(), plugin.GetPluginName(), err)
@@ -79,8 +81,7 @@ func (kl *Kubelet) newVolumeMounterFromPlugins(spec *volume.Spec, pod *v1.Pod, o
 
 // cleanupOrphanedPodDirs removes the volumes of pods that should not be
 // running and that have no containers running.  Note that we roll up logs here since it runs in the main loop.
-func (kl *Kubelet) cleanupOrphanedPodDirs(
-	pods []*v1.Pod, runningPods []*kubecontainer.Pod) error {
+func (kl *Kubelet) cleanupOrphanedPodDirs(pods []*v1.Pod, runningPods []*kubecontainer.Pod) error {
 	allPods := sets.NewString()
 	for _, pod := range pods {
 		allPods.Insert(string(pod.UID))

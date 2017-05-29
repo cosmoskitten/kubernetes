@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -98,13 +99,47 @@ func (plugin *hostPathPlugin) GetAccessModes() []v1.PersistentVolumeAccessMode {
 	}
 }
 
-func (plugin *hostPathPlugin) NewMounter(spec *volume.Spec, pod *v1.Pod, _ volume.VolumeOptions) (volume.Mounter, error) {
+func (plugin *hostPathPlugin) NewMounter(spec *volume.Spec, pod *v1.Pod, opts volume.VolumeOptions) (volume.Mounter, error) {
 	hostPathVolumeSource, readOnly, err := getVolumeSource(spec)
 	if err != nil {
 		return nil, err
 	}
+
+	path := hostPathVolumeSource.Path
+	// A containerized kubelet would have difficulty creating directories.
+	// The implementation will likely respect the containerized flag, allowing it to be "/rootfs/" aware and
+	// thus operate as desired.
+	if opts.Containerized {
+		path += "/rootfs" + path
+	}
+
+	_, err = os.Stat(path)
+	notExist := os.IsNotExist(err)
+	switch hostPathVolumeSource.Type {
+	case "":
+		if notExist {
+			err = os.Mkdir(path, os.ModePerm)
+			if err != nil {
+				return nil, err
+			}
+		}
+	case "exists":
+		if notExist {
+			return nil, fmt.Errorf("Nothing exists at %s",
+				hostPathVolumeSource.Path)
+		}
+	case "file", "device", "socket", "directory":
+		if notExist {
+			return nil, fmt.Errorf("%s does not exist at %s",
+				strings.Title(hostPathVolumeSource.Type),
+				hostPathVolumeSource.Path)
+		}
+	case "new-directory", "character-device", "block-device", "new-file", "optional":
+		return nil, fmt.Errorf("%s is invalid volume type", hostPathVolumeSource.Type)
+	}
+
 	return &hostPathMounter{
-		hostPath: &hostPath{path: hostPathVolumeSource.Path},
+		hostPath: &hostPath{path: path},
 		readOnly: readOnly,
 	}, nil
 }
@@ -298,8 +333,7 @@ func (r *hostPathDeleter) Delete() error {
 	return os.RemoveAll(r.GetPath())
 }
 
-func getVolumeSource(
-	spec *volume.Spec) (*v1.HostPathVolumeSource, bool, error) {
+func getVolumeSource(spec *volume.Spec) (*v1.HostPathVolumeSource, bool, error) {
 	if spec.Volume != nil && spec.Volume.HostPath != nil {
 		return spec.Volume.HostPath, spec.ReadOnly, nil
 	} else if spec.PersistentVolume != nil &&

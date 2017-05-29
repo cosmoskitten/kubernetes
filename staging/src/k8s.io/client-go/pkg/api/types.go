@@ -588,6 +588,7 @@ const (
 // Host path volumes do not support ownership management or SELinux relabeling.
 type HostPathVolumeSource struct {
 	Path string
+	Type string
 }
 
 // Represents an empty directory for a pod.

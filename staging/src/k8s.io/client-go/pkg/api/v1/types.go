@@ -675,6 +675,7 @@ type HostPathVolumeSource struct {
 	// Path of the directory on the host.
 	// More info: https://kubernetes.io/docs/concepts/storage/volumes#hostpath
 	Path string `json:"path" protobuf:"bytes,1,opt,name=path"`
+	Type string `json:"type" protobuf:"bytes,2,opt,name=type"`
 }
 
 // Represents an empty directory for a pod.

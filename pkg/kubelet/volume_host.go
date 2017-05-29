@@ -36,10 +36,7 @@ import (
 //
 // kubelet - used by VolumeHost methods to expose kubelet specific parameters
 // plugins - used to initialize volumePluginMgr
-func NewInitializedVolumePluginMgr(
-	kubelet *Kubelet,
-	secretManager secret.Manager,
-	plugins []volume.VolumePlugin) (*volume.VolumePluginMgr, error) {
+func NewInitializedVolumePluginMgr(kubelet *Kubelet, secretManager secret.Manager, plugins []volume.VolumePlugin) (*volume.VolumePluginMgr, error) {
 	kvh := &kubeletVolumeHost{
 		kubelet:         kubelet,
 		volumePluginMgr: volume.VolumePluginMgr{},
@@ -80,11 +77,7 @@ func (kvh *kubeletVolumeHost) GetKubeClient() clientset.Interface {
 	return kvh.kubelet.kubeClient
 }
 
-func (kvh *kubeletVolumeHost) NewWrapperMounter(
-	volName string,
-	spec volume.Spec,
-	pod *v1.Pod,
-	opts volume.VolumeOptions) (volume.Mounter, error) {
+func (kvh *kubeletVolumeHost) NewWrapperMounter(volName string, spec volume.Spec, pod *v1.Pod, opts volume.VolumeOptions) (volume.Mounter, error) {
 	// The name of wrapper volume is set to "wrapped_{wrapped_volume_name}"
 	wrapperVolumeName := "wrapped_" + volName
 	if spec.Volume != nil {
