@@ -2780,12 +2780,17 @@
     "id": "v1.HostPathVolumeSource",
     "description": "Represents a host path mapped into a pod. Host path volumes do not support ownership management or SELinux relabeling.",
     "required": [
-     "path"
+     "path",
+     "type"
     ],
     "properties": {
      "path": {
       "type": "string",
       "description": "Path of the directory on the host. More info: https://kubernetes.io/docs/concepts/storage/volumes#hostpath"
+     },
+     "type": {
+      "type": "string",
+      "description": "Type for HostPath Volume More info: https://github.com/kubernetes/kubernetes/pull/34058"
      }
     }
    },
