@@ -151,6 +151,29 @@ var _ = framework.KubeDescribe("GPU [Serial]", func() {
 
 			By("Checking if the pod outputted Success to its logs")
 			framework.ExpectNoError(f.PodClient().MatchContainerOutput(podFailure.Name, podFailure.Name, "Success"))
+
+			By("checking allocatable gpus")
+			gpusAvailableBefore := getGPUsAvailable(f)
+
+			By("restarting the kubelet")
+			if stdout, err := exec.Command("sudo", "systemctl", "restart", "kubelet").CombinedOutput(); err != nil {
+				framework.Logf("Failed to trigger kubelet restart with systemd/systemctl: %v, stdout: %q", err, string(stdout))
+				if stdout, err = exec.Command("sudo", "service", "kubelet", "restart").CombinedOutput(); err != nil {
+					framework.Failf("Failed to trigger kubelet restart with upstart/service: %v, stdout: %q", err, string(stdout))
+				}
+			}
+			time.Sleep(20 * time.Second)
+
+			By("expecting the same number of allocatable gpus")
+			gpusAvailableAfter := getGPUsAvailable(f)
+			framework.ExpectNoError(gpusAvailableBefore == gpusAvailableAfter)
+
+			By("Creating a pod that will consume all GPUs")
+			podSuccess = makePod(getGPUsAvailable(f), "gpus-success")
+			podSuccess = f.PodClient().CreateSync(podSuccess)
+
+			By("Checking if the pod outputted Success to its logs")
+			framework.ExpectNoError(f.PodClient().MatchContainerOutput(podSuccess.Name, podSuccess.Name, "Success"))
 		})
 	})
 })
