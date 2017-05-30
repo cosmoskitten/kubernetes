@@ -584,10 +584,28 @@ const (
 	ClaimLost PersistentVolumeClaimPhase = "Lost"
 )
 
+type HostPathType string
+
+const (
+	// If nothing exists at the given path, an empty directory will be created there. Otherwise, behaves like HostPathExists
+	HostPathUnset HostPathType = ""
+	// If nothing exists at the given path, the pod will fail to run and provide an informative error message
+	HostPathExists HostPathType = "exists"
+	// If a file does not exist at the given path, the pod will fail to run and provide an informative error message
+	HostPathFile HostPathType = "file"
+	// If a block or character device does not exist at the given path, the pod will fail to run and provide an informative error message
+	HostPathDevice HostPathType = "device"
+	// If a socket does not exist at the given path, the pod will fail to run and provide an informative error message
+	HostPathSocket HostPathType = "socket"
+	// If a directory does not exist at the given path, the pod will fail to run and provide an informative error message
+	HostPathDirectory HostPathType = "directory"
+)
+
 // Represents a host path mapped into a pod.
 // Host path volumes do not support ownership management or SELinux relabeling.
 type HostPathVolumeSource struct {
 	Path string
+	Type HostPathType
 }
 
 // Represents an empty directory for a pod.
