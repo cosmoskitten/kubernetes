@@ -98,13 +98,47 @@ func (plugin *hostPathPlugin) GetAccessModes() []v1.PersistentVolumeAccessMode {
 	}
 }
 
-func (plugin *hostPathPlugin) NewMounter(spec *volume.Spec, pod *v1.Pod, _ volume.VolumeOptions) (volume.Mounter, error) {
+func (plugin *hostPathPlugin) NewMounter(spec *volume.Spec, pod *v1.Pod, opts volume.VolumeOptions) (volume.Mounter, error) {
 	hostPathVolumeSource, readOnly, err := getVolumeSource(spec)
 	if err != nil {
 		return nil, err
 	}
+
+	path := hostPathVolumeSource.Path
+	// A containerized kubelet would have difficulty creating directories.
+	// The implementation will likely respect the containerized flag, allowing it to be "/rootfs/" aware and
+	// thus operate as desired.
+	if opts.Containerized {
+		path += "/rootfs" + path
+	}
+
+	_, err = os.Stat(path)
+	notExist := os.IsNotExist(err)
+	switch hostPathVolumeSource.Type {
+	case v1.HostPathUnset:
+		if notExist {
+			err = os.Mkdir(path, os.ModePerm)
+			if err != nil {
+				return nil, err
+			}
+		}
+	case v1.HostPathExists:
+		if notExist {
+			return nil, fmt.Errorf("hostPath type check failed: %s does not exist",
+				hostPathVolumeSource.Path)
+		}
+	case v1.HostPathFile, v1.HostPathDevice, v1.HostPathSocket, v1.HostPathDirectory:
+		if notExist {
+			return nil, fmt.Errorf("%s does not exist at %s",
+				hostPathVolumeSource.Type,
+				hostPathVolumeSource.Path)
+		}
+	default:
+		return nil, fmt.Errorf("%s is invalid volume type", hostPathVolumeSource.Type)
+	}
+
 	return &hostPathMounter{
-		hostPath: &hostPath{path: hostPathVolumeSource.Path},
+		hostPath: &hostPath{path: path},
 		readOnly: readOnly,
 	}, nil
 }
