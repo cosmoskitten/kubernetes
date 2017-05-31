@@ -411,13 +411,11 @@ func writeFile(filename string, data []byte) error {
 	if err != nil {
 		return err
 	}
-	n, err := f.Write(data)
+	n, _ := f.Write(data)
 	if err == nil && n < len(data) {
 		err = io.ErrShortWrite
 	}
-	if err1 := f.Close(); err == nil {
-		err = err1
-	}
+	f.Close()
 	return err
 }
 
