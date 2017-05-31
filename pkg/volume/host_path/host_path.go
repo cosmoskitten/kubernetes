@@ -19,6 +19,7 @@ package host_path
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"regexp"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -112,29 +113,9 @@ func (plugin *hostPathPlugin) NewMounter(spec *volume.Spec, pod *v1.Pod, opts vo
 		path += "/rootfs" + path
 	}
 
-	_, err = os.Stat(path)
-	notExist := os.IsNotExist(err)
-	switch hostPathVolumeSource.Type {
-	case v1.HostPathUnset:
-		if notExist {
-			err = os.Mkdir(path, os.ModePerm)
-			if err != nil {
-				return nil, err
-			}
-		}
-	case v1.HostPathExists:
-		if notExist {
-			return nil, fmt.Errorf("hostPath type check failed: %s does not exist",
-				hostPathVolumeSource.Path)
-		}
-	case v1.HostPathFile, v1.HostPathDevice, v1.HostPathSocket, v1.HostPathDirectory:
-		if notExist {
-			return nil, fmt.Errorf("%s does not exist at %s",
-				hostPathVolumeSource.Type,
-				hostPathVolumeSource.Path)
-		}
-	default:
-		return nil, fmt.Errorf("%s is invalid volume type", hostPathVolumeSource.Type)
+	err = checkType(path, hostPathVolumeSource.Type)
+	if err != nil {
+		return nil, err
 	}
 
 	return &hostPathMounter{
@@ -332,8 +313,7 @@ func (r *hostPathDeleter) Delete() error {
 	return os.RemoveAll(r.GetPath())
 }
 
-func getVolumeSource(
-	spec *volume.Spec) (*v1.HostPathVolumeSource, bool, error) {
+func getVolumeSource(spec *volume.Spec) (*v1.HostPathVolumeSource, bool, error) {
 	if spec.Volume != nil && spec.Volume.HostPath != nil {
 		return spec.Volume.HostPath, spec.ReadOnly, nil
 	} else if spec.PersistentVolume != nil &&
@@ -342,4 +322,151 @@ func getVolumeSource(
 	}
 
 	return nil, false, fmt.Errorf("Spec does not reference an HostPath volume type")
+}
+
+type hostPathTypeChecker interface {
+	Exists() bool
+	IsFile() bool
+	MakeFile() error
+	IsDir() bool
+	MakeDir() error
+	IsBlock() bool
+	IsChar() bool
+	IsDevice() bool
+	IsSocket() bool
+}
+
+func getFileType(path string) (string, error) {
+	out, err := exec.Command("file", "-b", "--mime-type", path).CombinedOutput()
+	if err != nil {
+		return "", err
+	}
+	return string(out), nil
+}
+
+type osFileTypeChecker struct {
+	path   string
+	exists bool
+	info   os.FileInfo
+}
+
+func (ftc osFileTypeChecker) Exists() bool {
+	return ftc.exists
+}
+
+func (ftc osFileTypeChecker) IsFile() bool {
+	if !ftc.Exists() {
+		return false
+	}
+
+	return !ftc.info.IsDir()
+}
+
+func (ftc osFileTypeChecker) MakeFile() error {
+	f, err := os.Create(ftc.path)
+	defer f.Close()
+	return err
+}
+
+func (ftc osFileTypeChecker) IsDir() bool {
+	if !ftc.Exists() {
+		return false
+	}
+	return ftc.info.IsDir()
+}
+
+func (ftc osFileTypeChecker) MakeDir() error {
+	err := os.Mkdir(ftc.path, os.FileMode(0644))
+	return err
+}
+
+func (ftc osFileTypeChecker) IsBlock() bool {
+	const blockDevType string = "inode/blockdevice"
+	if !ftc.Exists() {
+		return false
+	}
+
+	mimeType, err := getFileType(ftc.path)
+	if err != nil {
+		return false
+	}
+	return mimeType == blockDevType
+}
+
+func (ftc osFileTypeChecker) IsChar() bool {
+	const charDevType string = "inode/chardevice"
+	if !ftc.Exists() {
+		return false
+	}
+
+	mimeType, err := getFileType(ftc.path)
+	if err != nil {
+		return false
+	}
+	return mimeType == charDevType
+}
+
+func (ftc osFileTypeChecker) IsDevice() bool {
+	return ftc.IsBlock() || ftc.IsChar()
+}
+
+func (ftc osFileTypeChecker) IsSocket() bool {
+	const socketType string = "inode/socket"
+	if !ftc.Exists() {
+		return false
+	}
+
+	mimeType, err := getFileType(ftc.path)
+	if err != nil {
+		return false
+	}
+	return mimeType == socketType
+}
+
+func newOSFileTypeChecker(path string) (hostPathTypeChecker, error) {
+	ftc := osFileTypeChecker{path: path}
+	info, err := os.Stat(path)
+	if err != nil {
+		ftc.info = info
+	}
+	ftc.exists = os.IsExist(err)
+	return ftc, err
+}
+
+func checkType(path string, pathType *v1.HostPathType) error {
+	ftc, err := newOSFileTypeChecker(path)
+	if err != nil {
+		return err
+	}
+	switch *pathType {
+	case v1.HostPathUnset:
+		if !ftc.Exists() {
+			return ftc.MakeDir()
+		}
+	case v1.HostPathExists:
+		if !ftc.Exists() {
+			return fmt.Errorf("hostPath type check failed: %s does not exist", path)
+		}
+	case v1.HostPathFile:
+		if !(ftc.Exists() && ftc.IsFile()) {
+			return fmt.Errorf("hostPath type check failed: %s is not a file", path)
+		}
+	case v1.HostPathDevice:
+		if !(ftc.Exists() && ftc.IsDevice()) {
+			return fmt.Errorf("hostPath type check failed: %s is not a device file", path)
+		}
+	case v1.HostPathSocket:
+		if !(ftc.Exists() && ftc.IsSocket()) {
+			return fmt.Errorf("hostPath type check failed: %s is not a socket file", path)
+		}
+	case v1.HostPathDirectory:
+		if !(ftc.Exists() && ftc.IsDir()) {
+			return fmt.Errorf("hostPath type check failed: %s is not a directory", path)
+		}
+	case v1.HostPathNewDir, v1.HostPathCharDev, v1.HostPathBlockDev, v1.HostPathNewFile, v1.HostPathOptional:
+		return fmt.Errorf("hostPath type check failed: %s is excluded", *pathType)
+	default:
+		return fmt.Errorf("%s is invalid volume type", *pathType)
+	}
+	return nil
 }

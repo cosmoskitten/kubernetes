@@ -672,18 +672,26 @@ const (
 type HostPathType string
 
 const (
-	// If nothing exists at the given path, an empty directory will be created there. Otherwise, behaves like HostPathExists
-	HostPathUnset HostPathType = ""
-	// If nothing exists at the given path, the pod will fail to run and provide an informative error message
-	HostPathExists HostPathType = "exists"
-	// If a file does not exist at the given path, the pod will fail to run and provide an informative error message
-	HostPathFile HostPathType = "file"
-	// If a block or character device does not exist at the given path, the pod will fail to run and provide an informative error message
-	HostPathDevice HostPathType = "device"
-	// If a socket does not exist at the given path, the pod will fail to run and provide an informative error message
-	HostPathSocket HostPathType = "socket"
-	// If a directory does not exist at the given path, the pod will fail to run and provide an informative error message
-	HostPathDirectory HostPathType = "directory"
+	// If nothing exists at the given path, an empty directory will be created there.
+	HostPathUnset HostPathType = "DirectoryOrCreate"
+	// A directory entry of any type must exist at the given path
+	HostPathExists HostPathType = "Exists"
+	// A file must exist at the given path
+	HostPathFile HostPathType = "File"
+	// A block or character device must exist at the given path
+	HostPathDevice HostPathType = "Device"
+	// A socket must exist at the given path
+	HostPathSocket HostPathType = "Socket"
+	// A directory must exist at the given path
+	HostPathDirectory HostPathType = "Directory"
+	HostPathNewDir    HostPathType = "NewDirectory"
+	// Granularity beyond HostPathDevice shouldn't matter often
+	HostPathCharDev HostPathType = "CharDevice"
+	// Granularity beyond HostPathDevice shouldn't matter often
+	HostPathBlockDev HostPathType = "BlockDevice"
+	HostPathNewFile  HostPathType = "NewFile"
+	// If a path does not exist, then do not create any container-mount at all
+	HostPathOptional HostPathType = "Optional"
 )
 
 // Represents a host path mapped into a pod.
@@ -693,9 +701,9 @@ type HostPathVolumeSource struct {
 	// More info: https://kubernetes.io/docs/concepts/storage/volumes#hostpath
 	Path string `json:"path" protobuf:"bytes,1,opt,name=path"`
 	// Type for HostPath Volume
-	// More info: https://github.com/kubernetes/kubernetes/pull/34058
+	// More info: https://kubernetes.io/docs/concepts/storage/volumes#hostpath
 	// +optional
-	Type HostPathType `json:"type" protobuf:"bytes,2,opt,name=type"`
+	Type *HostPathType `json:"type,omitempty" protobuf:"bytes,2,opt,name=type"`
 }
 
 // Represents an empty directory for a pod.

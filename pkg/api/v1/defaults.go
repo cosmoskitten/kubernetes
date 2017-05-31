@@ -371,3 +371,9 @@ func SetDefaults_ScaleIOVolumeSource(obj *ScaleIOVolumeSource) {
 		obj.FSType = "xfs"
 	}
 }
+
+func SetDefaults_HostPathVolumeSource(obj *HostPathVolumeSource) {
+	if *(obj.Type) == "" {
+		*(obj.Type) = HostPathUnset
+	}
+}
