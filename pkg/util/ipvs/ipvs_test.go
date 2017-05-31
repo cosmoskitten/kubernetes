@@ -16,23 +16,34 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+//----------------------------------
+//HOW TO RUN TEST: go test -ldflags "-X k8s.io/kubernetes/pkg/util/ipvs.isManualUser=true" -v ./pkg/util/ipvs/
+//----------------------------------
+
 package ipvs
 
 import (
 	_ "fmt"
 	"net"
+	"os/user"
 	"reflect"
 	"syscall"
 	"testing"
-	"os/user"
 
 	"github.com/docker/libnetwork/ipvs"
 	"k8s.io/kubernetes/pkg/util/dbus"
 	"k8s.io/kubernetes/pkg/util/exec"
 )
 
+var isManualUser string
+
 //canRunTest run the test only if the user is root or we are able to initalize IPVS kernel module, otherwise we skip it
 func canRunTest(t *testing.T) Interface {
+
+	if isManualUser != "true" {
+		t.Skipf("Can be run only manually, rerun as $go test -ldflags \"-X k8s.io/kubernetes/pkg/util/ipvs.isManualUser=true\" -v ./pkg/util/ipvs/")
+	}
+
 	curuser, err := user.Current()
 	if err != nil {
 		t.Errorf("Unable to get current user %v", err)
