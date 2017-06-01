@@ -591,7 +591,7 @@ func TestIPToInt(t *testing.T) {
 	}
 }
 
-var ServiceFuncTests = []Service{
+var ServiceFuncTests = []Service {
 	Service{
 		Address:   net.ParseIP("10.109.22.11"),
 		Protocol:  "TCP",
