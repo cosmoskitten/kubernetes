@@ -591,8 +591,8 @@ func TestIPToInt(t *testing.T) {
 	}
 }
 
-var ServiceFuncTests = []Service {
-	Service{
+var ServiceFuncTests = []Service{
+	{
 		Address:   net.ParseIP("10.109.22.11"),
 		Protocol:  "TCP",
 		Port:      13242,
@@ -600,7 +600,7 @@ var ServiceFuncTests = []Service {
 		Flags:     0,
 		Timeout:   0,
 	},
-	Service{
+	{
 		Address:   net.ParseIP("2012::beef"),
 		Protocol:  "UDP",
 		Port:      33434,
@@ -608,7 +608,7 @@ var ServiceFuncTests = []Service {
 		Flags:     1,
 		Timeout:   100,
 	},
-	Service{
+	{
 		Address:   net.ParseIP("10.108.23.44"),
 		Protocol:  "UDP",
 		Port:      12345,
@@ -709,12 +709,12 @@ func TestFlush(t *testing.T) {
 }
 
 var DestinationFuncTests = []Destination{
-	Destination{
+	{
 		Address: net.ParseIP("10.232.12.32"),
 		Port:    32144,
 		Weight:  1,
 	},
-	Destination{
+	{
 		Address: net.ParseIP("10.233.23.211"),
 		Port:    23123,
 		Weight:  1,
