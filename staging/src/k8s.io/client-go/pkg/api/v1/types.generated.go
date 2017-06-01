@@ -11075,11 +11075,12 @@ func (x *HostPathVolumeSource) CodecEncodeSelf(e *codec1978.Encoder) {
 			var yyq2 [2]bool
 			_, _, _ = yysep2, yyq2, yy2arr2
 			const yyr2 bool = false
+			yyq2[1] = x.Type != nil
 			var yynn2 int
 			if yyr2 || yy2arr2 {
 				r.EncodeArrayStart(2)
 			} else {
-				yynn2 = 2
+				yynn2 = 1
 				for _, b := range yyq2 {
 					if b {
 						yynn2++
@@ -11109,12 +11110,28 @@ func (x *HostPathVolumeSource) CodecEncodeSelf(e *codec1978.Encoder) {
 			}
 			if yyr2 || yy2arr2 {
 				z.EncSendContainerState(codecSelfer_containerArrayElem1234)
-				x.Type.CodecEncodeSelf(e)
+				if yyq2[1] {
+					if x.Type == nil {
+						r.EncodeNil()
+					} else {
+						yy7 := *x.Type
+						yy7.CodecEncodeSelf(e)
+					}
+				} else {
+					r.EncodeNil()
+				}
 			} else {
-				z.EncSendContainerState(codecSelfer_containerMapKey1234)
-				r.EncodeString(codecSelferC_UTF81234, string("type"))
-				z.EncSendContainerState(codecSelfer_containerMapValue1234)
-				x.Type.CodecEncodeSelf(e)
+				if yyq2[1] {
+					z.EncSendContainerState(codecSelfer_containerMapKey1234)
+					r.EncodeString(codecSelferC_UTF81234, string("type"))
+					z.EncSendContainerState(codecSelfer_containerMapValue1234)
+					if x.Type == nil {
+						r.EncodeNil()
+					} else {
+						yy9 := *x.Type
+						yy9.CodecEncodeSelf(e)
+					}
+				}
 			}
 			if yyr2 || yy2arr2 {
 				z.EncSendContainerState(codecSelfer_containerArrayEnd1234)
@@ -11191,10 +11208,14 @@ func (x *HostPathVolumeSource) codecDecodeSelfFromMap(l int, d *codec1978.Decode
 			}
 		case "type":
 			if r.TryDecodeAsNil() {
-				x.Type = ""
+				if x.Type != nil {
+					x.Type = nil
+				}
 			} else {
-				yyv6 := &x.Type
-				yyv6.CodecDecodeSelf(d)
+				if x.Type == nil {
+					x.Type = new(HostPathType)
+				}
+				x.Type.CodecDecodeSelf(d)
 			}
 		default:
 			z.DecStructFieldNotFound(-1, yys3)
@@ -11244,10 +11265,14 @@ func (x *HostPathVolumeSource) codecDecodeSelfFromArray(l int, d *codec1978.Deco
 	}
 	z.DecSendContainerState(codecSelfer_containerArrayElem1234)
 	if r.TryDecodeAsNil() {
-		x.Type = ""
+		if x.Type != nil {
+			x.Type = nil
+		}
 	} else {
-		yyv10 := &x.Type
-		yyv10.CodecDecodeSelf(d)
+		if x.Type == nil {
+			x.Type = new(HostPathType)
+		}
+		x.Type.CodecDecodeSelf(d)
 	}
 	for {
 		yyj7++

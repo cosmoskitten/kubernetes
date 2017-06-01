@@ -1212,7 +1212,7 @@ message HostPathVolumeSource {
   optional string path = 1;
 
   // Type for HostPath Volume
-  // More info: https://github.com/kubernetes/kubernetes/pull/34058
+  // More info: https://kubernetes.io/docs/concepts/storage/volumes#hostpath
   // +optional
   optional string type = 2;
 }
