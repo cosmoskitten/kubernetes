@@ -976,7 +976,6 @@ func (kl *Kubelet) validateNodeIP() error {
 		var ip net.IP
 		switch v := addr.(type) {
 		case *net.IPNet:
-			ip = v.IP
 		case *net.IPAddr:
 			ip = v.IP
 		}
