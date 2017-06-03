@@ -47,6 +47,7 @@ func newStorage(t *testing.T) (*REST, *StatusREST, *etcdtesting.EtcdTestServer) 
 }
 
 func validNewPersistentVolume(name string) *api.PersistentVolume {
+	typeVol := api.HostPathDirectoryOrCreate
 	pv := &api.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
@@ -57,7 +58,7 @@ func validNewPersistentVolume(name string) *api.PersistentVolume {
 			},
 			AccessModes: []api.PersistentVolumeAccessMode{api.ReadWriteOnce},
 			PersistentVolumeSource: api.PersistentVolumeSource{
-				HostPath: &api.HostPathVolumeSource{Path: "/foo"},
+				HostPath: &api.HostPathVolumeSource{Path: "/foo", Type: &typeVol},
 			},
 			PersistentVolumeReclaimPolicy: api.PersistentVolumeReclaimRetain,
 		},

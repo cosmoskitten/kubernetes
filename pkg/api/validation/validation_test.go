@@ -1001,6 +1001,7 @@ func newInt32(val int) *int32 {
 // type on its own, but we want to also make sure that the logic works through
 // the one-of wrapper, so we just do it all in one place.
 func TestValidateVolumes(t *testing.T) {
+	typeVol := api.HostPathSocket
 	testCases := []struct {
 		name      string
 		vol       api.Volume
@@ -1090,7 +1091,7 @@ func TestValidateVolumes(t *testing.T) {
 			errfield:  "hostPath",
 			errdetail: "may not specify more than 1 volume",
 		},
-		// HostPath
+		// HostPath Default
 		{
 			name: "valid HostPath",
 			vol: api.Volume{
@@ -1098,6 +1099,19 @@ func TestValidateVolumes(t *testing.T) {
 				VolumeSource: api.VolumeSource{
 					HostPath: &api.HostPathVolumeSource{
 						Path: "/mnt/path",
+					},
+				},
+			},
+		},
+		// HostPath Supported
+		{
+			name: "valid HostPath",
+			vol: api.Volume{
+				Name: "hostpath",
+				VolumeSource: api.VolumeSource{
+					HostPath: &api.HostPathVolumeSource{
+						Path: "/mnt/path",
+						Type: &typeVol,
 					},
 				},
 			},

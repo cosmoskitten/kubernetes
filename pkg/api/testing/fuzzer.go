@@ -413,6 +413,13 @@ func coreFuncs(t apitesting.TestingCommon) []interface{} {
 				r.Keyring = "/etc/ceph/keyring"
 			}
 		},
+		func(obj *api.HostPathVolumeSource, c fuzz.Continue) {
+			c.FuzzNoCustom(obj)
+			typeVol := api.HostPathDirectoryOrCreate
+			if obj.Path != "" && obj.Type == nil {
+				obj.Type = &typeVol
+			}
+		},
 		func(pv *api.PersistentVolume, c fuzz.Continue) {
 			c.FuzzNoCustom(pv) // fuzz self without calling this function again
 			types := []api.PersistentVolumePhase{api.VolumeAvailable, api.VolumePending, api.VolumeBound, api.VolumeReleased, api.VolumeFailed}

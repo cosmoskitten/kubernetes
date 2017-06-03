@@ -190,9 +190,11 @@ func TestPlugin(t *testing.T) {
 	if err != nil {
 		t.Errorf("Can't find the plugin by name")
 	}
+
+	typeVol := v1.HostPathDirectoryOrCreate
 	spec := &v1.Volume{
 		Name:         "vol1",
-		VolumeSource: v1.VolumeSource{HostPath: &v1.HostPathVolumeSource{Path: "/vol1"}},
+		VolumeSource: v1.VolumeSource{HostPath: &v1.HostPathVolumeSource{Path: "/vol1", Type: &typeVol}},
 	}
 	pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{UID: types.UID("poduid")}}
 	mounter, err := plug.NewMounter(volume.NewSpecFromVolume(spec), pod, volume.VolumeOptions{})
@@ -226,13 +228,14 @@ func TestPlugin(t *testing.T) {
 }
 
 func TestPersistentClaimReadOnlyFlag(t *testing.T) {
+	typeVol := v1.HostPathDirectoryOrCreate
 	pv := &v1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "pvA",
 		},
 		Spec: v1.PersistentVolumeSpec{
 			PersistentVolumeSource: v1.PersistentVolumeSource{
-				HostPath: &v1.HostPathVolumeSource{Path: "foo"},
+				HostPath: &v1.HostPathVolumeSource{Path: "foo", Type: &typeVol},
 			},
 			ClaimRef: &v1.ObjectReference{
 				Name: "claimA",
