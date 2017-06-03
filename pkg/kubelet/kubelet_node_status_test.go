@@ -19,6 +19,7 @@ package kubelet
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	goruntime "runtime"
 	"sort"
 	"strconv"
@@ -960,4 +961,45 @@ func TestUpdateNewNodeStatusTooLargeReservation(t *testing.T) {
 	updatedNode, err := applyNodeStatusPatch(&existingNode, actions[1].(core.PatchActionImpl).GetPatch())
 	assert.NoError(t, err)
 	assert.True(t, apiequality.Semantic.DeepEqual(expectedNode.Status.Allocatable, updatedNode.Status.Allocatable), "%s", diff.ObjectDiff(expectedNode.Status.Allocatable, updatedNode.Status.Allocatable))
+}
+
+func TestValidateNodeIPParam(t *testing.T) {
+	testKubelet := newTestKubelet(t, false /* controllerAttachDetachEnabled */)
+	defer testKubelet.Cleanup()
+	kubelet := testKubelet.kubelet
+	tests := []struct {
+		nodeIP   string
+		success  bool
+		testName string
+	}{
+		{
+			nodeIP:   "",
+			success:  true,
+			testName: "IP not set",
+		},
+		{
+			nodeIP:   "127.0.0.1",
+			success:  false,
+			testName: "loopback address",
+		},
+		{
+			nodeIP:   "FE80::0202:B3FF:FE1E:8329",
+			success:  false,
+			testName: "IPv6 address",
+		},
+		{
+			nodeIP:   "1.2.3.4",
+			success:  false,
+			testName: "IPv4 address that doesn't belong to host",
+		},
+	}
+	for _, test := range tests {
+		kubelet.nodeIP = net.ParseIP(test.nodeIP)
+		err := kubelet.validateNodeIP()
+		if test.success {
+			assert.NoError(t, err, "test %s", test.testName)
+		} else {
+			assert.Error(t, err, fmt.Sprintf("test %s", test.testName))
+		}
+	}
 }
