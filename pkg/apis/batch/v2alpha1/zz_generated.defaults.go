@@ -41,6 +41,9 @@ func SetObjectDefaults_CronJob(in *CronJob) {
 	for i := range in.Spec.JobTemplate.Spec.Template.Spec.Volumes {
 		a := &in.Spec.JobTemplate.Spec.Template.Spec.Volumes[i]
 		v1.SetDefaults_Volume(a)
+		if a.VolumeSource.HostPath != nil {
+			v1.SetDefaults_HostPathVolumeSource(a.VolumeSource.HostPath)
+		}
 		if a.VolumeSource.Secret != nil {
 			v1.SetDefaults_SecretVolumeSource(a.VolumeSource.Secret)
 		}
@@ -181,6 +184,9 @@ func SetObjectDefaults_JobTemplate(in *JobTemplate) {
 	for i := range in.Template.Spec.Template.Spec.Volumes {
 		a := &in.Template.Spec.Template.Spec.Volumes[i]
 		v1.SetDefaults_Volume(a)
+		if a.VolumeSource.HostPath != nil {
+			v1.SetDefaults_HostPathVolumeSource(a.VolumeSource.HostPath)
+		}
 		if a.VolumeSource.Secret != nil {
 			v1.SetDefaults_SecretVolumeSource(a.VolumeSource.Secret)
 		}

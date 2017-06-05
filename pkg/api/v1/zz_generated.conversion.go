@@ -1820,6 +1820,7 @@ func Convert_api_HostAlias_To_v1_HostAlias(in *api.HostAlias, out *HostAlias, s 
 
 func autoConvert_v1_HostPathVolumeSource_To_api_HostPathVolumeSource(in *HostPathVolumeSource, out *api.HostPathVolumeSource, s conversion.Scope) error {
 	out.Path = in.Path
+	out.Type = (*api.HostPathType)(unsafe.Pointer(in.Type))
 	return nil
 }
 
@@ -1830,6 +1831,7 @@ func Convert_v1_HostPathVolumeSource_To_api_HostPathVolumeSource(in *HostPathVol
 
 func autoConvert_api_HostPathVolumeSource_To_v1_HostPathVolumeSource(in *api.HostPathVolumeSource, out *HostPathVolumeSource, s conversion.Scope) error {
 	out.Path = in.Path
+	out.Type = (*HostPathType)(unsafe.Pointer(in.Type))
 	return nil
 }
 

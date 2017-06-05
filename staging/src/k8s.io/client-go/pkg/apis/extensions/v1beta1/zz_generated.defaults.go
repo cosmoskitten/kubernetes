@@ -46,6 +46,9 @@ func SetObjectDefaults_DaemonSet(in *DaemonSet) {
 	for i := range in.Spec.Template.Spec.Volumes {
 		a := &in.Spec.Template.Spec.Volumes[i]
 		v1.SetDefaults_Volume(a)
+		if a.VolumeSource.HostPath != nil {
+			v1.SetDefaults_HostPathVolumeSource(a.VolumeSource.HostPath)
+		}
 		if a.VolumeSource.Secret != nil {
 			v1.SetDefaults_SecretVolumeSource(a.VolumeSource.Secret)
 		}
@@ -187,6 +190,9 @@ func SetObjectDefaults_Deployment(in *Deployment) {
 	for i := range in.Spec.Template.Spec.Volumes {
 		a := &in.Spec.Template.Spec.Volumes[i]
 		v1.SetDefaults_Volume(a)
+		if a.VolumeSource.HostPath != nil {
+			v1.SetDefaults_HostPathVolumeSource(a.VolumeSource.HostPath)
+		}
 		if a.VolumeSource.Secret != nil {
 			v1.SetDefaults_SecretVolumeSource(a.VolumeSource.Secret)
 		}
@@ -339,6 +345,9 @@ func SetObjectDefaults_ReplicaSet(in *ReplicaSet) {
 	for i := range in.Spec.Template.Spec.Volumes {
 		a := &in.Spec.Template.Spec.Volumes[i]
 		v1.SetDefaults_Volume(a)
+		if a.VolumeSource.HostPath != nil {
+			v1.SetDefaults_HostPathVolumeSource(a.VolumeSource.HostPath)
+		}
 		if a.VolumeSource.Secret != nil {
 			v1.SetDefaults_SecretVolumeSource(a.VolumeSource.Secret)
 		}

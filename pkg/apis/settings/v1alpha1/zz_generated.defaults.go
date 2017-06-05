@@ -46,6 +46,9 @@ func SetObjectDefaults_PodPreset(in *PodPreset) {
 	for i := range in.Spec.Volumes {
 		a := &in.Spec.Volumes[i]
 		v1.SetDefaults_Volume(a)
+		if a.VolumeSource.HostPath != nil {
+			v1.SetDefaults_HostPathVolumeSource(a.VolumeSource.HostPath)
+		}
 		if a.VolumeSource.Secret != nil {
 			v1.SetDefaults_SecretVolumeSource(a.VolumeSource.Secret)
 		}
