@@ -64,7 +64,7 @@ var (
 	// signalToResource maps a Signal to its associated Resource.
 	signalToResource map[evictionapi.Signal]v1.ResourceName
 	// resourceToSignal maps a Resource to its associated Signal
-	resourceToSignal map[v1.ResourceName]evictionapi.Signal
+	resourceToSignal map[v1.ResourceName][]evictionapi.Signal
 )
 
 func init() {
@@ -88,13 +88,13 @@ func init() {
 	signalToResource[evictionapi.SignalNodeFsAvailable] = resourceNodeFs
 	signalToResource[evictionapi.SignalNodeFsInodesFree] = resourceNodeFsInodes
 
-	resourceToSignal = map[v1.ResourceName]evictionapi.Signal{}
+	// maps resource to signals (one resource might map to multiple signals)
+	resourceToSignal = map[v1.ResourceName][]evictionapi.Signal{}
 	for key, value := range signalToResource {
-		resourceToSignal[value] = key
+		signals, _ := resourceToSignal[value]
+		signals = append(signals, key)
+		resourceToSignal[value] = signals
 	}
-	// Hard-code here to make sure resourceNodeFs maps to evictionapi.SignalNodeFsAvailable
-	// (TODO) resourceToSignal is a map from resource name to a list of signals
-	resourceToSignal[resourceNodeFs] = evictionapi.SignalNodeFsAvailable
 }
 
 // validSignal returns true if the signal is supported.
