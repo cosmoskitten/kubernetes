@@ -85,6 +85,11 @@ func NewCmdForPlugin(f cmdutil.Factory, plugin *plugins.Plugin, runner plugins.P
 				return
 			}
 
+			clientConfig, err := f.ClientConfig()
+			cmdutil.CheckErr(err)
+
+			proxier := plugins.NewProxier(clientConfig)
+
 			envProvider := &plugins.MultiEnvProvider{
 				&plugins.PluginCallerEnvProvider{},
 				&plugins.OSEnvProvider{},
@@ -97,6 +102,7 @@ func NewCmdForPlugin(f cmdutil.Factory, plugin *plugins.Plugin, runner plugins.P
 				&factoryAttrsPluginEnvProvider{
 					factory: f,
 				},
+				proxier,
 			}
 
 			runningContext := plugins.RunningContext{
@@ -106,6 +112,11 @@ func NewCmdForPlugin(f cmdutil.Factory, plugin *plugins.Plugin, runner plugins.P
 				Args:        args,
 				EnvProvider: envProvider,
 				WorkingDir:  plugin.Dir,
+			}
+
+			if plugin.ProxyAPI {
+				proxier.Start()
+				defer proxier.Stop()
 			}
 
 			if err := runner.Run(plugin, runningContext); err != nil {
