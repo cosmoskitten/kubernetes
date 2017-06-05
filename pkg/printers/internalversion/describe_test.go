@@ -1484,3 +1484,81 @@ func TestDescribeResourceQuota(t *testing.T) {
 		}
 	}
 }
+
+func TestDescribeNetworkPolicies(t *testing.T) {
+	expectedOut := `Name:           access-backend
+Namespace:      default
+Created on:     2017-06-04 21:45:56 -0700 PDT
+Labels:         <none>
+Annotations:    <none>
+Spec:
+  Pod Selector:     foo in (bar1,bar2),foo2 notin (bar1,bar2),id=app1,id2=app3
+  Allowing ingress traffic:
+    To Port: 80/TCP
+    To Port: 82/TCP
+    From Pod Selector: id=app2,id2=app3
+    From Namespace Selector: id=app2,id2=app3
+    From Namespace Selector: foo in (bar1,bar2),id=app2,id2=app3
+    ----------
+    To Port: <any> (traffic allowed to all ports)
+    From: <any> (traffic not restricted by source)`
+
+	port80 := intstr.FromInt(80)
+	port82 := intstr.FromInt(80)
+	protoTCP := v1.ProtocolTCP
+
+	versionedFake := versionedfake.NewSimpleClientset(&v1beta1.NetworkPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "network-policy-1",
+		},
+		Spec: v1beta1.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"id1": "app1",
+					"id2": "app2",
+				},
+				MatchExpressions: []metav1.LabelSelectorRequirement{
+					{Key: "foo", Operator: "In", Values: []string{"bar1", "bar2"}},
+					{Key: "foo2", Operator: "NotIn", Values: []string{"bar1", "bar2"}},
+				},
+			},
+			Ingress: []v1beta1.NetworkPolicyIngressRule{
+				{
+					Ports: []v1beta1.NetworkPolicyPort{
+						{Port: &port80},
+						{Port: &port82, Protocol: &protoTCP},
+					},
+					From: []v1beta1.NetworkPolicyPeer{
+						{
+							PodSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"id1": "app1",
+									"id2": "app2",
+								},
+							},
+							NamespaceSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"id1": "app1",
+									"id2": "app2",
+								},
+								MatchExpressions: []metav1.LabelSelectorRequirement{
+									{Key: "foo", Operator: "In", Values: []string{"bar1", "bar2"}},
+									{Key: "foo2", Operator: "NotIn", Values: []string{"bar1", "bar2"}},
+								},
+							},
+						},
+					},
+				},
+				{},
+			},
+		},
+	})
+	d := NetworkPolicyDescriber{versionedFake}
+	out, err := d.Describe("", "network-policy-1", printers.DescriberSettings{})
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if out != expectedOut {
+		t.Errorf("unexpected out: %s", out)
+	}
+}
