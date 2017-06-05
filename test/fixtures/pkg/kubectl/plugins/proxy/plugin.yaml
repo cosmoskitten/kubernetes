@@ -1,0 +1,4 @@
+name: proxy
+shortDesc: "The API aware proxy overlord"
+command: "./proxy.sh"
+proxyAPI: true
