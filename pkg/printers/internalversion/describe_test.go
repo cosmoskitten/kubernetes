@@ -36,6 +36,7 @@ import (
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/apis/autoscaling"
 	"k8s.io/kubernetes/pkg/apis/extensions"
+	"k8s.io/kubernetes/pkg/apis/networking"
 	"k8s.io/kubernetes/pkg/apis/policy"
 	"k8s.io/kubernetes/pkg/apis/storage"
 	versionedfake "k8s.io/kubernetes/pkg/client/clientset_generated/clientset/fake"
@@ -229,7 +230,7 @@ func TestPodDescribeResultsSorted(t *testing.T) {
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
-	VerifyDatesInOrder(out, "\n" /* rowDelimiter */, "\t" /* columnDelimiter */, t)
+	VerifyDatesInOrder(out, "\n" /* rowDelimiter */, "	" /* columnDelimiter */, t)
 }
 
 // VerifyDatesInOrder checks the start of each line for a RFC1123Z date
@@ -352,7 +353,7 @@ func TestDescribeContainers(t *testing.T) {
 				Ready:        true,
 				RestartCount: 7,
 			},
-			expectedElements: []string{"test", "State", "Waiting", "Ready", "True", "Restart Count", "7", "Image", "image", "envname", "xyz", "a123\tConfigMap\tOptional: false"},
+			expectedElements: []string{"test", "State", "Waiting", "Ready", "True", "Restart Count", "7", "Image", "image", "envname", "xyz", "a123	ConfigMap	Optional: false"},
 		},
 		{
 			container: api.Container{Name: "test", Image: "image", Env: []api.EnvVar{{Name: "envname", Value: "xyz"}}, EnvFrom: []api.EnvFromSource{{Prefix: "p_", ConfigMapRef: &api.ConfigMapEnvSource{LocalObjectReference: api.LocalObjectReference{Name: "a123"}}}}},
@@ -361,7 +362,7 @@ func TestDescribeContainers(t *testing.T) {
 				Ready:        true,
 				RestartCount: 7,
 			},
-			expectedElements: []string{"test", "State", "Waiting", "Ready", "True", "Restart Count", "7", "Image", "image", "envname", "xyz", "a123\tConfigMap with prefix 'p_'\tOptional: false"},
+			expectedElements: []string{"test", "State", "Waiting", "Ready", "True", "Restart Count", "7", "Image", "image", "envname", "xyz", "a123	ConfigMap with prefix 'p_'	Optional: false"},
 		},
 		{
 			container: api.Container{Name: "test", Image: "image", Env: []api.EnvVar{{Name: "envname", Value: "xyz"}}, EnvFrom: []api.EnvFromSource{{ConfigMapRef: &api.ConfigMapEnvSource{Optional: &trueVal, LocalObjectReference: api.LocalObjectReference{Name: "a123"}}}}},
@@ -370,7 +371,7 @@ func TestDescribeContainers(t *testing.T) {
 				Ready:        true,
 				RestartCount: 7,
 			},
-			expectedElements: []string{"test", "State", "Waiting", "Ready", "True", "Restart Count", "7", "Image", "image", "envname", "xyz", "a123\tConfigMap\tOptional: true"},
+			expectedElements: []string{"test", "State", "Waiting", "Ready", "True", "Restart Count", "7", "Image", "image", "envname", "xyz", "a123	ConfigMap	Optional: true"},
 		},
 		{
 			container: api.Container{Name: "test", Image: "image", Env: []api.EnvVar{{Name: "envname", Value: "xyz"}}, EnvFrom: []api.EnvFromSource{{SecretRef: &api.SecretEnvSource{LocalObjectReference: api.LocalObjectReference{Name: "a123"}, Optional: &trueVal}}}},
@@ -379,7 +380,7 @@ func TestDescribeContainers(t *testing.T) {
 				Ready:        true,
 				RestartCount: 7,
 			},
-			expectedElements: []string{"test", "State", "Waiting", "Ready", "True", "Restart Count", "7", "Image", "image", "envname", "xyz", "a123\tSecret\tOptional: true"},
+			expectedElements: []string{"test", "State", "Waiting", "Ready", "True", "Restart Count", "7", "Image", "image", "envname", "xyz", "a123	Secret	Optional: true"},
 		},
 		{
 			container: api.Container{Name: "test", Image: "image", Env: []api.EnvVar{{Name: "envname", Value: "xyz"}}, EnvFrom: []api.EnvFromSource{{Prefix: "p_", SecretRef: &api.SecretEnvSource{LocalObjectReference: api.LocalObjectReference{Name: "a123"}}}}},
@@ -388,7 +389,7 @@ func TestDescribeContainers(t *testing.T) {
 				Ready:        true,
 				RestartCount: 7,
 			},
-			expectedElements: []string{"test", "State", "Waiting", "Ready", "True", "Restart Count", "7", "Image", "image", "envname", "xyz", "a123\tSecret with prefix 'p_'\tOptional: false"},
+			expectedElements: []string{"test", "State", "Waiting", "Ready", "True", "Restart Count", "7", "Image", "image", "envname", "xyz", "a123	Secret with prefix 'p_'	Optional: false"},
 		},
 		// Command
 		{
@@ -1344,19 +1345,19 @@ func TestPrintLabelsMultiline(t *testing.T) {
 	}{
 		{
 			annotations: map[string]string{"col1": "asd", "COL2": "zxc"},
-			expectPrint: "Annotations:\tCOL2=zxc\n\tcol1=asd\n",
+			expectPrint: "Annotations:	COL2=zxc\n	col1=asd\n",
 		},
 		{
 			annotations: map[string]string{"MaxLenAnnotation": maxLenAnnotationStr[17:]},
-			expectPrint: "Annotations:\t" + maxLenAnnotationStr + "\n",
+			expectPrint: "Annotations:	" + maxLenAnnotationStr + "\n",
 		},
 		{
 			annotations: map[string]string{"MaxLenAnnotation": maxLenAnnotationStr[17:] + "1"},
-			expectPrint: "Annotations:\t" + maxLenAnnotationStr + "...\n",
+			expectPrint: "Annotations:	" + maxLenAnnotationStr + "...\n",
 		},
 		{
 			annotations: map[string]string{},
-			expectPrint: "Annotations:\t<none>\n",
+			expectPrint: "Annotations:	<none>\n",
 		},
 	}
 	for i, testCase := range testCases {
@@ -1393,7 +1394,7 @@ URL:	http://localhost
 `,
 		},
 		{
-			unexpected: "\nDummy 1:\tpresent\n",
+			unexpected: "\nDummy 1:	present\n",
 		},
 		{
 			unexpected: "Dummy 1",
@@ -1490,5 +1491,99 @@ func TestDescribeResourceQuota(t *testing.T) {
 		if !strings.Contains(out, expected) {
 			t.Errorf("expected to find %q in output: %q", expected, out)
 		}
+	}
+}
+
+func TestDescribeNetworkPolicies(t *testing.T) {
+	expectedTime, err := time.Parse("2006-01-02 15:04:05 Z0700 MST", "2017-06-04 21:45:56 -0700 PDT")
+	if err != nil {
+		t.Errorf("unable to parse time %q error: %s", err)
+	}
+	expectedOut := `Name:		network-policy-1
+Namespace:	default
+Created on:	2017-06-04 21:45:56 -0700 PDT
+Labels:		<none>
+Annotations:	<none>
+Spec:
+  Pod Selector:     foo in (bar1,bar2),foo2 notin (bar1,bar2),id1=app1,id2=app2
+  Allowing ingress traffic:
+    To Port: 80/TCP
+    To Port: 82/TCP
+    From Pod Selector: id=app2,id2=app3
+    From Namespace Selector: id=app2,id2=app3
+    From Namespace Selector: foo in (bar1,bar2),id=app2,id2=app3
+    ----------
+    To Port: <any> (traffic allowed to all ports)
+    From: <any> (traffic not restricted by source)
+`
+
+	port80 := intstr.FromInt(80)
+	port82 := intstr.FromInt(82)
+	protoTCP := api.ProtocolTCP
+
+	versionedFake := fake.NewSimpleClientset(&networking.NetworkPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:              "network-policy-1",
+			Namespace:         "default",
+			CreationTimestamp: metav1.NewTime(expectedTime),
+		},
+		Spec: networking.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"id1": "app1",
+					"id2": "app2",
+				},
+				MatchExpressions: []metav1.LabelSelectorRequirement{
+					{Key: "foo", Operator: "In", Values: []string{"bar1", "bar2"}},
+					{Key: "foo2", Operator: "NotIn", Values: []string{"bar1", "bar2"}},
+				},
+			},
+			Ingress: []networking.NetworkPolicyIngressRule{
+				{
+					Ports: []networking.NetworkPolicyPort{
+						{Port: &port80},
+						{Port: &port82, Protocol: &protoTCP},
+					},
+					From: []networking.NetworkPolicyPeer{
+						{
+							PodSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"id":  "app2",
+									"id2": "app3",
+								},
+							},
+						},
+						{
+							NamespaceSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"id":  "app2",
+									"id2": "app3",
+								},
+							},
+						},
+						{
+							NamespaceSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"id":  "app2",
+									"id2": "app3",
+								},
+								MatchExpressions: []metav1.LabelSelectorRequirement{
+									{Key: "foo", Operator: "In", Values: []string{"bar1", "bar2"}},
+								},
+							},
+						},
+					},
+				},
+				{},
+			},
+		},
+	})
+	d := NetworkPolicyDescriber{versionedFake}
+	out, err := d.Describe("", "network-policy-1", printers.DescriberSettings{})
+	if err != nil {
+		t.Errorf("unexpected error: %s", err)
+	}
+	if out != expectedOut {
+		t.Errorf("want:\n%s\ngot:\n%s", expectedOut, out)
 	}
 }
