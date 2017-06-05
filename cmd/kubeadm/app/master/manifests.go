@@ -125,7 +125,7 @@ func WriteStaticPodManifests(cfg *kubeadmapi.MasterConfiguration) error {
 			Command: getEtcdCommand(cfg),
 			Image:   images.GetCoreImage(images.KubeEtcdImage, cfg, kubeadmapi.GlobalEnvParams.EtcdImage),
 			Env: []api.EnvVar{
-				api.EnvVar{
+				{
 					Name: "MY_POD_IP",
 					ValueFrom: &api.EnvVarSource{
 						FieldRef: &api.ObjectFieldSelector{
@@ -392,12 +392,12 @@ func getAPIServerCommand(cfg *kubeadmapi.MasterConfiguration, selfHosted bool, k
 	}
 
 	// Check if the user decided to use an external etcd cluster
-	var etcdIPs string
+	var etcdURLs string
 	if selfHosted {
-		etcdIPs += fmt.Sprintf("http://%s:2379,", cfg.Etcd.Cluster.ServiceIP)
+		etcdURLs += fmt.Sprintf("http://%s:2379,", cfg.Etcd.Cluster.ServiceIP)
 	}
-	etcdIPs += chooseEtcdEndpoints(cfg)
-	command = append(command, fmt.Sprintf("--etcd-servers=%s", etcdIPs))
+	etcdURLs += chooseEtcdEndpoints(cfg)
+	command = append(command, fmt.Sprintf("--etcd-servers=%s", etcdURLs))
 
 	// Is etcd secured?
 	if cfg.Etcd.CAFile != "" {

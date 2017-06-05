@@ -24,6 +24,7 @@ go_library(
         "//cmd/kubeadm/app/constants:go_default_library",
         "//cmd/kubeadm/app/images:go_default_library",
         "//cmd/kubeadm/app/master/spec:go_default_library",
+        "//cmd/kubeadm/app/phases/certs/pkiutil:go_default_library",
         "//cmd/kubeadm/app/util/kubeconfig:go_default_library",
         "//pkg/kubeapiserver/authorizer/modes:go_default_library",
         "//pkg/kubectl/cmd/util:go_default_library",
@@ -44,12 +45,16 @@ go_library(
         "//vendor/k8s.io/client-go/pkg/apis/rbac/v1beta1:go_default_library",
         "//vendor/k8s.io/client-go/rest:go_default_library",
         "//vendor/k8s.io/client-go/tools/clientcmd:go_default_library",
+        "//vendor/k8s.io/client-go/util/cert:go_default_library",
     ],
 )
 
 go_test(
     name = "go_default_test",
-    srcs = ["manifests_test.go"],
+    srcs = [
+        "manifests_test.go",
+        "selfhosted_proxy_test.go",
+    ],
     library = ":go_default_library",
     tags = ["automanaged"],
     deps = [

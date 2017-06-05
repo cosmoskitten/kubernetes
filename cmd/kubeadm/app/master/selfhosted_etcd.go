@@ -18,6 +18,7 @@ package master
 
 import (
 	"context"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"os"
@@ -40,9 +41,17 @@ import (
 	rbac "k8s.io/client-go/pkg/apis/rbac/v1beta1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	certutil "k8s.io/client-go/util/cert"
 	kubeadmapi "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm"
 	kubeadmconstants "k8s.io/kubernetes/cmd/kubeadm/app/constants"
 	"k8s.io/kubernetes/cmd/kubeadm/app/images"
+	"k8s.io/kubernetes/cmd/kubeadm/app/phases/certs/pkiutil"
+)
+
+const (
+	peerSecret     = "etcd-server-peer-tls"
+	clientSecret   = "etcd-server-client-tls"
+	operatorSecret = "operator-etcd-client-tls"
 )
 
 func launchEtcdOperator(cfg *kubeadmapi.MasterConfiguration, client *clientset.Clientset) error {
@@ -92,9 +101,9 @@ func CreateSelfHostedEtcdCluster(cfg *kubeadmapi.MasterConfiguration, client *cl
 	}
 	fmt.Printf("[self-hosted] Boot IP for etcd is %s\n", seedPodIP)
 
-	// TODO: Add etcd TLS. The etcd-operator accepts a series of secrets that are
-	// used for encrypted comms for etcd->etcd, client->etcd and operator->etcd.
-	// These should probably be automatically generated for users.
+	if err := createTLSAssets(client); err != nil {
+		return err
+	}
 
 	clusterData := getEtcdClusterData(cfg, seedPodIP)
 	fmt.Println("[self-hosted] Sending TPR cluster data")
@@ -164,6 +173,69 @@ func CreateSelfHostedEtcdCluster(cfg *kubeadmapi.MasterConfiguration, client *cl
 	return nil
 }
 
+func createTLSAssets(client *clientset.Clientset) error {
+	if err := createTLSSecret(client, operatorSecret, "etcd", []string{}); err != nil {
+		return err
+	}
+
+	peerDNSNames := []string{
+		fmt.Sprintf("*.%s.%s.svc.cluster.local", etcdCluster, metav1.NamespaceSystem),
+	}
+	if err := createTLSSecret(client, peerSecret, "peer", peerDNSNames); err != nil {
+		return err
+	}
+
+	clientDNSNames := []string{
+		fmt.Sprintf("*.%s.%s.svc.cluster.local", etcdCluster, metav1.NamespaceSystem),
+		fmt.Sprintf("*.%s-client.%s.svc.cluster.local", etcdCluster, metav1.NamespaceSystem),
+	}
+	if err := createTLSSecret(client, clientSecret, "client", clientDNSNames); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func createTLSSecret(client *clientset.Clientset, name, prefix string, dnsNames []string) error {
+	caCert, caKey, err := pkiutil.NewCertificateAuthority()
+	if err != nil {
+		return err
+	}
+	config := certutil.Config{
+		CommonName: name,
+		Usages:     []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+	}
+	if len(dnsNames) > 0 {
+		config.AltNames = certutil.AltNames{DNSNames: dnsNames}
+	}
+	cert, key, err := pkiutil.NewCertAndKey(caCert, caKey, config)
+	if err != nil {
+		return err
+	}
+
+	secret := &v1.Secret{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "extensions/v1beta1",
+			Kind:       "Secret",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: metav1.NamespaceSystem,
+		},
+		Data: map[string][]byte{
+			fmt.Sprintf("%s-crt.pem", prefix):    certutil.EncodeCertPEM(cert),
+			fmt.Sprintf("%s-key.pem", prefix):    certutil.EncodePrivateKeyPEM(key),
+			fmt.Sprintf("%s-ca-crt.pem", prefix): certutil.EncodeCertPEM(caCert),
+		},
+	}
+
+	if _, err := client.CoreV1().Secrets(metav1.NamespaceSystem).Create(secret); err != nil {
+		return fmt.Errorf("Could not create %s secret: %#v", name, err)
+	}
+
+	return nil
+}
+
 func getEtcdClusterData(cfg *kubeadmapi.MasterConfiguration, seedPodIP string) *spec.Cluster {
 	return &spec.Cluster{
 		TypeMeta: metav1.TypeMeta{
@@ -183,6 +255,15 @@ func getEtcdClusterData(cfg *kubeadmapi.MasterConfiguration, seedPodIP string) *
 			Pod: &spec.PodPolicy{
 				NodeSelector: map[string]string{kubeadmconstants.LabelNodeRoleMaster: ""},
 				Tolerations:  []v1.Toleration{kubeadmconstants.MasterToleration},
+			},
+			TLS: &spec.TLSPolicy{
+				Static: &spec.StaticTLS{
+					OperatorSecret: operatorSecret,
+					Member: &spec.MemberSecret{
+						PeerSecret:   peerSecret,
+						ClientSecret: clientSecret,
+					},
+				},
 			},
 		},
 	}
@@ -296,7 +377,7 @@ func getEtcdService(cfg *kubeadmapi.MasterConfiguration) v1.Service {
 			},
 			ClusterIP: cfg.Etcd.Cluster.ServiceIP,
 			Ports: []v1.ServicePort{
-				v1.ServicePort{Name: "client", Port: 2379, Protocol: "TCP"},
+				{Name: "client", Port: 2379, Protocol: "TCP"},
 			},
 		},
 	}
@@ -318,7 +399,7 @@ func getEtcdClusterRoleBinding() rbac.ClusterRoleBinding {
 			Name:     etcdOperator,
 		},
 		Subjects: []rbac.Subject{
-			rbac.Subject{
+			{
 				Kind:      "ServiceAccount",
 				Name:      etcdOperator,
 				Namespace: metav1.NamespaceSystem,
@@ -350,29 +431,29 @@ func getEtcdClusterRole() rbac.ClusterRole {
 			Name: etcdOperator,
 		},
 		Rules: []rbac.PolicyRule{
-			rbac.PolicyRule{
+			{
 				APIGroups: []string{"etcd.coreos.com"},
 				Resources: []string{"clusters"},
 				Verbs:     []string{"*"},
 			},
-			rbac.PolicyRule{
+			{
 				APIGroups: []string{"extensions"},
 				Resources: []string{"thirdpartyresources"},
 				Verbs:     []string{"create"},
 			},
-			rbac.PolicyRule{
+			{
 				APIGroups: []string{"storage.k8s.io"},
 				Resources: []string{"storageclasses"},
 				Verbs:     []string{"create"},
 			},
-			rbac.PolicyRule{
+			{
 				APIGroups: []string{"extensions"},
 				Resources: []string{"replicasets", "deployments"},
 				Verbs:     []string{"*"},
 			},
-			rbac.PolicyRule{
+			{
 				APIGroups: []string{""},
-				Resources: []string{"pods", "services", "endpoints", "persistentvolumeclaims"},
+				Resources: []string{"pods", "services", "secrets", "endpoints", "persistentvolumeclaims"},
 				Verbs:     []string{"*"},
 			},
 		},

@@ -51,7 +51,7 @@ func getKubeProxyDS(cfg *kubeadmapi.MasterConfiguration) ext.DaemonSet {
 				},
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{
-						v1.Container{
+						{
 							Name:            kubeProxy,
 							Image:           images.GetCoreImage(images.KubeProxyImage, cfg, kubeadmapi.GlobalEnvParams.HyperkubeImage),
 							ImagePullPolicy: "IfNotPresent",
@@ -64,7 +64,7 @@ func getKubeProxyDS(cfg *kubeadmapi.MasterConfiguration) ext.DaemonSet {
 								Privileged: &privileged,
 							},
 							VolumeMounts: []v1.VolumeMount{
-								v1.VolumeMount{
+								{
 									MountPath: "/var/lib/kube-proxy",
 									Name:      "kube-proxy",
 								},
@@ -75,7 +75,7 @@ func getKubeProxyDS(cfg *kubeadmapi.MasterConfiguration) ext.DaemonSet {
 					ServiceAccountName: kubeProxy,
 					Tolerations:        []v1.Toleration{kubeadmconstants.MasterToleration},
 					Volumes: []v1.Volume{
-						v1.Volume{
+						{
 							Name: "kube-proxy",
 							VolumeSource: v1.VolumeSource{
 								ConfigMap: &v1.ConfigMapVolumeSource{

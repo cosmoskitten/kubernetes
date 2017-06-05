@@ -9,13 +9,7 @@ load(
 
 go_library(
     name = "go_default_library",
-    srcs = [
-        "backup.go",
-        "cluster.go",
-        "cluster_tls.go",
-        "etcd_cluster_list.go",
-        "self_hosted.go",
-    ],
+    srcs = ["spec.go"],
     tags = ["automanaged"],
     deps = [
         "//vendor/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
