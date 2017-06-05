@@ -100,6 +100,7 @@ func TestGetPrefix(t *testing.T) {
 func TestTarUntar(t *testing.T) {
 	dir, err := ioutil.TempDir(os.TempDir(), "input")
 	dir2, err2 := ioutil.TempDir(os.TempDir(), "output")
+	dir = dir + "/"
 	if err != nil || err2 != nil {
 		t.Errorf("unexpected error: %v | %v", err, err2)
 		t.FailNow()

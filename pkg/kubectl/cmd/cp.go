@@ -188,7 +188,7 @@ func copyFromPod(f cmdutil.Factory, cmd *cobra.Command, cmderr io.Writer, src, d
 }
 
 func makeTar(filepath string, writer io.Writer) error {
-	if filepath[len(filepath) - 1] == '/' {
+	if strings.HasSuffix(filepath, '/') {
 		filepath = filepath[:len(filepath) - 1]
 	}
 
