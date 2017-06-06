@@ -99,8 +99,9 @@ func TestModifyHostConfig(t *testing.T) {
 	}
 
 	setCapsHC := &dockercontainer.HostConfig{
-		CapAdd:  []string{"addCapA", "addCapB"},
-		CapDrop: []string{"dropCapA", "dropCapB"},
+		CapAdd:      []string{"addCapA", "addCapB"},
+		CapDrop:     []string{"dropCapA", "dropCapB"},
+		SecurityOpt: []string{"no-new-privileges"},
 	}
 
 	setSELinuxHC := &dockercontainer.HostConfig{}
@@ -109,7 +110,11 @@ func TestModifyHostConfig(t *testing.T) {
 		fmt.Sprintf("%s:%s", DockerLabelRole(':'), "role"),
 		fmt.Sprintf("%s:%s", DockerLabelType(':'), "type"),
 		fmt.Sprintf("%s:%s", DockerLabelLevel(':'), "level"),
+		"no-new-privileges",
 	}
+
+	var runAs types.UnixUserID = 15
+	apeFalse := false
 
 	// seLinuxLabelsSC := fullValidSecurityContext()
 	// seLinuxLabelsHC := fullValidHostConfig()
@@ -156,6 +161,46 @@ func TestModifyHostConfig(t *testing.T) {
 			podSc:    overridePodSecurityContext(),
 			sc:       fullValidSecurityContext(),
 			expected: fullValidHostConfig(),
+		},
+		{
+			name: "container.SecurityContext.Capabilities",
+			sc: &v1.SecurityContext{
+				Capabilities: &v1.Capabilities{
+					Add: []v1.Capability{"CAP_SYS_ADMIN"},
+				},
+			},
+			expected: &dockercontainer.HostConfig{
+				CapAdd: []string{"CAP_SYS_ADMIN"},
+			},
+		},
+		{
+			name: "container.SecurityContext.Capabilities",
+			sc: &v1.SecurityContext{
+				Capabilities: &v1.Capabilities{
+					Add: []v1.Capability{"CAP_SYS_ADMIN"},
+				},
+				AllowPrivilegeEscalation: &apeFalse,
+			},
+			expected: &dockercontainer.HostConfig{
+				CapAdd: []string{"CAP_SYS_ADMIN"},
+			},
+		},
+		{
+			name: "container.SecurityContext.RunAsUser",
+			sc: &v1.SecurityContext{
+				RunAsUser: &runAs,
+			},
+			expected: &dockercontainer.HostConfig{},
+		},
+		{
+			name: "container.SecurityContext.RunAsUser",
+			sc: &v1.SecurityContext{
+				RunAsUser:                &runAs,
+				AllowPrivilegeEscalation: &apeFalse,
+			},
+			expected: &dockercontainer.HostConfig{
+				SecurityOpt: []string{"no-new-privileges"},
+			},
 		},
 	}
 

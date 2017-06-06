@@ -3937,6 +3937,15 @@ type SecurityContext struct {
 	// files to, ensuring the persistent data can only be written to mounts.
 	// +optional
 	ReadOnlyRootFilesystem *bool
+	// AllowPrivilegeEscalation controls whether a process can gain more
+	// privileges than it's parent process. This bool directly controls if
+	// the no_new_privs flag will be set on the container process.
+	// By default, AllowPrivilegeEscalation is false unless the container is
+	// 1) run as Privileged
+	// 2) has CAP_SYS_ADMIN
+	// 3) UID of the container is not 0
+	// // +optional
+	AllowPrivilegeEscalation *bool
 }
 
 // SELinuxOptions are the labels to be applied to the container.

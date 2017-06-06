@@ -728,6 +728,16 @@ message PodSecurityPolicySpec {
   // host paths may be used.
   // +optional
   repeated string allowedHostPaths = 15;
+
+  // DefaultAllowPrivilegeEscalation controls the default setting for whether a
+  // process can gain more privileges than it's parent process.
+  // // +optional
+  optional bool defaultAllowPrivilegeEscalation = 16;
+
+  // AllowPrivilegeEscalation determines if a pod can request to allow
+  // privilege escalation.
+  // +optional
+  optional bool allowPrivilegeEscalation = 17;
 }
 
 // ReplicaSet represents the configuration of a ReplicaSet.

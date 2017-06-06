@@ -933,6 +933,15 @@ type PodSecurityPolicySpec struct {
 	// host paths may be used.
 	// +optional
 	AllowedHostPaths []string `json:"allowedHostPaths,omitempty" protobuf:"bytes,15,opt,name=allowedHostPaths"`
+	// DefaultAllowPrivilegeEscalation controls the default setting for whether a
+	// process can gain more privileges than it's parent process.
+	// // +optional
+	DefaultAllowPrivilegeEscalation *bool `json:"defaultAllowPrivilegeEscalation,omitempty" protobuf:"varint,16,opt,name=defaultAllowPrivilegeEscalation"`
+
+	// AllowPrivilegeEscalation determines if a pod can request to allow
+	// privilege escalation.
+	// +optional
+	AllowPrivilegeEscalation bool `json:"allowPrivilegeEscalation,omitempty" protobuf:"varint,17,opt,name=allowPrivilegeEscalation"`
 }
 
 // FS Type gives strong typing to different file systems that are used by volumes.

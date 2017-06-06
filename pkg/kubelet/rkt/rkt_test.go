@@ -26,6 +26,8 @@ import (
 	"testing"
 	"time"
 
+	"strings"
+
 	appcschema "github.com/appc/spec/schema"
 	appctypes "github.com/appc/spec/schema/types"
 	rktapi "github.com/coreos/rkt/api/v1alpha"
@@ -46,7 +48,6 @@ import (
 	nettest "k8s.io/kubernetes/pkg/kubelet/network/testing"
 	"k8s.io/kubernetes/pkg/kubelet/types"
 	utilexec "k8s.io/kubernetes/pkg/util/exec"
-	"strings"
 )
 
 func mustMarshalPodManifest(man *appcschema.PodManifest) []byte {
@@ -936,6 +937,11 @@ func baseImageManifest(t *testing.T) *appcschema.ImageManifest {
 func baseAppWithRootUserGroup(t *testing.T) *appctypes.App {
 	app := baseApp(t)
 	app.User, app.Group = "0", "0"
+	noNewPrivsIsolator, err := newNoNewPrivilegesIsolator(true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	app.Isolators = append(app.Isolators, *noNewPrivsIsolator)
 	return app
 }
 
@@ -987,6 +993,10 @@ func TestSetApp(t *testing.T) {
 	nonRootUser := kubetypes.UnixUserID(42)
 	runAsNonRootTrue := true
 	fsgid := kubetypes.UnixGroupID(3)
+	noNewPrivsIsolator, err := newNoNewPrivilegesIsolator(true)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	tests := []struct {
 		container        *v1.Container
@@ -1059,6 +1069,7 @@ func TestSetApp(t *testing.T) {
 					generateCapRevokeIsolator(t, "CAP_NET_ADMIN"),
 					generateCPUIsolator(t, "100m", "200m"),
 					generateMemoryIsolator(t, "10M", "20M"),
+					*noNewPrivsIsolator,
 				},
 			},
 			err: nil,
