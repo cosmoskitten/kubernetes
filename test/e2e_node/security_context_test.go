@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/kubernetes/pkg/api/v1"
@@ -270,6 +271,66 @@ var _ = framework.KubeDescribe("Security Context", func() {
 		AfterEach(func() {
 			if l != nil {
 				l.Close()
+			}
+		})
+	})
+
+	Context("when creating containers with AllowPrivilegeEscalation", func() {
+		makeAllowPrivilegeEscalationPod := func(podName string, allowPrivilegeEsacalation *bool, uid types.UnixUserID) *v1.Pod {
+			return &v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: podName,
+				},
+				Spec: v1.PodSpec{
+					RestartPolicy: v1.RestartPolicyNever,
+					Containers: []v1.Container{
+						{
+							Image: "r.j3ss.co/no_new_privs:latest",
+							Name:  podName,
+							SecurityContext: &v1.SecurityContext{
+								AllowPrivilegeEscalation: allowPrivilegeEsacalation,
+								RunAsUser:                &uid,
+							},
+						},
+					},
+				},
+			}
+		}
+		createAndMatchOutput := func(podName, output string, allowPrivilegeEsacalation *bool, uid types.UnixUserID) error {
+			podClient.Create(makeAllowPrivilegeEscalationPod(podName,
+				allowPrivilegeEsacalation,
+				uid,
+			))
+
+			podClient.WaitForSuccess(podName, framework.PodStartTimeout)
+
+			if err := podClient.MatchContainerOutput(podName, podName, output); err != nil {
+				return err
+			}
+
+			return nil
+		}
+
+		It("should allow privilege escalation when not explicitly set and uid != 0", func() {
+			podName := "alpine-nnp-" + string(uuid.NewUUID())
+			if err := createAndMatchOutput(podName, "Effective uid: 0", nil, types.UnixUserID(1000)); err != nil {
+				framework.Failf("Match output for pod %q failed: %v", podName, err)
+			}
+		})
+
+		It("should not allow privilege escalation when false", func() {
+			podName := "alpine-nnp-" + string(uuid.NewUUID())
+			apeFalse := false
+			if err := createAndMatchOutput(podName, "Effective uid: 1000", &apeFalse, types.UnixUserID(1000)); err != nil {
+				framework.Failf("Match output for pod %q failed: %v", podName, err)
+			}
+		})
+
+		It("should allow privilege escalation when true", func() {
+			podName := "alpine-nnp-" + string(uuid.NewUUID())
+			apeTrue := true
+			if err := createAndMatchOutput(podName, "Effective uid: 0", &apeTrue, types.UnixUserID(1000)); err != nil {
+				framework.Failf("Match output for pod %q failed: %v", podName, err)
 			}
 		})
 	})
