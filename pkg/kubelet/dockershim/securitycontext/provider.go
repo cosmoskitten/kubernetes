@@ -97,6 +97,10 @@ func (p SimpleSecurityContextProvider) ModifyHostConfig(pod *v1.Pod, container *
 	if effectiveSC.SELinuxOptions != nil {
 		hostConfig.SecurityOpt = ModifySecurityOptions(hostConfig.SecurityOpt, effectiveSC.SELinuxOptions, p.securityOptSeparator)
 	}
+
+	if ok := securitycontext.AddNoNewPrivileges(effectiveSC); ok {
+		hostConfig.SecurityOpt = append(hostConfig.SecurityOpt, "no-new-privileges")
+	}
 }
 
 // ModifySecurityOptions adds SELinux options to config using the given

@@ -844,6 +844,11 @@ func DeepCopy_v1beta1_PodSecurityPolicySpec(in interface{}, out interface{}, c *
 			*out = make([]string, len(*in))
 			copy(*out, *in)
 		}
+		if in.DefaultAllowPrivilegeEscalation != nil {
+			in, out := &in.DefaultAllowPrivilegeEscalation, &out.DefaultAllowPrivilegeEscalation
+			*out = new(bool)
+			**out = **in
+		}
 		return nil
 	}
 }
