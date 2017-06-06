@@ -3274,6 +3274,11 @@ func DeepCopy_api_SecurityContext(in interface{}, out interface{}, c *conversion
 			*out = new(bool)
 			**out = **in
 		}
+		if in.AllowPrivilegeEscalation != nil {
+			in, out := &in.AllowPrivilegeEscalation, &out.AllowPrivilegeEscalation
+			*out = new(bool)
+			**out = **in
+		}
 		return nil
 	}
 }
