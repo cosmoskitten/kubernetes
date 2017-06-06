@@ -157,6 +157,66 @@ func TestDescribeConfigMap(t *testing.T) {
 	}
 }
 
+func TestDescribeLimitRange(t *testing.T) {
+	fake := fake.NewSimpleClientset(&api.LimitRange{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "mylr",
+			Namespace: "foo",
+		},
+		Spec: api.LimitRangeSpec{
+			Limits: []api.LimitRangeItem{
+				{
+					Type:                 api.LimitTypePod,
+					Max:                  getResourceList("100m", "10000Mi"),
+					Min:                  getResourceList("5m", "100Mi"),
+					MaxLimitRequestRatio: getResourceList("10", ""),
+				},
+				{
+					Type:                 api.LimitTypeContainer,
+					Max:                  getResourceList("100m", "10000Mi"),
+					Min:                  getResourceList("5m", "100Mi"),
+					Default:              getResourceList("50m", "500Mi"),
+					DefaultRequest:       getResourceList("10m", "200Mi"),
+					MaxLimitRequestRatio: getResourceList("10", ""),
+				},
+				{
+					Type: api.LimitTypePersistentVolumeClaim,
+					Max:  getStorageResourceList("10Gi"),
+					Min:  getStorageResourceList("5Gi"),
+				},
+			},
+		},
+	})
+	c := &describeClient{T: t, Namespace: "foo", Interface: fake}
+	d := LimitRangeDescriber{c}
+	out, err := d.Describe("foo", "mylr", printers.DescriberSettings{ShowEvents: true})
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if !strings.Contains(out, "foo") || !strings.Contains(out, "mylr") || !strings.Contains(out, "Pod") || !strings.Contains(out, "cpu") || !strings.Contains(out, "5m") || !strings.Contains(out, "100m") || !strings.Contains(out, "memory") || !strings.Contains(out, "100Mi") || !strings.Contains(out, "10000Mi") || !strings.Contains(out, "10") || !strings.Contains(out, "Container") || !strings.Contains(out, "cpu") || !strings.Contains(out, "5m") || !strings.Contains(out, "100m") || !strings.Contains(out, "memory") || !strings.Contains(out, "100Mi") || !strings.Contains(out, "10000Mi") || !strings.Contains(out, "10") || !strings.Contains(out, "10m") || !strings.Contains(out, "50m") || !strings.Contains(out, "200Mi") || !strings.Contains(out, "500Mi") || !strings.Contains(out, "PersistentVolumeClaim") || !strings.Contains(out, "storage") || !strings.Contains(out, "5Gi") || !strings.Contains(out, "10Gi") {
+		t.Errorf("unexpected out: %s", out)
+	}
+}
+
+func getStorageResourceList(storage string) api.ResourceList {
+	res := api.ResourceList{}
+	if storage != "" {
+		res[api.ResourceStorage] = resource.MustParse(storage)
+	}
+	return res
+}
+
+func getResourceList(cpu, memory string) api.ResourceList {
+	res := api.ResourceList{}
+	if cpu != "" {
+		res[api.ResourceCPU] = resource.MustParse(cpu)
+	}
+	if memory != "" {
+		res[api.ResourceMemory] = resource.MustParse(memory)
+	}
+	return res
+}
+
 func TestDescribeService(t *testing.T) {
 	fake := fake.NewSimpleClientset(&api.Service{
 		ObjectMeta: metav1.ObjectMeta{
