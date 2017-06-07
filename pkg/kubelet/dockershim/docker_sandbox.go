@@ -22,6 +22,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/blang/semver"
 	dockertypes "github.com/docker/docker/api/types"
 	dockercontainer "github.com/docker/docker/api/types/container"
 	dockerfilters "github.com/docker/docker/api/types/filters"
@@ -516,7 +517,7 @@ func (ds *dockerService) ListPodSandbox(filter *runtimeapi.PodSandboxFilter) ([]
 }
 
 // applySandboxLinuxOptions applies LinuxPodSandboxConfig to dockercontainer.HostConfig and dockercontainer.ContainerCreateConfig.
-func (ds *dockerService) applySandboxLinuxOptions(hc *dockercontainer.HostConfig, lc *runtimeapi.LinuxPodSandboxConfig, createConfig *dockertypes.ContainerCreateConfig, image string, separator rune) error {
+func (ds *dockerService) applySandboxLinuxOptions(hc *dockercontainer.HostConfig, lc *runtimeapi.LinuxPodSandboxConfig, createConfig *dockertypes.ContainerCreateConfig, image string, separator rune, apiVersion *semver.Version) error {
 	// Apply Cgroup options.
 	cgroupParent, err := ds.GenerateExpectedCgroupParent(lc.CgroupParent)
 	if err != nil {
@@ -524,7 +525,7 @@ func (ds *dockerService) applySandboxLinuxOptions(hc *dockercontainer.HostConfig
 	}
 	hc.CgroupParent = cgroupParent
 	// Apply security context.
-	if err = applySandboxSecurityContext(lc, createConfig.Config, hc, ds.network, separator); err != nil {
+	if err = applySandboxSecurityContext(lc, createConfig.Config, hc, ds.network, separator, apiVersion); err != nil {
 		return err
 	}
 
@@ -564,7 +565,7 @@ func (ds *dockerService) makeSandboxDockerConfig(c *runtimeapi.PodSandboxConfig,
 
 	// Apply linux-specific options.
 	if lc := c.GetLinux(); lc != nil {
-		if err := ds.applySandboxLinuxOptions(hc, lc, createConfig, image, securityOptSep); err != nil {
+		if err := ds.applySandboxLinuxOptions(hc, lc, createConfig, image, securityOptSep, apiVersion); err != nil {
 			return nil, err
 		}
 	}

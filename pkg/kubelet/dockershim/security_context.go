@@ -29,7 +29,7 @@ import (
 )
 
 // applySandboxSecurityContext updates docker sandbox options according to security context.
-func applySandboxSecurityContext(lc *runtimeapi.LinuxPodSandboxConfig, config *dockercontainer.Config, hc *dockercontainer.HostConfig, network *knetwork.PluginManager, separator rune) error {
+func applySandboxSecurityContext(lc *runtimeapi.LinuxPodSandboxConfig, config *dockercontainer.Config, hc *dockercontainer.HostConfig, network *knetwork.PluginManager, separator rune, apiVersion *semver.Version) error {
 	if lc == nil {
 		return nil
 	}
@@ -46,7 +46,7 @@ func applySandboxSecurityContext(lc *runtimeapi.LinuxPodSandboxConfig, config *d
 	}
 
 	modifyContainerConfig(sc, config)
-	if err := modifyHostConfig(sc, hc, separator); err != nil {
+	if err := modifyHostConfig(sc, hc, separator, apiVersion); err != nil {
 		return err
 	}
 	modifySandboxNamespaceOptions(sc.GetNamespaceOptions(), hc, network)
@@ -54,13 +54,13 @@ func applySandboxSecurityContext(lc *runtimeapi.LinuxPodSandboxConfig, config *d
 }
 
 // applyContainerSecurityContext updates docker container options according to security context.
-func applyContainerSecurityContext(lc *runtimeapi.LinuxContainerConfig, sandboxID string, config *dockercontainer.Config, hc *dockercontainer.HostConfig, separator rune) error {
+func applyContainerSecurityContext(lc *runtimeapi.LinuxContainerConfig, sandboxID string, config *dockercontainer.Config, hc *dockercontainer.HostConfig, separator rune, apiVersion *semver.Version) error {
 	if lc == nil {
 		return nil
 	}
 
 	modifyContainerConfig(lc.SecurityContext, config)
-	if err := modifyHostConfig(lc.SecurityContext, hc, separator); err != nil {
+	if err := modifyHostConfig(lc.SecurityContext, hc, separator, apiVersion); err != nil {
 		return err
 	}
 	modifyContainerNamespaceOptions(lc.SecurityContext.GetNamespaceOptions(), sandboxID, hc)
@@ -81,7 +81,7 @@ func modifyContainerConfig(sc *runtimeapi.LinuxContainerSecurityContext, config 
 }
 
 // modifyHostConfig applies security context config to dockercontainer.HostConfig.
-func modifyHostConfig(sc *runtimeapi.LinuxContainerSecurityContext, hostConfig *dockercontainer.HostConfig, separator rune) error {
+func modifyHostConfig(sc *runtimeapi.LinuxContainerSecurityContext, hostConfig *dockercontainer.HostConfig, separator rune, apiVersion *semver.Version) error {
 	if sc == nil {
 		return nil
 	}
@@ -114,7 +114,11 @@ func modifyHostConfig(sc *runtimeapi.LinuxContainerSecurityContext, hostConfig *
 	hostConfig.SecurityOpt = append(hostConfig.SecurityOpt, apparmorSecurityOpts...)
 
 	if sc.NoNewPrivs {
-		hostConfig.SecurityOpt = append(hostConfig.SecurityOpt, "no-new-privileges")
+		// "no-new-privileges" was added in Docker 1.11
+		// which is API version 1.23
+		if apiVersion.GTE(semver.Version{Major: 1, Minor: 23}) {
+			hostConfig.SecurityOpt = append(hostConfig.SecurityOpt, "no-new-privileges")
+		}
 	}
 
 	return nil
