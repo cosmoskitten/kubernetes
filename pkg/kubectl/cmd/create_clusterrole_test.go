@@ -375,6 +375,16 @@ func TestClusterRoleValidate(t *testing.T) {
 			},
 			expectErr: false,
 		},
+		"test-invalid-non-resource-url": {
+			clusterRoleOptions: &CreateClusterRoleOptions{
+				CreateRoleOptions: &CreateRoleOptions{
+					Name:  "my-clusterrole",
+					Verbs: []string{"create"},
+				},
+				NonResourceURLs: []string{"logs"},
+			},
+			expectErr: true,
+		},
 		"test-invalid-verb-for-non-resource-url": {
 			clusterRoleOptions: &CreateClusterRoleOptions{
 				CreateRoleOptions: &CreateRoleOptions{
