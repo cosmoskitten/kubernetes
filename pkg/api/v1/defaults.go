@@ -371,3 +371,10 @@ func SetDefaults_ScaleIOVolumeSource(obj *ScaleIOVolumeSource) {
 		obj.FSType = "xfs"
 	}
 }
+
+func SetDefaults_HostPathVolumeSource(obj *HostPathVolumeSource) {
+	typeVol := HostPathDirectoryOrCreate
+	if obj.Path != "" && obj.Type == nil {
+		obj.Type = &typeVol
+	}
+}

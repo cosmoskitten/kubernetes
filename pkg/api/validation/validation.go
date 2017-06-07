@@ -620,6 +620,9 @@ func validateHostPathVolumeSource(hostPath *api.HostPathVolumeSource, fldPath *f
 	if len(hostPath.Path) == 0 {
 		allErrs = append(allErrs, field.Required(fldPath.Child("path"), ""))
 	}
+
+	typeErrs := validateHostPathType(hostPath.Type, fldPath.Child("type"))
+	allErrs = append(allErrs, typeErrs...)
 	return allErrs
 }
 
@@ -938,6 +941,32 @@ func validateProjectedVolumeSource(projection *api.ProjectedVolumeSource, fldPat
 	}
 
 	allErrs = append(allErrs, validateProjectionSources(projection, projectionMode, fldPath)...)
+	return allErrs
+}
+
+func NewHostPathType(pathType string) *api.HostPathType {
+	hostPathType := new(api.HostPathType)
+	*hostPathType = api.HostPathType(pathType)
+	return hostPathType
+}
+
+var supportedHostPathTypes = sets.NewString(
+	string(v1.HostPathDirectoryOrCreate),
+	string(v1.HostPathDirectory),
+	string(v1.HostPathFileOrCreate),
+	string(v1.HostPathFile),
+	string(v1.HostPathSocket),
+	string(v1.HostPathCharDev),
+	string(v1.HostPathBlockDev),
+	string(v1.HostPathAny))
+
+func validateHostPathType(hostPathType *api.HostPathType, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if hostPathType != nil && !supportedHostPathTypes.Has(string(*hostPathType)) {
+		allErrs = append(allErrs, field.NotSupported(fldPath, hostPathType, supportedHostPathTypes.List()))
+	}
+
 	return allErrs
 }
 

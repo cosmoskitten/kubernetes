@@ -1090,9 +1090,9 @@ func TestValidateVolumes(t *testing.T) {
 			errfield:  "hostPath",
 			errdetail: "may not specify more than 1 volume",
 		},
-		// HostPath
+		// HostPath Default
 		{
-			name: "valid HostPath",
+			name: "default HostPath",
 			vol: api.Volume{
 				Name: "hostpath",
 				VolumeSource: api.VolumeSource{
@@ -1101,6 +1101,34 @@ func TestValidateVolumes(t *testing.T) {
 					},
 				},
 			},
+		},
+		// HostPath Supported
+		{
+			name: "valid HostPath",
+			vol: api.Volume{
+				Name: "hostpath",
+				VolumeSource: api.VolumeSource{
+					HostPath: &api.HostPathVolumeSource{
+						Path: "/mnt/path",
+						Type: NewHostPathType("Socket"),
+					},
+				},
+			},
+		},
+		// HostPath Invalid
+		{
+			name: "invalid HostPath",
+			vol: api.Volume{
+				Name: "hostpath",
+				VolumeSource: api.VolumeSource{
+					HostPath: &api.HostPathVolumeSource{
+						Path: "/mnt/path",
+						Type: NewHostPathType("invalid"),
+					},
+				},
+			},
+			errtype:  field.ErrorTypeNotSupported,
+			errfield: "type",
 		},
 		// GcePersistentDisk
 		{

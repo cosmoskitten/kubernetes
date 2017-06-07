@@ -31,6 +31,7 @@ import (
 	"k8s.io/apiserver/pkg/registry/rest"
 	etcdtesting "k8s.io/apiserver/pkg/storage/etcd/testing"
 	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/api/validation"
 	"k8s.io/kubernetes/pkg/registry/registrytest"
 )
 
@@ -57,7 +58,7 @@ func validNewPersistentVolume(name string) *api.PersistentVolume {
 			},
 			AccessModes: []api.PersistentVolumeAccessMode{api.ReadWriteOnce},
 			PersistentVolumeSource: api.PersistentVolumeSource{
-				HostPath: &api.HostPathVolumeSource{Path: "/foo"},
+				HostPath: &api.HostPathVolumeSource{Path: "/foo", Type: validation.NewHostPathType(string(api.HostPathDirectoryOrCreate))},
 			},
 			PersistentVolumeReclaimPolicy: api.PersistentVolumeReclaimRetain,
 		},

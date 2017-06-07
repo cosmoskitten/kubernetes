@@ -21,6 +21,7 @@ package host_path
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -190,11 +191,14 @@ func TestPlugin(t *testing.T) {
 	if err != nil {
 		t.Errorf("Can't find the plugin by name")
 	}
+
+	volPath := filepath.Join("testdata", "vol1")
 	spec := &v1.Volume{
 		Name:         "vol1",
-		VolumeSource: v1.VolumeSource{HostPath: &v1.HostPathVolumeSource{Path: "/vol1"}},
+		VolumeSource: v1.VolumeSource{HostPath: &v1.HostPathVolumeSource{Path: volPath, Type: NewHostPathType(string(v1.HostPathDirectoryOrCreate))}},
 	}
 	pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{UID: types.UID("poduid")}}
+	defer os.RemoveAll(volPath)
 	mounter, err := plug.NewMounter(volume.NewSpecFromVolume(spec), pod, volume.VolumeOptions{})
 	if err != nil {
 		t.Errorf("Failed to make a new Mounter: %v", err)
@@ -204,7 +208,7 @@ func TestPlugin(t *testing.T) {
 	}
 
 	path := mounter.GetPath()
-	if path != "/vol1" {
+	if path != volPath {
 		t.Errorf("Got unexpected path: %s", path)
 	}
 
@@ -232,7 +236,7 @@ func TestPersistentClaimReadOnlyFlag(t *testing.T) {
 		},
 		Spec: v1.PersistentVolumeSpec{
 			PersistentVolumeSource: v1.PersistentVolumeSource{
-				HostPath: &v1.HostPathVolumeSource{Path: "foo"},
+				HostPath: &v1.HostPathVolumeSource{Path: "foo", Type: NewHostPathType(string(v1.HostPathDirectoryOrCreate))},
 			},
 			ClaimRef: &v1.ObjectReference{
 				Name: "claimA",
@@ -266,5 +270,102 @@ func TestPersistentClaimReadOnlyFlag(t *testing.T) {
 
 	if !mounter.GetAttributes().ReadOnly {
 		t.Errorf("Expected true for mounter.IsReadOnly")
+	}
+}
+
+type fakeTypeSetup struct {
+	desiredType string
+}
+
+func (f *fakeTypeSetup) getFileType(_ os.FileInfo) (v1.HostPathType, error) {
+	return *NewHostPathType(f.desiredType), nil
+}
+
+func TestHostPathTypeChecker(t *testing.T) {
+	testCases := []struct {
+		name            string
+		path            string
+		validpathType   []*v1.HostPathType
+		invalidpathType []*v1.HostPathType
+		cleanUp         bool
+		desiredType     string
+	}{
+		{
+			name:          "Existing Folder",
+			path:          filepath.Join("testdata", "existingFolder"),
+			validpathType: newHostPathTypeList(string(v1.HostPathDirectoryOrCreate), string(v1.HostPathDirectory)),
+			invalidpathType: newHostPathTypeList(string(v1.HostPathFileOrCreate), string(v1.HostPathFile),
+				string(v1.HostPathSocket), string(v1.HostPathCharDev), string(v1.HostPathBlockDev)),
+		},
+		{
+			name:          "New Folder",
+			path:          filepath.Join("testdata", "newFolder"),
+			validpathType: newHostPathTypeList(string(v1.HostPathDirectoryOrCreate)),
+			invalidpathType: newHostPathTypeList(string(v1.HostPathDirectory), string(v1.HostPathFile),
+				string(v1.HostPathSocket), string(v1.HostPathCharDev), string(v1.HostPathBlockDev)),
+			cleanUp: true,
+		},
+		{
+			name:          "Existing File",
+			path:          filepath.Join("testdata", "existingFile"),
+			validpathType: newHostPathTypeList(string(v1.HostPathFileOrCreate), string(v1.HostPathFile)),
+			invalidpathType: newHostPathTypeList(string(v1.HostPathDirectoryOrCreate), string(v1.HostPathDirectory),
+				string(v1.HostPathSocket), string(v1.HostPathCharDev), string(v1.HostPathBlockDev)),
+		},
+		{
+			name:          "New File",
+			path:          filepath.Join("testdata", "newFile"),
+			validpathType: newHostPathTypeList(string(v1.HostPathFileOrCreate)),
+			invalidpathType: newHostPathTypeList(string(v1.HostPathFile), string(v1.HostPathDirectory),
+				string(v1.HostPathSocket), string(v1.HostPathCharDev), string(v1.HostPathBlockDev)),
+			cleanUp: true,
+		},
+		{
+			name:          "Existing Socket",
+			path:          filepath.Join("testdata", "existingFile"),
+			validpathType: newHostPathTypeList(string(v1.HostPathSocket), string(v1.HostPathFileOrCreate), string(v1.HostPathFile)),
+			invalidpathType: newHostPathTypeList(string(v1.HostPathDirectoryOrCreate), string(v1.HostPathDirectory),
+				string(v1.HostPathCharDev), string(v1.HostPathBlockDev)),
+			desiredType: string(v1.HostPathSocket),
+		},
+		{
+			name:          "Existing Character Device",
+			path:          filepath.Join("testdata", "existingFile"),
+			validpathType: newHostPathTypeList(string(v1.HostPathCharDev), string(v1.HostPathFileOrCreate), string(v1.HostPathFile)),
+			invalidpathType: newHostPathTypeList(string(v1.HostPathDirectoryOrCreate), string(v1.HostPathDirectory),
+				string(v1.HostPathSocket), string(v1.HostPathBlockDev)),
+			desiredType: string(v1.HostPathCharDev),
+		},
+		{
+			name:          "Existing Block Device",
+			path:          filepath.Join("testdata", "existingFile"),
+			validpathType: newHostPathTypeList(string(v1.HostPathBlockDev), string(v1.HostPathFileOrCreate), string(v1.HostPathFile)),
+			invalidpathType: newHostPathTypeList(string(v1.HostPathDirectoryOrCreate), string(v1.HostPathDirectory),
+				string(v1.HostPathSocket), string(v1.HostPathCharDev)),
+			desiredType: string(v1.HostPathBlockDev),
+		},
+	}
+
+	for i, tc := range testCases {
+		if tc.desiredType != "" {
+			fakeType := &fakeTypeSetup{desiredType: tc.desiredType}
+			getFileType = fakeType.getFileType
+		}
+
+		for _, pathType := range tc.validpathType {
+			checkResult := CheckType(tc.path, pathType)
+			if tc.cleanUp {
+				os.RemoveAll(tc.path)
+			}
+			if checkResult != nil {
+				t.Errorf("[%d: %q] [%q] expected nil, got %v", i, tc.name, string(*pathType), checkResult)
+			}
+		}
+		for _, pathType := range tc.invalidpathType {
+			checkResult := CheckType(tc.path, pathType)
+			if checkResult == nil {
+				t.Errorf("[%d: %q] [%q] expected error, got nil", i, tc.name, string(*pathType))
+			}
+		}
 	}
 }
