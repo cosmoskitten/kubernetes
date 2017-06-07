@@ -46,6 +46,12 @@ const (
 	idErrMsg                = "a valid C identifier must"
 )
 
+func newHostPathType(pathType string) *api.HostPathType {
+	hostPathType := new(api.HostPathType)
+	*hostPathType = api.HostPathType(pathType)
+	return hostPathType
+}
+
 func testVolume(name string, namespace string, spec api.PersistentVolumeSpec) *api.PersistentVolume {
 	objMeta := metav1.ObjectMeta{Name: name}
 	if namespace != "" {
@@ -1117,9 +1123,9 @@ func TestValidateVolumes(t *testing.T) {
 			errfield:  "hostPath",
 			errdetail: "may not specify more than 1 volume",
 		},
-		// HostPath
+		// HostPath Default
 		{
-			name: "valid HostPath",
+			name: "default HostPath",
 			vol: api.Volume{
 				Name: "hostpath",
 				VolumeSource: api.VolumeSource{
@@ -1128,6 +1134,34 @@ func TestValidateVolumes(t *testing.T) {
 					},
 				},
 			},
+		},
+		// HostPath Supported
+		{
+			name: "valid HostPath",
+			vol: api.Volume{
+				Name: "hostpath",
+				VolumeSource: api.VolumeSource{
+					HostPath: &api.HostPathVolumeSource{
+						Path: "/mnt/path",
+						Type: newHostPathType(string(api.HostPathSocket)),
+					},
+				},
+			},
+		},
+		// HostPath Invalid
+		{
+			name: "invalid HostPath",
+			vol: api.Volume{
+				Name: "hostpath",
+				VolumeSource: api.VolumeSource{
+					HostPath: &api.HostPathVolumeSource{
+						Path: "/mnt/path",
+						Type: newHostPathType("invalid"),
+					},
+				},
+			},
+			errtype:  field.ErrorTypeNotSupported,
+			errfield: "type",
 		},
 		{
 			name: "invalid HostPath backsteps",
