@@ -375,6 +375,36 @@ func TestClusterRoleValidate(t *testing.T) {
 			},
 			expectErr: false,
 		},
+		"test-invalid-non-resource-url": {
+			clusterRoleOptions: &CreateClusterRoleOptions{
+				CreateRoleOptions: &CreateRoleOptions{
+					Name:  "my-clusterrole",
+					Verbs: []string{"create"},
+				},
+				NonResourceURLs: []string{"logs"},
+			},
+			expectErr: true,
+		},
+		"test-invalid-non-resource-url-with-*": {
+			clusterRoleOptions: &CreateClusterRoleOptions{
+				CreateRoleOptions: &CreateRoleOptions{
+					Name:  "my-clusterrole",
+					Verbs: []string{"create"},
+				},
+				NonResourceURLs: []string{"/logs/*/"},
+			},
+			expectErr: true,
+		},
+		"test-invalid-non-resource-url-with-multiple-*": {
+			clusterRoleOptions: &CreateClusterRoleOptions{
+				CreateRoleOptions: &CreateRoleOptions{
+					Name:  "my-clusterrole",
+					Verbs: []string{"create"},
+				},
+				NonResourceURLs: []string{"/logs*/*"},
+			},
+			expectErr: true,
+		},
 		"test-invalid-verb-for-non-resource-url": {
 			clusterRoleOptions: &CreateClusterRoleOptions{
 				CreateRoleOptions: &CreateRoleOptions{
@@ -397,7 +427,7 @@ func TestClusterRoleValidate(t *testing.T) {
 						},
 					},
 				},
-				NonResourceURLs: []string{"/logs/"},
+				NonResourceURLs: []string{"/logs/", "/logs/*"},
 			},
 			expectErr: false,
 		},

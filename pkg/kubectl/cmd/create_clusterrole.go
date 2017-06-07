@@ -19,6 +19,7 @@ package cmd
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -131,6 +132,21 @@ func (c *CreateClusterRoleOptions) Validate() error {
 		for _, v := range c.Verbs {
 			if !arrayContains(validNonResourceVerbs, v) {
 				return fmt.Errorf("invalid verb: '%s' for nonResourceURL", v)
+			}
+		}
+
+		for _, nonResourceURL := range c.NonResourceURLs {
+			if nonResourceURL == "*" {
+				continue
+			}
+
+			if !strings.HasPrefix(nonResourceURL, "/") {
+				return fmt.Errorf("nonResourceURL should start with /")
+			}
+
+			count := strings.Count(nonResourceURL, "*")
+			if count > 1 || (count == 1 && !strings.HasSuffix(nonResourceURL, "/*")) {
+				return fmt.Errorf("nonResourceURL not support more than one '*', and if there is one, it is at the end")
 			}
 		}
 	}
