@@ -159,7 +159,7 @@ func (kl *Kubelet) tryRegisterWithApiServer(node *v1.Node) bool {
 	return false
 }
 
-//updateDefaultLabels will set the default labels on the node
+// updateDefaultLabels will set the default labels on the node
 func (kl *Kubelet) updateDefaultLabels(initialNode, existingNode *v1.Node) bool {
 	defaultLabels := []string{
 		kubeletapis.LabelHostname,
@@ -168,11 +168,6 @@ func (kl *Kubelet) updateDefaultLabels(initialNode, existingNode *v1.Node) bool 
 		kubeletapis.LabelInstanceType,
 		kubeletapis.LabelOS,
 		kubeletapis.LabelArch,
-	}
-
-	if existingNode.Labels == nil {
-		existingNode.Labels = initialNode.Labels
-		return true
 	}
 
 	var needsUpdate bool = false
