@@ -401,3 +401,19 @@ func TestAdoptJobs(t *testing.T) {
 		t.Errorf("ControllerRef = %#v, want %#v", got, want)
 	}
 }
+
+func TestGetCurrentTimeInZone(t *testing.T) {
+	sj := cronJob()
+	tz, _ := getCurrentTimeInZone(&sj).Zone()
+	localTZ, _ := time.Now().Zone()
+	if tz != localTZ {
+		t.Errorf("Timezone = %#v, want %#v", tz, localTZ)
+	}
+
+	tzName := "America/Chicago"
+	sj.Spec.Timezone = &tzName
+	tz, _ = getCurrentTimeInZone(&sj).Zone()
+	if tz != "CST" && tz != "CDT" {
+		t.Errorf("Timezone = %#v, want %#v", tz, "CST/CDT")
+	}
+}

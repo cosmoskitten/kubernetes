@@ -129,7 +129,7 @@ func (jm *CronJobController) syncAll() {
 	glog.V(4).Infof("Found %d groups", len(jobsBySj))
 
 	for _, sj := range sjs {
-		syncOne(&sj, jobsBySj[sj.UID], time.Now(), jm.jobControl, jm.sjControl, jm.podControl, jm.recorder)
+		syncOne(&sj, jobsBySj[sj.UID], getCurrentTimeInZone(&sj), jm.jobControl, jm.sjControl, jm.podControl, jm.recorder)
 		cleanupFinishedJobs(&sj, jobsBySj[sj.UID], jm.jobControl, jm.sjControl, jm.podControl, jm.recorder)
 	}
 }
