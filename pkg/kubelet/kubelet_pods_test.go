@@ -118,7 +118,7 @@ func TestMakeMounts(t *testing.T) {
 			HostPath:       "/var/lib/kubelet/podID/volumes/empty/disk5",
 			ReadOnly:       false,
 			SELinuxRelabel: false,
-			Propagation:    v1.MountPropagationPrivate,
+			Propagation:    v1.MountPropagationRSlave,
 		},
 	}
 	assert.Equal(t, expectedMounts, mounts, "mounts of container %+v", container)

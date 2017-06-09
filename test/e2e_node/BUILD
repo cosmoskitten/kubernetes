@@ -16,6 +16,7 @@ go_library(
         "doc.go",
         "gpus.go",
         "image_list.go",
+        "mount_propagation.go",
         "node_problem_detector_linux.go",
         "resource_collector.go",
         "simple_mount.go",

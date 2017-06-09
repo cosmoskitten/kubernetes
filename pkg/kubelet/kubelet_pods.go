@@ -183,9 +183,12 @@ func makeMounts(pod *v1.Pod, podDir string, container *v1.Container, hostName, h
 			}
 		}
 
-		propagation := v1.MountPropagationPrivate // private is default
+		var propagation v1.MountPropagation
 		if enableMountPropagation {
 			propagation = findPropagation(propagations, container, &mount)
+		} else {
+			// mount propagation is disabled, use private as in the old versions
+			propagation = v1.MountPropagationPrivate
 		}
 		glog.V(5).Infof("Pod %s/%s container %s mount %s has propagation %s", pod.Namespace, pod.Name, container.Name, mount.Name, propagation)
 
@@ -1679,13 +1682,13 @@ func findPropagation(propagations v1helper.MountPropagationMap, container *v1.Co
 	// TODO: check the real mount field
 	containerPropagations, found := propagations[container.Name]
 	if !found {
-		// Private is default
-		return v1.MountPropagationPrivate
+		// rslave is default
+		return v1.MountPropagationRSlave
 	}
 	mountPropagation, found := containerPropagations[mount.Name]
 	if !found {
-		// Private is default
-		return v1.MountPropagationPrivate
+		// rslave is defaulr
+		return v1.MountPropagationRSlave
 	}
 	return mountPropagation
 }
