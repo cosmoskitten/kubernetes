@@ -18,9 +18,57 @@ package tail
 
 import (
 	"bytes"
+	"io/ioutil"
+	"os"
 	"strings"
 	"testing"
 )
+
+func TestReadAtMost(t *testing.T) {
+	fakeFile, _ := ioutil.TempFile("", "")
+	defer os.Remove(fakeFile.Name())
+	fakeData := []byte("this is fake data")
+	ioutil.WriteFile(fakeFile.Name(), fakeData, 0600)
+
+	// Test read subset of file
+	s, more_unread, err := ReadAtMost(fakeFile.Name(), 5)
+	if err != nil {
+		t.Error(err)
+	}
+	expected := fakeData[len(fakeData)-5:]
+	if bytes.Compare(s, expected) != 0 {
+		t.Error("%s != %s", s, expected)
+	}
+	if more_unread == false {
+		t.Error("more_unread == false")
+	}
+
+	// Test read exactly file size
+	s, more_unread, err = ReadAtMost(fakeFile.Name(), int64(len(fakeData)))
+	if err != nil {
+		t.Error(err)
+	}
+	expected = fakeData
+	if bytes.Compare(s, expected) != 0 {
+		t.Error("%s != %s", s, expected)
+	}
+	if more_unread == true {
+		t.Error("more_unread == true")
+	}
+
+	// Test read past end of file
+	s, more_unread, err = ReadAtMost(fakeFile.Name(), int64(len(fakeData) + 1))
+	if err != nil {
+		t.Error(err)
+	}
+	expected = fakeData
+	if bytes.Compare(s, expected) != 0 {
+		t.Error("%s != %s", s, expected)
+	}
+	if more_unread == true {
+		t.Error("more_unread == true")
+	}
+}
 
 func TestTail(t *testing.T) {
 	line := strings.Repeat("a", blockSize)
