@@ -19,8 +19,12 @@ package policybased
 
 import (
 	"k8s.io/apimachinery/pkg/api/errors"
+	metainternalversion "k8s.io/apimachinery/pkg/apis/meta/internalversion"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/watch"
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
+	genericregistry "k8s.io/apiserver/pkg/registry/generic/registry"
 	"k8s.io/apiserver/pkg/registry/rest"
 	"k8s.io/kubernetes/pkg/apis/rbac"
 	rbacregistry "k8s.io/kubernetes/pkg/registry/rbac"
@@ -30,18 +34,30 @@ import (
 var groupResource = rbac.Resource("clusterroles")
 
 type Storage struct {
-	rest.StandardStorage
+	store *genericregistry.Store
 
 	ruleResolver rbacregistryvalidation.AuthorizationRuleResolver
 }
 
-func NewStorage(s rest.StandardStorage, ruleResolver rbacregistryvalidation.AuthorizationRuleResolver) *Storage {
+func NewStorage(s *genericregistry.Store, ruleResolver rbacregistryvalidation.AuthorizationRuleResolver) *Storage {
 	return &Storage{s, ruleResolver}
+}
+
+func (s *Storage) New() runtime.Object {
+	return s.store.New()
+}
+
+func (s *Storage) NewList() runtime.Object {
+	return s.store.NewList()
+}
+
+func (s *Storage) List(ctx genericapirequest.Context, options *metainternalversion.ListOptions) (runtime.Object, error) {
+	return s.store.List(ctx, options)
 }
 
 func (s *Storage) Create(ctx genericapirequest.Context, obj runtime.Object, includeUninitialized bool) (runtime.Object, error) {
 	if rbacregistry.EscalationAllowed(ctx) {
-		return s.StandardStorage.Create(ctx, obj, includeUninitialized)
+		return s.store.Create(ctx, obj, includeUninitialized)
 	}
 
 	clusterRole := obj.(*rbac.ClusterRole)
@@ -49,12 +65,12 @@ func (s *Storage) Create(ctx genericapirequest.Context, obj runtime.Object, incl
 	if err := rbacregistryvalidation.ConfirmNoEscalation(ctx, s.ruleResolver, rules); err != nil {
 		return nil, errors.NewForbidden(groupResource, clusterRole.Name, err)
 	}
-	return s.StandardStorage.Create(ctx, obj, includeUninitialized)
+	return s.store.Create(ctx, obj, includeUninitialized)
 }
 
 func (s *Storage) Update(ctx genericapirequest.Context, name string, obj rest.UpdatedObjectInfo) (runtime.Object, bool, error) {
 	if rbacregistry.EscalationAllowed(ctx) {
-		return s.StandardStorage.Update(ctx, name, obj)
+		return s.store.Update(ctx, name, obj)
 	}
 
 	nonEscalatingInfo := rest.WrapUpdatedObjectInfo(obj, func(ctx genericapirequest.Context, obj runtime.Object, oldObj runtime.Object) (runtime.Object, error) {
@@ -67,5 +83,25 @@ func (s *Storage) Update(ctx genericapirequest.Context, name string, obj rest.Up
 		return obj, nil
 	})
 
-	return s.StandardStorage.Update(ctx, name, nonEscalatingInfo)
+	return s.store.Update(ctx, name, nonEscalatingInfo)
+}
+
+func (s *Storage) Get(ctx genericapirequest.Context, name string, options *metav1.GetOptions) (runtime.Object, error) {
+	return s.store.Get(ctx, name, options)
+}
+
+func (s *Storage) Watch(ctx genericapirequest.Context, options *metainternalversion.ListOptions) (watch.Interface, error) {
+	return s.store.Watch(ctx, options)
+}
+
+func (s *Storage) Export(ctx genericapirequest.Context, name string, opts metav1.ExportOptions) (runtime.Object, error) {
+	return s.store.Export(ctx, name, opts)
+}
+
+func (s *Storage) Delete(ctx genericapirequest.Context, name string, options *metav1.DeleteOptions) (runtime.Object, bool, error) {
+	return s.store.Delete(ctx, name, options)
+}
+
+func (s *Storage) DeleteCollection(ctx genericapirequest.Context, options *metav1.DeleteOptions, listOptions *metainternalversion.ListOptions) (runtime.Object, error) {
+	return s.store.DeleteCollection(ctx, options, listOptions)
 }

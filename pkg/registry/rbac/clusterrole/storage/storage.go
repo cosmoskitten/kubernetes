@@ -28,7 +28,7 @@ import (
 
 // REST implements a RESTStorage for ClusterRole
 type REST struct {
-	*genericregistry.Store
+	Store *genericregistry.Store
 }
 
 // NewREST returns a RESTStorage object that will work against ClusterRole objects.

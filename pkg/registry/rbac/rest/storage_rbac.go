@@ -29,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/authorization/authorizer"
 	"k8s.io/apiserver/pkg/registry/generic"
+	genericregistry "k8s.io/apiserver/pkg/registry/generic/registry"
 	"k8s.io/apiserver/pkg/registry/rest"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	serverstorage "k8s.io/apiserver/pkg/server/storage"
@@ -82,18 +83,18 @@ func (p RESTStorageProvider) storage(version schema.GroupVersion, apiResourceCon
 	once := new(sync.Once)
 	var (
 		authorizationRuleResolver  rbacregistryvalidation.AuthorizationRuleResolver
-		rolesStorage               rest.StandardStorage
-		roleBindingsStorage        rest.StandardStorage
-		clusterRolesStorage        rest.StandardStorage
-		clusterRoleBindingsStorage rest.StandardStorage
+		rolesStorage               *genericregistry.Store
+		roleBindingsStorage        *genericregistry.Store
+		clusterRolesStorage        *genericregistry.Store
+		clusterRoleBindingsStorage *genericregistry.Store
 	)
 
 	initializeStorage := func() {
 		once.Do(func() {
-			rolesStorage = rolestore.NewREST(restOptionsGetter)
-			roleBindingsStorage = rolebindingstore.NewREST(restOptionsGetter)
-			clusterRolesStorage = clusterrolestore.NewREST(restOptionsGetter)
-			clusterRoleBindingsStorage = clusterrolebindingstore.NewREST(restOptionsGetter)
+			rolesStorage = rolestore.NewREST(restOptionsGetter).Store
+			roleBindingsStorage = rolebindingstore.NewREST(restOptionsGetter).Store
+			clusterRolesStorage = clusterrolestore.NewREST(restOptionsGetter).Store
+			clusterRoleBindingsStorage = clusterrolebindingstore.NewREST(restOptionsGetter).Store
 
 			authorizationRuleResolver = rbacregistryvalidation.NewDefaultRuleResolver(
 				role.AuthorizerAdapter{Registry: role.NewRegistry(rolesStorage)},
