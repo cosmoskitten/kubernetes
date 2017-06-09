@@ -85,10 +85,10 @@ func (p RESTStorageProvider) storage(version schema.GroupVersion, apiResourceCon
 	once := new(sync.Once)
 	var (
 		authorizationRuleResolver  rbacregistryvalidation.AuthorizationRuleResolver
-		rolesStorage               rest.StandardStorage
-		roleBindingsStorage        rest.StandardStorage
-		clusterRolesStorage        rest.StandardStorage
-		clusterRoleBindingsStorage rest.StandardStorage
+		rolesStorage               rolepolicybased.Registry
+		roleBindingsStorage        rolebindingpolicybased.Registry
+		clusterRolesStorage        clusterrolepolicybased.Registry
+		clusterRoleBindingsStorage clusterrolebindingpolicybased.Registry
 	)
 
 	initializeStorage := func() {
@@ -98,11 +98,16 @@ func (p RESTStorageProvider) storage(version schema.GroupVersion, apiResourceCon
 			clusterRolesStorage = clusterrolestore.NewREST(restOptionsGetter)
 			clusterRoleBindingsStorage = clusterrolebindingstore.NewREST(restOptionsGetter)
 
+			rolesStandardStorage, _ := rolesStorage.(rest.StandardStorage)
+			roleBindingsStandardStorage, _ := roleBindingsStorage.(rest.StandardStorage)
+			clusterRolesStandardStorage, _ := clusterRolesStorage.(rest.StandardStorage)
+			clusterRoleBindingsStandardStorage, _ := clusterRoleBindingsStorage.(rest.StandardStorage)
+
 			authorizationRuleResolver = rbacregistryvalidation.NewDefaultRuleResolver(
-				role.AuthorizerAdapter{Registry: role.NewRegistry(rolesStorage)},
-				rolebinding.AuthorizerAdapter{Registry: rolebinding.NewRegistry(roleBindingsStorage)},
-				clusterrole.AuthorizerAdapter{Registry: clusterrole.NewRegistry(clusterRolesStorage)},
-				clusterrolebinding.AuthorizerAdapter{Registry: clusterrolebinding.NewRegistry(clusterRoleBindingsStorage)},
+				role.AuthorizerAdapter{Registry: role.NewRegistry(rolesStandardStorage)},
+				rolebinding.AuthorizerAdapter{Registry: rolebinding.NewRegistry(roleBindingsStandardStorage)},
+				clusterrole.AuthorizerAdapter{Registry: clusterrole.NewRegistry(clusterRolesStandardStorage)},
+				clusterrolebinding.AuthorizerAdapter{Registry: clusterrolebinding.NewRegistry(clusterRoleBindingsStandardStorage)},
 			)
 		})
 	}

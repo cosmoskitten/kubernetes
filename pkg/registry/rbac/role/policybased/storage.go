@@ -19,6 +19,7 @@ package policybased
 
 import (
 	"k8s.io/apimachinery/pkg/api/errors"
+	metainternalversion "k8s.io/apimachinery/pkg/apis/meta/internalversion"
 	"k8s.io/apimachinery/pkg/runtime"
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/registry/rest"
@@ -29,19 +30,29 @@ import (
 
 var groupResource = rbac.Resource("roles")
 
-type Storage struct {
+// Registry is an interface for things that know how to store Roles.
+type Registry interface {
 	rest.StandardStorage
+	rest.Exporter
+}
+
+type Storage struct {
+	Registry
 
 	ruleResolver rbacregistryvalidation.AuthorizationRuleResolver
 }
 
-func NewStorage(s rest.StandardStorage, ruleResolver rbacregistryvalidation.AuthorizationRuleResolver) *Storage {
-	return &Storage{s, ruleResolver}
+func NewStorage(r Registry, ruleResolver rbacregistryvalidation.AuthorizationRuleResolver) *Storage {
+	return &Storage{r, ruleResolver}
+}
+
+func (s *Storage) List(ctx genericapirequest.Context, options *metainternalversion.ListOptions) (runtime.Object, error) {
+	return s.Registry.List(ctx, options)
 }
 
 func (s *Storage) Create(ctx genericapirequest.Context, obj runtime.Object, includeUninitialized bool) (runtime.Object, error) {
 	if rbacregistry.EscalationAllowed(ctx) {
-		return s.StandardStorage.Create(ctx, obj, includeUninitialized)
+		return s.Registry.Create(ctx, obj, includeUninitialized)
 	}
 
 	role := obj.(*rbac.Role)
@@ -49,12 +60,12 @@ func (s *Storage) Create(ctx genericapirequest.Context, obj runtime.Object, incl
 	if err := rbacregistryvalidation.ConfirmNoEscalation(ctx, s.ruleResolver, rules); err != nil {
 		return nil, errors.NewForbidden(groupResource, role.Name, err)
 	}
-	return s.StandardStorage.Create(ctx, obj, includeUninitialized)
+	return s.Registry.Create(ctx, obj, includeUninitialized)
 }
 
 func (s *Storage) Update(ctx genericapirequest.Context, name string, obj rest.UpdatedObjectInfo) (runtime.Object, bool, error) {
 	if rbacregistry.EscalationAllowed(ctx) {
-		return s.StandardStorage.Update(ctx, name, obj)
+		return s.Registry.Update(ctx, name, obj)
 	}
 
 	nonEscalatingInfo := rest.WrapUpdatedObjectInfo(obj, func(ctx genericapirequest.Context, obj runtime.Object, oldObj runtime.Object) (runtime.Object, error) {
@@ -67,5 +78,5 @@ func (s *Storage) Update(ctx genericapirequest.Context, name string, obj rest.Up
 		return obj, nil
 	})
 
-	return s.StandardStorage.Update(ctx, name, nonEscalatingInfo)
+	return s.Registry.Update(ctx, name, nonEscalatingInfo)
 }
