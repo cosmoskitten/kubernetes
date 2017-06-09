@@ -85,10 +85,10 @@ func (p RESTStorageProvider) storage(version schema.GroupVersion, apiResourceCon
 	once := new(sync.Once)
 	var (
 		authorizationRuleResolver  rbacregistryvalidation.AuthorizationRuleResolver
-		rolesStorage               rest.StandardStorage
-		roleBindingsStorage        rest.StandardStorage
-		clusterRolesStorage        rest.StandardStorage
-		clusterRoleBindingsStorage rest.StandardStorage
+		rolesStorage               rolepolicybased.Registry
+		roleBindingsStorage        rolebindingpolicybased.Registry
+		clusterRolesStorage        clusterrolepolicybased.Registry
+		clusterRoleBindingsStorage clusterrolebindingpolicybased.Registry
 	)
 
 	initializeStorage := func() {
