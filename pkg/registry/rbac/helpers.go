@@ -20,8 +20,15 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/conversion"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apiserver/pkg/registry/rest"
 	kapi "k8s.io/kubernetes/pkg/api"
 )
+
+// Registry is an interface for things that know how to store rbac resources.
+type Registry interface {
+	rest.StandardStorage
+	rest.Exporter
+}
 
 // IsOnlyMutatingGCFields checks finalizers and ownerrefs which GC manipulates
 // and indicates that only those fields are changing
