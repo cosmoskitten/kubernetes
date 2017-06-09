@@ -43,9 +43,13 @@ type createAuthInfoOptions struct {
 	authPath          flag.StringFlag
 	clientCertificate flag.StringFlag
 	clientKey         flag.StringFlag
+	promptCredentials bool
 	token             flag.StringFlag
+	promptToken       bool
 	username          flag.StringFlag
+	promptUsername    bool
 	password          flag.StringFlag
+	promptPassword    bool
 	embedCertData     flag.Tristate
 	authProvider      flag.StringFlag
 
@@ -84,10 +88,13 @@ var (
 		kubectl config set-credentials cluster-admin --username=admin --password=uXFGweU9l35qcif
 
 		# Prompt username and password input for the "cluster-admin" entry
-		kubectl config set-credentials cluster-admin --username - --password -
+		kubectl config set-credentials cluster-admin --prompt-credentials
+
+		# Prompt username and password input for the "cluster-admin" entry
+		kubectl config set-credentials cluster-admin --prompt-username --prompt-password
 
 		# Prompt token input for the "cluster-admin" entry
-		kubectl config set-credentials cluster-admin --token -
+		kubectl config set-credentials cluster-admin --prompt-token
 
 		# Embed client certificate data in the "cluster-admin" entry
 		kubectl config set-credentials cluster-admin --client-certificate=~/.kube/admin.crt --embed-certs=true
@@ -129,8 +136,12 @@ func newCmdConfigSetAuthInfo(out io.Writer, options *createAuthInfoOptions) *cob
 	cmd.Flags().Var(&options.clientKey, clientcmd.FlagKeyFile, "path to "+clientcmd.FlagKeyFile+" file for the user entry in kubeconfig")
 	cmd.MarkFlagFilename(clientcmd.FlagKeyFile)
 	cmd.Flags().Var(&options.token, clientcmd.FlagBearerToken, clientcmd.FlagBearerToken+" for the user entry in kubeconfig")
+	cmd.Flags().BoolVar(&options.promptCredentials, "prompt-credentials", false, "prompt user for username and password")
+	cmd.Flags().BoolVar(&options.promptToken, "prompt-token", false, "prompt user for token")
 	cmd.Flags().Var(&options.username, clientcmd.FlagUsername, clientcmd.FlagUsername+" for the user entry in kubeconfig")
+	cmd.Flags().BoolVar(&options.promptUsername, "prompt-username", false, "prompt user for username")
 	cmd.Flags().Var(&options.password, clientcmd.FlagPassword, clientcmd.FlagPassword+" for the user entry in kubeconfig")
+	cmd.Flags().BoolVar(&options.promptPassword, "prompt-password", false, "prompt user for password")
 	cmd.Flags().Var(&options.authProvider, flagAuthProvider, "auth provider for the user entry in kubeconfig")
 	cmd.Flags().StringSlice(flagAuthProviderArg, nil, "'key=value' arguments for the auth provider")
 	f := cmd.Flags().VarPF(&options.embedCertData, clientcmd.FlagEmbedCerts, "", "embed client cert/key for the user entry in kubeconfig")
@@ -318,7 +329,7 @@ func (o *createAuthInfoOptions) checkPrompts() (err error) {
 
 	prompter := prompt.NewPrompter(bufio.NewReader(os.Stdin))
 
-	if o.username.Value() == "-" {
+	if o.promptUsername || o.promptCredentials {
 		result, err = prompter.Prompt("Username", prompt.ShowEcho, prompt.DontMask)
 		if err != nil {
 			return err
@@ -326,7 +337,7 @@ func (o *createAuthInfoOptions) checkPrompts() (err error) {
 		o.username.Set(result)
 	}
 
-	if o.password.Value() == "-" {
+	if o.promptPassword || o.promptCredentials {
 		result, err = prompter.Prompt("Password", prompt.DontShowEcho, prompt.Mask)
 		if err != nil {
 			return err
@@ -334,7 +345,7 @@ func (o *createAuthInfoOptions) checkPrompts() (err error) {
 		o.password.Set(result)
 	}
 
-	if o.token.Value() == "-" {
+	if o.promptToken {
 		result, err = prompter.Prompt("Token", prompt.DontShowEcho, prompt.DontMask)
 		if err != nil {
 			return err
