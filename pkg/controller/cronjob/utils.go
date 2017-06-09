@@ -129,7 +129,7 @@ func getRecentUnmetScheduleTimes(sj batchv2alpha1.CronJob, now time.Time) ([]tim
 		// started a job, but have not noticed it yet (distributed systems can
 		// have arbitrary delays).  In any case, use the creation time of the
 		// CronJob as last known start time.
-		earliestTime = sj.ObjectMeta.CreationTimestamp.Time
+		earliestTime = sj.ObjectMeta.CreationTimestamp.Time.In(now.Location())
 	}
 	if sj.Spec.StartingDeadlineSeconds != nil {
 		// Controller is not going to schedule anything below this point
@@ -270,4 +270,17 @@ func (o byJobStartTime) Less(i, j int) bool {
 	}
 
 	return (*o[i].Status.StartTime).Before(*o[j].Status.StartTime)
+}
+
+func getCurrentTimeInZone(sj *batchv2alpha1.CronJob) (time.Time, error) {
+	if sj.Spec.TimeZone == "" {
+		return time.Now(), nil
+	}
+
+	loc, err := time.LoadLocation(sj.Spec.TimeZone)
+	if err != nil {
+		return time.Now(), err
+	}
+
+	return time.Now().In(loc), nil
 }
