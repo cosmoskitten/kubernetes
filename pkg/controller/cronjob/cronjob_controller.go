@@ -129,7 +129,15 @@ func (jm *CronJobController) syncAll() {
 	glog.V(4).Infof("Found %d groups", len(jobsBySj))
 
 	for _, sj := range sjs {
-		syncOne(&sj, jobsBySj[sj.UID], time.Now(), jm.jobControl, jm.sjControl, jm.podControl, jm.recorder)
+		t, err := getCurrentTimeInZone(&sj)
+		if err != nil {
+			// We validate that the CronJob timezone is valid.
+			// However, it is possible that the list of timezones could change at runtime which would cause an error when getting the time.
+			jm.recorder.Eventf(&sj, v1.EventTypeWarning, "InvalidTimezone", "Attempted to run a job with an invalid timezone: %v", sj.Spec.Timezone)
+			continue
+		}
+
+		syncOne(&sj, jobsBySj[sj.UID], t, jm.jobControl, jm.sjControl, jm.podControl, jm.recorder)
 		cleanupFinishedJobs(&sj, jobsBySj[sj.UID], jm.jobControl, jm.sjControl, jm.podControl, jm.recorder)
 	}
 }

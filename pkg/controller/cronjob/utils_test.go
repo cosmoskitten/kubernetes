@@ -401,3 +401,34 @@ func TestAdoptJobs(t *testing.T) {
 		t.Errorf("ControllerRef = %#v, want %#v", got, want)
 	}
 }
+
+func TestGetCurrentTimeInZone(t *testing.T) {
+	sj := cronJob()
+	timeInZone, err := getCurrentTimeInZone(&sj)
+	if err != nil {
+		t.Error("Unexpected error ", err)
+	}
+	tz, _ := timeInZone.Zone()
+	localTZ, _ := time.Now().Zone()
+	if tz != localTZ {
+		t.Errorf("Timezone = %#v, want %#v", tz, localTZ)
+	}
+
+	tzName := "America/Chicago"
+	sj.Spec.Timezone = &tzName
+	timeInZone, err = getCurrentTimeInZone(&sj)
+	if err != nil {
+		t.Error("Unexpected error ", err)
+	}
+	tz, _ = timeInZone.Zone()
+	if tz != "CST" && tz != "CDT" {
+		t.Errorf("Timezone = %#v, want %#v", tz, "CST/CDT")
+	}
+
+	tzName = "Mars/Olympus_Mons"
+	sj.Spec.Timezone = &tzName
+	_, err = getCurrentTimeInZone(&sj)
+	if err == nil {
+		t.Error("Expected error, but got none")
+	}
+}

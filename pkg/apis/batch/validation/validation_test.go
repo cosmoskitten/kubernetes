@@ -349,6 +349,7 @@ func TestValidateCronJob(t *testing.T) {
 		}
 	}
 
+	badTz := "Mars/Olympus_Mons"
 	negative := int32(-1)
 	negative64 := int64(-1)
 
@@ -555,6 +556,23 @@ func TestValidateCronJob(t *testing.T) {
 								Containers:    []api.Container{{Name: "abc", Image: "image", ImagePullPolicy: "IfNotPresent", TerminationMessagePolicy: api.TerminationMessageReadFile}},
 							},
 						},
+					},
+				},
+			},
+		},
+		"spec.timezone: Invalid value: \"Mars/Olympus_Mons\": not a valid timezone": {
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "mycronjob",
+				Namespace: metav1.NamespaceDefault,
+				UID:       types.UID("1a2b3c"),
+			},
+			Spec: batch.CronJobSpec{
+				Schedule:          "* * * * ?",
+				ConcurrencyPolicy: batch.AllowConcurrent,
+				Timezone:          &badTz,
+				JobTemplate: batch.JobTemplateSpec{
+					Spec: batch.JobSpec{
+						Template: validPodTemplateSpec,
 					},
 				},
 			},
