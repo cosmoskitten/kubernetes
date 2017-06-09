@@ -551,6 +551,10 @@ portal-net
 prepull-images
 private-mountns
 prom-push-gateway
+prompt-credentials
+prompt-password
+prompt-token
+prompt-username
 protect-kernel-defaults
 proto-import
 provider-id
