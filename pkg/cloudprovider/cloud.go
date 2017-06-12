@@ -170,6 +170,9 @@ var (
 	DiskNotFound     = errors.New("disk is not found")
 )
 
+// The log level where API calls are logged
+const APILogLevel = 10
+
 // Zone represents the location of a particular machine.
 type Zone struct {
 	FailureDomain string

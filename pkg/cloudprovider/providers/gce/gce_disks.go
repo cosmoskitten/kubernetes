@@ -109,8 +109,10 @@ func (gce *GCECloud) AttachDisk(diskName string, nodeName types.NodeName, readOn
 	attachedDisk := gce.convertDiskToAttachedDisk(disk, readWrite)
 
 	mc := newDiskMetricContext("attach", instance.Zone)
+	glog.V(cloudprovider.APILogLevel).Infof("Instances.AttachDisk(%s, %s, %s, %v): start", gce.projectID, disk.Zone, instance.Name, attachedDisk)
 	attachOp, err := gce.service.Instances.AttachDisk(
 		gce.projectID, disk.Zone, instance.Name, attachedDisk).Do()
+	glog.V(cloudprovider.APILogLevel).Infof("Instances.AttachDisk(%s, %s, %s, %v): end", gce.projectID, disk.Zone, instance.Name, attachedDisk)
 
 	if err != nil {
 		return mc.Observe(err)
@@ -136,7 +138,9 @@ func (gce *GCECloud) DetachDisk(devicePath string, nodeName types.NodeName) erro
 	}
 
 	mc := newDiskMetricContext("detach", inst.Zone)
+	glog.V(cloudprovider.APILogLevel).Infof("Instances.DetachDisk(%s, %s, %s, %s): start", gce.projectID, inst.Zone, inst.Name, devicePath)
 	detachOp, err := gce.service.Instances.DetachDisk(gce.projectID, inst.Zone, inst.Name, devicePath).Do()
+	glog.V(cloudprovider.APILogLevel).Infof("Instances.DetachDisk(%s, %s, %s, %s): end", gce.projectID, inst.Zone, inst.Name, devicePath)
 	if err != nil {
 		return mc.Observe(err)
 	}

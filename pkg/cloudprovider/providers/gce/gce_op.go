@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/kubernetes/pkg/cloudprovider"
 
 	"github.com/golang/glog"
 	compute "google.golang.org/api/compute/v1"
@@ -91,18 +92,27 @@ func getErrorFromOp(op *compute.Operation) error {
 
 func (gce *GCECloud) waitForGlobalOp(op *compute.Operation, mc *metricContext) error {
 	return gce.waitForOp(op, func(operationName string) (*compute.Operation, error) {
-		return gce.service.GlobalOperations.Get(gce.projectID, operationName).Do()
+		glog.V(cloudprovider.APILogLevel).Infof("GlobalOperations.Get(%s, %s): start", gce.projectID, operationName)
+		op, err := gce.service.GlobalOperations.Get(gce.projectID, operationName).Do()
+		glog.V(cloudprovider.APILogLevel).Infof("GlobalOperations.Get(%s, %s): end", gce.projectID, operationName)
+		return op, err
 	}, mc)
 }
 
 func (gce *GCECloud) waitForRegionOp(op *compute.Operation, region string, mc *metricContext) error {
 	return gce.waitForOp(op, func(operationName string) (*compute.Operation, error) {
-		return gce.service.RegionOperations.Get(gce.projectID, region, operationName).Do()
+		glog.V(cloudprovider.APILogLevel).Infof("RegionOperations.Get(%s, %s, %s): start", gce.projectID, region, operationName)
+		op, err := gce.service.RegionOperations.Get(gce.projectID, region, operationName).Do()
+		glog.V(cloudprovider.APILogLevel).Infof("RegionOperations.Get(%s, %s, %s): end", gce.projectID, region, operationName)
+		return op, err
 	}, mc)
 }
 
 func (gce *GCECloud) waitForZoneOp(op *compute.Operation, zone string, mc *metricContext) error {
 	return gce.waitForOp(op, func(operationName string) (*compute.Operation, error) {
-		return gce.service.ZoneOperations.Get(gce.projectID, zone, operationName).Do()
+		glog.V(cloudprovider.APILogLevel).Infof("ZoneOperations.Get(%s, %s, %s): start", gce.projectID, zone, operationName)
+		op, err := gce.service.ZoneOperations.Get(gce.projectID, zone, operationName).Do()
+		glog.V(cloudprovider.APILogLevel).Infof("ZoneOperations.Get(%s, %s, %s): end", gce.projectID, zone, operationName)
+		return op, err
 	}, mc)
 }

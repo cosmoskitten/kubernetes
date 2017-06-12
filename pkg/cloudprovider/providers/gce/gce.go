@@ -388,7 +388,10 @@ func getProjectIDInURL(urlStr string) (string, error) {
 }
 
 func getNetworkNameViaMetadata() (string, error) {
-	result, err := metadata.Get("instance/network-interfaces/0/network")
+	path := "instance/network-interfaces/0/network"
+	glog.V(cloudprovider.APILogLevel).Infof("metadata.Get(%s): start", path)
+	result, err := metadata.Get(path)
+	glog.V(cloudprovider.APILogLevel).Infof("metadata.Get(%s): end", path)
 	if err != nil {
 		return "", err
 	}
@@ -401,7 +404,9 @@ func getNetworkNameViaMetadata() (string, error) {
 
 func getNetworkNameViaAPICall(svc *compute.Service, projectID string) (string, error) {
 	// TODO: use PageToken to list all not just the first 500
+	glog.V(cloudprovider.APILogLevel).Infof("Networks.List(%s): start", projectID)
 	networkList, err := svc.Networks.List(projectID).Do()
+	glog.V(cloudprovider.APILogLevel).Infof("Networks.List(%s): end", projectID)
 	if err != nil {
 		return "", err
 	}
@@ -415,7 +420,9 @@ func getNetworkNameViaAPICall(svc *compute.Service, projectID string) (string, e
 
 func getZonesForRegion(svc *compute.Service, projectID, region string) ([]string, error) {
 	// TODO: use PageToken to list all not just the first 500
+	glog.V(cloudprovider.APILogLevel).Infof("Zones.List(%s): start", projectID)
 	listCall := svc.Zones.List(projectID)
+	glog.V(cloudprovider.APILogLevel).Infof("Zones.List(%s): end", projectID)
 
 	// Filtering by region doesn't seem to work
 	// (tested in https://cloud.google.com/compute/docs/reference/latest/zones/list)
@@ -468,7 +475,10 @@ func (manager *GCEServiceManager) CreateDisk(
 	zone string,
 	disk *compute.Disk) (*compute.Operation, error) {
 
-	return manager.gce.service.Disks.Insert(project, zone, disk).Do()
+	glog.V(cloudprovider.APILogLevel).Infof("Disks.Insert(%s, %s, %v): start", project, zone, disk)
+	op, err := manager.gce.service.Disks.Insert(project, zone, disk).Do()
+	glog.V(cloudprovider.APILogLevel).Infof("Disks.Insert(%s, %s, %v): end", project, zone, disk)
+	return op, err
 }
 
 func (manager *GCEServiceManager) GetDisk(
@@ -476,7 +486,10 @@ func (manager *GCEServiceManager) GetDisk(
 	zone string,
 	diskName string) (*compute.Disk, error) {
 
-	return manager.gce.service.Disks.Get(project, zone, diskName).Do()
+	glog.V(cloudprovider.APILogLevel).Infof("Disks.Get(%s, %s, %s): start", project, zone, diskName)
+	op, err := manager.gce.service.Disks.Get(project, zone, diskName).Do()
+	glog.V(cloudprovider.APILogLevel).Infof("Disks.Get(%s, %s, %s): end", project, zone, diskName)
+	return op, err
 }
 
 func (manager *GCEServiceManager) DeleteDisk(
@@ -484,7 +497,10 @@ func (manager *GCEServiceManager) DeleteDisk(
 	zone string,
 	diskName string) (*compute.Operation, error) {
 
-	return manager.gce.service.Disks.Delete(project, zone, diskName).Do()
+	glog.V(cloudprovider.APILogLevel).Infof("Disks.Delete(%s, %s, %s): start", project, zone, diskName)
+	op, err := manager.gce.service.Disks.Delete(project, zone, diskName).Do()
+	glog.V(cloudprovider.APILogLevel).Infof("Disks.Delete(%s, %s, %s): end", project, zone, diskName)
+	return op, err
 }
 
 func (manager *GCEServiceManager) WaitForZoneOp(op *compute.Operation, zone string, mc *metricContext) error {

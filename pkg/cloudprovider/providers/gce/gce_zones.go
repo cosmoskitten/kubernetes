@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/golang/glog"
 	compute "google.golang.org/api/compute/v1"
 
 	"k8s.io/kubernetes/pkg/cloudprovider"
@@ -44,7 +45,9 @@ func (gce *GCECloud) GetZone() (cloudprovider.Zone, error) {
 func (gce *GCECloud) ListZonesInRegion(region string) ([]*compute.Zone, error) {
 	mc := newZonesMetricContext("list", region)
 	filter := fmt.Sprintf("region eq %v", gce.getRegionLink(region))
+	glog.V(cloudprovider.APILogLevel).Infof("Zones.List(%s): start", gce.projectID)
 	list, err := gce.service.Zones.List(gce.projectID).Filter(filter).Do()
+	glog.V(cloudprovider.APILogLevel).Infof("Zones.List(%s): stop", gce.projectID)
 	if err != nil {
 		return nil, mc.Observe(err)
 	}

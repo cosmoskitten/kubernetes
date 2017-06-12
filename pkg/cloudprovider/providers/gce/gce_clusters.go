@@ -16,7 +16,13 @@ limitations under the License.
 
 package gce
 
-import "time"
+import (
+	"time"
+
+	"github.com/golang/glog"
+
+	"k8s.io/kubernetes/pkg/cloudprovider"
+)
 
 func newClustersMetricContext(request, zone string) *metricContext {
 	return &metricContext{
@@ -47,7 +53,9 @@ func (gce *GCECloud) Master(clusterName string) (string, error) {
 func (gce *GCECloud) listClustersInZone(zone string) ([]string, error) {
 	mc := newClustersMetricContext("list_zone", zone)
 	// TODO: use PageToken to list all not just the first 500
+	glog.V(cloudprovider.APILogLevel).Infof("Projects.Zones.Clusters.List(%s, %s): start", gce.projectID, zone)
 	list, err := gce.containerService.Projects.Zones.Clusters.List(gce.projectID, zone).Do()
+	glog.V(cloudprovider.APILogLevel).Infof("Projects.Zones.Clusters.List(%s, %s): end", gce.projectID, zone)
 	if err != nil {
 		return nil, mc.Observe(err)
 	}

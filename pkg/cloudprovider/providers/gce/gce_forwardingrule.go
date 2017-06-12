@@ -19,6 +19,9 @@ package gce
 import (
 	"time"
 
+	"k8s.io/kubernetes/pkg/cloudprovider"
+
+	"github.com/golang/glog"
 	compute "google.golang.org/api/compute/v1"
 )
 
@@ -41,7 +44,9 @@ func (gce *GCECloud) CreateGlobalForwardingRule(targetProxyLink, ip, name, portR
 		PortRange:  portRange,
 		IPProtocol: "TCP",
 	}
+	glog.V(cloudprovider.APILogLevel).Infof("GlobalForwardingRules.Insert(%s, %v): start", gce.projectID, rule)
 	op, err := gce.service.GlobalForwardingRules.Insert(gce.projectID, rule).Do()
+	glog.V(cloudprovider.APILogLevel).Infof("GlobalForwardingRules.Insert(%s, %v): end", gce.projectID, rule)
 	if err != nil {
 		return nil, mc.Observe(err)
 	}
@@ -68,7 +73,9 @@ func (gce *GCECloud) SetProxyForGlobalForwardingRule(forwardingRuleName, targetP
 // DeleteGlobalForwardingRule deletes the GlobalForwardingRule by name.
 func (gce *GCECloud) DeleteGlobalForwardingRule(name string) error {
 	mc := newForwardingRuleMetricContext("delete", "")
+	glog.V(cloudprovider.APILogLevel).Infof("GlobalForwardingRules.Delete(%s, %s): start", gce.projectID, name)
 	op, err := gce.service.GlobalForwardingRules.Delete(gce.projectID, name).Do()
+	glog.V(cloudprovider.APILogLevel).Infof("GlobalForwardingRules.Delete(%s, %s): end", gce.projectID, name)
 	if err != nil {
 		return mc.Observe(err)
 	}
@@ -79,7 +86,9 @@ func (gce *GCECloud) DeleteGlobalForwardingRule(name string) error {
 // GetGlobalForwardingRule returns the GlobalForwardingRule by name.
 func (gce *GCECloud) GetGlobalForwardingRule(name string) (*compute.ForwardingRule, error) {
 	mc := newForwardingRuleMetricContext("get", "")
+	glog.V(cloudprovider.APILogLevel).Infof("GlobalForwardingRules.Get(%s, %s): start", gce.projectID, name)
 	v, err := gce.service.GlobalForwardingRules.Get(gce.projectID, name).Do()
+	glog.V(cloudprovider.APILogLevel).Infof("GlobalForwardingRules.Get(%s, %s): end", gce.projectID, name)
 	return v, mc.Observe(err)
 }
 
@@ -87,14 +96,18 @@ func (gce *GCECloud) GetGlobalForwardingRule(name string) (*compute.ForwardingRu
 func (gce *GCECloud) ListGlobalForwardingRules() (*compute.ForwardingRuleList, error) {
 	mc := newForwardingRuleMetricContext("list", "")
 	// TODO: use PageToken to list all not just the first 500
+	glog.V(cloudprovider.APILogLevel).Infof("GlobalForwardingRules.List(%s): start", gce.projectID)
 	v, err := gce.service.GlobalForwardingRules.List(gce.projectID).Do()
+	glog.V(cloudprovider.APILogLevel).Infof("GlobalForwardingRules.List(%s): end", gce.projectID)
 	return v, mc.Observe(err)
 }
 
 // GetRegionForwardingRule returns the RegionalForwardingRule by name & region.
 func (gce *GCECloud) GetRegionForwardingRule(name, region string) (*compute.ForwardingRule, error) {
 	mc := newForwardingRuleMetricContext("get", region)
+	glog.V(cloudprovider.APILogLevel).Infof("ForwardingRules.Get(%s, %s, %s): start", gce.projectID, region, name)
 	v, err := gce.service.ForwardingRules.Get(gce.projectID, region, name).Do()
+	glog.V(cloudprovider.APILogLevel).Infof("ForwardingRules.Get(%s, %s, %s): end", gce.projectID, region, name)
 	return v, mc.Observe(err)
 }
 
@@ -102,7 +115,9 @@ func (gce *GCECloud) GetRegionForwardingRule(name, region string) (*compute.Forw
 func (gce *GCECloud) ListRegionForwardingRules(region string) (*compute.ForwardingRuleList, error) {
 	mc := newForwardingRuleMetricContext("list", region)
 	// TODO: use PageToken to list all not just the first 500
+	glog.V(cloudprovider.APILogLevel).Infof("ForwardingRules.List(%s, %s): start", gce.projectID, region)
 	v, err := gce.service.ForwardingRules.List(gce.projectID, region).Do()
+	glog.V(cloudprovider.APILogLevel).Infof("ForwardingRules.List(%s, %s): end", gce.projectID, region)
 	return v, mc.Observe(err)
 }
 
@@ -110,7 +125,9 @@ func (gce *GCECloud) ListRegionForwardingRules(region string) (*compute.Forwardi
 // RegionalForwardingRule that points to the given BackendService
 func (gce *GCECloud) CreateRegionForwardingRule(rule *compute.ForwardingRule, region string) error {
 	mc := newForwardingRuleMetricContext("create", region)
+	glog.V(cloudprovider.APILogLevel).Infof("ForwardingRules.Insert(%s, %s, %v): start", gce.projectID, region, rule)
 	op, err := gce.service.ForwardingRules.Insert(gce.projectID, region, rule).Do()
+	glog.V(cloudprovider.APILogLevel).Infof("ForwardingRules.Insert(%s, %s, %v): end", gce.projectID, region, rule)
 	if err != nil {
 		return mc.Observe(err)
 	}
@@ -121,7 +138,9 @@ func (gce *GCECloud) CreateRegionForwardingRule(rule *compute.ForwardingRule, re
 // DeleteRegionForwardingRule deletes the RegionalForwardingRule by name & region.
 func (gce *GCECloud) DeleteRegionForwardingRule(name, region string) error {
 	mc := newForwardingRuleMetricContext("delete", region)
+	glog.V(cloudprovider.APILogLevel).Infof("ForwardingRules.Delete(%s, %s, %s): start", gce.projectID, region, name)
 	op, err := gce.service.ForwardingRules.Delete(gce.projectID, region, name).Do()
+	glog.V(cloudprovider.APILogLevel).Infof("ForwardingRules.Delete(%s, %s, %s): end", gce.projectID, region, name)
 	if err != nil {
 		return mc.Observe(err)
 	}
