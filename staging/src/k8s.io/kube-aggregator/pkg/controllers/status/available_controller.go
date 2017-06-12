@@ -17,10 +17,14 @@ limitations under the License.
 package apiserver
 
 import (
+	"crypto/tls"
 	"fmt"
+	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/golang/glog"
+	"golang.org/x/net/context"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -45,6 +49,10 @@ import (
 
 var cloner = conversion.NewCloner()
 
+type ServiceResolver interface {
+	ResolveEndpoint(namespace, name string) (*url.URL, error)
+}
+
 type AvailableConditionController struct {
 	apiServiceClient apiregistrationclient.APIServicesGetter
 
@@ -58,6 +66,9 @@ type AvailableConditionController struct {
 	endpointsLister v1listers.EndpointsLister
 	endpointsSynced cache.InformerSynced
 
+	enableAggregatorRouting bool
+	serviceResolver         ServiceResolver
+
 	// To allow injection for testing.
 	syncFn func(key string) error
 
@@ -69,16 +80,20 @@ func NewAvailableConditionController(
 	serviceInformer v1informers.ServiceInformer,
 	endpointsInformer v1informers.EndpointsInformer,
 	apiServiceClient apiregistrationclient.APIServicesGetter,
+	enableAggregatorRouting bool,
+	serviceResolver ServiceResolver,
 ) *AvailableConditionController {
 	c := &AvailableConditionController{
-		apiServiceClient: apiServiceClient,
-		apiServiceLister: apiServiceInformer.Lister(),
-		apiServiceSynced: apiServiceInformer.Informer().HasSynced,
-		serviceLister:    serviceInformer.Lister(),
-		servicesSynced:   serviceInformer.Informer().HasSynced,
-		endpointsLister:  endpointsInformer.Lister(),
-		endpointsSynced:  endpointsInformer.Informer().HasSynced,
-		queue:            workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "AvailableConditionController"),
+		apiServiceClient:        apiServiceClient,
+		apiServiceLister:        apiServiceInformer.Lister(),
+		apiServiceSynced:        apiServiceInformer.Informer().HasSynced,
+		serviceLister:           serviceInformer.Lister(),
+		servicesSynced:          serviceInformer.Informer().HasSynced,
+		endpointsLister:         endpointsInformer.Lister(),
+		endpointsSynced:         endpointsInformer.Informer().HasSynced,
+		enableAggregatorRouting: enableAggregatorRouting,
+		serviceResolver:         serviceResolver,
+		queue:                   workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "AvailableConditionController"),
 	}
 
 	apiServiceInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -184,8 +199,38 @@ func (c *AvailableConditionController) sync(key string) error {
 			return err
 		}
 	}
-
-	// TODO actually try to hit the discovery endpoint
+	// actually try to hit the discovery endpoint when it isn't local and when we're routing as a service.
+	// TODO figure out if the kube-proxy code handling has similar problems
+	if apiService.Spec.Service != nil && !c.enableAggregatorRouting && c.serviceResolver != nil {
+		url, err := c.serviceResolver.ResolveEndpoint(apiService.Spec.Service.Namespace, apiService.Spec.Service.Name)
+		if err != nil {
+			return err
+		}
+		// construct an http client that will ignore TLS verification (if someone owns the network and messes with your status
+		// that's not so bad) and sets a very short timeout for responsive-ness  Since we requeue on endpoint changes
+		// we'll get kicked as these change.
+		httpClient := &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			},
+		}
+		req, err := http.NewRequest("GET", url.String(), nil)
+		if err != nil {
+			return err
+		}
+		ctx, _ := context.WithTimeout(req.Context(), 5*time.Second)
+		req.WithContext(ctx)
+		resp, err := httpClient.Do(req)
+		if err != nil {
+			availableCondition.Status = apiregistration.ConditionFalse
+			availableCondition.Reason = "FailedDiscoveryCheck"
+			availableCondition.Message = fmt.Sprintf("no response from %v", url)
+			apiregistration.SetAPIServiceCondition(apiService, availableCondition)
+			_, err := c.apiServiceClient.APIServices().UpdateStatus(apiService)
+			return err
+		}
+		resp.Body.Close()
+	}
 
 	availableCondition.Reason = "Passed"
 	availableCondition.Message = "all checks passed"

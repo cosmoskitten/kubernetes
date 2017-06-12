@@ -266,6 +266,8 @@ func (c completedConfig) NewWithDelegate(delegationTarget genericapiserver.Deleg
 		kubeInformers.Core().V1().Services(),
 		kubeInformers.Core().V1().Endpoints(),
 		apiregistrationClient.Apiregistration(),
+		c.EnableAggregatorRouting,
+		s.routing,
 	)
 
 	s.GenericAPIServer.AddPostStartHook("start-kube-aggregator-informers", func(context genericapiserver.PostStartHookContext) error {
