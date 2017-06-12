@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"strings"
@@ -453,19 +452,6 @@ func AddGeneratorFlags(cmd *cobra.Command, defaultGenerator string) {
 type ValidateOptions struct {
 	EnableValidation bool
 	SchemaCacheDir   string
-}
-
-func ReadConfigDataFromReader(reader io.Reader, source string) ([]byte, error) {
-	data, err := ioutil.ReadAll(reader)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(data) == 0 {
-		return nil, fmt.Errorf("Read from %s but no data found", source)
-	}
-
-	return data, nil
 }
 
 // Merge requires JSON serialization
