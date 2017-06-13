@@ -22,6 +22,7 @@ import (
 	"net"
 	"os"
 	"path"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -1613,6 +1614,18 @@ func ValidateVolumeMounts(mounts []api.VolumeMount, volumes sets.String, fldPath
 		}
 		if mountpoints.Has(mnt.MountPath) {
 			allErrs = append(allErrs, field.Invalid(idxPath.Child("mountPath"), mnt.MountPath, "must be unique"))
+		}
+		// check for subpath conflict
+		for _, apath := range mountpoints.List() {
+			rel, err := filepath.Rel(mnt.MountPath, apath)
+			if err != nil {
+				// returns error if target path can't be made relative to basepath, which means no conflict
+				continue
+			}
+			if !strings.Contains(rel, "../") {
+				errorString := fmt.Sprintf("error with overlapping path:'%v'", apath)
+				allErrs = append(allErrs, field.Invalid(idxPath.Child("mountPath"), mnt.MountPath, errorString))
+			}
 		}
 		mountpoints.Insert(mnt.MountPath)
 		if len(mnt.SubPath) > 0 {
