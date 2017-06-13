@@ -3060,6 +3060,7 @@ func TestValidateVolumeMounts(t *testing.T) {
 		"subpath in ..":       {{Name: "abc", MountPath: "/bar", SubPath: "../baz"}},
 		"subpath contains ..": {{Name: "abc", MountPath: "/bar", SubPath: "baz/../bat"}},
 		"subpath ends in ..":  {{Name: "abc", MountPath: "/bar", SubPath: "./.."}},
+		"subpath conflict":    {{Name: "abc", MountPath: "/levelone"}, {Name: "123", MountPath: "/levelone/leveltwo"}},
 	}
 	for k, v := range errorCases {
 		if errs := ValidateVolumeMounts(v, volumes, field.NewPath("field")); len(errs) == 0 {
