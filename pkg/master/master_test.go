@@ -70,12 +70,10 @@ func setUp(t *testing.T) (*etcdtesting.EtcdTestServer, Config, informers.SharedI
 	server, storageConfig := etcdtesting.NewUnsecuredEtcd3TestClientServer(t, api.Scheme)
 
 	config := &Config{
-		GenericConfig: genericapiserver.NewConfig(api.Codecs),
-		ExtraConfig: ExtraConfig{
-			APIResourceConfigSource: DefaultAPIResourceConfigSource(),
-			APIServerServicePort:    443,
-			MasterCount:             1,
-		},
+		GenericConfig:           genericapiserver.NewConfig(api.Codecs),
+		ExtraConfig: ExtraConfig{APIResourceConfigSource: DefaultAPIResourceConfigSource(),
+		KubernetesServicePort:    443,
+		MasterCount:             1,},
 	}
 
 	resourceEncoding := serverstorage.NewDefaultResourceEncodingConfig(api.Registry)
