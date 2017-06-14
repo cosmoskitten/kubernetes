@@ -241,6 +241,15 @@ type KubeletDeps struct {
 	Writer             kubeio.Writer
 	VolumePlugins      []volume.VolumePlugin
 	TLSOptions         *server.TLSOptions
+	MountOptions       *KubeletMountOptions
+}
+
+// KubeletMountOptions is a hacky way how to add a new --experimental-mount-propagation
+// commandline option without modifying componentconfig.KubeletConfiguration.
+// --experimental-mount-propagation is for testing and development only and will be
+// removed in a future release.
+type KubeletMountOptions struct {
+	EnableMountPropagation bool
 }
 
 // makePodSourceConfig creates a config.PodConfig from the given
@@ -485,6 +494,7 @@ func NewMainKubelet(kubeCfg *componentconfig.KubeletConfiguration, kubeDeps *Kub
 		iptablesMasqueradeBit:                   int(kubeCfg.IPTablesMasqueradeBit),
 		iptablesDropBit:                         int(kubeCfg.IPTablesDropBit),
 		experimentalHostUserNamespaceDefaulting: utilfeature.DefaultFeatureGate.Enabled(features.ExperimentalHostUserNamespaceDefaultingGate),
+		enableMountPropagation:                  kubeDeps.MountOptions != nil && kubeDeps.MountOptions.EnableMountPropagation,
 	}
 
 	secretManager := secret.NewCachingSecretManager(
@@ -1114,6 +1124,9 @@ type Kubelet struct {
 	// dockerLegacyService contains some legacy methods for backward compatibility.
 	// It should be set only when docker is using non json-file logging driver.
 	dockerLegacyService dockershim.DockerLegacyService
+
+	// enableMountPropagation is experimental option to enable mount propagation
+	enableMountPropagation bool
 }
 
 func initializeServerCertificateManager(kubeClient clientset.Interface, kubeCfg *componentconfig.KubeletConfiguration, nodeName types.NodeName, ips []net.IP, hostnames []string) (certificate.Manager, error) {

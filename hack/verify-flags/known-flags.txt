@@ -737,3 +737,4 @@ lock-object-name
 lock-object-namespace
 
 horizontal-pod-autoscaler-use-rest-clients
+experimental-mount-propagation

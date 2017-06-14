@@ -80,6 +80,10 @@ type KubeletFlags struct {
 
 	// Container-runtime-specific options.
 	ContainerRuntimeOptions
+
+	// Experimental flag that enables shared/slave propagation for mounts in
+	// pods. It may be redesigned or even removed in future releases!
+	MountPropagation bool
 }
 
 // KubeletServer encapsulates all of the parameters necessary for starting up
@@ -142,6 +146,12 @@ func (f *KubeletFlags) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&f.NodeIP, "node-ip", f.NodeIP, "IP address of the node. If set, kubelet will use this IP address for the node")
 
 	fs.StringVar(&f.ProviderID, "provider-id", f.ProviderID, "Unique identifier for identifying the node in a machine database, i.e cloudprovider")
+
+	// experimental-mount-propagation will be removed in a future release either
+	// because mount propagation works and will be enabled by default or does
+	// not work and we need to get back to the drawing board.
+	fs.BoolVar(&f.MountPropagation, "experimental-mount-propagation", f.MountPropagation, "Enables shared/slave mount propagation from pods. For testing only.")
+	fs.MarkDeprecated("experimental-mount-propagation", "This option is available for testing only and may be removed in a future version.")
 }
 
 // addFlags adds flags for a specific componentconfig.KubeletConfiguration to the specified FlagSet

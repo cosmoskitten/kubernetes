@@ -346,8 +346,7 @@ func (kl *Kubelet) GenerateRunContainerOptions(pod *v1.Pod, container *v1.Contai
 		return nil, false, err
 	}
 
-	// TODO: add a cmdline option to explicitly enable mount propagation
-	opts.Mounts, err = makeMounts(pod, kl.getPodDir(pod.UID), container, hostname, hostDomainName, podIP, volumes, true /* enableMountPropagation*/)
+	opts.Mounts, err = makeMounts(pod, kl.getPodDir(pod.UID), container, hostname, hostDomainName, podIP, volumes, kl.enableMountPropagation)
 	if err != nil {
 		return nil, false, err
 	}
