@@ -27,6 +27,8 @@ import (
 	"k8s.io/kubernetes/pkg/api/helper"
 )
 
+const kubernetesServiceName = "kubernetes"
+
 // IsOpaqueIntResourceName returns true if the resource name has the opaque
 // integer resource prefix.
 func IsOpaqueIntResourceName(name v1.ResourceName) bool {

@@ -68,7 +68,7 @@ func setUp(t *testing.T) (*etcdtesting.EtcdTestServer, Config, *assert.Assertion
 	config := &Config{
 		GenericConfig:           genericapiserver.NewConfig(api.Codecs),
 		APIResourceConfigSource: DefaultAPIResourceConfigSource(),
-		APIServerServicePort:    443,
+		KubernetesServicePort:   443,
 		MasterCount:             1,
 	}
 
