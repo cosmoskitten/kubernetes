@@ -356,7 +356,7 @@ func NewMasterConfig() *master.Config {
 		StorageFactory:          storageFactory,
 		EnableCoreControllers:   true,
 		KubeletClientConfig:     kubeletclient.KubeletClientConfig{Port: 10250},
-		APIServerServicePort:    443,
+		KubernetesServicePort:   443,
 		MasterCount:             1,
 	}
 }
