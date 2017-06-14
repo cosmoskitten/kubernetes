@@ -32,14 +32,12 @@ type mounterDefaults flexVolumeMounter
 func (f *mounterDefaults) SetUpAt(dir string, fsGroup *types.UnixGroupID) error {
 	glog.Warning(logPrefix(f.plugin), "using default SetUpAt to ", dir)
 
-	a, err := f.plugin.NewAttacher()
+	volumeName, err := f.plugin.GetVolumeName(f.spec)
 	if err != nil {
-		return fmt.Errorf("NewAttacher failed: %v", err)
+		return fmt.Errorf("GetVolumeName failed from GetDeviceMountPath: %s", err)
 	}
-	src, err := a.GetDeviceMountPath(f.spec)
-	if err != nil {
-		return fmt.Errorf("GetDeviceMountPath failed: %v", err)
-	}
+
+	src := makeGlobalMountPath(f.plugin.host, f.plugin.driverName, volumeName)
 
 	if err := doMount(f.mounter, src, dir, "auto", []string{"bind"}); err != nil {
 		return err

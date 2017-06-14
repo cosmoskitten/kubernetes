@@ -57,6 +57,8 @@ const (
 	optionKeyPodUID       = "kubernetes.io/pod.uid"
 
 	optionKeyServiceAccountName = "kubernetes.io/serviceAccount.name"
+
+	attachCapability = "attach"
 )
 
 const (
@@ -198,6 +200,10 @@ type DriverStatus struct {
 	VolumeName string `json:"volumeName,omitempty"`
 	// Represents volume is attached on the node
 	Attached bool `json:"attached,omitempty"`
+	// Returns capabilites of the driver.
+	// By default we assume all the capabilities are supported.
+	// If the plugin does not support a capability, it can return false for that capability.
+	CapabilityMap map[string]bool
 }
 
 // isCmdNotSupportedErr checks if the error corresponds to command not supported by

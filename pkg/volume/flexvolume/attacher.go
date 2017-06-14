@@ -17,7 +17,7 @@ limitations under the License.
 package flexvolume
 
 import (
-	"path"
+	"fmt"
 	"time"
 
 	"github.com/golang/glog"
@@ -26,7 +26,7 @@ import (
 )
 
 type flexVolumeAttacher struct {
-	plugin *flexVolumePlugin
+	plugin *flexVolumeAttachablePlugin
 }
 
 var _ volume.Attacher = &flexVolumeAttacher{}
@@ -63,9 +63,13 @@ func (a *flexVolumeAttacher) WaitForAttach(spec *volume.Spec, devicePath string,
 
 // GetDeviceMountPath is part of the volume.Attacher interface
 func (a *flexVolumeAttacher) GetDeviceMountPath(spec *volume.Spec) (string, error) {
-	mountsDir := path.Join(a.plugin.host.GetPluginDir(flexVolumePluginName), a.plugin.driverName, "mounts")
 
-	return (*attacherDefaults)(a).GetDeviceMountPath(spec, mountsDir)
+	volumeName, err := a.plugin.GetVolumeName(spec)
+	if err != nil {
+		return "", fmt.Errorf("GetVolumeName failed from GetDeviceMountPath: %s", err)
+	}
+
+	return makeGlobalMountPath(a.plugin.host, a.plugin.driverName, volumeName), nil
 }
 
 // MountDevice is part of the volume.Attacher interface

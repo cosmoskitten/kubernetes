@@ -42,8 +42,29 @@ type flexVolumePlugin struct {
 	unsupportedCommands []string
 }
 
-var _ volume.AttachableVolumePlugin = &flexVolumePlugin{}
+type flexVolumeAttachablePlugin struct {
+	flexVolumePlugin
+}
+
+var _ volume.AttachableVolumePlugin = &flexVolumeAttachablePlugin{}
 var _ volume.PersistentVolumePlugin = &flexVolumePlugin{}
+
+func (plugin *flexVolumeAttachablePlugin) isAttachable() (bool, error) {
+	call := plugin.NewDriverCall(initCmd)
+	res, err := call.Run()
+	if err != nil {
+		return false, err
+	}
+
+	// By default all plugins are attachable, unless they report otherwise.
+	cap, ok := res.CapabilityMap[attachCapability]
+	if ok && !cap {
+		// cap is false, so plugin does not support attach/detach calls.
+		return cap, nil
+	}
+
+	return true, nil
+}
 
 // Init is part of the volume.VolumePlugin interface.
 func (plugin *flexVolumePlugin) Init(host volume.VolumeHost) error {
@@ -146,12 +167,12 @@ func (plugin *flexVolumePlugin) newUnmounterInternal(volName string, podUID type
 }
 
 // NewAttacher is part of the volume.AttachableVolumePlugin interface.
-func (plugin *flexVolumePlugin) NewAttacher() (volume.Attacher, error) {
+func (plugin *flexVolumeAttachablePlugin) NewAttacher() (volume.Attacher, error) {
 	return &flexVolumeAttacher{plugin}, nil
 }
 
 // NewDetacher is part of the volume.AttachableVolumePlugin interface.
-func (plugin *flexVolumePlugin) NewDetacher() (volume.Detacher, error) {
+func (plugin *flexVolumeAttachablePlugin) NewDetacher() (volume.Detacher, error) {
 	return &flexVolumeDetacher{plugin}, nil
 }
 

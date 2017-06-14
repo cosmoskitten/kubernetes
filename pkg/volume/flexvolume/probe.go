@@ -20,6 +20,8 @@ import (
 	"io/ioutil"
 	"path"
 
+	"github.com/golang/glog"
+
 	"k8s.io/kubernetes/pkg/util/exec"
 	utilstrings "k8s.io/kubernetes/pkg/util/strings"
 	"k8s.io/kubernetes/pkg/volume"
@@ -38,12 +40,36 @@ func ProbeVolumePlugins(pluginDir string) []volume.VolumePlugin {
 		// then, executable will be pluginDir/dirname/cifs
 		if f.IsDir() {
 			execPath := path.Join(pluginDir, f.Name())
-			plugins = append(plugins, &flexVolumePlugin{
-				driverName:          utilstrings.UnescapePluginName(f.Name()),
-				execPath:            execPath,
-				runner:              exec.New(),
-				unsupportedCommands: []string{},
-			})
+
+			attachablePlugin := &flexVolumeAttachablePlugin{
+				flexVolumePlugin: flexVolumePlugin{
+					driverName:          utilstrings.UnescapePluginName(f.Name()),
+					execPath:            execPath,
+					runner:              exec.New(),
+					unsupportedCommands: []string{},
+				},
+			}
+
+			// Check whether the plugin is attachable.
+			ok, err := attachablePlugin.isAttachable()
+			if err != nil {
+				glog.Errorf("Unable to probe plugin: %s", attachablePlugin.driverName)
+				continue
+			}
+
+			if ok {
+				plugins = append(plugins, attachablePlugin)
+			} else {
+				// Plugin does not support attach/detach, so return flexVolumePlugin which supports
+				// SetupAt & TearDown functionality
+				plugin := &flexVolumePlugin{
+					driverName:          utilstrings.UnescapePluginName(f.Name()),
+					execPath:            execPath,
+					runner:              exec.New(),
+					unsupportedCommands: []string{},
+				}
+				plugins = append(plugins, plugin)
+			}
 		}
 	}
 	return plugins

@@ -20,6 +20,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"os"
+	"path"
 
 	"github.com/golang/glog"
 	api "k8s.io/kubernetes/pkg/api/v1"
@@ -98,4 +99,9 @@ func isNotMounted(mounter mount.Interface, deviceMountPath string) (bool, error)
 		return false, err
 	}
 	return notmnt, nil
+}
+
+func makeGlobalMountPath(host volume.VolumeHost, driverName, volumeName string) string {
+	mountsDir := path.Join(host.GetPluginDir(flexVolumePluginName), driverName, "mounts")
+	return path.Join(mountsDir, volumeName)
 }
