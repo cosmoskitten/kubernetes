@@ -44,6 +44,7 @@ import (
 func TestMakeMounts(t *testing.T) {
 	testCases := map[string]struct {
 		container      v1.Container
+		annotations    map[string]string
 		podVolumes     kubecontainer.VolumeMap
 		expectErr      bool
 		expectedErrMsg string
@@ -56,6 +57,7 @@ func TestMakeMounts(t *testing.T) {
 				"disk5": kubecontainer.VolumeInfo{Mounter: &stubVolume{path: "/var/lib/kubelet/podID/volumes/empty/disk5"}},
 			},
 			container: v1.Container{
+				Name: "container1",
 				VolumeMounts: []v1.VolumeMount{
 					{
 						MountPath: "/etc/hosts",
@@ -79,6 +81,9 @@ func TestMakeMounts(t *testing.T) {
 					},
 				},
 			},
+			annotations: map[string]string{
+				v1.MountPropagationAnnotation: `{"container1": {"disk": "rshared", "disk4": "rslave"}}`,
+			},
 			expectedMounts: []kubecontainer.Mount{
 				{
 					Name:           "disk",
@@ -86,6 +91,7 @@ func TestMakeMounts(t *testing.T) {
 					HostPath:       "/mnt/disk",
 					ReadOnly:       false,
 					SELinuxRelabel: false,
+					Propagation:    v1.MountPropagationRShared,
 				},
 				{
 					Name:           "disk",
@@ -93,6 +99,7 @@ func TestMakeMounts(t *testing.T) {
 					HostPath:       "/mnt/disk",
 					ReadOnly:       true,
 					SELinuxRelabel: false,
+					Propagation:    v1.MountPropagationRShared,
 				},
 				{
 					Name:           "disk4",
@@ -100,6 +107,7 @@ func TestMakeMounts(t *testing.T) {
 					HostPath:       "/mnt/host",
 					ReadOnly:       false,
 					SELinuxRelabel: false,
+					Propagation:    v1.MountPropagationRSlave,
 				},
 				{
 					Name:           "disk5",
@@ -107,6 +115,7 @@ func TestMakeMounts(t *testing.T) {
 					HostPath:       "/var/lib/kubelet/podID/volumes/empty/disk5",
 					ReadOnly:       false,
 					SELinuxRelabel: false,
+					Propagation:    v1.MountPropagationRSlave,
 				},
 			},
 			expectErr: false,
@@ -150,12 +159,15 @@ func TestMakeMounts(t *testing.T) {
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
 			pod := v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: tc.annotations,
+				},
 				Spec: v1.PodSpec{
 					HostNetwork: true,
 				},
 			}
 
-			mounts, err := makeMounts(&pod, "/pod", &tc.container, "fakepodname", "", "", tc.podVolumes)
+			mounts, err := makeMounts(&pod, "/pod", &tc.container, "fakepodname", "", "", tc.podVolumes, true /* enableMountPropagation */)
 
 			// validate only the error if we expect an error
 			if tc.expectErr {
@@ -171,6 +183,17 @@ func TestMakeMounts(t *testing.T) {
 			}
 
 			assert.Equal(t, tc.expectedMounts, mounts, "mounts of container %+v", tc.container)
+
+			// test makeMounts with disabled mount propagation
+			mounts, err = makeMounts(&pod, "/pod", &tc.container, "fakepodname", "", "", tc.podVolumes, false /* enableMountPropagation */)
+			if !tc.expectErr {
+				expectedPrivateMounts := []kubecontainer.Mount{}
+				for _, mount := range tc.expectedMounts {
+					mount.Propagation = v1.MountPropagationPrivate
+					expectedPrivateMounts = append(expectedPrivateMounts, mount)
+				}
+				assert.Equal(t, expectedPrivateMounts, mounts, "mounts of container %+v", tc.container)
+			}
 		})
 	}
 }
