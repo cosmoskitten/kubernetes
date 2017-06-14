@@ -105,9 +105,9 @@ type Config struct {
 	// The range of IPs to be assigned to services with type=ClusterIP or greater
 	ServiceIPRange net.IPNet
 	// The IP address for the GenericAPIServer service (must be inside ServiceIPRange)
-	APIServerServiceIP net.IP
+	KubernetesServiceIP net.IP
 	// Port for the apiserver service.
-	APIServerServicePort int
+	KubernetesServicePort int
 
 	// TODO, we can probably group service related items into a substruct to make it easier to configure
 	// the API server items and `Extra*` fields likely fit nicely together.
@@ -127,6 +127,8 @@ type Config struct {
 	ExtraEndpointPorts []api.EndpointPort
 	// If non-zero, the "kubernetes" services uses this port as NodePort.
 	KubernetesServiceNodePort int
+	// If non-empty, the "kubernetes" services uses this name as externalName.
+	KubernetesServiceExternalName string
 
 	// Number of masters running; all masters must be started with the
 	// same value for this field. (Numbers > 1 currently untested.)
@@ -162,13 +164,13 @@ func (c *Config) Complete() completedConfig {
 	if c.ServiceIPRange.IP == nil {
 		c.ServiceIPRange = serviceIPRange
 	}
-	if c.APIServerServiceIP == nil {
-		c.APIServerServiceIP = apiServerServiceIP
+	if c.KubernetesServiceIP == nil {
+		c.KubernetesServiceIP = apiServerServiceIP
 	}
 
 	discoveryAddresses := discovery.DefaultAddresses{DefaultAddress: c.GenericConfig.ExternalAddress}
 	discoveryAddresses.CIDRRules = append(discoveryAddresses.CIDRRules,
-		discovery.CIDRRule{IPRange: c.ServiceIPRange, Address: net.JoinHostPort(c.APIServerServiceIP.String(), strconv.Itoa(c.APIServerServicePort))})
+		discovery.CIDRRule{IPRange: c.ServiceIPRange, Address: net.JoinHostPort(c.KubernetesServiceIP.String(), strconv.Itoa(c.KubernetesServicePort))})
 	c.GenericConfig.DiscoveryAddresses = discoveryAddresses
 
 	if c.ServiceNodePortRange.Size == 0 {
