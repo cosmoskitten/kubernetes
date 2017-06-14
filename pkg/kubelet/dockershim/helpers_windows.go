@@ -47,6 +47,8 @@ func (ds *dockerService) updateCreateConfig(
 	podSandboxID string, securityOptSep rune, apiVersion *semver.Version) error {
 	if networkMode := os.Getenv("CONTAINER_NETWORK"); networkMode != "" {
 		createConfig.HostConfig.NetworkMode = dockercontainer.NetworkMode(networkMode)
+	} else {
+		modifyHostNetworkOptionForContainer(false, podSandboxID, createConfig.HostConfig)
 	}
 
 	return nil
@@ -71,12 +73,24 @@ func (ds *dockerService) determinePodIPBySandboxID(sandboxID string) string {
 		if err != nil {
 			continue
 		}
-		if containerIP := getContainerIP(r); containerIP != "" {
-			return containerIP
+
+		if networkMode := os.Getenv("CONTAINER_NETWORK"); networkMode == "" {
+			// Trigger a Plugin Call, to reattach the container to the Sandbox to replicate some
+			// necessary registry values
+			ds.getIP(sandboxID, r)
+			// Do not return any IP, so that we would continue and get the IP of the Sandbox
+		} else {
+			if containerIP := getContainerIP(r); containerIP != "" {
+				return containerIP
+			}
 		}
 	}
 
 	return ""
+}
+
+func getNetworkNamespace(c *dockertypes.ContainerJSON) (string, error) {
+	return string(c.HostConfig.NetworkMode), nil
 }
 
 func getContainerIP(container *dockertypes.ContainerJSON) string {
