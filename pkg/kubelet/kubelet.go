@@ -836,6 +836,9 @@ func NewMainKubelet(kubeCfg *componentconfig.KubeletConfiguration, kubeDeps *Kub
 	if klet.gpuManager == nil {
 		klet.gpuManager = gpu.NewGPUManagerStub()
 	}
+
+	klet.admitHandlers.AddPodAdmitHandler(newMountPropagationAdmissionHandler(klet.enableMountPropagation))
+
 	// Finally, put the most recent version of the config on the Kubelet, so
 	// people can see how it was configured.
 	klet.kubeletConfiguration = *kubeCfg
