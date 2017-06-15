@@ -115,6 +115,11 @@ func DeepCopy_v2alpha1_CronJobSpec(in interface{}, out interface{}, c *conversio
 			*out = new(int32)
 			**out = **in
 		}
+		if in.Timezone != nil {
+			in, out := &in.Timezone, &out.Timezone
+			*out = new(string)
+			**out = **in
+		}
 		return nil
 	}
 }

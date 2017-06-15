@@ -116,6 +116,11 @@ type CronJobSpec struct {
 	// This is a pointer to distinguish between explicit zero and not specified.
 	// +optional
 	FailedJobsHistoryLimit *int32 `json:"failedJobsHistoryLimit,omitempty" protobuf:"varint,7,opt,name=failedJobsHistoryLimit"`
+
+	// The timezone to be used when scheduling the job
+	// Valid options include anything in the IANA Time Zone database
+	// +optional
+	Timezone *string `json:"timezone" protobuf:"bytes,8,opt,name=timezone"`
 }
 
 // ConcurrencyPolicy describes how the job will be handled.

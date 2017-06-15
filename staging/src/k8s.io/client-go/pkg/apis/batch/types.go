@@ -253,6 +253,11 @@ type CronJobSpec struct {
 	// This is a pointer to distinguish between explicit zero and not specified.
 	// +optional
 	FailedJobsHistoryLimit *int32
+
+	// The timezone to be used when scheduling the job.
+	// Valid options include anything in the IANA Time Zone database.
+	// +optional
+	Timezone *string
 }
 
 // ConcurrencyPolicy describes how the job will be handled.

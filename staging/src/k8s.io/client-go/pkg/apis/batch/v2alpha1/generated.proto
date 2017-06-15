@@ -92,6 +92,11 @@ message CronJobSpec {
   // This is a pointer to distinguish between explicit zero and not specified.
   // +optional
   optional int32 failedJobsHistoryLimit = 7;
+
+  // The timezone to be used when scheduling the job
+  // Valid options include anything in the IANA Time Zone database
+  // +optional
+  optional string timezone = 8;
 }
 
 // CronJobStatus represents the current state of a cron job.
