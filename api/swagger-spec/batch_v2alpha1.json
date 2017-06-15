@@ -2396,7 +2396,8 @@
     "description": "CronJobSpec describes how the job execution will look like and when it will actually run.",
     "required": [
      "schedule",
-     "jobTemplate"
+     "jobTemplate",
+     "timezone"
     ],
     "properties": {
      "schedule": {
@@ -2429,6 +2430,10 @@
       "type": "integer",
       "format": "int32",
       "description": "The number of failed finished jobs to retain. This is a pointer to distinguish between explicit zero and not specified."
+     },
+     "timezone": {
+      "type": "string",
+      "description": "The timezone to be used when scheduling the job Valid options include anything in the IANA Time Zone database"
      }
     }
    },

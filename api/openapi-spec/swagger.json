@@ -53366,6 +53366,10 @@
      "suspend": {
       "description": "This flag tells the controller to suspend subsequent executions, it does not apply to already started executions.  Defaults to false.",
       "type": "boolean"
+     },
+     "timezone": {
+      "description": "The timezone to be used when scheduling the job Valid options include anything in the IANA Time Zone database",
+      "type": "string"
      }
     }
    },
