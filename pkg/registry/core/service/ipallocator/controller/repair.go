@@ -126,7 +126,10 @@ func (c *Repair) runOnce() error {
 		return fmt.Errorf("unable to refresh the service IP block: %v", err)
 	}
 
-	rebuilt := ipallocator.NewCIDRRange(c.network)
+	rebuilt, err := ipallocator.NewCIDRRange(c.network)
+	if err != nil {
+		return err
+	}
 	// Check every Service's ClusterIP, and rebuild the state as we think it should be.
 	for _, svc := range list.Items {
 		if !helper.IsServiceIPSet(&svc) {
