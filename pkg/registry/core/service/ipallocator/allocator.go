@@ -254,7 +254,7 @@ func calculateIPOffset(base *big.Int, ip net.IP) int {
 func RangeSize(subnet *net.IPNet) int64 {
 	ones, bits := subnet.Mask.Size()
 	if (bits - ones) >= 31 {
-		panic("masks greater than 31 bits are not supported")
+		panic("masks shorter than /2 for IPv4 or /98 for IPv6 are not supported.")
 	}
 	max := int64(1) << uint(bits-ones)
 	return max

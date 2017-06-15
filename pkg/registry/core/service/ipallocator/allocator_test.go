@@ -163,18 +163,38 @@ func TestAllocateSmall(t *testing.T) {
 }
 
 func TestRangeSize(t *testing.T) {
-	testCases := map[string]int64{
-		"192.168.1.0/24": 256,
-		"192.168.1.0/32": 1,
-		"192.168.1.0/31": 2,
+	testCases := []struct {
+		cidr  string
+		addrs int64
+	}{
+		{
+			cidr:  "192.168.1.0/24",
+			addrs: 256,
+		}, {
+			cidr:  "192.168.1.0/32",
+			addrs: 1,
+		}, {
+			cidr:  "192.168.1.0/31",
+			addrs: 2,
+		}, {
+			cidr:  "2001:db8::/98",
+			addrs: 1073741824,
+		}, {
+			cidr:  "2001:db8::/128",
+			addrs: 1,
+		}, {
+			cidr:  "2001:db8::/127",
+			addrs: 2,
+		},
 	}
-	for k, v := range testCases {
-		_, cidr, err := net.ParseCIDR(k)
+
+	for _, tc := range testCases {
+		_, cidr, err := net.ParseCIDR(tc.cidr)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if size := RangeSize(cidr); size != v {
-			t.Errorf("%s should have a range size of %d, got %d", k, v, size)
+		if size := RangeSize(cidr); size != tc.addrs {
+			t.Errorf("%s should have a range size of %d, got %d", tc.cidr, tc.addrs, size)
 		}
 	}
 }
