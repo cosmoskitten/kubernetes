@@ -58,7 +58,10 @@ func NewTestREST(t *testing.T, endpoints *api.EndpointsList) (*REST, *registryte
 	endpointRegistry := &registrytest.EndpointRegistry{
 		Endpoints: endpoints,
 	}
-	r := ipallocator.NewCIDRRange(makeIPNet(t))
+	r, err := ipallocator.NewCIDRRange(makeIPNet(t))
+	if err != nil {
+		t.Error(err)
+	}
 
 	portRange := utilnet.PortRange{Base: 30000, Size: 1000}
 	portAllocator := portallocator.NewPortAllocator(portRange)

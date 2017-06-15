@@ -29,7 +29,10 @@ func TestAllocate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r := NewCIDRRange(cidr)
+	r, err := NewCIDRRange(cidr)
+	if err != nil {
+		t.Fatal(err)
+	}
 	t.Logf("base: %v", r.base.Bytes())
 	if f := r.Free(); f != 254 {
 		t.Errorf("unexpected free %d", f)
@@ -112,7 +115,10 @@ func TestAllocateTiny(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r := NewCIDRRange(cidr)
+	r, err := NewCIDRRange(cidr)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if f := r.Free(); f != 0 {
 		t.Errorf("free: %d", f)
 	}
@@ -126,7 +132,10 @@ func TestAllocateSmall(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r := NewCIDRRange(cidr)
+	r, err := NewCIDRRange(cidr)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if f := r.Free(); f != 2 {
 		t.Errorf("free: %d", f)
 	}
@@ -163,18 +172,60 @@ func TestAllocateSmall(t *testing.T) {
 }
 
 func TestRangeSize(t *testing.T) {
-	testCases := map[string]int64{
-		"192.168.1.0/24": 256,
-		"192.168.1.0/32": 1,
-		"192.168.1.0/31": 2,
+	testCases := []struct {
+		cidr   string
+		addrs  int64
+		expect bool
+	}{
+		{
+			cidr:   "192.168.1.0/24",
+			addrs:  256,
+			expect: true,
+		}, {
+			cidr:   "192.168.1.0/32",
+			addrs:  1,
+			expect: true,
+		}, {
+			cidr:   "192.168.1.0/31",
+			addrs:  2,
+			expect: true,
+		}, {
+			cidr:   "192.168.1.0/24",
+			addrs:  512,
+			expect: false,
+		}, {
+			cidr:   "2001:db8::/98",
+			addrs:  1073741824,
+			expect: true,
+		}, {
+			cidr:   "2001:db8::/128",
+			addrs:  1,
+			expect: true,
+		}, {
+			cidr:   "2001:db8::/127",
+			addrs:  2,
+			expect: true,
+		}, {
+			cidr:   "2001:db8::/127",
+			addrs:  256,
+			expect: false,
+		},
 	}
-	for k, v := range testCases {
-		_, cidr, err := net.ParseCIDR(k)
+
+	for _, tc := range testCases {
+		_, cidr, err := net.ParseCIDR(tc.cidr)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if size := RangeSize(cidr); size != v {
-			t.Errorf("%s should have a range size of %d, got %d", k, v, size)
+		size, rngErr := RangeSize(cidr)
+		if rngErr != nil {
+			t.Fatal(rngErr)
+		}
+		if (size != tc.addrs) && tc.expect {
+			t.Errorf("%s should have a range size of %d, got %d", tc.cidr, tc.addrs, size)
+		}
+		if (size == tc.addrs) && !tc.expect {
+			t.Errorf("%s should not have a range size of %d, got %d", tc.cidr, tc.addrs, size)
 		}
 	}
 }
@@ -193,7 +244,10 @@ func TestForEach(t *testing.T) {
 	}
 
 	for i, tc := range testCases {
-		r := NewCIDRRange(cidr)
+		r, err := NewCIDRRange(cidr)
+		if err != nil {
+			t.Fatal(err)
+		}
 		for ips := range tc {
 			ip := net.ParseIP(ips)
 			if err := r.Allocate(ip); err != nil {
@@ -221,7 +275,10 @@ func TestSnapshot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r := NewCIDRRange(cidr)
+	r, err := NewCIDRRange(cidr)
+	if err != nil {
+		t.Fatal(err)
+	}
 	ip := []net.IP{}
 	for i := 0; i < 10; i++ {
 		n, err := r.AllocateNext()
@@ -250,11 +307,17 @@ func TestSnapshot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	other := NewCIDRRange(otherCidr)
+	other, err := NewCIDRRange(otherCidr)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := r.Restore(otherCidr, dst.Data); err != ErrMismatchedNetwork {
 		t.Fatal(err)
 	}
-	other = NewCIDRRange(network)
+	other, err = NewCIDRRange(network)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := other.Restore(network, dst.Data); err != nil {
 		t.Fatal(err)
 	}
@@ -274,7 +337,10 @@ func TestNewFromSnapshot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r := NewCIDRRange(cidr)
+	r, err := NewCIDRRange(cidr)
+	if err != nil {
+		t.Fatal(err)
+	}
 	allocated := []net.IP{}
 	for i := 0; i < 128; i++ {
 		ip, err := r.AllocateNext()
