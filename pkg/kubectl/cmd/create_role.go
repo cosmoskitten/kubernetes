@@ -117,7 +117,7 @@ func NewCmdCreateRole(f cmdutil.Factory, cmdOut io.Writer) *cobra.Command {
 	}
 	cmd := &cobra.Command{
 		Use:     "role NAME --verb=verb --resource=resource.group/subresource [--resource-name=resourcename] [--dry-run]",
-		Short:   roleLong,
+		Short:   i18n.T("Create a role with single rule"),
 		Long:    roleLong,
 		Example: roleExample,
 		Run: func(cmd *cobra.Command, args []string) {

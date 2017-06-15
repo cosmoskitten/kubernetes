@@ -27,6 +27,7 @@ import (
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/util/editor"
 	"k8s.io/kubernetes/pkg/printers"
+	"k8s.io/kubernetes/pkg/util/i18n"
 )
 
 var (
@@ -77,7 +78,7 @@ func NewCmdApplyEditLastApplied(f cmdutil.Factory, out, errOut io.Writer) *cobra
 
 	cmd := &cobra.Command{
 		Use:     "edit-last-applied (RESOURCE/NAME | -f FILENAME)",
-		Short:   "Edit latest last-applied-configuration annotations of a resource/object",
+		Short:   i18n.T("Edit latest last-applied-configuration annotations of a resource/object"),
 		Long:    applyEditLastAppliedLong,
 		Example: applyEditLastAppliedExample,
 		Run: func(cmd *cobra.Command, args []string) {

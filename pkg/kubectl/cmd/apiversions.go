@@ -38,7 +38,7 @@ var (
 func NewCmdApiVersions(f cmdutil.Factory, out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "api-versions",
-		Short:   "Print the supported API versions on the server, in the form of \"group/version\"",
+		Short:   i18n.T("Print the supported API versions on the server, in the form of \"group/version\""),
 		Long:    "Print the supported API versions on the server, in the form of \"group/version\"",
 		Example: apiversionsExample,
 		Run: func(cmd *cobra.Command, args []string) {

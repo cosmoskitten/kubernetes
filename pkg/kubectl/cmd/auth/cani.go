@@ -32,6 +32,7 @@ import (
 	internalauthorizationclient "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/authorization/internalversion"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	"k8s.io/kubernetes/pkg/util/i18n"
 )
 
 // CanIOptions is the start of the data required to perform the operation.  As new fields are added, add them here instead of
@@ -89,7 +90,7 @@ func NewCmdCanI(f cmdutil.Factory, out, err io.Writer) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:     "can-i VERB [TYPE | TYPE/NAME | NONRESOURCEURL]",
-		Short:   "Check whether an action is allowed",
+		Short:   i18n.T("Check whether an action is allowed"),
 		Long:    canILong,
 		Example: canIExample,
 		Run: func(cmd *cobra.Command, args []string) {

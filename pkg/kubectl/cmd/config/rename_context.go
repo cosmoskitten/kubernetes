@@ -26,6 +26,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	"k8s.io/kubernetes/pkg/util/i18n"
 )
 
 // RenameContextOptions contains the options for running the rename-context cli command.
@@ -37,8 +38,6 @@ type RenameContextOptions struct {
 
 const (
 	renameContextUse = "rename-context CONTEXT_NAME NEW_NAME"
-
-	renameContextShort = "Renames a context from the kubeconfig file."
 )
 
 var (
@@ -62,7 +61,7 @@ func NewCmdConfigRenameContext(out io.Writer, configAccess clientcmd.ConfigAcces
 
 	cmd := &cobra.Command{
 		Use:     renameContextUse,
-		Short:   renameContextShort,
+		Short:   i18n.T("Renames a context from the kubeconfig file"),
 		Long:    renameContextLong,
 		Example: renameContextExample,
 		Run: func(cmd *cobra.Command, args []string) {

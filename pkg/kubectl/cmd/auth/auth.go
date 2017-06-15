@@ -22,13 +22,14 @@ import (
 	"github.com/spf13/cobra"
 
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	"k8s.io/kubernetes/pkg/util/i18n"
 )
 
 func NewCmdAuth(f cmdutil.Factory, out, errOut io.Writer) *cobra.Command {
 	// Parent command to which all subcommands are added.
 	cmds := &cobra.Command{
 		Use:   "auth",
-		Short: "Inspect authorization",
+		Short: i18n.T("Inspect authorization"),
 		Long:  `Inspect authorization`,
 		Run:   cmdutil.DefaultSubCommandRun(errOut),
 	}
