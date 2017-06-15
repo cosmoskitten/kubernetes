@@ -608,14 +608,13 @@ func Convert_v1_Pod_To_api_Pod(in *Pod, out *api.Pod, s conversion.Scope) error 
 		// to decode to. Thus the caller of UnsafeConvertToVersion is
 		// taking responsibility to ensure mutation of in is not exposed
 		// back to the caller.
-		in.Spec.InitContainers = values
-		// Call defaulters explicitly until annotations are removed
 		tmpPod := &Pod{
 			Spec: PodSpec{
 				HostNetwork:    in.Spec.HostNetwork,
 				InitContainers: values,
 			},
 		}
+		// Call defaulters explicitly until annotations are removed
 		SetObjectDefaults_Pod(tmpPod)
 		in.Spec.InitContainers = tmpPod.Spec.InitContainers
 	}
