@@ -79,6 +79,10 @@ msgstr "取消设置 kubeconfig 文件中的一个单个值"
 msgid "Update the annotations on a resource"
 msgstr "更新一个资源的注解"
 
+#: pkg/kubectl/cmd/rename_context.go:64
+msgid "Renames a context from the kubeconfig file"
+msgstr "修改 kubeconfig 文件中的一个上下文名称"
+
 msgid ""
 "watch is only supported on individual resources and resource collections - "
 "%d resources were found"
