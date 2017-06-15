@@ -227,7 +227,15 @@ func ValidateIPNetFromString(subnet string, minAddrs int64, fldPath *field.Path)
 		allErrs = append(allErrs, field.Invalid(fldPath, subnet, "couldn't parse subnet"))
 		return allErrs
 	}
-	numAddresses := ipallocator.RangeSize(svcSubnet)
+	numAddresses, err := ipallocator.RangeSize(svcSubnet)
+	if err != nil {
+		if err == ipallocator.ErrMaskTooSmall {
+			allErrs = append(allErrs, field.Invalid(fldPath, subnet, "subnet mask is too short"))
+		} else {
+			allErrs = append(allErrs, field.Invalid(fldPath, subnet, "invalid service subnet"))
+		}
+		return allErrs
+	}
 	if numAddresses < minAddrs {
 		allErrs = append(allErrs, field.Invalid(fldPath, subnet, "subnet is too small"))
 	}
