@@ -72,8 +72,12 @@ type Range struct {
 }
 
 // NewAllocatorCIDRRange creates a Range over a net.IPNet, calling allocatorFactory to construct the backing store.
-func NewAllocatorCIDRRange(cidr *net.IPNet, allocatorFactory allocator.AllocatorFactory) *Range {
-	max := RangeSize(cidr)
+func NewAllocatorCIDRRange(cidr *net.IPNet, allocatorFactory allocator.AllocatorFactory) (*Range, error) {
+	max, err := RangeSize(cidr)
+	if err != nil {
+		return nil, err
+	}
+
 	base := bigForIP(cidr.IP)
 	rangeSpec := cidr.String()
 
@@ -83,11 +87,11 @@ func NewAllocatorCIDRRange(cidr *net.IPNet, allocatorFactory allocator.Allocator
 		max:  maximum(0, int(max-2)),        // don't use the network broadcast,
 	}
 	r.alloc = allocatorFactory(r.max, rangeSpec)
-	return &r
+	return &r, err
 }
 
 // Helper that wraps NewAllocatorCIDRRange, for creating a range backed by an in-memory store.
-func NewCIDRRange(cidr *net.IPNet) *Range {
+func NewCIDRRange(cidr *net.IPNet) (*Range, error) {
 	return NewAllocatorCIDRRange(cidr, func(max int, rangeSpec string) allocator.Interface {
 		return allocator.NewAllocationMap(max, rangeSpec)
 	})
@@ -99,7 +103,10 @@ func NewFromSnapshot(snap *api.RangeAllocation) (*Range, error) {
 	if err != nil {
 		return nil, err
 	}
-	r := NewCIDRRange(ipnet)
+	r, err := NewCIDRRange(ipnet)
+	if err != nil {
+		return nil, err
+	}
 	if err := r.Restore(ipnet, snap.Data); err != nil {
 		return nil, err
 	}
@@ -253,14 +260,14 @@ func calculateIPOffset(base *big.Int, ip net.IP) int {
 	return int(big.NewInt(0).Sub(bigForIP(ip), base).Int64())
 }
 
-// RangeSize returns the size of a range in valid addresses.
-func RangeSize(subnet *net.IPNet) int64 {
+// RangeSize returns the size of a range in valid addresses or error if the mask is too short.
+func RangeSize(subnet *net.IPNet) (int64, error) {
 	ones, bits := subnet.Mask.Size()
 	if (bits - ones) >= 31 {
-		panic("masks greater than 31 bits are not supported")
+		return 0, fmt.Errorf("Subnet mask for %q is shorter than /2 for IPv4 or /98 for IPv6.", subnet)
 	}
 	max := int64(1) << uint(bits-ones)
-	return max
+	return max, nil
 }
 
 // GetIndexedIP returns a net.IP that is subnet.IP + index in the contiguous IP space.
