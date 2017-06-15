@@ -42,12 +42,15 @@ func newStorage(t *testing.T) (*etcdtesting.EtcdTestServer, ipallocator.Interfac
 	}
 
 	var backing allocator.Interface
-	storage := ipallocator.NewAllocatorCIDRRange(cidr, func(max int, rangeSpec string) allocator.Interface {
+	storage, err := ipallocator.NewAllocatorCIDRRange(cidr, func(max int, rangeSpec string) allocator.Interface {
 		mem := allocator.NewAllocationMap(max, rangeSpec)
 		backing = mem
 		etcd := allocatorstore.NewEtcd(mem, "/ranges/serviceips", api.Resource("serviceipallocations"), etcdStorage)
 		return etcd
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	s, d := generic.NewRawStorage(etcdStorage)
 	destroyFunc := func() {
 		d()
