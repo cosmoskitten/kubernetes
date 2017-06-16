@@ -113,11 +113,12 @@ func (plugin *azureFilePlugin) newMounterInternal(spec *volume.Spec, pod *v1.Pod
 			plugin:          plugin,
 			MetricsProvider: volume.NewMetricsStatFS(getPath(pod.UID, spec.Name(), plugin.host)),
 		},
-		util:         util,
-		secretName:   source.SecretName,
-		shareName:    source.ShareName,
-		readOnly:     readOnly,
-		mountOptions: volume.MountOptionFromSpec(spec),
+		util:            util,
+		secretNamespace: source.SecretNameSpace,
+		secretName:      source.SecretName,
+		shareName:       source.ShareName,
+		readOnly:        readOnly,
+		mountOptions:    volume.MountOptionFromSpec(spec),
 	}, nil
 }
 
@@ -164,11 +165,12 @@ func (azureFileVolume *azureFile) GetPath() string {
 
 type azureFileMounter struct {
 	*azureFile
-	util         azureUtil
-	secretName   string
-	shareName    string
-	readOnly     bool
-	mountOptions []string
+	util            azureUtil
+	secretName      string
+	secretNamespace string
+	shareName       string
+	readOnly        bool
+	mountOptions    []string
 }
 
 var _ volume.Mounter = &azureFileMounter{}
@@ -203,7 +205,11 @@ func (b *azureFileMounter) SetUpAt(dir string, fsGroup *types.UnixGroupID) error
 		return nil
 	}
 	var accountKey, accountName string
-	if accountName, accountKey, err = b.util.GetAzureCredentials(b.plugin.host, b.pod.Namespace, b.secretName); err != nil {
+	nameSpace := b.secretNamespace
+	if len(nameSpace) == 0 {
+		nameSpace = b.pod.Namespace
+	}
+	if accountName, accountKey, err = b.util.GetAzureCredentials(b.plugin.host, nameSpace, b.secretName); err != nil {
 		return err
 	}
 	os.MkdirAll(dir, 0750)
