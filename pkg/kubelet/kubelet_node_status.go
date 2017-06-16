@@ -30,10 +30,10 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/conversion"
 	"k8s.io/apimachinery/pkg/types"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	"k8s.io/kubernetes/pkg/api"
 	k8s_api_v1 "k8s.io/kubernetes/pkg/api/v1"
 	v1helper "k8s.io/kubernetes/pkg/api/v1/helper"
 	"k8s.io/kubernetes/pkg/cloudprovider"
@@ -118,7 +118,7 @@ func (kl *Kubelet) tryRegisterWithAPIServer(node *v1.Node) bool {
 		return false
 	}
 
-	clonedNode, err := conversion.NewCloner().DeepCopy(existingNode)
+	clonedNode, err := api.Scheme.DeepCopy(existingNode)
 	if err != nil {
 		glog.Errorf("Unable to clone %q node object %#v: %v", kl.nodeName, existingNode, err)
 		return false
@@ -409,7 +409,7 @@ func (kl *Kubelet) tryUpdateNodeStatus(tryNumber int) error {
 		return fmt.Errorf("error getting node %q: %v", kl.nodeName, err)
 	}
 
-	clonedNode, err := conversion.NewCloner().DeepCopy(node)
+	clonedNode, err := api.Scheme.DeepCopy(node)
 	if err != nil {
 		return fmt.Errorf("error clone node %q: %v", kl.nodeName, err)
 	}
