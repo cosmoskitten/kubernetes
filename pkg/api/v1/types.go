@@ -1122,6 +1122,10 @@ type AzureFileVolumeSource struct {
 	// the ReadOnly setting in VolumeMounts.
 	// +optional
 	ReadOnly bool `json:"readOnly,omitempty" protobuf:"varint,3,opt,name=readOnly"`
+	// the namespace of the secret that contains Azure Storage Account Name and Key
+	// default is the same as the Pod
+	// +optional
+	SecretNameSpace *string `json:"secretNamespace" protobuf:"bytes,4,opt,name=secretNamespace"`
 }
 
 // Represents a vSphere volume resource.

@@ -63,12 +63,17 @@ func (plugin *azureFilePlugin) newDeleterInternal(spec *volume.Spec, util azureU
 	if spec.PersistentVolume != nil && spec.PersistentVolume.Spec.AzureFile == nil {
 		return nil, fmt.Errorf("invalid PV spec")
 	}
+	nameSpace := ""
 	pvSpec := spec.PersistentVolume
-	if pvSpec.Spec.ClaimRef.Namespace == "" {
-		glog.Errorf("namespace cannot be nil")
-		return nil, fmt.Errorf("invalid PV spec: nil namespace")
+	if pvSpec.Spec.AzureFile.SecretNameSpace != nil {
+		nameSpace = *pvSpec.Spec.AzureFile.SecretNameSpace
+	} else {
+		if pvSpec.Spec.ClaimRef.Namespace == "" {
+			glog.Errorf("namespace cannot be nil")
+			return nil, fmt.Errorf("invalid PV spec: nil namespace")
+		}
+		nameSpace = pvSpec.Spec.ClaimRef.Namespace
 	}
-	nameSpace := pvSpec.Spec.ClaimRef.Namespace
 	secretName := pvSpec.Spec.AzureFile.SecretName
 	shareName := pvSpec.Spec.AzureFile.ShareName
 	if accountName, accountKey, err := util.GetAzureCredentials(plugin.host, nameSpace, secretName); err != nil {
@@ -142,7 +147,7 @@ func (a *azureFileProvisioner) Provision() (*v1.PersistentVolume, error) {
 	capacity := a.options.PVC.Spec.Resources.Requests[v1.ResourceName(v1.ResourceStorage)]
 	requestBytes := capacity.Value()
 	requestGB := int(volume.RoundUpSize(requestBytes, 1024*1024*1024))
-
+	nameSpace := a.options.PVC.Namespace
 	// Apply ProvisionerParameters (case-insensitive). We leave validation of
 	// the values to the cloud provider.
 	for k, v := range a.options.Parameters {
@@ -153,6 +158,8 @@ func (a *azureFileProvisioner) Provision() (*v1.PersistentVolume, error) {
 			location = v
 		case "storageaccount":
 			account = v
+		case "secretnamespace":
+			nameSpace = v
 		default:
 			return nil, fmt.Errorf("invalid option %q for volume plugin %s", k, a.plugin.GetPluginName())
 		}
@@ -166,8 +173,9 @@ func (a *azureFileProvisioner) Provision() (*v1.PersistentVolume, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	// create a secret for storage account and key
-	secretName, err := a.util.SetAzureCredentials(a.plugin.host, a.options.PVC.Namespace, account, key)
+	secretName, err := a.util.SetAzureCredentials(a.plugin.host, nameSpace, account, key)
 	if err != nil {
 		return nil, err
 	}
@@ -188,8 +196,9 @@ func (a *azureFileProvisioner) Provision() (*v1.PersistentVolume, error) {
 			},
 			PersistentVolumeSource: v1.PersistentVolumeSource{
 				AzureFile: &v1.AzureFileVolumeSource{
-					SecretName: secretName,
-					ShareName:  name,
+					SecretName:      secretName,
+					ShareName:       name,
+					SecretNameSpace: &nameSpace,
 				},
 			},
 		},

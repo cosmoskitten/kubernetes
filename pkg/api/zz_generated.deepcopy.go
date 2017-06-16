@@ -318,6 +318,11 @@ func DeepCopy_api_AzureFileVolumeSource(in interface{}, out interface{}, c *conv
 		in := in.(*AzureFileVolumeSource)
 		out := out.(*AzureFileVolumeSource)
 		*out = *in
+		if in.SecretNameSpace != nil {
+			in, out := &in.SecretNameSpace, &out.SecretNameSpace
+			*out = new(string)
+			**out = **in
+		}
 		return nil
 	}
 }
@@ -2166,7 +2171,9 @@ func DeepCopy_api_PersistentVolumeSource(in interface{}, out interface{}, c *con
 		if in.AzureFile != nil {
 			in, out := &in.AzureFile, &out.AzureFile
 			*out = new(AzureFileVolumeSource)
-			**out = **in
+			if err := DeepCopy_api_AzureFileVolumeSource(*in, *out, c); err != nil {
+				return err
+			}
 		}
 		if in.VsphereVolume != nil {
 			in, out := &in.VsphereVolume, &out.VsphereVolume
@@ -3696,7 +3703,9 @@ func DeepCopy_api_VolumeSource(in interface{}, out interface{}, c *conversion.Cl
 		if in.AzureFile != nil {
 			in, out := &in.AzureFile, &out.AzureFile
 			*out = new(AzureFileVolumeSource)
-			**out = **in
+			if err := DeepCopy_api_AzureFileVolumeSource(*in, *out, c); err != nil {
+				return err
+			}
 		}
 		if in.ConfigMap != nil {
 			in, out := &in.ConfigMap, &out.ConfigMap
