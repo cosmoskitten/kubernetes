@@ -136,6 +136,11 @@ message AzureFileVolumeSource {
   // the ReadOnly setting in VolumeMounts.
   // +optional
   optional bool readOnly = 3;
+
+  // the namespace of the secret that contains Azure Storage Account Name and Key
+  // default is the same as the Pod
+  // +optional
+  optional string secretNamespace = 4;
 }
 
 // Binding ties one object to another; for example, a pod is bound to a node by a scheduler.
