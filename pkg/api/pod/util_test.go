@@ -105,6 +105,7 @@ func TestPodSecrets(t *testing.T) {
 	// excludedSecretPaths holds struct paths to fields with "secret" in the name that are not actually references to secret API objects
 	excludedSecretPaths := sets.NewString(
 		"Spec.Volumes[*].VolumeSource.CephFS.SecretFile",
+		"Spec.Volumes[*].VolumeSource.AzureFile.SecretNamespace",
 	)
 	// expectedSecretPaths holds struct paths to fields with "secret" in the name that are references to secret API objects.
 	// every path here should be represented as an example in the Pod stub above, with the secret name set to the path.
