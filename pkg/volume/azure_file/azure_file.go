@@ -63,12 +63,12 @@ func (plugin *azureFilePlugin) GetPluginName() string {
 }
 
 func (plugin *azureFilePlugin) GetVolumeName(spec *volume.Spec) (string, error) {
-	volumeSource, _, err := getVolumeSource(spec)
+	share, _, err := getVolumeSource(spec)
 	if err != nil {
 		return "", err
 	}
 
-	return volumeSource.ShareName, nil
+	return share, nil
 }
 
 func (plugin *azureFilePlugin) CanSupport(spec *volume.Spec) bool {
@@ -102,11 +102,14 @@ func (plugin *azureFilePlugin) NewMounter(spec *volume.Spec, pod *v1.Pod, _ volu
 }
 
 func (plugin *azureFilePlugin) newMounterInternal(spec *volume.Spec, pod *v1.Pod, util azureUtil, mounter mount.Interface) (volume.Mounter, error) {
-	source, readOnly, err := getVolumeSource(spec)
+	share, readOnly, err := getVolumeSource(spec)
 	if err != nil {
 		return nil, err
 	}
-
+	secretName, secretNamespace, err := getSecretNameAndNamespace(spec)
+	if len(secretNamespace) == 0 {
+		secretNamespace = pod.Namespace
+	}
 	return &azureFileMounter{
 		azureFile: &azureFile{
 			volName:         spec.Name(),
@@ -115,11 +118,12 @@ func (plugin *azureFilePlugin) newMounterInternal(spec *volume.Spec, pod *v1.Pod
 			plugin:          plugin,
 			MetricsProvider: volume.NewMetricsStatFS(getPath(pod.UID, spec.Name(), plugin.host)),
 		},
-		util:         util,
-		secretName:   source.SecretName,
-		shareName:    source.ShareName,
-		readOnly:     readOnly,
-		mountOptions: volume.MountOptionFromSpec(spec),
+		util:            util,
+		secretNamespace: secretNamespace,
+		secretName:      secretName,
+		shareName:       share,
+		readOnly:        readOnly,
+		mountOptions:    volume.MountOptionFromSpec(spec),
 	}, nil
 }
 
@@ -166,11 +170,12 @@ func (azureFileVolume *azureFile) GetPath() string {
 
 type azureFileMounter struct {
 	*azureFile
-	util         azureUtil
-	secretName   string
-	shareName    string
-	readOnly     bool
-	mountOptions []string
+	util            azureUtil
+	secretName      string
+	secretNamespace string
+	shareName       string
+	readOnly        bool
+	mountOptions    []string
 }
 
 var _ volume.Mounter = &azureFileMounter{}
@@ -205,7 +210,7 @@ func (b *azureFileMounter) SetUpAt(dir string, fsGroup *int64) error {
 		return nil
 	}
 	var accountKey, accountName string
-	if accountName, accountKey, err = b.util.GetAzureCredentials(b.plugin.host, b.pod.Namespace, b.secretName); err != nil {
+	if accountName, accountKey, err = b.util.GetAzureCredentials(b.plugin.host, b.secretNamespace, b.secretName); err != nil {
 		return err
 	}
 	os.MkdirAll(dir, 0700)
@@ -261,15 +266,42 @@ func (c *azureFileUnmounter) TearDownAt(dir string) error {
 }
 
 func getVolumeSource(
-	spec *volume.Spec) (*v1.AzureFileVolumeSource, bool, error) {
+	spec *volume.Spec) (share string, readOnly bool, err error) {
 	if spec.Volume != nil && spec.Volume.AzureFile != nil {
-		return spec.Volume.AzureFile, spec.Volume.AzureFile.ReadOnly, nil
+		share = spec.Volume.AzureFile.ShareName
+		readOnly = spec.Volume.AzureFile.ReadOnly
+		err = nil
+		return
 	} else if spec.PersistentVolume != nil &&
 		spec.PersistentVolume.Spec.AzureFile != nil {
-		return spec.PersistentVolume.Spec.AzureFile, spec.ReadOnly, nil
+		share = spec.PersistentVolume.Spec.AzureFile.ShareName
+		readOnly = spec.ReadOnly
+		err = nil
+		return
 	}
 
-	return nil, false, fmt.Errorf("Spec does not reference an AzureFile volume type")
+	err = fmt.Errorf("Spec does not reference an AzureFile volume type")
+	return
+}
+
+func getSecretNameAndNamespace(spec *volume.Spec) (secretName, secretNamespace string, err error) {
+	if spec.Volume != nil && spec.Volume.AzureFile != nil {
+		secretName = spec.Volume.AzureFile.SecretName
+		secretNamespace = ""
+		err = nil
+		return
+	} else if spec.PersistentVolume != nil &&
+		spec.PersistentVolume.Spec.AzureFile != nil {
+		secretNamespace = ""
+		if spec.PersistentVolume.Spec.AzureFile.SecretNamespace != nil {
+			secretNamespace = *spec.PersistentVolume.Spec.AzureFile.SecretNamespace
+		}
+		secretName = spec.PersistentVolume.Spec.AzureFile.SecretName
+		err = nil
+		return
+	}
+	err = fmt.Errorf("Spec does not reference an AzureFile volume type")
+	return
 }
 
 func getAzureCloud(cloudProvider cloudprovider.Interface) (*azure.Cloud, error) {

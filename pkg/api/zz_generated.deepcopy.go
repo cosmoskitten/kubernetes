@@ -3662,7 +3662,9 @@ func (in *PersistentVolumeSource) DeepCopyInto(out *PersistentVolumeSource) {
 			*out = nil
 		} else {
 			*out = new(AzureFileVolumeSource)
-			**out = **in
+			if err := DeepCopy_api_AzureFileVolumeSource(*in, *out, c); err != nil {
+				return err
+			}
 		}
 	}
 	if in.VsphereVolume != nil {
@@ -5976,7 +5978,9 @@ func (in *VolumeSource) DeepCopyInto(out *VolumeSource) {
 			*out = nil
 		} else {
 			*out = new(AzureFileVolumeSource)
-			**out = **in
+			if err := DeepCopy_api_AzureFileVolumeSource(*in, *out, c); err != nil {
+				return err
+			}
 		}
 	}
 	if in.ConfigMap != nil {
