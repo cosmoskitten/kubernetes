@@ -508,6 +508,7 @@ func autoConvert_v1_AzureFileVolumeSource_To_api_AzureFileVolumeSource(in *Azure
 	out.SecretName = in.SecretName
 	out.ShareName = in.ShareName
 	out.ReadOnly = in.ReadOnly
+	out.SecretNameSpace = in.SecretNameSpace
 	return nil
 }
 
@@ -520,6 +521,7 @@ func autoConvert_api_AzureFileVolumeSource_To_v1_AzureFileVolumeSource(in *api.A
 	out.SecretName = in.SecretName
 	out.ShareName = in.ShareName
 	out.ReadOnly = in.ReadOnly
+	out.SecretNameSpace = in.SecretNameSpace
 	return nil
 }
 
