@@ -39,7 +39,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update -y \
 
 RUN cp /usr/bin/nsenter /nsenter
 
-# Copy the the cni-bin folder into /opt/cni/bin
+# Copy the cni-bin folder into /opt/cni/bin
 COPY cni-bin/bin /opt/cni/bin
 
 # Create symlinks for each hyperkube server
