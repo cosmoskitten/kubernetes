@@ -55,7 +55,10 @@ func setInitDynamicDefaults(cfg *kubeadmapi.MasterConfiguration) error {
 	if k8sVersion.LessThan(kubeadmconstants.MinimumControlPlaneVersion) {
 		return fmt.Errorf("this version of kubeadm only supports deploying clusters with the control plane version >= %s. Current version: %s", kubeadmconstants.MinimumControlPlaneVersion.String(), cfg.KubernetesVersion)
 	}
-
+	if compare, _ := k8sVersion.Compare(kubeadmconstants.MaximumControlPlaneVersion); compare != -1 {
+		return fmt.Errorf("this version of kubeadm only supports deploying clusters with the control plane version < %s. Current version: %s", kubeadmconstants.MaximumControlPlaneVersion, cfg.KubernetesVersion)
+	}
+	panic("stop-here")
 	// Defaulting is made here because it's dependent on the version currently, which is determined above
 	// TODO(luxas): Cleanup this once we have dropped v1.6 support and move this code into the API group defaulting
 	cfg.AuthorizationModes = defaultAuthorizationModes(cfg.AuthorizationModes, k8sVersion)
