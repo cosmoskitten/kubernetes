@@ -50,6 +50,7 @@ spec:
   volumes:
   - hostPath:
       path: /var/run/docker.sock
+      type: Socket
     name: socket
   - hostPath:
       path: /usr/bin/docker

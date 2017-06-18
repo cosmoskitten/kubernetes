@@ -124,6 +124,7 @@ spec:
         - name: run
           hostPath:
               path: /var/run/docker.sock
+              type: Socket
         - name: sys
           hostPath:
               path: /sys
