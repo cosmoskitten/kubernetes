@@ -98,6 +98,7 @@ spec:
       - name: xtables-lock
         hostPath:
           path: /run/xtables.lock
+          type: FileOrCreate
 `
 
 	KubeDNSVersion = "1.14.4"
