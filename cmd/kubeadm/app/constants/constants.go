@@ -109,13 +109,6 @@ var (
 	// MinimumControlPlaneVersion specifies the minimum control plane version kubeadm can deploy
 	MinimumControlPlaneVersion = version.MustParseSemantic("v1.6.0")
 
-	// MaximumControlPlaneVersion specifies the maximum control plane version kubeadm can deploy
-	// It prevents unpredictable error when K8s changes release, thus forcing the user to keep the latest kubeadm.
-	// NB. MaximumControlPlaneVersion is the first version not accepted; in semver for prerelease version
-	//     numeric identifiers always have lower precedence than non-numeric identifiers, thus
-	//     setting the value to x.y.z-0 excludes the release x.y.z from -alpha.0 and going on.
-	MaximumControlPlaneVersion = "v1.8.0-0"
-
 	// MinimumCSRSARApproverVersion specifies the minimum kubernetes version that can be used for enabling the new-in-v1.7 CSR approver based on a SubjectAccessReview
 	MinimumCSRSARApproverVersion = version.MustParseSemantic("v1.7.0-beta.0")
 

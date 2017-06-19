@@ -26,7 +26,6 @@ import (
 
 	"os"
 
-	"k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm"
 	kubeadmapi "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm"
 )
 
@@ -180,7 +179,7 @@ func TestRunInitMasterChecks(t *testing.T) {
 	}{
 		{
 			cfg: &kubeadmapi.MasterConfiguration{
-				API: kubeadm.API{AdvertiseAddress: "foo"},
+				API: kubeadmapi.API{AdvertiseAddress: "foo"},
 			},
 			expected: false,
 		},

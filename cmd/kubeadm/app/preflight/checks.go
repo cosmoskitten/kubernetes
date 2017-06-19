@@ -45,6 +45,7 @@ import (
 	"k8s.io/kubernetes/pkg/util/initsystem"
 	"k8s.io/kubernetes/pkg/util/node"
 	"k8s.io/kubernetes/pkg/util/version"
+	apiversion "k8s.io/kubernetes/pkg/version"
 	"k8s.io/kubernetes/test/e2e_node/system"
 )
 
@@ -362,8 +363,9 @@ func (kubever KubernetesVersionCheck) Check() (warnings, errors []error) {
 		return nil, []error{fmt.Errorf("couldn't parse kubernetes version %q: %v", kubever.KubernetesVersion, err)}
 	}
 
-	if compare, _ := k8sVersion.Compare(kubeadmconstants.MaximumControlPlaneVersion); compare != -1 {
-		return []error{fmt.Errorf("kubernetes version is greater than the most recently validated version. Kubernetes version: %s. Max validated version: %s", kubever.KubernetesVersion, kubeadmconstants.MaximumControlPlaneVersion)}, nil
+	kubeadmVersion := apiversion.Get()
+	if compare, _ := k8sVersion.Compare(kubeadmVersion.GitVersion); compare == 1 {
+		return []error{fmt.Errorf("kubernetes version is greater than kubeadm version. Kubernetes version: %s. Kubeadm version: %s", kubever.KubernetesVersion, kubeadmVersion.GitVersion)}, nil
 	}
 
 	return nil, nil
