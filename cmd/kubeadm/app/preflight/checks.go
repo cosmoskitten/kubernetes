@@ -44,6 +44,7 @@ import (
 	authzmodes "k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes"
 	"k8s.io/kubernetes/pkg/util/initsystem"
 	"k8s.io/kubernetes/pkg/util/node"
+	"k8s.io/kubernetes/pkg/util/version"
 	"k8s.io/kubernetes/test/e2e_node/system"
 )
 
@@ -351,6 +352,23 @@ func (sysver SystemVerificationCheck) Check() (warnings, errors []error) {
 	return warns, nil
 }
 
+type KubernetesVersionCheck struct {
+	KubernetesVersion string
+}
+
+func (kubever KubernetesVersionCheck) Check() (warnings, errors []error) {
+	k8sVersion, err := version.ParseSemantic(kubever.KubernetesVersion)
+	if err != nil {
+		return nil, []error{fmt.Errorf("couldn't parse kubernetes version %q: %v", kubever.KubernetesVersion, err)}
+	}
+
+	if compare, _ := k8sVersion.Compare(kubeadmconstants.MaximumControlPlaneVersion); compare != -1 {
+		return []error{fmt.Errorf("kubernetes version is greater than the most recently validated version. Kubernetes version: %s. Max validated version: %s", kubever.KubernetesVersion, kubeadmconstants.MaximumControlPlaneVersion)}, nil
+	}
+
+	return nil, nil
+}
+
 type etcdVersionResponse struct {
 	Etcdserver  string `json:"etcdserver"`
 	Etcdcluster string `json:"etcdcluster"`
@@ -486,6 +504,7 @@ func getEtcdVersionResponse(client *http.Client, url string, target interface{})
 }
 func RunInitMasterChecks(cfg *kubeadmapi.MasterConfiguration) error {
 	checks := []Checker{
+		KubernetesVersionCheck{cfg.KubernetesVersion},
 		SystemVerificationCheck{},
 		IsRootCheck{},
 		HostnameCheck{},
