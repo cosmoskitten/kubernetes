@@ -1042,6 +1042,20 @@ func validateAzureFile(azure *api.AzureFileVolumeSource, fldPath *field.Path) fi
 	return allErrs
 }
 
+func validateAzureFilePV(azure *api.AzureFilePersistentVolumeSource, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	if azure.SecretName == "" {
+		allErrs = append(allErrs, field.Required(fldPath.Child("secretName"), ""))
+	}
+	if azure.ShareName == "" {
+		allErrs = append(allErrs, field.Required(fldPath.Child("shareName"), ""))
+	}
+	if azure.SecretNamespace == nil || len(*azure.SecretNamespace) == 0 {
+		allErrs = append(allErrs, field.Required(fldPath.Child("secretNamespace"), ""))
+	}
+	return allErrs
+}
+
 func validateAzureDisk(azure *api.AzureDiskVolumeSource, fldPath *field.Path) field.ErrorList {
 	var supportedCachingModes = sets.NewString(string(api.AzureDataDiskCachingNone), string(api.AzureDataDiskCachingReadOnly), string(api.AzureDataDiskCachingReadWrite))
 	var supportedDiskKinds = sets.NewString(string(api.AzureSharedBlobDisk), string(api.AzureDedicatedBlobDisk), string(api.AzureManagedDisk))
@@ -1312,7 +1326,7 @@ func ValidatePersistentVolume(pv *api.PersistentVolume) field.ErrorList {
 
 		} else {
 			numVolumes++
-			allErrs = append(allErrs, validateAzureFile(pv.Spec.AzureFile, specPath.Child("azureFile"))...)
+			allErrs = append(allErrs, validateAzureFilePV(pv.Spec.AzureFile, specPath.Child("azureFile"))...)
 		}
 	}
 

@@ -196,7 +196,7 @@ func (a *azureFileProvisioner) Provision() (*v1.PersistentVolume, error) {
 				v1.ResourceName(v1.ResourceStorage): resource.MustParse(fmt.Sprintf("%dGi", requestGB)),
 			},
 			PersistentVolumeSource: v1.PersistentVolumeSource{
-				AzureFile: &v1.AzureFileVolumeSource{
+				AzureFile: &v1.AzureFilePersistentVolumeSource{
 					SecretName:      secretName,
 					ShareName:       name,
 					SecretNamespace: &secretNameSpace,

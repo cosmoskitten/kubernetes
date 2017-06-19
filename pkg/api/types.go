@@ -369,7 +369,7 @@ type PersistentVolumeSource struct {
 	Flocker *FlockerVolumeSource
 	// AzureFile represents an Azure File Service mount on the host and bind mount to the pod.
 	// +optional
-	AzureFile *AzureFileVolumeSource
+	AzureFile *AzureFilePersistentVolumeSource
 	// VsphereVolume represents a vSphere volume attached and mounted on kubelets host machine
 	// +optional
 	VsphereVolume *VsphereVirtualDiskVolumeSource
@@ -1034,6 +1034,22 @@ type DownwardAPIProjection struct {
 
 // AzureFile represents an Azure File Service mount on the host and bind mount to the pod.
 type AzureFileVolumeSource struct {
+	// the name of secret that contains Azure Storage Account Name and Key
+	SecretName string
+	// Share Name
+	ShareName string
+	// Defaults to false (read/write). ReadOnly here will force
+	// the ReadOnly setting in VolumeMounts.
+	// +optional
+	ReadOnly bool
+	// the namespace of the secret that contains Azure Storage Account Name and Key
+	// default is the same as the Pod
+	// +optional
+	SecretNamespace *string
+}
+
+// AzureFile represents an Azure File Service PV on the host and bind mount to the pod.
+type AzureFilePersistentVolumeSource struct {
 	// the name of secret that contains Azure Storage Account Name and Key
 	SecretName string
 	// Share Name
