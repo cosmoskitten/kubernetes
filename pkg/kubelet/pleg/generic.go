@@ -202,7 +202,6 @@ func (g *GenericPLEG) relist() {
 
 	pods := kubecontainer.Pods(podList)
 	g.podRecords.setCurrent(pods)
-
 	// Compare the old and the current pods, and generate events.
 	eventsByPodID := map[types.UID][]*PodLifecycleEvent{}
 	for pid := range g.podRecords {
@@ -237,7 +236,8 @@ func (g *GenericPLEG) relist() {
 			// inspecting the pod and getting the PodStatus to update the cache
 			// serially may take a while. We should be aware of this and
 			// parallelize if needed.
-			if err := g.updateCache(pod, pid); err != nil {
+			ipEvent, err := g.updateCache(pod, pid)
+			if err != nil {
 				glog.Errorf("PLEG: Ignoring events for pod %s/%s: %v", pod.Name, pod.Namespace, err)
 
 				// make sure we try to reinspect the pod during the next relisting
@@ -249,6 +249,10 @@ func (g *GenericPLEG) relist() {
 				// from the list (we don't want the reinspection code below to inspect it a second time in
 				// this relist execution)
 				delete(g.podsToReinspect, pid)
+			}
+
+			if ipEvent != nil {
+				events = append(events, ipEvent)
 			}
 		}
 		// Update the internal storage and send out the events.
@@ -267,9 +271,12 @@ func (g *GenericPLEG) relist() {
 		if len(g.podsToReinspect) > 0 {
 			glog.V(5).Infof("GenericPLEG: Reinspecting pods that previously failed inspection")
 			for pid, pod := range g.podsToReinspect {
-				if err := g.updateCache(pod, pid); err != nil {
+				ipEvent, err := g.updateCache(pod, pid)
+				if err != nil {
 					glog.Errorf("PLEG: pod %s/%s failed reinspection: %v", pod.Name, pod.Namespace, err)
 					needsReinspection[pid] = pod
+				} else if ipEvent != nil {
+					g.eventChannel <- ipEvent
 				}
 			}
 		}
@@ -329,13 +336,15 @@ func (g *GenericPLEG) cacheEnabled() bool {
 	return g.cache != nil
 }
 
-func (g *GenericPLEG) updateCache(pod *kubecontainer.Pod, pid types.UID) error {
+func (g *GenericPLEG) updateCache(pod *kubecontainer.Pod, pid types.UID) (*PodLifecycleEvent, error) {
+	var ipEvent *PodLifecycleEvent
+
 	if pod == nil {
 		// The pod is missing in the current relist. This means that
 		// the pod has no visible (active or inactive) containers.
 		glog.V(4).Infof("PLEG: Delete status for pod %q", string(pid))
 		g.cache.Delete(pid)
-		return nil
+		return nil, nil
 	}
 	timestamp := g.clock.Now()
 	// TODO: Consider adding a new runtime method
@@ -343,8 +352,16 @@ func (g *GenericPLEG) updateCache(pod *kubecontainer.Pod, pid types.UID) error {
 	// all containers again.
 	status, err := g.runtime.GetPodStatus(pod.ID, pod.Name, pod.Namespace)
 	glog.V(4).Infof("PLEG: Write status for %s/%s: %#v (err: %v)", pod.Name, pod.Namespace, status, err)
+
+	// Detect pod IP changes and return an event for them; they cannot be
+	// read out of the cache as the cache may change by the time the pod
+	// status is read by kubelet
+	if oldStatus, err := g.cache.Get(pid); err == nil && oldStatus.IP != status.IP {
+		ipEvent = &PodLifecycleEvent{ID: pid, Type: PodIPChanged, Data: status.IP}
+	}
+
 	g.cache.Set(pod.ID, status, err, timestamp)
-	return err
+	return ipEvent, err
 }
 
 func updateEvents(eventsByPodID map[types.UID][]*PodLifecycleEvent, e *PodLifecycleEvent) {

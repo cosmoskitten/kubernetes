@@ -496,3 +496,56 @@ func TestRelistingWithSandboxes(t *testing.T) {
 	actual = getEventsFromChannel(ch)
 	verifyEvents(t, expected, actual)
 }
+
+func TestRelistIPChange(t *testing.T) {
+	pleg, runtimeMock := newTestGenericPLEGWithRuntimeMock()
+	ch := pleg.Watch()
+
+	id := types.UID("test-pod-0")
+	cState := kubecontainer.ContainerStateRunning
+	container := createTestContainer("c0", cState)
+	pod := &kubecontainer.Pod{
+		ID:         id,
+		Containers: []*kubecontainer.Container{container},
+	}
+	ipAddr := "192.168.1.5/24"
+	status := &kubecontainer.PodStatus{
+		ID:                id,
+		IP:                ipAddr,
+		ContainerStatuses: []*kubecontainer.ContainerStatus{{ID: container.ID, State: cState}},
+	}
+	event := &PodLifecycleEvent{ID: pod.ID, Type: ContainerStarted, Data: container.ID.ID}
+	ipChangeEvent := &PodLifecycleEvent{ID: pod.ID, Type: PodIPChanged, Data: ipAddr}
+
+	runtimeMock.On("GetPods", true).Return([]*kubecontainer.Pod{pod}, nil).Once()
+	runtimeMock.On("GetPodStatus", pod.ID, "", "").Return(status, nil).Once()
+
+	pleg.relist()
+	actualEvents := getEventsFromChannel(ch)
+	actualStatus, actualErr := pleg.cache.Get(pod.ID)
+	assert.Equal(t, status, actualStatus, "test0")
+	assert.Equal(t, nil, actualErr, "test0")
+	assert.Exactly(t, []*PodLifecycleEvent{event, ipChangeEvent}, actualEvents)
+
+	// Clear the IP address and mark the container terminated
+	container = createTestContainer("c0", kubecontainer.ContainerStateExited)
+	pod = &kubecontainer.Pod{
+		ID:         id,
+		Containers: []*kubecontainer.Container{container},
+	}
+	status = &kubecontainer.PodStatus{
+		ID:                id,
+		ContainerStatuses: []*kubecontainer.ContainerStatus{{ID: container.ID, State: kubecontainer.ContainerStateExited}},
+	}
+	event = &PodLifecycleEvent{ID: pod.ID, Type: ContainerDied, Data: container.ID.ID}
+	runtimeMock.On("GetPods", true).Return([]*kubecontainer.Pod{pod}, nil).Once()
+	runtimeMock.On("GetPodStatus", pod.ID, "", "").Return(status, nil).Once()
+
+	pleg.relist()
+	actualEvents = getEventsFromChannel(ch)
+	actualStatus, actualErr = pleg.cache.Get(pod.ID)
+	assert.Equal(t, status, actualStatus, "test0")
+	assert.Equal(t, nil, actualErr, "test0")
+	ipChangeEvent.Data = ""
+	assert.Exactly(t, []*PodLifecycleEvent{event, ipChangeEvent}, actualEvents)
+}

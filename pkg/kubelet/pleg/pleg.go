@@ -29,6 +29,8 @@ const (
 	// PodSync is used to trigger syncing of a pod when the observed change of
 	// the state of the pod cannot be captured by any single event above.
 	PodSync PodLifeCycleEventType = "PodSync"
+	// PodIPChange is used to inform listeners that the pod IP address changed
+	PodIPChanged PodLifeCycleEventType = "PodIPChanged"
 	// Do not use the events below because they are disabled in GenericPLEG.
 	ContainerChanged PodLifeCycleEventType = "ContainerChanged"
 )

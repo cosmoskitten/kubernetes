@@ -1217,7 +1217,12 @@ func (kl *Kubelet) generateAPIPodStatus(pod *v1.Pod, podStatus *kubecontainer.Po
 		Status: v1.ConditionTrue,
 	})
 
-	if !kl.standaloneMode {
+	// If the pod is not running, it's IP address is no longer valid and
+	// should not be reported.  The previous IP is still recorded as a
+	// PodIPChange event though.
+	if s.Phase != v1.PodRunning {
+		s.PodIP = ""
+	} else if !kl.standaloneMode {
 		hostIP, err := kl.getHostIPAnyWay()
 		if err != nil {
 			glog.V(4).Infof("Cannot get host IP: %v", err)

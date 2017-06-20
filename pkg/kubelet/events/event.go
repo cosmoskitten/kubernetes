@@ -85,6 +85,9 @@ const (
 	FailedPostStartHook   = "FailedPostStartHook"
 	FailedPreStopHook     = "FailedPreStopHook"
 	UnfinishedPreStopHook = "UnfinishedPreStopHook"
+
+	// Network event reason list
+	PodIPChanged = "PodIPChanged"
 )
 
 // ToObjectReference takes an old style object reference and converts it to a client-go one

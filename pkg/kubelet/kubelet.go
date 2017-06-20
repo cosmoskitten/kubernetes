@@ -1917,9 +1917,16 @@ func (kl *Kubelet) syncLoopIteration(configCh <-chan kubetypes.PodUpdate, handle
 			}
 		}
 
-		if e.Type == pleg.ContainerDied {
+		switch e.Type {
+		case pleg.ContainerDied:
 			if containerID, ok := e.Data.(string); ok {
 				kl.cleanUpContainersInPod(e.ID, containerID)
+			}
+		case pleg.PodIPChanged:
+			if pod, ok := kl.podManager.GetPodByUID(e.ID); ok {
+				if newIP, ok := e.Data.(string); ok {
+					kl.recorder.Eventf(pod, v1.EventTypeNormal, events.PodIPChanged, "Pod IP changed to %q", newIP)
+				}
 			}
 		}
 	case <-syncCh:
@@ -2213,7 +2220,7 @@ func (kl *Kubelet) cleanUpContainersInPod(podId types.UID, exitedContainerID str
 // isSyncPodWorthy filters out events that are not worthy of pod syncing
 func isSyncPodWorthy(event *pleg.PodLifecycleEvent) bool {
 	// ContatnerRemoved doesn't affect pod state
-	return event.Type != pleg.ContainerRemoved
+	return event.Type != pleg.ContainerRemoved && event.Type != pleg.PodIPChanged
 }
 
 // Gets the streaming server configuration to use with in-process CRI shims.
