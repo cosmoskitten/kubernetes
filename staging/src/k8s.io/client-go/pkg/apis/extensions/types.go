@@ -902,6 +902,14 @@ type PodSecurityPolicySpec struct {
 	// host paths may be used.
 	// +optional
 	AllowedHostPaths []string
+	// DefaultAllowPrivilegeEscalation controls the default setting for whether a
+	// process can gain more privileges than it's parent process.
+	// // +optional
+	DefaultAllowPrivilegeEscalation *bool
+	// AllowPrivilegeEscalation determines if a pod can request to allow
+	// privilege escalation.
+	// +optional
+	AllowPrivilegeEscalation bool
 }
 
 // HostPortRange defines a range of host ports that will be enabled by a policy
