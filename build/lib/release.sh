@@ -26,6 +26,13 @@
 # This is where the final release artifacts are created locally
 readonly RELEASE_STAGE="${LOCAL_OUTPUT_ROOT}/release-stage"
 readonly RELEASE_DIR="${LOCAL_OUTPUT_ROOT}/release-tars"
+readonly RELEASE_IMAGES="${LOCAL_OUTPUT_ROOT}/release-images"
+
+KUBE_BUILD_HYPERKUBE=${KUBE_BUILD_HYPERKUBE:-n}
+if [[ -n "${KUBE_DOCKER_IMAGE_TAG-}" && -n "${KUBE_DOCKER_REGISTRY-}" ]]; then
+  # retain legacy behavior of automatically building hyperkube during releases
+  KUBE_BUILD_HYPERKUBE=y
+fi
 
 # Validate a ci version
 #
@@ -69,19 +76,9 @@ function kube::release::clean_cruft() {
   find ${RELEASE_STAGE} -name '.DS*' -exec rm {} \;
 }
 
-function kube::release::package_hyperkube() {
-  # If we have these variables set then we want to build all docker images.
-  if [[ -n "${KUBE_DOCKER_IMAGE_TAG-}" && -n "${KUBE_DOCKER_REGISTRY-}" ]]; then
-    for arch in "${KUBE_SERVER_PLATFORMS[@]##*/}"; do
-      kube::log::status "Building hyperkube image for arch: ${arch}"
-      REGISTRY="${KUBE_DOCKER_REGISTRY}" VERSION="${KUBE_DOCKER_IMAGE_TAG}" ARCH="${arch}" make -C cluster/images/hyperkube/ build
-    done
-  fi
-}
-
 function kube::release::package_tarballs() {
   # Clean out any old releases
-  rm -rf "${RELEASE_DIR}"
+  rm -rf "${RELEASE_DIR}" "${RELEASE_IMAGES}"
   mkdir -p "${RELEASE_DIR}"
   kube::release::package_src_tarball &
   kube::release::package_client_tarballs &
@@ -252,6 +249,26 @@ function kube::release::sha1() {
   fi
 }
 
+function kube::release::build_hyperkube_image() {
+  local -r arch="$1"
+  local -r registry="$2"
+  local -r version="$3"
+  local -r save_dir="${4-}"
+  kube::log::status "Building hyperkube image for arch: ${arch}"
+  ARCH="${arch}" REGISTRY="${registry}" VERSION="${version}" \
+    make -C cluster/images/hyperkube/ build >/dev/null
+
+  local hyperkube_tag="${docker_registry}/hyperkube-${arch}:${docker_tag}"
+  if [[ -n "${save_dir}" ]]; then
+    "${DOCKER[@]}" save "${hyperkube_tag}" > "${save_dir}/hyperkube-${arch}.tar"
+  fi
+  if [[ -z "${KUBE_DOCKER_IMAGE_TAG-}" || -z "${KUBE_DOCKER_REGISTRY-}" ]]; then
+    # not a release
+    kube::log::status "Deleting hyperkube image ${hyperkube_tag}"
+    "${DOCKER[@]}" rmi "${hyperkube_tag}" &>/dev/null || true
+  fi
+}
+
 # This will take binaries that run on master and creates Docker images
 # that wrap the binary in them. (One docker image per binary)
 # Args:
@@ -264,6 +281,16 @@ function kube::release::create_docker_images_for_server() {
     local arch="$2"
     local binary_name
     local binaries=($(kube::build::get_docker_wrapped_binaries ${arch}))
+    local images_dir="${RELEASE_IMAGES}/${arch}"
+    mkdir -p "${images_dir}"
+
+    local docker_registry="${KUBE_DOCKER_REGISTRY:-gcr.io/google_containers}"
+    # Docker tags cannot contain '+'
+    local docker_tag="${KUBE_GIT_VERSION/+/_}"
+    if [[ -z "${docker_tag}" ]]; then
+      kube::log::error "git version information missing; cannot create Docker tag"
+      return 1
+    fi
 
     for wrappable in "${binaries[@]}"; do
 
@@ -274,41 +301,33 @@ function kube::release::create_docker_images_for_server() {
 
       local binary_name="$1"
       local base_image="$2"
+      local docker_build_path="${binary_dir}/${binary_name}.dockerbuild"
+      local docker_file_path="${docker_build_path}/Dockerfile"
+      local binary_file_path="${binary_dir}/${binary_name}"
+      local docker_image_tag="${docker_registry}"
+      if [[ ${arch} == "amd64" ]]; then
+        # If we are building a amd64 docker image, preserve the original
+        # image name
+        docker_image_tag+="/${binary_name}:${docker_tag}"
+      else
+        # If we are building a docker image for another architecture,
+        # append the arch in the image tag
+        docker_image_tag+="/${binary_name}-${arch}:${docker_tag}"
+      fi
 
-      kube::log::status "Starting Docker build for image: ${binary_name}"
 
+      kube::log::status "Starting docker build for image: ${binary_name}-${arch}"
       (
-        # Docker tags cannot contain '+'
-        local docker_tag="${KUBE_GIT_VERSION/+/_}"
-        if [[ -z "${docker_tag}" ]]; then
-          kube::log::error "git version information missing; cannot create Docker tag"
-          return 1
-        fi
-        local docker_build_path="${binary_dir}/${binary_name}.dockerbuild"
-        local docker_file_path="${docker_build_path}/Dockerfile"
-        local binary_file_path="${binary_dir}/${binary_name}"
-        local docker_image_tag="${KUBE_DOCKER_REGISTRY:-gcr.io/google_containers}"
-
         rm -rf ${docker_build_path}
         mkdir -p ${docker_build_path}
         ln ${binary_dir}/${binary_name} ${docker_build_path}/${binary_name}
         printf " FROM ${base_image} \n ADD ${binary_name} /usr/local/bin/${binary_name}\n" > ${docker_file_path}
 
-        if [[ ${arch} == "amd64" ]]; then
-          # If we are building a amd64 docker image, preserve the original
-          # image name
-          docker_image_tag+="/${binary_name}:${docker_tag}"
-        else
-          # If we are building a docker image for another architecture,
-          # append the arch in the image tag
-          docker_image_tag+="/${binary_name}-${arch}:${docker_tag}"
-        fi
-
         "${DOCKER[@]}" build --pull -q -t "${docker_image_tag}" ${docker_build_path} >/dev/null
-        "${DOCKER[@]}" save ${docker_image_tag} > ${binary_dir}/${binary_name}.tar
+        "${DOCKER[@]}" save "${docker_image_tag}" > "${binary_dir}/${binary_name}.tar"
         echo "${docker_tag}" > ${binary_dir}/${binary_name}.docker_tag
-
         rm -rf ${docker_build_path}
+        ln "${binary_dir}/${binary_name}.tar" "${images_dir}/"
 
         # If we are building an official/alpha/beta release we want to keep
         # docker images and tag them appropriately.
@@ -321,11 +340,17 @@ function kube::release::create_docker_images_for_server() {
             "${DOCKER[@]}" tag "${docker_image_tag}" "${release_docker_image_tag}" 2>/dev/null
           fi
         else
-          kube::log::status "Not a release, so deleting docker image ${docker_image_tag}"
-          "${DOCKER[@]}" rmi ${docker_image_tag} 2>/dev/null || true
+          # not a release
+          kube::log::status "Deleting docker image ${docker_image_tag}"
+          "${DOCKER[@]}" rmi ${docker_image_tag} &>/dev/null || true
         fi
       ) &
     done
+
+    if [[ "${KUBE_BUILD_HYPERKUBE}" =~ [yY] ]]; then
+      kube::release::build_hyperkube_image "${arch}" "${docker_registry}" \
+        "${docker_tag}" "${images_dir}" &
+    fi
 
     kube::util::wait-for-jobs || { kube::log::error "previous Docker build failed"; return 1; }
     kube::log::status "Docker builds done"
