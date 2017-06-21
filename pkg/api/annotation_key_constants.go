@@ -110,4 +110,7 @@ const (
 	// BetaAnnotationExternalTraffic An annotation that denotes if this Service desires to route
 	// external traffic to local endpoints only. This preserves Source IP and avoids a second hop.
 	BetaAnnotationExternalTraffic = "service.beta.kubernetes.io/external-traffic"
+
+	// AlphaAnnotationLabelName Annotation speficying the DNS label name in Azure for the service.
+	AlphaAnnotationLabelName = "service.alpha.kubernetes.io/label-name"
 )
