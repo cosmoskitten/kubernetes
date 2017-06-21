@@ -91,4 +91,7 @@ const (
 	//
 	// Not all cloud providers support this annotation, though AWS & GCE do.
 	AnnotationLoadBalancerSourceRangesKey = "service.beta.kubernetes.io/load-balancer-source-ranges"
+
+	// BetaAnnotationAzureDnsLabelName Annotation speficying the DNS label name in Azure for the service.
+	BetaAnnotationAzureDnsLabelName = "service.beta.kubernetes.io/azure-dns-label-name"
 )
