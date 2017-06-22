@@ -73,9 +73,9 @@ func NewNodeControllerFromClient(
 	nodeMonitorGracePeriod time.Duration,
 	nodeStartupGracePeriod time.Duration,
 	nodeMonitorPeriod time.Duration,
-	clusterCIDR *net.IPNet,
+	clusterCIDR []*net.IPNet,
 	serviceCIDR *net.IPNet,
-	nodeCIDRMaskSize int,
+	nodeCIDRMaskSizes []int,
 	allocateNodeCIDRs bool,
 	useTaints bool,
 ) (*nodeController, error) {
@@ -101,7 +101,7 @@ func NewNodeControllerFromClient(
 		nodeMonitorPeriod,
 		clusterCIDR,
 		serviceCIDR,
-		nodeCIDRMaskSize,
+		nodeCIDRMaskSizes,
 		allocateNodeCIDRs,
 		RangeAllocatorType,
 		useTaints,
@@ -565,7 +565,7 @@ func TestMonitorNodeStatusEvictPods(t *testing.T) {
 			testNodeMonitorPeriod,
 			nil,
 			nil,
-			0,
+			[]int{0},
 			false,
 			false)
 		nodeController.now = func() metav1.Time { return fakeNow }
@@ -716,7 +716,7 @@ func TestPodStatusChange(t *testing.T) {
 	for _, item := range table {
 		nodeController, _ := NewNodeControllerFromClient(nil, item.fakeNodeHandler,
 			evictionTimeout, testRateLimiterQPS, testRateLimiterQPS, testLargeClusterThreshold, testUnhealtyThreshold, testNodeMonitorGracePeriod,
-			testNodeStartupGracePeriod, testNodeMonitorPeriod, nil, nil, 0, false, false)
+			testNodeStartupGracePeriod, testNodeMonitorPeriod, nil, nil, []int{0}, false, false)
 		nodeController.now = func() metav1.Time { return fakeNow }
 		nodeController.recorder = testutil.NewFakeRecorder()
 		if err := syncNodeStore(nodeController, item.fakeNodeHandler); err != nil {
@@ -1233,7 +1233,7 @@ func TestMonitorNodeStatusEvictPodsWithDisruption(t *testing.T) {
 		}
 		nodeController, _ := NewNodeControllerFromClient(nil, fakeNodeHandler,
 			evictionTimeout, testRateLimiterQPS, testRateLimiterQPS, testLargeClusterThreshold, testUnhealtyThreshold, testNodeMonitorGracePeriod,
-			testNodeStartupGracePeriod, testNodeMonitorPeriod, nil, nil, 0, false, false)
+			testNodeStartupGracePeriod, testNodeMonitorPeriod, nil, nil, []int{0}, false, false)
 		nodeController.now = func() metav1.Time { return fakeNow }
 		nodeController.enterPartialDisruptionFunc = func(nodeNum int) float32 {
 			return testRateLimiterQPS
@@ -1328,7 +1328,7 @@ func TestCloudProviderNoRateLimit(t *testing.T) {
 	nodeController, _ := NewNodeControllerFromClient(nil, fnh, 10*time.Minute,
 		testRateLimiterQPS, testRateLimiterQPS, testLargeClusterThreshold, testUnhealtyThreshold,
 		testNodeMonitorGracePeriod, testNodeStartupGracePeriod,
-		testNodeMonitorPeriod, nil, nil, 0, false, false)
+		testNodeMonitorPeriod, nil, nil, []int{0}, false, false)
 	nodeController.cloud = &fakecloud.FakeCloud{}
 	nodeController.now = func() metav1.Time { return metav1.Date(2016, 1, 1, 12, 0, 0, 0, time.UTC) }
 	nodeController.recorder = testutil.NewFakeRecorder()
@@ -1597,7 +1597,7 @@ func TestMonitorNodeStatusUpdateStatus(t *testing.T) {
 	for i, item := range table {
 		nodeController, _ := NewNodeControllerFromClient(nil, item.fakeNodeHandler, 5*time.Minute,
 			testRateLimiterQPS, testRateLimiterQPS, testLargeClusterThreshold, testUnhealtyThreshold,
-			testNodeMonitorGracePeriod, testNodeStartupGracePeriod, testNodeMonitorPeriod, nil, nil, 0, false, false)
+			testNodeMonitorGracePeriod, testNodeStartupGracePeriod, testNodeMonitorPeriod, nil, nil, []int{0}, false, false)
 		nodeController.now = func() metav1.Time { return fakeNow }
 		nodeController.recorder = testutil.NewFakeRecorder()
 		if err := syncNodeStore(nodeController, item.fakeNodeHandler); err != nil {
@@ -1831,7 +1831,7 @@ func TestMonitorNodeStatusMarkPodsNotReady(t *testing.T) {
 	for i, item := range table {
 		nodeController, _ := NewNodeControllerFromClient(nil, item.fakeNodeHandler, 5*time.Minute,
 			testRateLimiterQPS, testRateLimiterQPS, testLargeClusterThreshold, testUnhealtyThreshold,
-			testNodeMonitorGracePeriod, testNodeStartupGracePeriod, testNodeMonitorPeriod, nil, nil, 0, false, false)
+			testNodeMonitorGracePeriod, testNodeStartupGracePeriod, testNodeMonitorPeriod, nil, nil, []int{0}, false, false)
 		nodeController.now = func() metav1.Time { return fakeNow }
 		nodeController.recorder = testutil.NewFakeRecorder()
 		if err := syncNodeStore(nodeController, item.fakeNodeHandler); err != nil {
@@ -1942,7 +1942,7 @@ func TestSwapUnreachableNotReadyTaints(t *testing.T) {
 
 	nodeController, _ := NewNodeControllerFromClient(nil, fakeNodeHandler,
 		evictionTimeout, testRateLimiterQPS, testRateLimiterQPS, testLargeClusterThreshold, testUnhealtyThreshold, testNodeMonitorGracePeriod,
-		testNodeStartupGracePeriod, testNodeMonitorPeriod, nil, nil, 0, false, true)
+		testNodeStartupGracePeriod, testNodeMonitorPeriod, nil, nil, []int{0}, false, true)
 	nodeController.now = func() metav1.Time { return fakeNow }
 	nodeController.recorder = testutil.NewFakeRecorder()
 	if err := syncNodeStore(nodeController, fakeNodeHandler); err != nil {
@@ -2034,7 +2034,7 @@ func TestNodeEventGeneration(t *testing.T) {
 	nodeController, _ := NewNodeControllerFromClient(nil, fakeNodeHandler, 5*time.Minute,
 		testRateLimiterQPS, testRateLimiterQPS, testLargeClusterThreshold, testUnhealtyThreshold,
 		testNodeMonitorGracePeriod, testNodeStartupGracePeriod,
-		testNodeMonitorPeriod, nil, nil, 0, false, false)
+		testNodeMonitorPeriod, nil, nil, []int{0}, false, false)
 	nodeController.cloud = &fakecloud.FakeCloud{}
 	nodeController.nodeExistsInCloudProvider = func(nodeName types.NodeName) (bool, error) {
 		return false, nil
@@ -2145,7 +2145,7 @@ func TestCheckPod(t *testing.T) {
 		},
 	}
 
-	nc, _ := NewNodeControllerFromClient(nil, fake.NewSimpleClientset(), 0, 0, 0, 0, 0, 0, 0, 0, nil, nil, 0, false, false)
+	nc, _ := NewNodeControllerFromClient(nil, fake.NewSimpleClientset(), 0, 0, 0, 0, 0, 0, 0, 0, nil, nil, []int{0}, false, false)
 	nc.nodeInformer.Informer().GetStore().Add(&v1.Node{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "new",

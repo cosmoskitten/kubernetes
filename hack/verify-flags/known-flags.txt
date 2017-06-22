@@ -101,6 +101,7 @@ cloud-config-file
 cloud-provider
 cloud-provider-gce-lb-src-cidrs
 cluster-cidr
+cluster-cidrs
 cluster-context
 cluster-dns
 cluster-domain
@@ -495,6 +496,7 @@ network-plugin
 network-plugin-dir
 network-plugin-mtu
 node-cidr-mask-size
+node-cidr-mask-sizes
 node-eviction-rate
 node-instance-group
 node-ip

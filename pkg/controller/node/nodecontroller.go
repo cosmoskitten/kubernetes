@@ -115,7 +115,7 @@ type NodeController struct {
 	allocatorType     CIDRAllocatorType
 
 	cloud        cloudprovider.Interface
-	clusterCIDR  *net.IPNet
+	clusterCIDR  []*net.IPNet
 	serviceCIDR  *net.IPNet
 	knownNodeSet map[string]*v1.Node
 	kubeClient   clientset.Interface
@@ -210,9 +210,9 @@ func NewNodeController(
 	nodeMonitorGracePeriod time.Duration,
 	nodeStartupGracePeriod time.Duration,
 	nodeMonitorPeriod time.Duration,
-	clusterCIDR *net.IPNet,
+	clusterCIDRs []*net.IPNet,
 	serviceCIDR *net.IPNet,
-	nodeCIDRMaskSize int,
+	nodeCIDRMaskSizes []int,
 	allocateNodeCIDRs bool,
 	allocatorType CIDRAllocatorType,
 	runTaintManager bool,
@@ -232,12 +232,17 @@ func NewNodeController(
 	}
 
 	if allocateNodeCIDRs {
-		if clusterCIDR == nil {
+		if clusterCIDRs[0] == nil {
 			glog.Fatal("NodeController: Must specify clusterCIDR if allocateNodeCIDRs == true.")
 		}
-		mask := clusterCIDR.Mask
-		if maskSize, _ := mask.Size(); maskSize > nodeCIDRMaskSize {
-			glog.Fatal("NodeController: Invalid clusterCIDR, mask size of clusterCIDR must be less than nodeCIDRMaskSize.")
+		if len(clusterCIDRs) != len(nodeCIDRMaskSizes) {
+			glog.Fatal("NodeController: Must specify CIDR mask sizes if allocateNodeCIDRs == true.")
+		}
+		for i, cc := range clusterCIDRs {
+			mask := cc.Mask
+			if maskSize, _ := mask.Size(); maskSize > nodeCIDRMaskSizes[i] {
+				glog.Fatal("NodeController: Invalid clusterCIDR, mask size of clusterCIDR must be less than nodeCIDRMaskSize.")
+			}
 		}
 	}
 
@@ -256,7 +261,7 @@ func NewNodeController(
 		nodeStartupGracePeriod:          nodeStartupGracePeriod,
 		lookupIP:                        net.LookupIP,
 		now:                             metav1.Now,
-		clusterCIDR:                     clusterCIDR,
+		clusterCIDR:                     clusterCIDRs,
 		serviceCIDR:                     serviceCIDR,
 		allocateNodeCIDRs:               allocateNodeCIDRs,
 		allocatorType:                   allocatorType,
@@ -337,7 +342,7 @@ func NewNodeController(
 		switch nc.allocatorType {
 		case RangeAllocatorType:
 			nc.cidrAllocator, err = NewCIDRRangeAllocator(
-				kubeClient, clusterCIDR, serviceCIDR, nodeCIDRMaskSize, nodeList)
+				kubeClient, clusterCIDRs, serviceCIDR, nodeCIDRMaskSizes, nodeList)
 		case CloudAllocatorType:
 			nc.cidrAllocator, err = NewCloudCIDRAllocator(kubeClient, cloud)
 		default:
