@@ -20,14 +20,12 @@ import (
 	"fmt"
 	"testing"
 
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset/fake"
-	informers "k8s.io/kubernetes/pkg/client/informers/informers_generated/externalversions"
 	"k8s.io/kubernetes/pkg/cloudprovider/providers/aws"
 	fakecloud "k8s.io/kubernetes/pkg/cloudprovider/providers/fake"
-	"k8s.io/kubernetes/pkg/controller"
 )
 
 type mockVolumes struct {
@@ -80,7 +78,16 @@ func mockVolumeLabels(labels map[string]string) *mockVolumes {
 // TestAdmission
 func TestPVLabels(t *testing.T) {
 	ignoredPV := v1.PersistentVolume{
-		ObjectMeta: metav1.ObjectMeta{Name: "noncloud"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "noncloud",
+			Initializers: &metav1.Initializers{
+				Pending: []metav1.Initializer{
+					{
+						Name: initializerName,
+					},
+				},
+			},
+		},
 		Spec: v1.PersistentVolumeSpec{
 			PersistentVolumeSource: v1.PersistentVolumeSource{
 				HostPath: &v1.HostPathVolumeSource{
@@ -90,7 +97,15 @@ func TestPVLabels(t *testing.T) {
 		},
 	}
 	awsPV := v1.PersistentVolume{
-		ObjectMeta: metav1.ObjectMeta{Name: "noncloud"},
+		ObjectMeta: metav1.ObjectMeta{Name: "noncloud",
+			Initializers: &metav1.Initializers{
+				Pending: []metav1.Initializer{
+					{
+						Name: initializerName,
+					},
+				},
+			},
+		},
 		Spec: v1.PersistentVolumeSpec{
 			PersistentVolumeSource: v1.PersistentVolumeSource{
 				AWSElasticBlockStore: &v1.AWSElasticBlockStoreVolumeSource{
@@ -102,9 +117,7 @@ func TestPVLabels(t *testing.T) {
 
 	cloud := &fakecloud.FakeCloud{}
 	client := fake.NewSimpleClientset(&v1.PersistentVolumeList{Items: []v1.PersistentVolume{awsPV}})
-	informerFactory := informers.NewSharedInformerFactory(client, controller.NoResyncPeriodFunc())
-	pvInformer := informerFactory.Core().V1().PersistentVolumes()
-	pvlController := NewPersistentVolumeLabelController(pvInformer, client, cloud)
+	pvlController := NewPersistentVolumeLabelController(client, cloud)
 
 	// Non-cloud PVs are ignored
 	old := len(ignoredPV.Labels)

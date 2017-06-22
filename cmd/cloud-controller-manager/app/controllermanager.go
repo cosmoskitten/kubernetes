@@ -225,7 +225,7 @@ func StartControllers(s *options.CloudControllerManagerServer, kubeconfig *restc
 	time.Sleep(wait.Jitter(s.ControllerStartInterval.Duration, ControllerStartJitter))
 
 	// Start the PersistentVolumeLabelController
-	pvlController := pvlcontroller.NewPersistentVolumeLabelController(sharedInformers.Core().V1().PersistentVolumes(), client("pvl-controller"), cloud)
+	pvlController := pvlcontroller.NewPersistentVolumeLabelController(client("pvl-controller"), cloud)
 	threads := 5
 	go pvlController.Run(threads, stop)
 	time.Sleep(wait.Jitter(s.ControllerStartInterval.Duration, ControllerStartJitter))
