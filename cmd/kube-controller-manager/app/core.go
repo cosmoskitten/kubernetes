@@ -71,9 +71,27 @@ func startServiceController(ctx ControllerContext) (bool, error) {
 }
 
 func startNodeController(ctx ControllerContext) (bool, error) {
-	_, clusterCIDR, err := net.ParseCIDR(ctx.Options.ClusterCIDR)
-	if err != nil {
-		glog.Warningf("Unsuccessful parsing of cluster CIDR %v: %v", ctx.Options.ClusterCIDR, err)
+	var clusterCIDRs []*net.IPNet
+	var NodeCIDRMaskSizes []int
+	if len(clusterCIDRs) > 0 {
+		for _, cidr := range ctx.Options.ClusterCIDRs {
+			_, cc, err := net.ParseCIDR(cidr)
+			if err != nil {
+				glog.Warningf("Unsuccessful parsing of cluster CIDR %v: %v", cidr, err)
+			} else {
+				clusterCIDRs = append(clusterCIDRs, cc)
+			}
+		}
+		NodeCIDRMaskSizes = ctx.Options.NodeCIDRMaskSizes
+	} else {
+		// If the new style was not found, check the old.
+		_, cc, err := net.ParseCIDR(ctx.Options.ClusterCIDR)
+		if err != nil {
+			glog.Warningf("Unsuccessful parsing of cluster CIDR %v: %v", ctx.Options.ClusterCIDR, err)
+		} else {
+			clusterCIDRs = append(clusterCIDRs, cc)
+		}
+		NodeCIDRMaskSizes = append(NodeCIDRMaskSizes, int(ctx.Options.NodeCIDRMaskSize))
 	}
 	_, serviceCIDR, err := net.ParseCIDR(ctx.Options.ServiceCIDR)
 	if err != nil {
@@ -93,9 +111,9 @@ func startNodeController(ctx ControllerContext) (bool, error) {
 		ctx.Options.NodeMonitorGracePeriod.Duration,
 		ctx.Options.NodeStartupGracePeriod.Duration,
 		ctx.Options.NodeMonitorPeriod.Duration,
-		clusterCIDR,
+		clusterCIDRs,
 		serviceCIDR,
-		int(ctx.Options.NodeCIDRMaskSize),
+		NodeCIDRMaskSizes,
 		ctx.Options.AllocateNodeCIDRs,
 		nodecontroller.CIDRAllocatorType(ctx.Options.CIDRAllocatorType),
 		ctx.Options.EnableTaintManager,
