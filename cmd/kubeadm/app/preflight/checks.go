@@ -376,7 +376,7 @@ func (kubever KubernetesVersionCheck) Check() (warnings, errors []error) {
 	// Checks if k8sVersion greater than the first supported versions by current version of kubeadm, that is major.minor+1 (all patch and pre-releases versions included)
 	firstUnsupportedVersion := semver.MustParse(fmt.Sprintf("%d.%d.%s", kubeadmVersion.Major, kubeadmVersion.Minor+1, firstPatchAndPrelease))
 	if k8sVersion.GTE(firstUnsupportedVersion) {
-		return []error{fmt.Errorf("kubernetes version is greater than the most recently validated version. kubernetes version: %s. Max validated version: %d.%d.x", k8sVersion, kubeadmVersion.Major, kubeadmVersion.Minor)}, nil
+		return []error{fmt.Errorf("kubernetes version is greater than kubeadm version. kubernetes version: %s. Kubeadm validated version: %d.%d.x", k8sVersion, kubeadmVersion.Major, kubeadmVersion.Minor)}, nil
 	}
 
 	return nil, nil
