@@ -28,16 +28,36 @@ import (
 	authorizationv1beta1 "k8s.io/kubernetes/pkg/apis/authorization/v1beta1"
 	"k8s.io/kubernetes/pkg/registry/authorization/localsubjectaccessreview"
 	"k8s.io/kubernetes/pkg/registry/authorization/selfsubjectaccessreview"
+	"k8s.io/kubernetes/pkg/registry/authorization/selfsubjectrulesreview"
 	"k8s.io/kubernetes/pkg/registry/authorization/subjectaccessreview"
+	"k8s.io/kubernetes/pkg/registry/rbac/clusterrole"
+	clusterrolestore "k8s.io/kubernetes/pkg/registry/rbac/clusterrole/storage"
+	"k8s.io/kubernetes/pkg/registry/rbac/clusterrolebinding"
+	clusterrolebindingstore "k8s.io/kubernetes/pkg/registry/rbac/clusterrolebinding/storage"
+	"k8s.io/kubernetes/pkg/registry/rbac/role"
+	rolestore "k8s.io/kubernetes/pkg/registry/rbac/role/storage"
+	"k8s.io/kubernetes/pkg/registry/rbac/rolebinding"
+	rolebindingstore "k8s.io/kubernetes/pkg/registry/rbac/rolebinding/storage"
+	rbacregistryvalidation "k8s.io/kubernetes/pkg/registry/rbac/validation"
 )
 
 type RESTStorageProvider struct {
-	Authorizer authorizer.Authorizer
+	Authorizer                authorizer.Authorizer
+	AuthorizationRuleResolver rbacregistryvalidation.AuthorizationRuleResolver
 }
 
 func (p RESTStorageProvider) NewRESTStorage(apiResourceConfigSource serverstorage.APIResourceConfigSource, restOptionsGetter generic.RESTOptionsGetter) (genericapiserver.APIGroupInfo, bool) {
 	if p.Authorizer == nil {
 		return genericapiserver.APIGroupInfo{}, false
+	}
+
+	if p.AuthorizationRuleResolver == nil {
+		p.AuthorizationRuleResolver = rbacregistryvalidation.NewDefaultRuleResolver(
+			role.AuthorizerAdapter{Registry: role.NewRegistry(rolestore.NewREST(restOptionsGetter))},
+			rolebinding.AuthorizerAdapter{Registry: rolebinding.NewRegistry(rolebindingstore.NewREST(restOptionsGetter))},
+			clusterrole.AuthorizerAdapter{Registry: clusterrole.NewRegistry(clusterrolestore.NewREST(restOptionsGetter))},
+			clusterrolebinding.AuthorizerAdapter{Registry: clusterrolebinding.NewRegistry(clusterrolebindingstore.NewREST(restOptionsGetter))},
+		)
 	}
 
 	apiGroupInfo := genericapiserver.NewDefaultAPIGroupInfo(authorization.GroupName, api.Registry, api.Scheme, api.ParameterCodec, api.Codecs)
@@ -70,6 +90,9 @@ func (p RESTStorageProvider) v1beta1Storage(apiResourceConfigSource serverstorag
 	if apiResourceConfigSource.ResourceEnabled(version.WithResource("localsubjectaccessreviews")) {
 		storage["localsubjectaccessreviews"] = localsubjectaccessreview.NewREST(p.Authorizer)
 	}
+	if apiResourceConfigSource.ResourceEnabled(version.WithResource("selfsubjectrulesreviews")) {
+		storage["selfsubjectrulesreviews"] = selfsubjectrulesreview.NewREST(p.AuthorizationRuleResolver)
+	}
 
 	return storage
 }
@@ -86,6 +109,9 @@ func (p RESTStorageProvider) v1Storage(apiResourceConfigSource serverstorage.API
 	}
 	if apiResourceConfigSource.ResourceEnabled(version.WithResource("localsubjectaccessreviews")) {
 		storage["localsubjectaccessreviews"] = localsubjectaccessreview.NewREST(p.Authorizer)
+	}
+	if apiResourceConfigSource.ResourceEnabled(version.WithResource("selfsubjectrulesreviews")) {
+		storage["selfsubjectrulesreviews"] = selfsubjectrulesreview.NewREST(p.AuthorizationRuleResolver)
 	}
 
 	return storage

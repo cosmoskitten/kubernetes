@@ -174,3 +174,56 @@ type SubjectAccessReviewStatus struct {
 	// +optional
 	EvaluationError string `json:"evaluationError,omitempty" protobuf:"bytes,3,opt,name=evaluationError"`
 }
+
+// +genclient=true
+// +nonNamespaced=true
+// +noMethods=true
+
+// SelfSubjectRulesReview is a resource you can create to determine which actions you can perform in a namespace
+type SelfSubjectRulesReview struct {
+	metav1.TypeMeta `json:",inline"`
+
+	// Status is completed by the server to tell which permissions you have
+	// +optional
+	Status SubjectRulesReviewStatus `json:"status,omitempty" protobuf:"bytes,1,opt,name=status"`
+}
+
+// SubjectRulesReviewStatus is contains the result of a rules check
+type SubjectRulesReviewStatus struct {
+	// ResourceRules is the list of rules (no particular sort) that are allowed for the resource
+	ResourceRules []ResourceRule `json:"resourceRules" protobuf:"bytes,1,rep,name=resourceRules"`
+	// NonResourceRules is the list of rules (no particular sort) that are allowed for the non-resource
+	NonResourceRules []NonResourceRule `json:"nonResourceRules" protobuf:"bytes,2,rep,name=nonResourceRules"`
+	// EvaluationError can appear in combination with Rules.  It means some error happened during evaluation
+	// that may have prevented additional rules from being populated.
+	// +optional
+	EvaluationError string `json:"evaluationError,omitempty" protobuf:"bytes,3,opt,name=evaluationError"`
+}
+
+// ResourceRule holds information that describes a rule for the resource
+type ResourceRule struct {
+	// Verb is a of kubernetes resource API verbs, like: get, list, watch, create, update, delete, proxy.  "*" means all.
+	Verbs []string `json:"verbs" protobuf:"bytes,1,rep,name=verbs"`
+
+	// APIGroups is the name of the APIGroup that contains the resources.  If multiple API groups are specified, any action requested against one of
+	// the enumerated resources in any API group will be allowed.
+	// +optional
+	APIGroups []string `json:"apiGroups,omitempty" protobuf:"bytes,2,rep,name=apiGroups"`
+	// Resources is a list of resources this rule applies to.  ResourceAll represents all resources.
+	// +optional
+	Resources []string `json:"resources,omitempty" protobuf:"bytes,3,rep,name=resources"`
+	// ResourceNames is an optional white list of names that the rule applies to.  An empty set means that everything is allowed.
+	// +optional
+	ResourceNames []string `json:"resourceNames,omitempty" protobuf:"bytes,4,rep,name=resourceNames"`
+}
+
+// NonResourceRule holds information that describes a rule for the non-resource
+type NonResourceRule struct {
+	// Verb is a of kubernetes resource API verbs, like: get, list, watch, create, update, delete, proxy.  "*" means all.
+	Verbs []string `json:"verbs" protobuf:"bytes,1,rep,name=verbs"`
+
+	// NonResourceURLs is a set of partial urls that a user should have access to.  *s are allowed, but only as the full, final step in the path.
+	// Rules can either apply to API resources (such as "pods" or "secrets") or non-resource URL paths (such as "/api"),  but not both.
+	// +optional
+	NonResourceURLs []string `json:"nonResourceURLs,omitempty" protobuf:"bytes,2,rep,name=nonResourceURLs"`
+}
