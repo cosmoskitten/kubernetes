@@ -44,8 +44,7 @@ import (
 	authzmodes "k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes"
 	"k8s.io/kubernetes/pkg/util/initsystem"
 	"k8s.io/kubernetes/pkg/util/node"
-	"k8s.io/kubernetes/pkg/util/version"
-	apiversion "k8s.io/kubernetes/pkg/version"
+	kubeadmversion "k8s.io/kubernetes/pkg/version"
 	"k8s.io/kubernetes/test/e2e_node/system"
 )
 
@@ -54,6 +53,10 @@ const (
 	externalEtcdRequestTimeout  = time.Duration(10 * time.Second)
 	externalEtcdRequestRetries  = 3
 	externalEtcdRequestInterval = time.Duration(5 * time.Second)
+
+	// NB. in semver patches number is a numeric, while prerelease is a string where numeric identifiers always have lower precedence than non-numeric identifiers.
+	//     thus setting the value to x.y.0-0 we are defining the very first patch - prereleases within x.y minor release.
+	firstPatchAndPrelease = "0-0"
 )
 
 var (
@@ -358,14 +361,22 @@ type KubernetesVersionCheck struct {
 }
 
 func (kubever KubernetesVersionCheck) Check() (warnings, errors []error) {
-	k8sVersion, err := version.ParseSemantic(kubever.KubernetesVersion)
+	kubeadmVersion, _ := semver.ParseTolerant(kubeadmversion.Get().GitVersion)
+
+	// Skip this check for "super-custom builds", where apimachinery/the overall codebase version is not set.
+	if kubeadmVersion.String() == "v0.0.0" {
+		return nil, nil
+	}
+
+	k8sVersion, err := semver.ParseTolerant(kubever.KubernetesVersion)
 	if err != nil {
 		return nil, []error{fmt.Errorf("couldn't parse kubernetes version %q: %v", kubever.KubernetesVersion, err)}
 	}
 
-	kubeadmVersion := apiversion.Get()
-	if compare, _ := k8sVersion.Compare(kubeadmVersion.GitVersion); compare == 1 {
-		return []error{fmt.Errorf("kubernetes version is greater than kubeadm version. Kubernetes version: %s. Kubeadm version: %s", kubever.KubernetesVersion, kubeadmVersion.GitVersion)}, nil
+	// Checks if k8sVersion greater than the first supported versions by current version of kubeadm, that is major.minor+1 (all patch and pre-releases versions included)
+	firstUnsupportedVersion := semver.MustParse(fmt.Sprintf("%d.%d.%s", kubeadmVersion.Major, kubeadmVersion.Minor+1, firstPatchAndPrelease))
+	if k8sVersion.GTE(firstUnsupportedVersion) {
+		return []error{fmt.Errorf("kubernetes version is greater than the most recently validated version. kubernetes version: %s. Max validated version: %d.%d.x", k8sVersion, kubeadmVersion.Major, kubeadmVersion.Minor)}, nil
 	}
 
 	return nil, nil
