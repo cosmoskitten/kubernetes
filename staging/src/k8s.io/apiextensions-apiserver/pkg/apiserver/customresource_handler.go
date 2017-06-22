@@ -26,6 +26,13 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/golang/glog"
+
+	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
+	informers "k8s.io/apiextensions-apiserver/pkg/client/informers/internalversion/apiextensions/internalversion"
+	listers "k8s.io/apiextensions-apiserver/pkg/client/listers/apiextensions/internalversion"
+	"k8s.io/apiextensions-apiserver/pkg/controller/finalizer"
+	"k8s.io/apiextensions-apiserver/pkg/registry/customresource"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -44,11 +51,7 @@ import (
 	genericregistry "k8s.io/apiserver/pkg/registry/generic/registry"
 	"k8s.io/apiserver/pkg/storage/storagebackend"
 	"k8s.io/client-go/discovery"
-
-	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
-	listers "k8s.io/apiextensions-apiserver/pkg/client/listers/apiextensions/internalversion"
-	"k8s.io/apiextensions-apiserver/pkg/controller/finalizer"
-	"k8s.io/apiextensions-apiserver/pkg/registry/customresource"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // crdHandler serves the `/apis` endpoint.
@@ -84,6 +87,7 @@ func NewCustomResourceDefinitionHandler(
 	groupDiscoveryHandler *groupDiscoveryHandler,
 	requestContextMapper apirequest.RequestContextMapper,
 	crdLister listers.CustomResourceDefinitionLister,
+	crdInformer informers.CustomResourceDefinitionInformer,
 	delegate http.Handler,
 	restOptionsGetter generic.RESTOptionsGetter,
 	admission admission.Interface) *crdHandler {
@@ -97,6 +101,10 @@ func NewCustomResourceDefinitionHandler(
 		restOptionsGetter:       restOptionsGetter,
 		admission:               admission,
 	}
+
+	crdInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		UpdateFunc: ret.updateCustomResourceDefinition,
+	})
 
 	ret.customStorage.Store(crdStorageMap{})
 	return ret
@@ -287,6 +295,7 @@ func (r *crdHandler) getServingInfoFor(crd *apiextensions.CustomResourceDefiniti
 		unstructuredTyper: discovery.NewUnstructuredObjectTyper(nil),
 	}
 	creator := unstructuredCreator{}
+
 	storage := customresource.NewREST(
 		schema.GroupResource{Group: crd.Spec.Group, Resource: crd.Spec.Names.Plural},
 		schema.GroupVersionKind{Group: crd.Spec.Group, Version: crd.Spec.Version, Kind: crd.Spec.Names.ListKind},
@@ -295,6 +304,7 @@ func (r *crdHandler) getServingInfoFor(crd *apiextensions.CustomResourceDefiniti
 			typer,
 			crd.Spec.Scope == apiextensions.NamespaceScoped,
 			kind,
+			crd,
 		),
 		r.restOptionsGetter,
 	)
@@ -346,6 +356,19 @@ func (r *crdHandler) getServingInfoFor(crd *apiextensions.CustomResourceDefiniti
 	storageMap[crd.UID] = ret
 	r.customStorage.Store(storageMap)
 	return ret
+}
+
+func (c *crdHandler) updateCustomResourceDefinition(oldObj, newObj interface{}) {
+	oldCRD := oldObj.(*apiextensions.CustomResourceDefinition)
+	newCRD := newObj.(*apiextensions.CustomResourceDefinition)
+	glog.V(4).Infof("Updating customresourcedefinition %s", oldCRD.Name)
+
+	c.customStorageLock.Lock()
+	storageMap := c.customStorage.Load().(crdStorageMap)
+	delete(storageMap, oldCRD.UID)
+	c.customStorageLock.Unlock()
+
+	_ = c.getServingInfoFor(newCRD)
 }
 
 type unstructuredNegotiatedSerializer struct {

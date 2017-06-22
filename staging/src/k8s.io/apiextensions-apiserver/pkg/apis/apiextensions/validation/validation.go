@@ -99,6 +99,7 @@ func ValidateCustomResourceDefinitionSpec(spec *apiextensions.CustomResourceDefi
 	}
 
 	allErrs = append(allErrs, ValidateCustomResourceDefinitionNames(&spec.Names, fldPath.Child("names"))...)
+	allErrs = append(allErrs, ValidateCustomResourceDefinitionSchema(spec.Validation.JSONSchema, fldPath.Child("JSONSchema"))...)
 
 	return allErrs
 }
@@ -154,6 +155,85 @@ func ValidateCustomResourceDefinitionNames(names *apiextensions.CustomResourceDe
 	// kind and listKind may not be the same or parsing become ambiguous
 	if len(names.Kind) > 0 && names.Kind == names.ListKind {
 		allErrs = append(allErrs, field.Invalid(fldPath.Child("listKind"), names.ListKind, "kind and listKind may not be the same"))
+	}
+
+	return allErrs
+}
+
+// ValidateCustomResourceDefinitionSchema statically validates
+func ValidateCustomResourceDefinitionSchema(JSONSchema *apiextensions.JSONSchemaProps, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if JSONSchema == nil {
+		return allErrs
+	}
+
+	if JSONSchema.UniqueItems == true {
+		allErrs = append(allErrs, field.Forbidden(fldPath.Child("JSONSchema"), "uniqueItems cannot be set to true since the runtime complexity becomes quadratic"))
+	}
+
+	if JSONSchema.AdditionalProperties != nil {
+		if JSONSchema.AdditionalProperties.Allows == false {
+			allErrs = append(allErrs, field.Forbidden(fldPath.Child("JSONSchema"), "additionalProperties cannot be set to false"))
+		}
+		allErrs = append(allErrs, ValidateCustomResourceDefinitionSchema(JSONSchema.AdditionalProperties.Schema, fldPath.Child("JSONSchema"))...)
+	}
+
+	if JSONSchema.AdditionalItems != nil {
+		allErrs = append(allErrs, ValidateCustomResourceDefinitionSchema(JSONSchema.AdditionalItems.Schema, fldPath.Child("JSONSchema"))...)
+	}
+
+	allErrs = append(allErrs, ValidateCustomResourceDefinitionSchema(JSONSchema.Not, fldPath.Child("JSONSchema"))...)
+
+	if len(JSONSchema.AllOf) != 0 {
+		for _, jsonSchema := range JSONSchema.AllOf {
+			allErrs = append(allErrs, ValidateCustomResourceDefinitionSchema(&jsonSchema, fldPath.Child("JSONSchema"))...)
+		}
+	}
+
+	if len(JSONSchema.OneOf) != 0 {
+		for _, jsonSchema := range JSONSchema.OneOf {
+			allErrs = append(allErrs, ValidateCustomResourceDefinitionSchema(&jsonSchema, fldPath.Child("JSONSchema"))...)
+		}
+	}
+
+	if len(JSONSchema.AnyOf) != 0 {
+		for _, jsonSchema := range JSONSchema.AnyOf {
+			allErrs = append(allErrs, ValidateCustomResourceDefinitionSchema(&jsonSchema, fldPath.Child("JSONSchema"))...)
+		}
+	}
+
+	if len(JSONSchema.Properties) != 0 {
+		for _, jsonSchema := range JSONSchema.Properties {
+			allErrs = append(allErrs, ValidateCustomResourceDefinitionSchema(&jsonSchema, fldPath.Child("JSONSchema"))...)
+		}
+	}
+
+	if len(JSONSchema.PatternProperties) != 0 {
+		for _, jsonSchema := range JSONSchema.PatternProperties {
+			allErrs = append(allErrs, ValidateCustomResourceDefinitionSchema(&jsonSchema, fldPath.Child("JSONSchema"))...)
+		}
+	}
+
+	if len(JSONSchema.Definitions) != 0 {
+		for _, jsonSchema := range JSONSchema.Definitions {
+			allErrs = append(allErrs, ValidateCustomResourceDefinitionSchema(&jsonSchema, fldPath.Child("JSONSchema"))...)
+		}
+	}
+
+	if JSONSchema.Items != nil {
+		allErrs = append(allErrs, ValidateCustomResourceDefinitionSchema(JSONSchema.Items.Schema, fldPath.Child("JSONSchema"))...)
+		if len(JSONSchema.Items.JSONSchemas) != 0 {
+			for _, jsonSchema := range JSONSchema.Items.JSONSchemas {
+				allErrs = append(allErrs, ValidateCustomResourceDefinitionSchema(&jsonSchema, fldPath.Child("JSONSchema"))...)
+			}
+		}
+	}
+
+	if JSONSchema.Dependencies != nil {
+		for _, jsonSchemaPropsOrStringArray := range JSONSchema.Dependencies {
+			allErrs = append(allErrs, ValidateCustomResourceDefinitionSchema(jsonSchemaPropsOrStringArray.Schema, fldPath.Child("JSONSchema"))...)
+		}
 	}
 
 	return allErrs
