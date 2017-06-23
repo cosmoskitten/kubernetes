@@ -31,7 +31,7 @@ options:
     default: ""
     description: |
       Space separated list of flags and key=value pairs that will be passed as arguments to
-      kube-apiserver. For example value like this:
+      kube-apiserver. For example a value like this:
         runtime-config=batch/v2alpha1=true profiling=true
-      will results in kube-apiserver run with the following options
+      will result in kube-apiserver being run with the following options:
         --runtime-config=batch/v2alpha1=true --profiling
