@@ -26,13 +26,13 @@ import (
 	extensionsv1 "k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
+	kubeclientset "k8s.io/client-go/kubernetes"
+	kubeclientfake "k8s.io/client-go/kubernetes/fake"
 	core "k8s.io/client-go/testing"
 	fedv1 "k8s.io/kubernetes/federation/apis/federation/v1beta1"
 	fedclientfake "k8s.io/kubernetes/federation/client/clientset_generated/federation_clientset/fake"
 	"k8s.io/kubernetes/federation/pkg/federatedtypes"
 	testutil "k8s.io/kubernetes/federation/pkg/federation-controller/util/test"
-	kubeclientset "k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
-	kubeclientfake "k8s.io/kubernetes/pkg/client/clientset_generated/clientset/fake"
 
 	"github.com/stretchr/testify/assert"
 )
