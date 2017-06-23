@@ -29,7 +29,6 @@ go_library(
         "//federation/pkg/federation-controller/util/planner:go_default_library",
         "//federation/pkg/federation-controller/util/podanalyzer:go_default_library",
         "//federation/pkg/federation-controller/util/replicapreferences:go_default_library",
-        "//pkg/client/clientset_generated/clientset:go_default_library",
         "//vendor/github.com/golang/glog:go_default_library",
         "//vendor/k8s.io/api/core/v1:go_default_library",
         "//vendor/k8s.io/api/extensions/v1beta1:go_default_library",
@@ -39,6 +38,7 @@ go_library(
         "//vendor/k8s.io/apimachinery/pkg/runtime/schema:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/types:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/watch:go_default_library",
+        "//vendor/k8s.io/client-go/kubernetes:go_default_library",
     ],
 )
 

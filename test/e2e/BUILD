@@ -18,7 +18,6 @@ go_test(
     library = ":go_default_library",
     tags = ["automanaged"],
     deps = [
-        "//pkg/client/clientset_generated/clientset:go_default_library",
         "//pkg/metrics:go_default_library",
         "//test/e2e/api:go_default_library",
         "//test/e2e/autoscaling:go_default_library",
@@ -38,6 +37,7 @@ go_test(
         "//vendor/k8s.io/apimachinery/pkg/fields:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/runtime:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/watch:go_default_library",
+        "//vendor/k8s.io/client-go/kubernetes:go_default_library",
         "//vendor/k8s.io/client-go/tools/cache:go_default_library",
     ],
 )
@@ -114,8 +114,6 @@ go_library(
         "//pkg/api/v1/service:go_default_library",
         "//pkg/apis/batch/v2alpha1:go_default_library",
         "//pkg/apis/networking:go_default_library",
-        "//pkg/client/clientset_generated/clientset:go_default_library",
-        "//pkg/client/clientset_generated/clientset/typed/certificates/v1beta1:go_default_library",
         "//pkg/client/clientset_generated/internalclientset:go_default_library",
         "//pkg/cloudprovider:go_default_library",
         "//pkg/cloudprovider/providers/azure:go_default_library",
@@ -192,6 +190,7 @@ go_library(
         "//vendor/k8s.io/apiserver/pkg/registry/generic/registry:go_default_library",
         "//vendor/k8s.io/client-go/discovery:go_default_library",
         "//vendor/k8s.io/client-go/kubernetes:go_default_library",
+        "//vendor/k8s.io/client-go/kubernetes/typed/certificates/v1beta1:go_default_library",
         "//vendor/k8s.io/client-go/rest:go_default_library",
         "//vendor/k8s.io/client-go/tools/cache:go_default_library",
         "//vendor/k8s.io/client-go/util/cert:go_default_library",

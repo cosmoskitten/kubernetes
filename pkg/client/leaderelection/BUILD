@@ -30,12 +30,12 @@ go_test(
     library = ":go_default_library",
     tags = ["automanaged"],
     deps = [
-        "//pkg/client/clientset_generated/clientset/typed/core/v1/fake:go_default_library",
         "//pkg/client/leaderelection/resourcelock:go_default_library",
         "//vendor/k8s.io/api/core/v1:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/api/errors:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/runtime:go_default_library",
+        "//vendor/k8s.io/client-go/kubernetes/typed/core/v1/fake:go_default_library",
         "//vendor/k8s.io/client-go/testing:go_default_library",
         "//vendor/k8s.io/client-go/tools/record:go_default_library",
     ],

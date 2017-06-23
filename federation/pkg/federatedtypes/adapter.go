@@ -21,8 +21,8 @@ import (
 	pkgruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
+	kubeclientset "k8s.io/client-go/kubernetes"
 	federationclientset "k8s.io/kubernetes/federation/client/clientset_generated/federation_clientset"
-	kubeclientset "k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
 )
 
 // FederatedTypeAdapter defines operations for interacting with a

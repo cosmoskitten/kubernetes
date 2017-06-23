@@ -28,7 +28,7 @@ import (
 
 	"k8s.io/apiserver/pkg/server/healthz"
 
-	informers "k8s.io/kubernetes/pkg/client/informers/informers_generated/externalversions"
+	"k8s.io/client-go/informers"
 	"k8s.io/kubernetes/pkg/client/leaderelection"
 	"k8s.io/kubernetes/pkg/client/leaderelection/resourcelock"
 	"k8s.io/kubernetes/pkg/controller"
