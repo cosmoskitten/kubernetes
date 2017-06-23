@@ -17,10 +17,10 @@ limitations under the License.
 package kubectl
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
-	"errors"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -84,7 +84,7 @@ func (ServiceExternalNameGeneratorV1) ParamNames() []GeneratorParam {
 }
 
 // validatePortRange throws error if the given port is not vaild UDP or TCP port
-func validatePortRange(port int) (error) {
+func validatePortRange(port int) error {
 	var err error
 	if port < 0 || port > 65535 {
 		err = errors.New("Invalid port")
