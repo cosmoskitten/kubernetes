@@ -305,8 +305,8 @@ def start_master(etcd):
     hookenv.status_set('maintenance',
                        'Configuring the Kubernetes master services.')
     freeze_service_cidr()
-    # TODO: Make sure below relation is handled on change not
-    # only during initial setup
+    # TODO: Make sure below relation is handled on change
+    # https://github.com/kubernetes/kubernetes/issues/43461
     handle_etcd_relation(etcd)
 
     # Add CLI options to all components
@@ -855,21 +855,6 @@ def configure_apiserver():
     api_opts.add('insecure-port', '8080')
     api_opts.add('storage-backend', 'etcd2')  # FIXME: add etcd3 support
 
-    # TODO: investigate if it's possible to use config file to store args
-    # Handle api-extra-args config option
-    to_add, to_remove = get_config_args()
-    for arg in to_add:
-        hookenv.log('Adding option: {} {}'.format(arg[0], arg[1]))
-        # Make sure old value is gone
-        api_opts.destroy(arg[0])
-        api_opts.add(arg[0], arg[1])
-    for arg in to_remove:
-        hookenv.log('Removing option: {}'.format(arg))
-        api_opts.destroy(arg)
-        # We need to "unset" options by settig their value to "null" string
-        cmd = ['snap', 'set', 'kube-apiserver', '{}=null'.format(arg)]
-        check_call(cmd)
-
     admission_control = [
         'Initializers',
         'NamespaceLifecycle',
@@ -886,6 +871,22 @@ def configure_apiserver():
         hookenv.log('Removing Initializers from admission-control')
         admission_control.remove('Initializers')
     api_opts.add('admission-control', ','.join(admission_control), strict=True)
+
+    # TODO: investigate if it's possible to use config file to store args
+    # https://github.com/juju-solutions/bundle-canonical-kubernetes/issues/315
+    # Handle api-extra-args config option
+    to_add, to_remove = get_config_args()
+    for arg in to_add:
+        hookenv.log('Adding option: {} {}'.format(arg[0], arg[1]))
+        # Make sure old value is gone
+        api_opts.destroy(arg[0])
+        api_opts.add(arg[0], arg[1])
+    for arg in to_remove:
+        hookenv.log('Removing option: {}'.format(arg))
+        api_opts.destroy(arg)
+        # We need to "unset" options by settig their value to "null" string
+        cmd = ['snap', 'set', 'kube-apiserver', '{}=null'.format(arg)]
+        check_call(cmd)
 
     cmd = ['snap', 'set', 'kube-apiserver'] + api_opts.to_s().split(' ')
     check_call(cmd)
