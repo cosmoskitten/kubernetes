@@ -17,10 +17,10 @@ limitations under the License.
 package kubectl
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
-	"errors"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -84,10 +84,10 @@ func (ServiceExternalNameGeneratorV1) ParamNames() []GeneratorParam {
 }
 
 // validatePortRange throws error if the given port is not vaild UDP or TCP port
-func validatePortRange(port int) (error) {
+func validatePortRange(port int) error {
 	var err error
 	if port < 0 || port > 65535 {
-		err = errors.New("Invalid port")
+		err = errors.New("Invalid port, out of range")
 	}
 	return err
 }
@@ -99,22 +99,25 @@ func parsePorts(portString string) (int32, intstr.IntOrString, error) {
 	if err != nil {
 		return 0, intstr.FromInt(0), err
 	}
-	err = validatePortRange(port)
+
+	if err := validatePortRange(port); err != nil {
+		return 0, intstr.FromInt(0), err
+	}
+
 	if len(portStringSlice) == 1 {
-		return int32(port), intstr.FromInt(int(port)), err
+		return int32(port), intstr.FromInt(int(port)), nil
 	}
 
 	var targetPort intstr.IntOrString
 	if portNum, err := strconv.Atoi(portStringSlice[1]); err != nil {
 		targetPort = intstr.FromString(portStringSlice[1])
 	} else {
-		err = validatePortRange(portNum)
-		if err != nil {
+		if err = validatePortRange(portNum); err != nil {
 			return 0, intstr.FromInt(0), err
 		}
 		targetPort = intstr.FromInt(portNum)
 	}
-	return int32(port), targetPort, err
+	return int32(port), targetPort, nil
 }
 
 func (s ServiceCommonGeneratorV1) GenerateCommon(params map[string]interface{}) error {
