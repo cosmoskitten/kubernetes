@@ -357,15 +357,20 @@ func (sysver SystemVerificationCheck) Check() (warnings, errors []error) {
 }
 
 type KubernetesVersionCheck struct {
+	KubeadmVersion    string
 	KubernetesVersion string
 }
 
 func (kubever KubernetesVersionCheck) Check() (warnings, errors []error) {
-	kubeadmVersion, _ := semver.ParseTolerant(kubeadmversion.Get().GitVersion)
 
 	// Skip this check for "super-custom builds", where apimachinery/the overall codebase version is not set.
-	if kubeadmVersion.String() == "v0.0.0" {
+	if kubever.KubeadmVersion == "v0.0.0" {
 		return nil, nil
+	}
+
+	kadmVersion, err := semver.ParseTolerant(kubever.KubeadmVersion)
+	if err != nil {
+		return nil, []error{fmt.Errorf("couldn't parse kubeadm version %q: %v", kubever.KubeadmVersion, err)}
 	}
 
 	k8sVersion, err := semver.ParseTolerant(kubever.KubernetesVersion)
@@ -373,10 +378,11 @@ func (kubever KubernetesVersionCheck) Check() (warnings, errors []error) {
 		return nil, []error{fmt.Errorf("couldn't parse kubernetes version %q: %v", kubever.KubernetesVersion, err)}
 	}
 
-	// Checks if k8sVersion greater than the first unsupported versions by current version of kubeadm, that is major.minor+1 (all patch and pre-releases versions included)
-	firstUnsupportedVersion := semver.MustParse(fmt.Sprintf("%d.%d.%s", kubeadmVersion.Major, kubeadmVersion.Minor+1, firstPatchAndPrelease))
+	// Checks if k8sVersion greater or equal than the first unsupported versions by current version of kubeadm,
+	// that is major.minor+1 (all patch and pre-releases versions included)
+	firstUnsupportedVersion := semver.MustParse(fmt.Sprintf("%d.%d.%s", kadmVersion.Major, kadmVersion.Minor+1, firstPatchAndPrelease))
 	if k8sVersion.GTE(firstUnsupportedVersion) {
-		return []error{fmt.Errorf("kubernetes version is greater than kubeadm version. Please consider to upgrade kubeadm. kubernetes version: %s. Kubeadm version: %d.%d.x", k8sVersion, kubeadmVersion.Major, kubeadmVersion.Minor)}, nil
+		return []error{fmt.Errorf("kubernetes version is greater than kubeadm version. Please consider to upgrade kubeadm. kubernetes version: %s. Kubeadm version: %d.%d.x", k8sVersion, kadmVersion.Major, kadmVersion.Minor)}, nil
 	}
 
 	return nil, nil
@@ -517,7 +523,7 @@ func getEtcdVersionResponse(client *http.Client, url string, target interface{})
 }
 func RunInitMasterChecks(cfg *kubeadmapi.MasterConfiguration) error {
 	checks := []Checker{
-		KubernetesVersionCheck{cfg.KubernetesVersion},
+		KubernetesVersionCheck{KubernetesVersion: cfg.KubernetesVersion, KubeadmVersion: kubeadmversion.Get().GitVersion},
 		SystemVerificationCheck{},
 		IsRootCheck{},
 		HostnameCheck{},

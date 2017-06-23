@@ -335,3 +335,66 @@ func TestConfigCertAndKey(t *testing.T) {
 		)
 	}
 }
+
+func TestKubernetesVersionCheck(t *testing.T) {
+	var tests = []struct {
+		check    KubernetesVersionCheck
+		expected bool
+	}{
+		{
+			check: KubernetesVersionCheck{
+				KubeadmVersion:    "v1.6.6", //Same version
+				KubernetesVersion: "v1.6.6",
+			},
+			expected: true, //true means the check pass (no warnings)
+		},
+		{
+			check: KubernetesVersionCheck{
+				KubeadmVersion:    "v1.6.6", //KubernetesVersion version older than KubeadmVersion
+				KubernetesVersion: "v1.5.5",
+			},
+			expected: true,
+		},
+		{
+			check: KubernetesVersionCheck{
+				KubeadmVersion:    "v1.6.6", //KubernetesVersion newer than KubeadmVersion, within the same minor release (new patch)
+				KubernetesVersion: "v1.6.7",
+			},
+			expected: true,
+		},
+		{
+			check: KubernetesVersionCheck{
+				KubeadmVersion:    "v1.6.6", //KubernetesVersion newer than KubeadmVersion, in a different minor/in pre-release
+				KubernetesVersion: "v1.7.0-alpha.0",
+			},
+			expected: false,
+		},
+		{
+			check: KubernetesVersionCheck{
+				KubeadmVersion:    "v1.6.6", //KubernetesVersion newer than KubeadmVersion, in a different minor/stable
+				KubernetesVersion: "v1.7.0",
+			},
+			expected: false,
+		},
+		{
+			check: KubernetesVersionCheck{
+				KubeadmVersion:    "v0.0.0", //"super-custom" builds
+				KubernetesVersion: "v1.7.0",
+			},
+			expected: true,
+		},
+	}
+
+	for _, rt := range tests {
+		warning, _ := rt.check.Check()
+		if (warning == nil) != rt.expected {
+			t.Errorf(
+				"failed KubernetesVersionCheck:\n\texpected: %t\n\t  actual: %t (KubeadmVersion:%s, KubernetesVersion: %s)",
+				rt.expected,
+				(warning == nil),
+				rt.check.KubeadmVersion,
+				rt.check.KubernetesVersion,
+			)
+		}
+	}
+}
