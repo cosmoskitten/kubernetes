@@ -21,9 +21,10 @@ package config
 
 import (
 	"errors"
-	"time"
+
+	"github.com/golang/glog"
 )
 
 func (s *sourceFile) watch() {
-	// watching source file is unsupported in this build
+	glog.Errorf("watching source file is unsupported in this build")
 }
