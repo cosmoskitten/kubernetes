@@ -232,7 +232,7 @@ func (c *sioClient) AttachVolume(id sioVolumeID) error {
 
 	params := &siotypes.MapVolumeSdcParam{
 		SdcID: iid,
-		AllowMultipleMappings: "false",
+		AllowMultipleMappings: "true",
 		AllSdcs:               "",
 	}
 	volClient := sio.NewVolume(c.client)
