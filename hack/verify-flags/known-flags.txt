@@ -41,6 +41,7 @@ apiserver-count
 apiserver-count
 apiserver-enable-basic-auth
 apiserver-enable-token-auth
+apiserver-service-port
 attach-detach-reconcile-sync-period
 audit-log-maxage
 audit-log-maxbackup
@@ -429,6 +430,7 @@ kubernetes-anywhere-path
 kubernetes-anywhere-phase2-provider
 kubernetes-anywhere-up-timeout
 kubernetes-service-node-port
+kubernetes-service-external-name
 kubernetes-version
 label-columns
 large-cluster-size-threshold
