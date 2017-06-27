@@ -2608,7 +2608,7 @@ func buildListener(port v1.ServicePort, annotations map[string]string, sslPorts 
 // EnsureLoadBalancer implements LoadBalancer.EnsureLoadBalancer
 func (c *Cloud) EnsureLoadBalancer(clusterName string, apiService *v1.Service, nodes []*v1.Node) (*v1.LoadBalancerStatus, error) {
 	annotations := apiService.Annotations
-	glog.V(2).Infof("EnsureLoadBalancer(%v, %v, %v, %v, %v, %v, %v, %v)",
+	glog.V(4).Infof("EnsureLoadBalancer(%v, %v, %v, %v, %v, %v, %v, %v)",
 		clusterName, apiService.Namespace, apiService.Name, c.region, apiService.Spec.LoadBalancerIP, apiService.Spec.Ports, nodes, annotations)
 
 	if apiService.Spec.SessionAffinity != v1.ServiceAffinityNone {

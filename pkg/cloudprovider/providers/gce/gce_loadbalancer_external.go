@@ -65,7 +65,7 @@ func (gce *GCECloud) ensureExternalLoadBalancer(clusterName string, apiService *
 	affinityType := apiService.Spec.SessionAffinity
 
 	serviceName := types.NamespacedName{Namespace: apiService.Namespace, Name: apiService.Name}
-	glog.V(2).Infof("EnsureLoadBalancer(%v, %v, %v, %v, %v, %v, %v)",
+	glog.V(4).Infof("EnsureLoadBalancer(%v, %v, %v, %v, %v, %v, %v)",
 		loadBalancerName, gce.region, loadBalancerIP, portStr, hostNames, serviceName, apiService.Annotations)
 
 	// Check if the forwarding rule exists, and if so, what its IP is.
@@ -112,9 +112,9 @@ func (gce *GCECloud) ensureExternalLoadBalancer(clusterName string, apiService *
 			if err := gce.DeleteRegionAddress(loadBalancerName, gce.region); err != nil && !isNotFound(err) {
 				glog.Errorf("failed to release static IP %s for load balancer (%v(%v), %v): %v", ipAddress, loadBalancerName, serviceName, gce.region, err)
 			} else if isNotFound(err) {
-				glog.V(2).Infof("EnsureLoadBalancer(%v(%v)): address %s is not reserved.", loadBalancerName, serviceName, ipAddress)
+				glog.V(4).Infof("EnsureLoadBalancer(%v(%v)): address %s is not reserved.", loadBalancerName, serviceName, ipAddress)
 			} else {
-				glog.V(2).Infof("EnsureLoadBalancer(%v(%v)): released static IP %s", loadBalancerName, serviceName, ipAddress)
+				glog.V(4).Infof("EnsureLoadBalancer(%v(%v)): released static IP %s", loadBalancerName, serviceName, ipAddress)
 			}
 		} else {
 			glog.Warningf("orphaning static IP %s during update of load balancer (%v(%v), %v): %v", ipAddress, loadBalancerName, serviceName, gce.region, err)
