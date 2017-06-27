@@ -19,13 +19,9 @@ limitations under the License.
 package mount
 
 import (
-	"bufio"
 	"fmt"
-	"hash/fnv"
-	"io"
 	"os"
 	"os/exec"
-	"reflect"
 	"strconv"
 	"strings"
 	"syscall"
@@ -33,6 +29,7 @@ import (
 	"github.com/golang/glog"
 	"k8s.io/apimachinery/pkg/util/sets"
 	utilexec "k8s.io/kubernetes/pkg/util/exec"
+	utilio "k8s.io/kubernetes/pkg/util/io"
 )
 
 const (
@@ -256,82 +253,54 @@ func (mounter *Mounter) GetDeviceNameFromMount(mountPath, pluginDir string) (str
 }
 
 func listProcMounts(mountFilePath string) ([]MountPoint, error) {
-	hash1, err := readProcMounts(mountFilePath, nil)
+	content, err := utilio.ConsistentRead(mountFilePath, maxListTries)
 	if err != nil {
 		return nil, err
 	}
-
-	for i := 0; i < maxListTries; i++ {
-		mps := []MountPoint{}
-		hash2, err := readProcMounts(mountFilePath, &mps)
-		if err != nil {
-			return nil, err
-		}
-		if hash1 == hash2 {
-			// Success
-			return mps, nil
-		}
-		hash1 = hash2
-	}
-	return nil, fmt.Errorf("failed to get a consistent snapshot of %v after %d tries", mountFilePath, maxListTries)
+	return parseProcMounts(content)
 }
 
-// readProcMounts reads the given mountFilePath (normally /proc/mounts) and produces a hash
-// of the contents.  If the out argument is not nil, this fills it with MountPoint structs.
-func readProcMounts(mountFilePath string, out *[]MountPoint) (uint32, error) {
-	file, err := os.Open(mountFilePath)
-	if err != nil {
-		return 0, err
-	}
-	defer file.Close()
-	return readProcMountsFrom(file, out)
-}
-
-func readProcMountsFrom(file io.Reader, out *[]MountPoint) (uint32, error) {
-	hash := fnv.New32a()
-	scanner := bufio.NewReader(file)
-	for {
-		line, err := scanner.ReadString('\n')
-		if err == io.EOF {
-			break
+func parseProcMounts(content []byte) ([]MountPoint, error) {
+	out := []MountPoint{}
+	lines := strings.Split(string(content), "\n")
+	for _, line := range lines {
+		if line == "" {
+			// the last split() item is empty string following the last \n
+			continue
 		}
 		fields := strings.Fields(line)
 		if len(fields) != expectedNumFieldsPerLine {
-			return 0, fmt.Errorf("wrong number of fields (expected %d, got %d): %s", expectedNumFieldsPerLine, len(fields), line)
+			return nil, fmt.Errorf("wrong number of fields (expected %d, got %d): %s", expectedNumFieldsPerLine, len(fields), line)
 		}
 
-		fmt.Fprintf(hash, "%s", line)
-
-		if out != nil {
-			mp := MountPoint{
-				Device: fields[0],
-				Path:   fields[1],
-				Type:   fields[2],
-				Opts:   strings.Split(fields[3], ","),
-			}
-
-			freq, err := strconv.Atoi(fields[4])
-			if err != nil {
-				return 0, err
-			}
-			mp.Freq = freq
-
-			pass, err := strconv.Atoi(fields[5])
-			if err != nil {
-				return 0, err
-			}
-			mp.Pass = pass
-
-			*out = append(*out, mp)
+		mp := MountPoint{
+			Device: fields[0],
+			Path:   fields[1],
+			Type:   fields[2],
+			Opts:   strings.Split(fields[3], ","),
 		}
+
+		freq, err := strconv.Atoi(fields[4])
+		if err != nil {
+			return nil, err
+		}
+		mp.Freq = freq
+
+		pass, err := strconv.Atoi(fields[5])
+		if err != nil {
+			return nil, err
+		}
+		mp.Pass = pass
+
+		out = append(out, mp)
 	}
-	return hash.Sum32(), nil
+	return out, nil
 }
 
-func (mounter *Mounter) MakeShared(path string) error {
+func (mounter *Mounter) MakeRShared(path string) error {
 	mountCmd := defaultMountCommand
 	mountArgs := []string{}
-	return doMakeShared(path, procMountInfoPath, mountCmd, mountArgs)
+	return doMakeRShared(path, procMountInfoPath, mountCmd, mountArgs)
 }
 
 // formatAndMount uses unix utils to format and mount the given disk
@@ -438,7 +407,7 @@ func (mounter *SafeFormatAndMount) getDiskFormat(disk string) (string, error) {
 // isShared returns true, if given path is on a mount point that has shared
 // mount propagation.
 func isShared(path string, filename string) (bool, error) {
-	infos, err := getMountInfo(filename)
+	infos, err := parseMountInfo(filename)
 	if err != nil {
 		return false, err
 	}
@@ -471,42 +440,19 @@ type mountInfo struct {
 	optional []string
 }
 
-// getMountInfo reads /proc/xxx/mountinfo and makes sure it did not change
-// between reads. This protects us from kernel adding/removing lines there
-// between individual read() syscalls.
-func getMountInfo(filename string) ([]mountInfo, error) {
-	// Read the file until we get the same content twice
-	oldInfo, err := parseMountInfo(filename)
-	if err != nil {
-		return []mountInfo{}, err
-	}
-	for {
-		newInfo, err := parseMountInfo(filename)
-		if err != nil {
-			return []mountInfo{}, err
-		}
-		if reflect.DeepEqual(oldInfo, newInfo) {
-			// Content is the same, finish
-			return oldInfo, nil
-		}
-		// Content is different, continue in the loop and try again
-		oldInfo = newInfo
-	}
-}
-
 // parseMountInfo parses /proc/xxx/mountinfo.
 func parseMountInfo(filename string) ([]mountInfo, error) {
-	file, err := os.Open(filename)
+	content, err := utilio.ConsistentRead(filename, maxListTries)
 	if err != nil {
 		return []mountInfo{}, err
 	}
-	scanner := bufio.NewReader(file)
+	contentStr := string(content)
 	infos := []mountInfo{}
 
-	for {
-		line, err := scanner.ReadString('\n')
-		if err == io.EOF {
-			break
+	for _, line := range strings.Split(contentStr, "\n") {
+		if line == "" {
+			// the last split() item is empty string following the last \n
+			continue
 		}
 		fields := strings.Fields(line)
 		if len(fields) < 7 {
@@ -525,11 +471,11 @@ func parseMountInfo(filename string) ([]mountInfo, error) {
 	return infos, nil
 }
 
-// doMakeShared is common implementation of MakeShared on Linux. It checks if
-// path is shared and bind-mounts it as shared if needed. mountCmd and mountArgs
-// are expected to contain mount-like command, doMakeShared will add '--bind
-// <path> <path>' and '--make-shared <path>' to mountArgs.
-func doMakeShared(path string, mountInfoFilename string, mountCmd string, mountArgs []string) error {
+// doMakeRShared is common implementation of MakeRShared on Linux. It checks if
+// path is shared and bind-mounts it as rshared if needed. mountCmd and
+// mountArgs are expected to contain mount-like command, doMakeRShared will add
+// '--bind <path> <path>' and '--make-rshared <path>' to mountArgs.
+func doMakeRShared(path string, mountInfoFilename string, mountCmd string, mountArgs []string) error {
 	shared, err := isShared(path, mountInfoFilename)
 	if err != nil {
 		return err

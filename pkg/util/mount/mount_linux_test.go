@@ -22,31 +22,19 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
 func TestReadProcMountsFrom(t *testing.T) {
 	successCase :=
 		`/dev/0 /path/to/0 type0 flags 0 0
-		/dev/1    /path/to/1   type1	flags 1 1
-		/dev/2 /path/to/2 type2 flags,1,2=3 2 2
-		`
+/dev/1    /path/to/1   type1	flags 1 1
+/dev/2 /path/to/2 type2 flags,1,2=3 2 2
+`
 	// NOTE: readProcMountsFrom has been updated to using fnv.New32a()
-	hash, err := readProcMountsFrom(strings.NewReader(successCase), nil)
+	mounts, err := parseProcMounts([]byte(successCase))
 	if err != nil {
-		t.Errorf("expected success")
-	}
-	if hash != 0xa290ff0b {
-		t.Errorf("expected 0xa290ff0b, got %#x", hash)
-	}
-	mounts := []MountPoint{}
-	hash, err = readProcMountsFrom(strings.NewReader(successCase), &mounts)
-	if err != nil {
-		t.Errorf("expected success")
-	}
-	if hash != 0xa290ff0b {
-		t.Errorf("expected 0xa290ff0b, got %#x", hash)
+		t.Errorf("expected success, got %v", err)
 	}
 	if len(mounts) != 3 {
 		t.Fatalf("expected 3 mounts, got %d", len(mounts))
@@ -70,7 +58,7 @@ func TestReadProcMountsFrom(t *testing.T) {
 		"/dev/2 /path/to/mount type flags 0 b\n",
 	}
 	for _, ec := range errorCases {
-		_, err := readProcMountsFrom(strings.NewReader(ec), &mounts)
+		_, err := parseProcMounts([]byte(ec))
 		if err == nil {
 			t.Errorf("expected error")
 		}
@@ -205,6 +193,8 @@ func TestIsSharedSuccess(t *testing.T) {
 76 62 8:1 / /boot rw,relatime shared:29 - ext4 /dev/sda1 rw,seclabel,data=ordered
 78 62 0:41 / /tmp rw,nosuid,nodev shared:30 - tmpfs tmpfs rw,seclabel
 80 62 0:42 / /var/lib/nfs/rpc_pipefs rw,relatime shared:31 - rpc_pipefs sunrpc rw
+82 62 0:43 / /var/lib/foo rw,relatime shared:32 - tmpfs tmpfs rw
+83 63 0:44 / /var/lib/bar rw,relatime - tmpfs tmpfs rw
 227 62 253:0 /var/lib/docker/devicemapper /var/lib/docker/devicemapper rw,relatime - ext4 /dev/mapper/ssd-root rw,seclabel,data=ordered
 224 62 253:0 /var/lib/docker/devicemapper/test/shared /var/lib/docker/devicemapper/test/shared rw,relatime master:1 shared:44 - ext4 /dev/mapper/ssd-root rw,seclabel,data=ordered
 `
@@ -220,19 +210,38 @@ func TestIsSharedSuccess(t *testing.T) {
 		expectedResult bool
 	}{
 		{
+			// /var/lib/kubelet is a directory on mount '/' that is shared
+			// This is the most common case.
 			"shared",
 			"/var/lib/kubelet",
 			true,
 		},
 		{
+			// 8a2a... is a directory on mount /var/lib/docker/devicemapper
+			// that is private.
 			"private",
 			"/var/lib/docker/devicemapper/mnt/8a2a5c19eefb06d6f851dfcb240f8c113427f5b49b19658b5c60168e88267693/",
 			false,
 		},
 		{
+			// 'directory' is a directory on mount
+			// /var/lib/docker/devicemapper/test/shared that is shared, but one
+			// of its parent is private.
 			"nested-shared",
 			"/var/lib/docker/devicemapper/test/shared/my/test/directory",
 			true,
+		},
+		{
+			// /var/lib/foo is a mount point and it's shared
+			"shared-mount",
+			"/var/lib/foo",
+			true,
+		},
+		{
+			// /var/lib/bar is a mount point and it's private
+			"private-mount",
+			"/var/lib/bar",
+			false,
 		},
 	}
 	for _, test := range tests {

@@ -231,12 +231,12 @@ func (n *NsenterMounter) absHostPath(command string) string {
 	return path
 }
 
-func (n *NsenterMounter) MakeShared(path string) error {
+func (n *NsenterMounter) MakeRShared(path string) error {
 	nsenterCmd := nsenterPath
 	nsenterArgs := []string{
 		"--mount=/rootfs/proc/1/ns/mnt",
 		"--",
 		n.absHostPath("mount"),
 	}
-	return doMakeShared(path, hostProcMountinfoPath, nsenterCmd, nsenterArgs)
+	return doMakeRShared(path, hostProcMountinfoPath, nsenterCmd, nsenterArgs)
 }

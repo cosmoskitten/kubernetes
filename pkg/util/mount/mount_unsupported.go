@@ -50,7 +50,7 @@ func (mounter *Mounter) PathIsDevice(pathname string) (bool, error) {
 	return true, nil
 }
 
-func (mounter *Mounter) MakeShared(path string) error {
+func (mounter *Mounter) MakeRShared(path string) error {
 	return nil
 }
 

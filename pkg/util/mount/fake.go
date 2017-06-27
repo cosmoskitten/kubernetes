@@ -164,6 +164,6 @@ func (f *FakeMounter) GetDeviceNameFromMount(mountPath, pluginDir string) (strin
 	return getDeviceNameFromMount(f, mountPath, pluginDir)
 }
 
-func (f *FakeMounter) MakeShared(path string) error {
+func (f *FakeMounter) MakeRShared(path string) error {
 	return nil
 }
