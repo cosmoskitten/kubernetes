@@ -28,10 +28,12 @@ import (
 	"k8s.io/apimachinery/pkg/apimachinery/registered"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/cache"
+	"k8s.io/apiserver/pkg/authentication/user"
 	"k8s.io/apiserver/pkg/authorization/authorizer"
 	"k8s.io/apiserver/pkg/util/webhook"
 	"k8s.io/client-go/kubernetes/scheme"
 	authorizationclient "k8s.io/client-go/kubernetes/typed/authorization/v1beta1"
+	authorizationapi "k8s.io/kubernetes/pkg/apis/authorization"
 )
 
 var (
@@ -193,6 +195,13 @@ func (w *WebhookAuthorizer) Authorize(attr authorizer.Attributes) (authorized bo
 		}
 	}
 	return r.Status.Allowed, r.Status.Reason, nil
+}
+
+//TODO: need to finish the method to get the rules using webhook mode
+func (w *WebhookAuthorizer) RulesFor(user user.Info, namespace string) ([]authorizationapi.ResourceRule, []authorizationapi.NonResourceRule, error) {
+	resourceRules := []authorizationapi.ResourceRule{}
+	nonResourceRules := []authorizationapi.NonResourceRule{}
+	return resourceRules, nonResourceRules, nil
 }
 
 func convertToSARExtra(extra map[string][]string) map[string]authorization.ExtraValue {

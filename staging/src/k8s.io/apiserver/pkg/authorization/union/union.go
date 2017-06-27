@@ -20,7 +20,9 @@ import (
 	"strings"
 
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/apiserver/pkg/authentication/user"
 	"k8s.io/apiserver/pkg/authorization/authorizer"
+	authorizationapi "k8s.io/kubernetes/pkg/apis/authorization"
 )
 
 // unionAuthzHandler authorizer against a chain of authorizer.Authorizer
@@ -54,4 +56,37 @@ func (authzHandler unionAuthzHandler) Authorize(a authorizer.Attributes) (bool, 
 	}
 
 	return false, strings.Join(reasonlist, "\n"), utilerrors.NewAggregate(errlist)
+}
+
+// unionAuthzRulesHandler authorizer against a chain of authorizer.AuthorizationRulesGetter
+type unionAuthzRulesHandler []authorizer.AuthorizationRulesGetter
+
+// New returns an authorizer that authorizes against a chain of authorizer.Authorizer objects
+func NewRulesGetter(authorizationHandlers ...authorizer.AuthorizationRulesGetter) authorizer.AuthorizationRulesGetter {
+	return unionAuthzRulesHandler(authorizationHandlers)
+}
+
+// Authorizes against a chain of authorizer.AuthorizationRulesGetter objects and returns nil if successful and returns error if unsuccessful
+func (authzHandler unionAuthzRulesHandler) RulesFor(user user.Info, namespace string) ([]authorizationapi.ResourceRule, []authorizationapi.NonResourceRule, error) {
+	var (
+		errList              []error
+		resourceRulesList    []authorizationapi.ResourceRule
+		nonResourceRulesList []authorizationapi.NonResourceRule
+	)
+
+	for _, currAuthzHandler := range authzHandler {
+		resourceRules, nonResourceRules, err := currAuthzHandler.RulesFor(user, namespace)
+
+		if err != nil {
+			errList = append(errList, err)
+		}
+		if len(resourceRules) > 0 {
+			resourceRulesList = append(resourceRulesList, resourceRules...)
+		}
+		if len(nonResourceRules) > 0 {
+			nonResourceRulesList = append(nonResourceRulesList, nonResourceRules...)
+		}
+	}
+
+	return resourceRulesList, nonResourceRulesList, utilerrors.NewAggregate(errList)
 }
