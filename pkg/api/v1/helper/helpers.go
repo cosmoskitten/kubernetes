@@ -513,3 +513,28 @@ func StorageNodeAffinityToAlphaAnnotation(annotations map[string]string, affinit
 	annotations[v1.AlphaStorageNodeAffinityAnnotation] = string(json)
 	return nil
 }
+
+// MountPropagationMap is a map of "container name" -> map of "mount name" ->
+// "mount propagation". In the future there should be a real API field in
+// VolumeMount.
+type MountPropagationMap map[string]map[string]v1.MountPropagation
+
+// GetPodPropagation returns parsed mount propagation for individual mounts
+// in a pod.
+func GetPodPropagation(podAnnotations map[string]string) (MountPropagationMap, error) {
+	var out MountPropagationMap
+	ann, found := podAnnotations[v1.MountPropagationAnnotation]
+	if !found {
+		// No propagation configured
+		return out, nil
+	}
+	if strings.TrimSpace(ann) == "" {
+		// Empty annotation is OK
+		return MountPropagationMap{}, nil
+	}
+	// Everything else must be json
+	if err := json.Unmarshal([]byte(ann), &out); err != nil {
+		return MountPropagationMap{}, fmt.Errorf("cannot decode annotation %s to MountPropagationMap: %v", v1.MountPropagationAnnotation, err)
+	}
+	return out, nil
+}
