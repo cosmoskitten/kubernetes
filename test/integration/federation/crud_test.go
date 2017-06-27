@@ -22,6 +22,7 @@ import (
 
 	"github.com/pborman/uuid"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	pkgruntime "k8s.io/apimachinery/pkg/runtime"
 	federationapi "k8s.io/kubernetes/federation/apis/federation/v1beta1"
 	"k8s.io/kubernetes/federation/pkg/federatedtypes"
@@ -49,19 +50,18 @@ func TestFederationCRUD(t *testing.T) {
 	kind := federatedtypes.SecretKind
 	adapterFactory := federatedtypes.NewSecretAdapter
 
-	// Validate deletion handling where orphanDependents is true or nil
-	orphanedDependents := true
-	testCases := map[string]*bool{
-		"Resource should not be deleted from underlying clusters when OrphanDependents is true": &orphanedDependents,
-		"Resource should not be deleted from underlying clusters when OrphanDependents is nil":  nil,
+	// Validate deletion handling when defaultPropagationPolicy is "Orphan"
+	defaultPropagationPolicy := metav1.DeletePropagationOrphan
+	testCases := map[string]*metav1.DeletionPropagation{
+		"Resource should not be deleted from underlying clusters when defaultPropagationPolicy is Orphan": &defaultPropagationPolicy,
 	}
-	for testName, orphanDependents := range testCases {
+	for testName, defaultPropagationPolicy := range testCases {
 		t.Run(testName, func(t *testing.T) {
 			fixture, crudTester, obj, _ := initCRUDTest(t, &fedFixture, adapterFactory, kind)
 			defer fixture.TearDown(t)
 
 			updatedObj := crudTester.CheckCreate(obj)
-			crudTester.CheckDelete(updatedObj, orphanDependents)
+			crudTester.CheckDelete(updatedObj, defaultPropagationPolicy)
 		})
 	}
 

@@ -190,8 +190,10 @@ func newFederationSyncController(client federationclientset.Interface, adapter f
 		},
 		func(client kubeclientset.Interface, obj pkgruntime.Object) error {
 			namespacedName := adapter.NamespacedName(obj)
-			orphanDependents := false
-			err := adapter.ClusterDelete(client, namespacedName, &metav1.DeleteOptions{OrphanDependents: &orphanDependents})
+			defaultPropagationPolicy := metav1.DeletePropagationForeground
+			err := adapter.ClusterDelete(client, namespacedName, &metav1.DeleteOptions{
+				PropagationPolicy: &defaultPropagationPolicy,
+			})
 			return err
 		})
 
