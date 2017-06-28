@@ -19,21 +19,58 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
 "Language: zh\n"
 
+# Basic Commands (Beginner)
+
+#: pkg/kubectl/cmd/create.go:64
+msgid "Create a resource by filename or stdin"
+msgstr "通过文件名或者标准输入流(stdin)创建一个资源"
+
+#: pkg/kubectl/cmd/expose.go:88
+msgid "Take a replication controller, service, deployment or pod and expose it as a new Kubernetes Service"
+msgstr "获取一个 replication controller, service, deployment 或者 pod 暴露端口并创建一个新的 Kubernetes Service"
+
+#: pkg/kubectl/cmd/run.go:93
+msgid "Run a particular image on the cluster"
+msgstr "在集群中运行一个指定的镜像"
+
+#: pkg/kubectl/cmd/run.go:93
+msgid "Set specific features on objects"
+msgstr "为 objects 设置一个指定的特征"
+
+# Basic Commands (Intermediate)
+
+#: pkg/kubectl/cmd/get.go:117
+msgid "Set specific features on objects"
+msgstr "显示一个或多个资源"
+
+#: pkg/kubectl/cmd/explain.go:51
+msgid "Documentation of resources"
+msgstr "查看资源的文档"
+
+#: pkg/kubectl/cmd/edit.go:91
+msgid "Edit a resource on the server"
+msgstr "在服务器上编辑一个资源"
+
+#: pkg/kubectl/cmd/delete.go:132
+msgid "Delete resources by filenames, stdin, resources and names, or by resources and label selector"
+msgstr "通过文件名、标准输入流(stdin)、资源和名称、或者资源和 label selector"
+
 #: pkg/kubectl/cmd/apply.go:104
 msgid "Apply a configuration to a resource by filename or stdin"
-msgstr "通过文件名或标准输入流(stdin)对资源进行配置。"
+msgstr "通过文件名或标准输入流(stdin)对资源进行配置"
 
+# Other Commands
 #: pkg/kubectl/cmd/config/delete_cluster.go:39
 msgid "Delete the specified cluster from the kubeconfig"
 msgstr "删除 kubeconfig 文件中指定的集群"
 
 #: pkg/kubectl/cmd/config/delete_context.go:39
 msgid "Delete the specified context from the kubeconfig"
-msgstr "删除 kubeconfig 文件中指定的上下文"
+msgstr "删除 kubeconfig 文件中指定的 context"
 
 #: pkg/kubectl/cmd/config/get_contexts.go:64
 msgid "Describe one or many contexts"
-msgstr "描述一个或多个上下文"
+msgstr "描述一个或多个 contexts"
 
 #: pkg/kubectl/cmd/config/get_clusters.go:41
 msgid "Display clusters defined in the kubeconfig"
@@ -45,7 +82,7 @@ msgstr "显示合并的 kubeconfig 配置或一个指定的 kubeconfig 文件"
 
 #: pkg/kubectl/cmd/config/current_context.go:49
 msgid "Displays the current-context"
-msgstr "显示当前的上下文"
+msgstr "显示 current_context"
 
 #: pkg/kubectl/cmd/config/config.go:40
 msgid "Modify kubeconfig files"
@@ -57,7 +94,7 @@ msgstr "设置 kubeconfig 文件中的一个集群条目"
 
 #: pkg/kubectl/cmd/config/create_context.go:58
 msgid "Sets a context entry in kubeconfig"
-msgstr "设置 kubeconfig 文件中的一个上下文条目"
+msgstr "设置 kubeconfig 文件中的一个 context 条目"
 
 #: pkg/kubectl/cmd/config/create_authinfo.go:104
 msgid "Sets a user entry in kubeconfig"
@@ -81,7 +118,7 @@ msgstr "更新一个资源的注解"
 
 #: pkg/kubectl/cmd/rename_context.go:64
 msgid "Renames a context from the kubeconfig file"
-msgstr "修改 kubeconfig 文件中的一个上下文名称"
+msgstr "修改 kubeconfig 文件中的一个 context 名称"
 
 msgid ""
 "watch is only supported on individual resources and resource collections - "
