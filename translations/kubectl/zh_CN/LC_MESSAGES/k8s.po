@@ -59,6 +59,54 @@ msgstr "通过文件名、标准输入流(stdin)、资源和名称、或者资�
 msgid "Apply a configuration to a resource by filename or stdin"
 msgstr "通过文件名或标准输入流(stdin)对资源进行配置"
 
+# Deploy Commands
+
+#: pkg/kubectl/cmd/rollout/rollout.go:52
+msgid "Manage the rollout of a resource"
+msgstr "管理一个资源的 rollout"
+
+#: pkg/kubectl/cmd/rollingupdate.go:82
+msgid "Perform a rolling update of the given ReplicationController"
+msgstr "完成指定的 ReplicationController 的滚动升级"
+
+#: pkg/kubectl/cmd/scale.go:68
+msgid "Set a new size for a Deployment, ReplicaSet, Replication Controller, or Job"
+msgstr "为 Deployment, ReplicaSet, Replication Controller 或者 Job 设置一个新的副本数量 "
+
+#: pkg/kubectl/cmd/autoscale:56
+msgid "Auto-scale a Deployment, ReplicaSet, or ReplicationController"
+msgstr "自动调整一个 Deployment, ReplicaSet, 或者 ReplicationController 的副本数量"
+
+# Cluster Management Commands
+
+#: pkg/kubectl/cmd/certificates.go:36
+msgid "Modify certificate resources"
+msgstr "修改 certificate 资源"
+
+#: pkg/kubectl/cmd/clusterinfo.go:48
+msgid "Display cluster info"
+msgstr "显示集群信息"
+
+#: pkg/kubectl/cmd/top.go:48
+msgid "Display Resource (CPU/Memory/Storage) usage"
+msgstr "显示资源(CPU/Memory/Storage)使用"
+
+#: pkg/kubectl/cmd/drain.go:103
+msgid "Mark node as unschedulable"
+msgstr "标记 node 为 unschedulable"
+
+#: pkg/kubectl/cmd/drain.go:128
+msgid "Mark node as schedulable"
+msgstr "标记 node 为 schedulable"
+
+#: pkg/kubectl/cmd/drain.go:178
+msgid "Drain node in  for maintenance"
+msgstr "清理 node 上的应用，为节点维护做准备"
+
+#: pkg/kubectl/cmd/taints.go:97
+msgid "Update the taints on one or more nodes"
+msgstr "更新一个或者多个 node 的 taints"
+
 # Other Commands
 #: pkg/kubectl/cmd/config/delete_cluster.go:39
 msgid "Delete the specified cluster from the kubeconfig"
