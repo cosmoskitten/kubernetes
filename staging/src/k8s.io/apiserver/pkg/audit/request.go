@@ -104,6 +104,19 @@ func NewEventFromRequest(req *http.Request, level auditinternal.Level, attribs a
 	return ev, nil
 }
 
+// UpdateEventAttribs updates authorizer attributes according to attribs
+func UpdateEventAttribs(ev *auditinternal.Event, attribs authorizer.Attributes) {
+	if user := attribs.GetUser(); user != nil {
+		ev.User.Username = user.GetName()
+		ev.User.Extra = map[string]auditinternal.ExtraValue{}
+		for k, v := range user.GetExtra() {
+			ev.User.Extra[k] = auditinternal.ExtraValue(v)
+		}
+		ev.User.Groups = user.GetGroups()
+		ev.User.UID = user.GetUID()
+	}
+}
+
 // LogRequestObject fills in the request object into an audit event. The passed runtime.Object
 // will be converted to the given gv.
 func LogRequestObject(ae *audit.Event, obj runtime.Object, gvr schema.GroupVersionResource, subresource string, s runtime.NegotiatedSerializer) {

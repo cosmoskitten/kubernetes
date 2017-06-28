@@ -93,6 +93,22 @@ func WithAudit(handler http.Handler, requestContextMapper request.RequestContext
 		// send audit event when we leave this func, either via a panic or cleanly. In the case of long
 		// running requests, this will be the second audit event.
 		defer func() {
+			// impersonation will override authorizer attributes, use the newest attrubutes in the second
+			// audit event. This will help users to debug rbac problems.
+			ctx, ok := requestContextMapper.Get(req)
+			if !ok {
+				responsewriters.InternalError(w, req, errors.New("no context found for request"))
+				return
+			}
+
+			attribs, err := GetAuthorizerAttributes(ctx)
+			if err != nil {
+				utilruntime.HandleError(fmt.Errorf("failed to GetAuthorizerAttributes: %v", err))
+				responsewriters.InternalError(w, req, errors.New("failed to parse request"))
+				return
+			}
+			audit.UpdateEventAttribs(ev, attribs)
+
 			if r := recover(); r != nil {
 				defer panic(r)
 				ev.Stage = auditinternal.StagePanic
