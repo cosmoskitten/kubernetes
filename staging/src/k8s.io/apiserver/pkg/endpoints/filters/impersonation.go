@@ -27,6 +27,7 @@ import (
 	authenticationv1 "k8s.io/api/authentication/v1"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apiserver/pkg/audit"
 	"k8s.io/apiserver/pkg/authentication/serviceaccount"
 	"k8s.io/apiserver/pkg/authentication/user"
 	"k8s.io/apiserver/pkg/authorization/authorizer"
@@ -140,6 +141,11 @@ func WithImpersonation(handler http.Handler, requestContextMapper request.Reques
 			if strings.HasPrefix(headerName, authenticationv1.ImpersonateUserExtraHeaderPrefix) {
 				req.Header.Del(headerName)
 			}
+		}
+
+		if !groupsSpecified && username != user.Anonymous {
+			ae := request.AuditEventFrom(ctx)
+			audit.LogImpersonatedUser(ae, newUser)
 		}
 
 		handler.ServeHTTP(w, req)
