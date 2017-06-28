@@ -19,7 +19,6 @@ package host_path
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"regexp"
 
 	"k8s.io/api/core/v1"
@@ -110,9 +109,9 @@ func (plugin *hostPathPlugin) NewMounter(spec *volume.Spec, pod *v1.Pod, opts vo
 	// A containerized kubelet would have difficulty creating directories.
 	// The implementation will likely respect the containerized flag, allowing it to be "/rootfs/" aware and
 	// thus operate as desired.
-	if opts.Containerized {
-		path = filepath.Join("/rootfs", path)
-	}
+	//if opts.Containerized {
+	//	path = filepath.Join("/rootfs", path)
+	//}
 
 	return &hostPathMounter{
 		hostPath: &hostPath{path: path, pathType: hostPathVolumeSource.Type},
