@@ -1266,6 +1266,11 @@ func DeepCopy_api_HostPathVolumeSource(in interface{}, out interface{}, c *conve
 		in := in.(*HostPathVolumeSource)
 		out := out.(*HostPathVolumeSource)
 		*out = *in
+		if in.Type != nil {
+			in, out := &in.Type, &out.Type
+			*out = new(HostPathType)
+			**out = **in
+		}
 		return nil
 	}
 }
@@ -2101,7 +2106,9 @@ func DeepCopy_api_PersistentVolumeSource(in interface{}, out interface{}, c *con
 		if in.HostPath != nil {
 			in, out := &in.HostPath, &out.HostPath
 			*out = new(HostPathVolumeSource)
-			**out = **in
+			if err := DeepCopy_api_HostPathVolumeSource(*in, *out, c); err != nil {
+				return err
+			}
 		}
 		if in.Glusterfs != nil {
 			in, out := &in.Glusterfs, &out.Glusterfs
@@ -3595,7 +3602,9 @@ func DeepCopy_api_VolumeSource(in interface{}, out interface{}, c *conversion.Cl
 		if in.HostPath != nil {
 			in, out := &in.HostPath, &out.HostPath
 			*out = new(HostPathVolumeSource)
-			**out = **in
+			if err := DeepCopy_api_HostPathVolumeSource(*in, *out, c); err != nil {
+				return err
+			}
 		}
 		if in.EmptyDir != nil {
 			in, out := &in.EmptyDir, &out.EmptyDir
