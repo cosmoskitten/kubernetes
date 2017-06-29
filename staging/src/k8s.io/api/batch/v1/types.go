@@ -150,6 +150,10 @@ const (
 	JobFailed JobConditionType = "Failed"
 )
 
+const (
+	JobDeadLineExceed = "DeadlineExceed"
+)
+
 // JobCondition describes current state of a job.
 type JobCondition struct {
 	// Type of job condition, Complete or Failed.
