@@ -78,6 +78,9 @@ type RESTClient struct {
 
 	// Set specific behavior of the client.  If not set http.DefaultClient will be used.
 	Client *http.Client
+
+	// BearerTokenSource will be used to get a token and refresh a new token.
+	BearerTokenSource BearerTokenSource
 }
 
 type Serializers struct {
@@ -91,7 +94,7 @@ type Serializers struct {
 // NewRESTClient creates a new RESTClient. This client performs generic REST functions
 // such as Get, Put, Post, and Delete on specified paths.  Codec controls encoding and
 // decoding of responses from the server.
-func NewRESTClient(baseURL *url.URL, versionedAPIPath string, config ContentConfig, maxQPS float32, maxBurst int, rateLimiter flowcontrol.RateLimiter, client *http.Client) (*RESTClient, error) {
+func NewRESTClient(baseURL *url.URL, versionedAPIPath string, config ContentConfig, maxQPS float32, maxBurst int, rateLimiter flowcontrol.RateLimiter, client *http.Client, bearerTokenSource BearerTokenSource) (*RESTClient, error) {
 	base := *baseURL
 	if !strings.HasSuffix(base.Path, "/") {
 		base.Path += "/"
@@ -117,13 +120,14 @@ func NewRESTClient(baseURL *url.URL, versionedAPIPath string, config ContentConf
 		throttle = rateLimiter
 	}
 	return &RESTClient{
-		base:             &base,
-		versionedAPIPath: versionedAPIPath,
-		contentConfig:    config,
-		serializers:      *serializers,
-		createBackoffMgr: readExpBackoffConfig,
-		Throttle:         throttle,
-		Client:           client,
+		base:              &base,
+		versionedAPIPath:  versionedAPIPath,
+		contentConfig:     config,
+		serializers:       *serializers,
+		createBackoffMgr:  readExpBackoffConfig,
+		Throttle:          throttle,
+		Client:            client,
+		BearerTokenSource: bearerTokenSource,
 	}, nil
 }
 
@@ -215,16 +219,30 @@ func createSerializers(config ContentConfig) (*Serializers, error) {
 //  SelectorParam("labels", "area=staging").
 //  Timeout(10*time.Second).
 //  Do()
+// if resp.Status == http.StatusUnauthorized {
+//   success, err := s.Refresh()
+//   if success{
+//   newToken, err := s.Token()
+//   //retry request with new token
+// }
 // if err != nil { ... }
 // list, ok := resp.(*api.PodList)
 //
 func (c *RESTClient) Verb(verb string) *Request {
 	backoff := c.createBackoffMgr()
-
+	var request *Request
 	if c.Client == nil {
-		return NewRequest(nil, verb, c.base, c.versionedAPIPath, c.contentConfig, c.serializers, backoff, c.Throttle)
+		request = NewRequest(nil, verb, c.base, c.versionedAPIPath, c.contentConfig, c.serializers, backoff, c.Throttle)
 	}
-	return NewRequest(c.Client, verb, c.base, c.versionedAPIPath, c.contentConfig, c.serializers, backoff, c.Throttle)
+	request = NewRequest(c.Client, verb, c.base, c.versionedAPIPath, c.contentConfig, c.serializers, backoff, c.Throttle)
+	if c.BearerTokenSource != nil {
+		token, err := c.BearerTokenSource.Token()
+		if err != nil {
+			return request
+		}
+		request.SetHeader("Authorization", "Bearer "+token)
+	}
+	return request
 }
 
 // Post begins a POST request. Short for c.Verb("POST").
