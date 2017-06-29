@@ -887,6 +887,11 @@ type QuobyteVolumeSource struct {
 	// Default is no group
 	// +optional
 	Group string
+
+	// Tenant where the Quobyte Volume is placed
+	// Default is DEFAULT
+	// +optional
+	Tenant string
 }
 
 // Represents a Glusterfs mount that lasts the lifetime of a pod.
