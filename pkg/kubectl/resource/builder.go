@@ -212,6 +212,9 @@ func (b *Builder) Path(recursive bool, paths ...string) *Builder {
 
 		b.paths = append(b.paths, visitors...)
 	}
+	if len(b.paths) == 0 && len(b.errs) == 0 {
+		b.errs = append(b.errs, fmt.Errorf("error reading %v: file extension is not %v will be ignore in directory", paths, FileExtensions))
+	}
 	return b
 }
 
