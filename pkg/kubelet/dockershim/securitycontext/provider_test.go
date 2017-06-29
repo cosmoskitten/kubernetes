@@ -22,7 +22,7 @@ import (
 	"strconv"
 	"testing"
 
-	dockercontainer "github.com/docker/engine-api/types/container"
+	dockercontainer "github.com/docker/docker/api/types/container"
 	"k8s.io/api/core/v1"
 	apitesting "k8s.io/kubernetes/pkg/api/testing"
 )

@@ -25,7 +25,7 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/leaky"
 	"k8s.io/kubernetes/pkg/securitycontext"
 
-	dockercontainer "github.com/docker/engine-api/types/container"
+	dockercontainer "github.com/docker/docker/api/types/container"
 )
 
 // NewSimpleSecurityContextProvider creates a new SimpleSecurityContextProvider.

@@ -19,7 +19,7 @@ package securitycontext
 import (
 	"k8s.io/api/core/v1"
 
-	dockercontainer "github.com/docker/engine-api/types/container"
+	dockercontainer "github.com/docker/docker/api/types/container"
 )
 
 // NewFakeSecurityContextProvider creates a new, no-op security context provider.
