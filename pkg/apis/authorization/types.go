@@ -144,3 +144,48 @@ type SubjectAccessReviewStatus struct {
 	// For instance, RBAC can be missing a role, but enough roles are still present and bound to reason about the request.
 	EvaluationError string
 }
+
+// +genclient=true
+// +noMethods=true
+
+// SelfSubjectRulesReview is a resource you can create to determine which actions you can perform in a namespace
+type SelfSubjectRulesReview struct {
+	metav1.TypeMeta
+
+	// Status is completed by the server to tell which permissions you have
+	Status SubjectRulesReviewStatus
+}
+
+// SubjectRulesReviewStatus is contains the result of a rules check
+type SubjectRulesReviewStatus struct {
+	// ResourceRules is the list of rules (no particular sort) that are allowed for the resource
+	ResourceRules []ResourceRule
+	// NonResourceRules is the list of rules (no particular sort) that are allowed for the non-resource
+	NonResourceRules []NonResourceRule
+	// EvaluationError can appear in combination with Rules.  It means some error happened during evaluation
+	// that may have prevented additional rules from being populated.
+	EvaluationError string
+}
+
+// ResourceRule holds information that describes a rule for the resource
+type ResourceRule struct {
+	// Verb is a of kubernetes resource API verbs, like: get, list, watch, create, update, delete, proxy.  "*" means all.
+	Verbs []string
+	// APIGroups is the name of the APIGroup that contains the resources.  If multiple API groups are specified, any action requested against one of
+	// the enumerated resources in any API group will be allowed.
+	APIGroups []string
+	// Resources is a list of resources this rule applies to.  ResourceAll represents all resources.
+	Resources []string
+	// ResourceNames is an optional white list of names that the rule applies to.  An empty set means that everything is allowed.
+	ResourceNames []string
+}
+
+// NonResourceRule holds information that describes a rule for the non-resource
+type NonResourceRule struct {
+	// Verb is a of kubernetes resource API verbs, like: get, list, watch, create, update, delete, proxy.  "*" means all.
+	Verbs []string
+
+	// NonResourceURLs is a set of partial urls that a user should have access to.  *s are allowed, but only as the full, final step in the path.
+	// Rules can either apply to API resources (such as "pods" or "secrets") or non-resource URL paths (such as "/api"),  but not both.
+	NonResourceURLs []string
+}

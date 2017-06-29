@@ -19,6 +19,8 @@ package authorizerfactory
 import (
 	"errors"
 
+	authorization "k8s.io/api/authorization/v1"
+	"k8s.io/apiserver/pkg/authentication/user"
 	"k8s.io/apiserver/pkg/authorization/authorizer"
 )
 
@@ -31,7 +33,24 @@ func (alwaysAllowAuthorizer) Authorize(a authorizer.Attributes) (authorized bool
 	return true, "", nil
 }
 
-func NewAlwaysAllowAuthorizer() authorizer.Authorizer {
+func (alwaysAllowAuthorizer) RulesFor(user user.Info, namespace string) ([]authorization.ResourceRule, []authorization.NonResourceRule, error) {
+	resourceRules := []authorization.ResourceRule{
+		{
+			Verbs:     []string{"*"},
+			APIGroups: []string{"*"},
+			Resources: []string{"*"},
+		},
+	}
+	nonResourceRules := []authorization.NonResourceRule{
+		{
+			Verbs:           []string{"*"},
+			NonResourceURLs: []string{"*"},
+		},
+	}
+	return resourceRules, nonResourceRules, nil
+}
+
+func NewAlwaysAllowAuthorizer() *alwaysAllowAuthorizer {
 	return new(alwaysAllowAuthorizer)
 }
 
@@ -44,7 +63,11 @@ func (alwaysDenyAuthorizer) Authorize(a authorizer.Attributes) (authorized bool,
 	return false, "Everything is forbidden.", nil
 }
 
-func NewAlwaysDenyAuthorizer() authorizer.Authorizer {
+func (alwaysDenyAuthorizer) RulesFor(user user.Info, namespace string) ([]authorization.ResourceRule, []authorization.NonResourceRule, error) {
+	return []authorization.ResourceRule{}, []authorization.NonResourceRule{}, nil
+}
+
+func NewAlwaysDenyAuthorizer() *alwaysDenyAuthorizer {
 	return new(alwaysDenyAuthorizer)
 }
 

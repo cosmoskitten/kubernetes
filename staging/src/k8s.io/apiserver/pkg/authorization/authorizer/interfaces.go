@@ -19,6 +19,7 @@ package authorizer
 import (
 	"net/http"
 
+	authorization "k8s.io/api/authorization/v1"
 	"k8s.io/apiserver/pkg/authentication/user"
 )
 
@@ -74,6 +75,14 @@ type AuthorizerFunc func(a Attributes) (bool, string, error)
 
 func (f AuthorizerFunc) Authorize(a Attributes) (bool, string, error) {
 	return f(a)
+}
+
+// RuleResolver provides a function that get the list of rules that apply to a given user in a given namespace and error.
+// If an error is returned, the slice of rules may not be complete, but it contains all retrievable rules.  This is done because policy
+// rules are purely additive and policy determinations can be made on the basis of those rules that are found.
+type RuleResolver interface {
+	// RulesFor get the list of cluster wide rules and get the list of rules in the specific namespace.
+	RulesFor(user user.Info, namespace string) ([]authorization.ResourceRule, []authorization.NonResourceRule, error)
 }
 
 // RequestAttributesGetter provides a function that extracts Attributes from an http.Request
