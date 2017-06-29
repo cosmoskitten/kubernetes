@@ -372,3 +372,17 @@ func SetDefaults_ScaleIOVolumeSource(obj *v1.ScaleIOVolumeSource) {
 		obj.FSType = "xfs"
 	}
 }
+
+func SetDefaults_QuobyteVolumeSource(obj *v1.QuobyteVolumeSource) {
+	if obj.User == "" {
+		obj.User = "root"
+	}
+
+	if obj.Group == "" {
+		obj.Group = "nfsnobody"
+	}
+
+	if obj.Tenant == "" {
+		obj.Tenant = "DEFAULT"
+	}
+}

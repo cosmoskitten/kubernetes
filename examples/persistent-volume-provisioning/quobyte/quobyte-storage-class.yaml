@@ -13,3 +13,5 @@ parameters:
     quobyteConfig: "BASE"
     quobyteTenant: "DEFAULT"
     createQuota: "False"
+    tenantNamespaceMapping: "True"
+    createtenants: "True"
