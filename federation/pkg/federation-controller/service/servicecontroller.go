@@ -178,8 +178,10 @@ func New(federationClient fedclientset.Interface) *ServiceController {
 		},
 		func(client kubeclientset.Interface, obj pkgruntime.Object) error {
 			svc := obj.(*v1.Service)
-			orphanDependents := false
-			err := client.Core().Services(svc.Namespace).Delete(svc.Name, &metav1.DeleteOptions{OrphanDependents: &orphanDependents})
+			defaultPropagationPolicy := metav1.DeletePropagationForeground
+			err := client.Core().Services(svc.Namespace).Delete(svc.Name, &metav1.DeleteOptions{
+				PropagationPolicy: &defaultPropagationPolicy,
+			})
 			return err
 		})
 

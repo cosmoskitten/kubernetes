@@ -186,8 +186,10 @@ func NewDeploymentController(federationClient fedclientset.Interface) *Deploymen
 		},
 		func(client kubeclientset.Interface, obj runtime.Object) error {
 			rs := obj.(*extensionsv1.Deployment)
-			orphanDependents := false
-			err := client.Extensions().Deployments(rs.Namespace).Delete(rs.Name, &metav1.DeleteOptions{OrphanDependents: &orphanDependents})
+			defaultPropagationPolicy := metav1.DeletePropagationForeground
+			err := client.Extensions().Deployments(rs.Namespace).Delete(rs.Name, &metav1.DeleteOptions{
+				PropagationPolicy: &defaultPropagationPolicy,
+			})
 			return err
 		})
 

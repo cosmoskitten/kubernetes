@@ -70,8 +70,8 @@ func (c *FederatedTypeCRUDTester) CheckLifecycle(desiredObject pkgruntime.Object
 	c.CheckUpdate(obj)
 
 	// Validate the golden path - removal of dependents
-	orphanDependents := false
-	c.CheckDelete(obj, &orphanDependents)
+	defaultPropagationPolicy := metav1.DeletePropagationForeground
+	c.CheckDelete(obj, &defaultPropagationPolicy)
 }
 
 func (c *FederatedTypeCRUDTester) Create(desiredObject pkgruntime.Object) pkgruntime.Object {
@@ -122,16 +122,18 @@ func (c *FederatedTypeCRUDTester) CheckUpdate(obj pkgruntime.Object) {
 	c.CheckPropagation(updatedObj)
 }
 
-func (c *FederatedTypeCRUDTester) CheckDelete(obj pkgruntime.Object, orphanDependents *bool) {
+func (c *FederatedTypeCRUDTester) CheckDelete(obj pkgruntime.Object, defaultPropagationPolicy *metav1.DeletionPropagation) {
 	namespacedName := c.adapter.NamespacedName(obj)
 
 	c.tl.Logf("Deleting federated %s %q", c.kind, namespacedName)
-	err := c.adapter.FedDelete(namespacedName, &metav1.DeleteOptions{OrphanDependents: orphanDependents})
+	err := c.adapter.FedDelete(namespacedName, &metav1.DeleteOptions{
+		PropagationPolicy: defaultPropagationPolicy,
+	})
 	if err != nil {
 		c.tl.Fatalf("Error deleting federated %s %q: %v", c.kind, namespacedName, err)
 	}
 
-	deletingInCluster := (orphanDependents != nil && *orphanDependents == false)
+	deletingInCluster := defaultPropagationPolicy != nil && *defaultPropagationPolicy == metav1.DeletePropagationForeground
 
 	waitTimeout := wait.ForeverTestTimeout
 	if deletingInCluster {
