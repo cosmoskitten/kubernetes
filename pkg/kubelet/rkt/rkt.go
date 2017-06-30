@@ -142,6 +142,8 @@ const (
 
 	etcHostsPath      = "/etc/hosts"
 	etcResolvConfPath = "/etc/resolv.conf"
+
+	resDone = "done"
 )
 
 // Runtime implements the Containerruntime for rkt. The implementation
@@ -1413,7 +1415,7 @@ func (r *Runtime) RunPod(pod *v1.Pod, pullSecrets []v1.Secret) error {
 	}
 
 	res := <-reschan
-	if res != "done" {
+	if res != resDone {
 		err := fmt.Errorf("Failed to restart unit %q: %s", name, res)
 		r.generateEvents(runtimePod, "Failed", err)
 		r.cleanupPodNetwork(pod, networkNamespace)
@@ -1735,7 +1737,7 @@ func (r *Runtime) KillPod(pod *v1.Pod, runningPod kubecontainer.Pod, gracePeriod
 	}
 
 	res := <-reschan
-	if res != "done" {
+	if res != resDone {
 		err := fmt.Errorf("invalid result: %s", res)
 		glog.Errorf("rkt: Failed to stop unit %q: %v", serviceName, err)
 		return err
