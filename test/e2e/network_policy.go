@@ -312,7 +312,7 @@ func testCanConnect(f *framework.Framework, ns *v1.Namespace, podName string, se
 		if logErr != nil {
 			framework.Failf("Error getting container logs: %s", logErr)
 		}
-		framework.Failf("failure: %s", logs)
+		framework.Failf("pod logs: %s", logs)
 	}
 }
 
@@ -344,8 +344,24 @@ func createServerPodAndService(f *framework.Framework, namespace *v1.Namespace, 
 		containers = append(containers, v1.Container{
 			Name:  fmt.Sprintf("%s-container-%d", podName, port),
 			Image: "gcr.io/google_containers/porter:4524579c0eb935c056c8e75563b4e1eda31587e0",
-			Env:   []v1.EnvVar{{Name: fmt.Sprintf("SERVE_PORT_%d", port)}},
+			Env: []v1.EnvVar{
+				{
+					Name:  fmt.Sprintf("SERVE_PORT_%d", port),
+					Value: "foo",
+				},
+			},
 			Ports: []v1.ContainerPort{{ContainerPort: int32(port)}},
+			ReadinessProbe: &v1.Probe{
+				Handler: v1.Handler{
+					HTTPGet: &v1.HTTPGetAction{
+						Path: "/",
+						Port: intstr.IntOrString{
+							IntVal: int32(port),
+						},
+						Scheme: v1.URISchemeHTTP,
+					},
+				},
+			},
 		})
 
 		// Build the Service Ports for the service.
@@ -418,13 +434,10 @@ func createNetworkClientPod(f *framework.Framework, namespace *v1.Namespace, pod
 			Containers: []v1.Container{
 				{
 					Name:  fmt.Sprintf("%s-container", podName),
-					Image: "gcr.io/google_containers/busybox:1.24",
+					Image: "gcr.io/google_containers/alpine-with-bash:1.0",
 					Args: []string{
-						"/bin/wget",
-						"-T", "8",
-						fmt.Sprintf("%s.%s:%d", targetService.Name, targetService.Namespace, targetPort),
-						"-O",
-						"-",
+						fmt.Sprintf("for i in {1..5}; do wget -T 8 %s.%s:%d -O - && exit 0 || sleep 1; done; exit 1",
+							targetService.Name, targetService.Namespace, targetPort),
 					},
 				},
 			},
