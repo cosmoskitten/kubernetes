@@ -1597,7 +1597,14 @@ func (kl *Kubelet) syncPod(o syncPodOptions) error {
 				if err := kl.podManager.DeleteMirrorPod(podFullName); err != nil {
 					glog.Errorf("Failed deleting mirror pod %q: %v", format.Pod(mirrorPod), err)
 				} else {
-					deleted = true
+					opts := metav1.GetOptions{}
+					_, err := kl.kubeClient.Core().Nodes().Get(string(kl.nodeName), opts)
+					if err != nil {
+						glog.V(3).Infof("Node %q does not exist in the cluster", kl.nodeName)
+						deleted = false
+					} else {
+						deleted = true
+					}
 				}
 			}
 		}
