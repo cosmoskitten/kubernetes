@@ -124,6 +124,13 @@ func SetInstanceTags(cloudConfig CloudConfig, instanceName, zone string, tags []
 	return resTags.Items
 }
 
+// GetNodeTags gets k8s node tag from one of the nodes
+func GetNodeTags(c clientset.Interface, cloudConfig CloudConfig) []string {
+	nodes := GetReadySchedulableNodesOrDie(c)
+	Expect(len(nodes.Items) > 0).Should(BeTrue())
+	return GetInstanceTags(cloudConfig, nodes.Items[0].Name).Items
+}
+
 // GetInstancePrefix returns the INSTANCE_PREFIX env we set for e2e cluster.
 // From cluster/gce/config-test.sh, master name is set up using below format:
 // MASTER_NAME="${INSTANCE_PREFIX}-master"
