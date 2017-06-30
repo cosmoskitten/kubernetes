@@ -27,6 +27,7 @@ import (
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apiserver/pkg/authentication/user"
 	"k8s.io/apiserver/pkg/authorization/authorizer"
+	"k8s.io/apiserver/pkg/authorization/rule"
 	"k8s.io/kubernetes/pkg/apis/rbac"
 	rbacregistryvalidation "k8s.io/kubernetes/pkg/registry/rbac/validation"
 )
@@ -119,6 +120,36 @@ func (r *RBACAuthorizer) Authorize(requestAttributes authorizer.Attributes) (boo
 		reason = fmt.Sprintf("%v", utilerrors.NewAggregate(ruleCheckingVisitor.errors))
 	}
 	return false, reason, nil
+}
+
+func (r *RBACAuthorizer) RulesFor(user user.Info, namespace string) ([]rule.ResourceInfo, []rule.NonResourceInfo, error) {
+	var (
+		resourceRules    []rule.ResourceInfo
+		nonResourceRules []rule.NonResourceInfo
+	)
+
+	policyRules, err := r.authorizationRuleResolver.RulesFor(user, namespace)
+	for _, policyRule := range policyRules {
+		if len(policyRule.Resources) > 0 {
+			r := rule.DefaultResourceInfo{
+				Verbs:         policyRule.Verbs,
+				APIGroups:     policyRule.APIGroups,
+				Resources:     policyRule.Resources,
+				ResourceNames: policyRule.ResourceNames,
+			}
+			var resourceRule rule.ResourceInfo = &r
+			resourceRules = append(resourceRules, resourceRule)
+		}
+		if len(policyRule.NonResourceURLs) > 0 {
+			r := rule.DefaultNonResourceInfo{
+				Verbs:           policyRule.Verbs,
+				NonResourceURLs: policyRule.NonResourceURLs,
+			}
+			var nonResourceRule rule.NonResourceInfo = &r
+			nonResourceRules = append(nonResourceRules, nonResourceRule)
+		}
+	}
+	return resourceRules, nonResourceRules, err
 }
 
 func New(roles rbacregistryvalidation.RoleGetter, roleBindings rbacregistryvalidation.RoleBindingLister, clusterRoles rbacregistryvalidation.ClusterRoleGetter, clusterRoleBindings rbacregistryvalidation.ClusterRoleBindingLister) *RBACAuthorizer {
