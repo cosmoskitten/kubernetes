@@ -37,7 +37,7 @@ import (
 	kubetypes "k8s.io/kubernetes/pkg/kubelet/types"
 )
 
-type sourceFile struct {
+type sourceFileListerWatcher struct {
 	path           string
 	nodeName       types.NodeName
 	period         time.Duration
@@ -51,12 +51,12 @@ func NewSourceFile(path string, nodeName types.NodeName, period time.Duration, u
 	// "golang.org/x/exp/inotify" requires a path without trailing "/"
 	path = strings.TrimRight(path, string(os.PathSeparator))
 
-	config := new(path, nodeName, period, updates)
+	lw := newSourceFileListerWatcher(path, nodeName, period, updates)
 	glog.V(1).Infof("Watching path %q", path)
-	config.run()
+	lw.run()
 }
 
-func new(path string, nodeName types.NodeName, period time.Duration, updates chan<- interface{}) *sourceFile {
+func newSourceFileListerWatcher(path string, nodeName types.NodeName, period time.Duration, updates chan<- interface{}) *sourceFileListerWatcher {
 	send := func(objs []interface{}) {
 		var pods []*v1.Pod
 		for _, o := range objs {
@@ -65,7 +65,7 @@ func new(path string, nodeName types.NodeName, period time.Duration, updates cha
 		updates <- kubetypes.PodUpdate{Pods: pods, Op: kubetypes.SET, Source: kubetypes.FileSource}
 	}
 	store := cache.NewUndeltaStore(send, cache.MetaNamespaceKeyFunc)
-	return &sourceFile{
+	return &sourceFileListerWatcher{
 		path:           path,
 		nodeName:       nodeName,
 		period:         period,
@@ -76,9 +76,9 @@ func new(path string, nodeName types.NodeName, period time.Duration, updates cha
 	}
 }
 
-func (s *sourceFile) run() {
+func (s *sourceFileListerWatcher) run() {
 	go wait.Forever(func() {
-		if err := s.reloadConfig(); err != nil {
+		if err := s.listConfig(); err != nil {
 			glog.Errorf("unable to read config path %q: %v", s.path, err)
 		}
 	}, s.period)
@@ -86,11 +86,11 @@ func (s *sourceFile) run() {
 	s.watch()
 }
 
-func (s *sourceFile) applyDefaults(pod *api.Pod, source string) error {
+func (s *sourceFileListerWatcher) applyDefaults(pod *api.Pod, source string) error {
 	return applyDefaults(pod, source, true, s.nodeName)
 }
 
-func (s *sourceFile) reloadConfig() error {
+func (s *sourceFileListerWatcher) listConfig() error {
 	path := s.path
 	statInfo, err := os.Stat(path)
 	if err != nil {
@@ -130,7 +130,7 @@ func (s *sourceFile) reloadConfig() error {
 // Get as many pod configs as we can from a directory. Return an error if and only if something
 // prevented us from reading anything at all. Do not return an error if only some files
 // were problematic.
-func (s *sourceFile) extractFromDir(name string) ([]*v1.Pod, error) {
+func (s *sourceFileListerWatcher) extractFromDir(name string) ([]*v1.Pod, error) {
 	dirents, err := filepath.Glob(filepath.Join(name, "[^.]*"))
 	if err != nil {
 		return nil, fmt.Errorf("glob failed: %v", err)
@@ -166,7 +166,7 @@ func (s *sourceFile) extractFromDir(name string) ([]*v1.Pod, error) {
 	return pods, nil
 }
 
-func (s *sourceFile) extractFromFile(filename string) (pod *v1.Pod, err error) {
+func (s *sourceFileListerWatcher) extractFromFile(filename string) (pod *v1.Pod, err error) {
 	glog.V(3).Infof("Reading config file %q", filename)
 	defer func() {
 		if err == nil && pod != nil {
@@ -176,8 +176,8 @@ func (s *sourceFile) extractFromFile(filename string) (pod *v1.Pod, err error) {
 				return
 			}
 			s.locker.Lock()
+			defer s.locker.Unlock()
 			s.fileKeyMapping[filename] = objKey
-			s.locker.Unlock()
 		}
 	}()
 
@@ -207,7 +207,7 @@ func (s *sourceFile) extractFromFile(filename string) (pod *v1.Pod, err error) {
 	return pod, fmt.Errorf("%v: couldn't parse as pod(%v), please check config file.\n", filename, podErr)
 }
 
-func (s *sourceFile) replaceStore(pods ...*v1.Pod) (err error) {
+func (s *sourceFileListerWatcher) replaceStore(pods ...*v1.Pod) (err error) {
 	objs := []interface{}{}
 	for _, pod := range pods {
 		objs = append(objs, pod)

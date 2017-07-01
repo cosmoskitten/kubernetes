@@ -41,7 +41,7 @@ const (
 	podDelete
 )
 
-func (s *sourceFile) watch() {
+func (s *sourceFileListerWatcher) watch() {
 	go wait.Forever(func() {
 		if err := s.doWatch(); err != nil {
 			glog.Errorf("unable to read config path %q: %v", s.path, err)
@@ -49,7 +49,7 @@ func (s *sourceFile) watch() {
 	}, s.period)
 }
 
-func (s *sourceFile) doWatch() error {
+func (s *sourceFileListerWatcher) doWatch() error {
 	_, err := os.Stat(s.path)
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -84,7 +84,7 @@ func (s *sourceFile) doWatch() error {
 	}
 }
 
-func (s *sourceFile) processEvent(e *inotify.Event) error {
+func (s *sourceFileListerWatcher) processEvent(e *inotify.Event) error {
 	// Ignore file start with dots
 	if strings.HasPrefix(filepath.Base(e.Name), ".") {
 		glog.V(4).Infof("Ignored pod manifest: %s, because it starts with dots", e.Name)

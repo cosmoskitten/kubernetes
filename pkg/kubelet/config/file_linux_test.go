@@ -21,6 +21,7 @@ package config
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -34,7 +35,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
-	utiltesting "k8s.io/client-go/util/testing"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/testapi"
 	k8s_api_v1 "k8s.io/kubernetes/pkg/api/v1"
@@ -45,8 +45,8 @@ import (
 
 func TestExtractFromNonExistentFile(t *testing.T) {
 	ch := make(chan interface{}, 1)
-	c := new("/some/fake/file", "localhost", time.Millisecond, ch)
-	err := c.doWatch()
+	lw := newSourceFileListerWatcher("/some/fake/file", "localhost", time.Millisecond, ch)
+	err := lw.doWatch()
 	if err == nil {
 		t.Errorf("Expected error")
 	}
@@ -74,7 +74,7 @@ func TestReadPodsFromFileExistAlready(t *testing.T) {
 
 	for _, testCase := range testCases {
 		func() {
-			dirName, err := utiltesting.MkTmpdir("file-test")
+			dirName, err := mkTempDir("file-test")
 			if err != nil {
 				t.Fatalf("unable to create temp dir: %v", err)
 			}
@@ -223,8 +223,8 @@ func (tc *testCase) writeToFile(dir, name string, t *testing.T) string {
 	return fileName
 }
 
-func (tc *testCase) writeSymblicLink(dir, linkedDir, name string, t *testing.T) string {
-	linkName := filepath.Join(dir, name)
+func createSymbolicLink(linkingdir, linkedDir, name string, t *testing.T) string {
+	linkName := filepath.Join(linkingdir, name)
 	linkedFile := filepath.Join(linkedDir, name)
 
 	err := os.Symlink(linkedFile, linkName)
@@ -234,28 +234,28 @@ func (tc *testCase) writeSymblicLink(dir, linkedDir, name string, t *testing.T) 
 	return linkName
 }
 
-func watchFileAdded(watchDir bool, isSymbol bool, t *testing.T) {
+func watchFileAdded(watchDir bool, symlink bool, t *testing.T) {
 	hostname := types.NodeName("random-test-hostname")
 	var testCases = getTestCases(hostname)
 
 	fileNamePre := "test_pod_config"
 	for index, testCase := range testCases {
 		func() {
-			dirName, err := utiltesting.MkTmpdir("dir-test")
+			dirName, err := mkTempDir("dir-test")
 			if err != nil {
 				t.Fatalf("unable to create temp dir: %v", err)
 			}
-			defer os.RemoveAll(dirName)
+			defer removeAll(dirName, t)
 
 			fileName := fmt.Sprintf("%s_%d", fileNamePre, index)
 			var linkedDirName string
-			if isSymbol {
-				linkedDirName, err = utiltesting.MkTmpdir("linked-dir-test")
+			if symlink {
+				linkedDirName, err = mkTempDir("linked-dir-test")
 				if err != nil {
 					t.Fatalf("unable to create temp dir for linked files: %v", err)
 				}
-				defer os.RemoveAll(linkedDirName)
-				testCase.writeSymblicLink(dirName, linkedDirName, fileName, t)
+				defer removeAll(linkedDirName, t)
+				createSymbolicLink(dirName, linkedDirName, fileName, t)
 			}
 
 			ch := make(chan interface{})
@@ -268,7 +268,7 @@ func watchFileAdded(watchDir bool, isSymbol bool, t *testing.T) {
 
 			addFile := func() {
 				// Add a file
-				if !isSymbol {
+				if !symlink {
 					testCase.writeToFile(dirName, fileName, t)
 				} else {
 					testCase.writeToFile(linkedDirName, fileName, t)
@@ -277,7 +277,7 @@ func watchFileAdded(watchDir bool, isSymbol bool, t *testing.T) {
 
 			go addFile()
 
-			// For !watchDir: expect an update by SourceFile.resetStoreFromPath().
+			// For !watchDir: expect an update by SourceFile.reloadConfig().
 			// For watchDir: expect at least one update from CREATE & MODIFY inotify event.
 			// Shouldn't expect two updates from CREATE & MODIFY because CREATE doesn't guarantee file written.
 			// In that case no update will be sent from CREATE event.
@@ -286,28 +286,28 @@ func watchFileAdded(watchDir bool, isSymbol bool, t *testing.T) {
 	}
 }
 
-func watchFileChanged(watchDir bool, isSymbol bool, t *testing.T) {
+func watchFileChanged(watchDir bool, symlink bool, t *testing.T) {
 	hostname := types.NodeName("random-test-hostname")
 	var testCases = getTestCases(hostname)
 
 	fileNamePre := "test_pod_config"
 	for index, testCase := range testCases {
 		func() {
-			dirName, err := utiltesting.MkTmpdir("dir-test")
+			dirName, err := mkTempDir("dir-test")
 			fileName := fmt.Sprintf("%s_%d", fileNamePre, index)
 			if err != nil {
 				t.Fatalf("unable to create temp dir: %v", err)
 			}
-			defer os.RemoveAll(dirName)
+			defer removeAll(dirName, t)
 
 			var linkedDirName string
-			if isSymbol {
-				linkedDirName, err = utiltesting.MkTmpdir("linked-dir-test")
+			if symlink {
+				linkedDirName, err = mkTempDir("linked-dir-test")
 				if err != nil {
 					t.Fatalf("unable to create temp dir for linked files: %v", err)
 				}
-				defer os.RemoveAll(linkedDirName)
-				testCase.writeSymblicLink(dirName, linkedDirName, fileName, t)
+				defer removeAll(linkedDirName, t)
+				createSymbolicLink(dirName, linkedDirName, fileName, t)
 			}
 
 			var file string
@@ -316,7 +316,7 @@ func watchFileChanged(watchDir bool, isSymbol bool, t *testing.T) {
 			func() {
 				lock.Lock()
 				defer lock.Unlock()
-				if !isSymbol {
+				if !symlink {
 					file = testCase.writeToFile(dirName, fileName, t)
 				} else {
 					file = testCase.writeToFile(linkedDirName, fileName, t)
@@ -344,7 +344,7 @@ func watchFileChanged(watchDir bool, isSymbol bool, t *testing.T) {
 				pod.Spec.Containers[0].Name = "image2"
 
 				testCase.expected.Pods[0].Spec.Containers[0].Name = "image2"
-				if !isSymbol {
+				if !symlink {
 					file = testCase.writeToFile(dirName, fileName, t)
 				} else {
 					file = testCase.writeToFile(linkedDirName, fileName, t)
@@ -387,7 +387,7 @@ func expectUpdate(t *testing.T, ch chan interface{}, testCase *testCase) {
 		case got := <-ch:
 			update := got.(kubetypes.PodUpdate)
 			if len(update.Pods) == 0 {
-				// filter out the empty updates from periodical polling
+				// filter out the empty updates from reading a non-existing path
 				continue
 			}
 			for _, pod := range update.Pods {
@@ -447,5 +447,15 @@ func changeFileName(dir, from, to string, t *testing.T) {
 	toPath := filepath.Join(dir, to)
 	if err := exec.Command("mv", fromPath, toPath).Run(); err != nil {
 		t.Errorf("Fail to change file name: %s", err)
+	}
+}
+
+func mkTempDir(prefix string) (string, error) {
+	return ioutil.TempDir(os.TempDir(), prefix)
+}
+
+func removeAll(dir string, t *testing.T) {
+	if err := os.RemoveAll(dir); err != nil {
+		t.Fatalf("unable to remove dir %s: %v", dir, err)
 	}
 }
