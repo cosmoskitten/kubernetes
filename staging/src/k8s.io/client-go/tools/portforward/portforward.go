@@ -39,6 +39,7 @@ const PortForwardProtocolV1Name = "portforward.k8s.io"
 // PortForwarder knows how to listen for local connections and forward them to
 // a remote pod via an upgraded HTTP request.
 type PortForwarder struct {
+	address  string
 	ports    []ForwardedPort
 	stopChan <-chan struct{}
 
@@ -112,6 +113,10 @@ func parsePorts(ports []string) ([]ForwardedPort, error) {
 
 // New creates a new PortForwarder.
 func New(dialer httpstream.Dialer, ports []string, stopChan <-chan struct{}, readyChan chan struct{}, out, errOut io.Writer) (*PortForwarder, error) {
+	return NewOnAddress(dialer, "localhost", ports, stopChan, readyChan, out, errOut)
+}
+
+func NewOnAddress(dialer httpstream.Dialer, address string, ports []string, stopChan <-chan struct{}, readyChan chan struct{}, out, errOut io.Writer) (*PortForwarder, error) {
 	if len(ports) == 0 {
 		return nil, errors.New("You must specify at least 1 port")
 	}
@@ -121,6 +126,7 @@ func New(dialer httpstream.Dialer, ports []string, stopChan <-chan struct{}, rea
 	}
 	return &PortForwarder{
 		dialer:   dialer,
+		address:  address,
 		ports:    parsedPorts,
 		stopChan: stopChan,
 		Ready:    readyChan,
@@ -184,10 +190,20 @@ func (pf *PortForwarder) forward() error {
 // listenOnPort delegates tcp4 and tcp6 listener creation and waits for connections on both of these addresses.
 // If both listener creation fail, an error is raised.
 func (pf *PortForwarder) listenOnPort(port *ForwardedPort) error {
-	errTcp4 := pf.listenOnPortAndAddress(port, "tcp4", "127.0.0.1")
-	errTcp6 := pf.listenOnPortAndAddress(port, "tcp6", "[::1]")
+	// set default error values to be overwritten on success/fail
+	errTcp4 := errors.New("Address is not an IPv4 or localhost")
+	errTcp6 := errors.New("Address is not an IPv6 or localhost")
+	// support "localhost" as address
+	if pf.address == "localhost" || pf.address == "" {
+		errTcp4 = pf.listenOnPortAndAddress(port, "tcp4", "127.0.0.1")
+		errTcp6 = pf.listenOnPortAndAddress(port, "tcp6", "::1")
+	} else if net.ParseIP(pf.address).To4() != nil {
+		errTcp4 = pf.listenOnPortAndAddress(port, "tcp4", pf.address)
+	} else if net.ParseIP(pf.address) != nil {
+		errTcp6 = pf.listenOnPortAndAddress(port, "tcp6", pf.address)
+	}
 	if errTcp4 != nil && errTcp6 != nil {
-		return fmt.Errorf("All listeners failed to create with the following errors: %s, %s", errTcp4, errTcp6)
+		return fmt.Errorf("%s: %s, %s", "All listeners failed to create with the following errors", errTcp4, errTcp6)
 	}
 	return nil
 }

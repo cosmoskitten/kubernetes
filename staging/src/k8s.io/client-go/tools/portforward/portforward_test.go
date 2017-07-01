@@ -186,3 +186,51 @@ func TestGetListener(t *testing.T) {
 
 	}
 }
+
+type ListenOnPortTestCase struct {
+	Address          string
+	ShouldRaiseError bool
+}
+
+func TestListenOnPort(t *testing.T) {
+	var pf PortForwarder
+	testCases := []ListenOnPortTestCase{
+		{
+			Address:          "localhost",
+			ShouldRaiseError: false,
+		},
+		{
+			Address:          "::1",
+			ShouldRaiseError: false,
+		},
+		{
+			Address:          "[::1]",
+			ShouldRaiseError: true,
+		},
+		{
+			Address:          "127.0.0.1",
+			ShouldRaiseError: false,
+		},
+		{
+			Address:          "127.0.0.257",
+			ShouldRaiseError: true,
+		},
+		{
+			Address:          "::g",
+			ShouldRaiseError: true,
+		},
+	}
+	var port uint16
+	port = 5000
+	for i, testCase := range testCases {
+		port++
+		pf.address = testCase.Address
+		err := pf.listenOnPort(&ForwardedPort{Local: port, Remote: 5000})
+		errorRaised := err != nil
+		if testCase.ShouldRaiseError != errorRaised {
+			t.Errorf("Test case #%d failed: Data %v an error has been raised(%t) where it should not (or reciprocally): %v", i, testCase, testCase.ShouldRaiseError, err)
+			continue
+		}
+		pf.listeners[len(pf.listeners)-1].Close()
+	}
+}
