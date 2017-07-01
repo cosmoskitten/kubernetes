@@ -25,6 +25,6 @@ import (
 	"github.com/golang/glog"
 )
 
-func (s *sourceFile) watch() {
+func (s *sourceFileListerWatcher) watch() {
 	glog.Errorf("watching source file is unsupported in this build")
 }

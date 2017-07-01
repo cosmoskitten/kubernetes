@@ -42,8 +42,8 @@ func TestExtractFromBadDataFile(t *testing.T) {
 	}
 
 	ch := make(chan interface{}, 1)
-	c := new(fileName, "localhost", time.Millisecond, ch)
-	err = c.reloadConfig()
+	lw := newSourceFileListerWatcher(fileName, "localhost", time.Millisecond, ch)
+	err = lw.listConfig()
 	if err == nil {
 		t.Fatalf("expected error, got nil")
 	}
@@ -58,8 +58,8 @@ func TestExtractFromEmptyDir(t *testing.T) {
 	defer os.RemoveAll(dirName)
 
 	ch := make(chan interface{}, 1)
-	c := new(dirName, "localhost", time.Millisecond, ch)
-	err = c.reloadConfig()
+	lw := newSourceFileListerWatcher(dirName, "localhost", time.Millisecond, ch)
+	err = lw.listConfig()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -70,6 +70,6 @@ func TestExtractFromEmptyDir(t *testing.T) {
 	}
 	expected := CreatePodUpdate(kubetypes.SET, kubetypes.FileSource)
 	if !apiequality.Semantic.DeepEqual(expected, update) {
-		t.Fatalf("expected %#v, Got %#v", expected, update)
+		t.Fatalf("expected %#v, got %#v", expected, update)
 	}
 }
