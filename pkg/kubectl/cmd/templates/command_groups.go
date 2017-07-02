@@ -17,7 +17,10 @@ limitations under the License.
 package templates
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 type CommandGroup struct {
@@ -30,6 +33,9 @@ type CommandGroups []CommandGroup
 func (g CommandGroups) Add(c *cobra.Command) {
 	for _, group := range g {
 		for _, command := range group.Commands {
+			if command.PreRunE == nil || command.PersistentPreRunE == nil {
+				command.PersistentPreRunE = CheckRequiredFlags
+			}
 			c.AddCommand(command)
 		}
 	}
@@ -58,4 +64,30 @@ func AddAdditionalCommands(g CommandGroups, message string, cmds []*cobra.Comman
 		return g
 	}
 	return append(g, group)
+}
+
+func CheckRequiredFlags(cmd *cobra.Command, _ []string) error {
+	flags := cmd.Flags()
+	requiredError := false
+	var flagName string
+
+	flags.VisitAll(func(flag *pflag.Flag) {
+		requiredAnnotation := flag.Annotations[cobra.BashCompOneRequiredFlag]
+		if len(requiredAnnotation) == 0 {
+			return
+		}
+
+		flagRequired := requiredAnnotation[0] == "true"
+
+		if flagRequired && !flag.Changed {
+			requiredError = true
+			flagName = flag.Name
+		}
+	})
+
+	if requiredError {
+		return fmt.Errorf("Required flag %q has not been set", flagName)
+	}
+
+	return nil
 }
