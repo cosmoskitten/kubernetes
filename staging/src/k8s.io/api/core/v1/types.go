@@ -905,7 +905,7 @@ type QuobyteVolumeSource struct {
 	// Tenant where the Quobyte Volume is placed
 	// Default is DEFAULT
 	// +optional
-	Tenant string `json:"tenant,omitempty" protobuf:"bytes,5,opt,name=tenant"`
+	Tenant string `json:"tenant,omitempty" protobuf:"bytes,6,opt,name=tenant"`
 }
 
 // FlexVolume represents a generic volume resource that is
