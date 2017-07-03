@@ -5809,6 +5809,10 @@
      "group": {
       "type": "string",
       "description": "Group to map volume access to Default is no group"
+     },
+     "tenant": {
+      "type": "string",
+      "description": "Tenant where the Quobyte Volume is placed Default is DEFAULT"
      }
     }
    },

@@ -3043,6 +3043,11 @@ message QuobyteVolumeSource {
   // Default is no group
   // +optional
   optional string group = 5;
+
+  // Tenant where the Quobyte Volume is placed
+  // Default is DEFAULT
+  // +optional
+  optional string tenant = 6;
 }
 
 // Represents a Rados Block Device mount that lasts the lifetime of a pod.
