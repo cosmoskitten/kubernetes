@@ -82,6 +82,20 @@ func TestMatchPod(t *testing.T) {
 			fieldSelector: fields.ParseSelectorOrDie("status.phase=Pending"),
 			expectMatch:   false,
 		},
+		{
+			in: &api.Pod{
+				Spec: api.PodSpec{SchedulerName: "custom-scheduler"},
+			},
+			fieldSelector: fields.ParseSelectorOrDie("spec.schedulerName=custom-scheduler"),
+			expectMatch:   true,
+		},
+		{
+			in: &api.Pod{
+				Spec: api.PodSpec{SchedulerName: "default-scheduler"},
+			},
+			fieldSelector: fields.ParseSelectorOrDie("spec.schedulerName=custom-scheduler"),
+			expectMatch:   false,
+		},
 	}
 	for _, testCase := range testCases {
 		m := MatchPod(labels.Everything(), testCase.fieldSelector)
