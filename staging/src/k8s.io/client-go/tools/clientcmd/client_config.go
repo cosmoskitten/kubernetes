@@ -131,6 +131,7 @@ func (config *DirectClientConfig) ClientConfig() (*restclient.Config, error) {
 
 	clientConfig := &restclient.Config{}
 	clientConfig.Host = configClusterInfo.Server
+	clientConfig.DisableCompression = true
 
 	if len(config.overrides.Timeout) > 0 {
 		timeout, err := ParseTimeout(config.overrides.Timeout)

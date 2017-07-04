@@ -34,6 +34,12 @@ type Config struct {
 	// Bearer token for authentication
 	BearerToken string
 
+	// DisableCompression, if true, prevents the Transport from
+	// requesting compression with an "Accept-Encoding: gzip"
+	// request header when the Request contains no existing
+	// Accept-Encoding value.
+	DisableCompression bool
+
 	// Impersonate is the config that this Config will impersonate using
 	Impersonate ImpersonationConfig
 

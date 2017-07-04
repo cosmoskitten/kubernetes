@@ -76,7 +76,8 @@ users:
 		TLSClientConfig: restclient.TLSClientConfig{
 			CAData: []byte(`Test`),
 		},
-		BearerToken: "mytoken-b",
+		BearerToken:        "mytoken-b",
+		DisableCompression: true,
 	}
 
 	if !reflect.DeepEqual(config, expectedConfig) {

@@ -110,6 +110,12 @@ type Config struct {
 	// The maximum length of time to wait before giving up on a server request. A value of zero means no timeout.
 	Timeout time.Duration
 
+	// DisableCompression, if true, prevents the Transport from
+	// requesting compression with an "Accept-Encoding: gzip"
+	// request header when the Request contains no existing
+	// Accept-Encoding value.
+	DisableCompression bool
+
 	// Version forces a specific version to be used (if registered)
 	// Do we need this?
 	// Version string
@@ -412,5 +418,6 @@ func AnonymousClientConfig(config *Config) *Config {
 		QPS:           config.QPS,
 		Burst:         config.Burst,
 		Timeout:       config.Timeout,
+		DisableCompression: config.DisableCompression,
 	}
 }

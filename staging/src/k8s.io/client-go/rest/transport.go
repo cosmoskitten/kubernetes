@@ -95,5 +95,6 @@ func (c *Config) TransportConfig() (*transport.Config, error) {
 			Groups:   c.Impersonate.Groups,
 			Extra:    c.Impersonate.Extra,
 		},
+		DisableCompression: c.DisableCompression,
 	}, nil
 }

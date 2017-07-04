@@ -60,7 +60,11 @@ func (c *tlsTransportCache) get(config *Config) (http.RoundTripper, error) {
 	}
 	// The options didn't require a custom TLS config
 	if tlsConfig == nil {
-		return http.DefaultTransport, nil
+		tr := http.DefaultTransport
+		if defaultTransport, ok := tr.(*http.Transport); ok {
+			defaultTransport.DisableCompression = config.DisableCompression
+		}
+		return tr, nil
 	}
 
 	// Cache a single transport for these options
@@ -73,6 +77,7 @@ func (c *tlsTransportCache) get(config *Config) (http.RoundTripper, error) {
 			Timeout:   30 * time.Second,
 			KeepAlive: 30 * time.Second,
 		}).Dial,
+		DisableCompression: config.DisableCompression,
 	})
 	return c.transports[key], nil
 }
