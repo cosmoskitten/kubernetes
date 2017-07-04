@@ -454,9 +454,17 @@ func (deleter *quobyteVolumeDeleter) Delete() error {
 	if err != nil {
 		return err
 	}
+
+	if tenantNamespaceMapping, ok := class.Parameters["tenantnamespacemapping"]; ok {
+		if gostrings.ToLower(tenantNamespaceMapping) == "true" {
+			deleter.tenant = deleter.pv.ObjectMeta.Namespace
+		}
+	}
+
 	manager := &quobyteVolumeManager{
 		config: cfg,
 	}
+
 	return manager.deleteVolume(deleter)
 }
 
