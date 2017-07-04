@@ -243,6 +243,9 @@ parameters:
     group: "root"
     quobyteConfig: "BASE"
     quobyteTenant: "DEFAULT"
+    createQuota: "False"
+    tenantNamespaceMapping: "True"
+    createTenants: "True"
 ```
 
 [Download example](quobyte/quobyte-storage-class.yaml?raw=true)
