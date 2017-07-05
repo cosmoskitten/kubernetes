@@ -259,9 +259,8 @@ parameters:
 * **group** maps all access to this group. Default is `nfsnobody`.
 * **quobyteConfig** use the specified configuration to create the volume. You can create a new configuration or modify an existing one with the Web console or the quobyte CLI. Default is `BASE`.
 * **quobyteTenant** use the specified tenant name to create/delete the volume. This Quobyte tenant has to be already present in Quobyte. For Quobyte < 1.4 use an empty string `""` as `DEFAULT` tenant. Default is `DEFAULT`.
-* **createQuota** if set all volumes created by this storage class will get a Quota for the specified size. The quota is set for the logical disk size (which can differ from the physical size e.q. if replication is used). Default is `False`.
-* **tenantNamespaceMapping** if set the plugin will map all volume requests to the Quobyte tenant with the same name like the namespace of the PVC. For the best experience use this option with **createtenants**. This option is mutually exclusive to **quobyteTenant** if both options are set this option will be used. Default is `false`.
-* **createtenants** if this option is set the Plugin will create namespaces if they are absent before creatin the volumes. Default is `false`.
+* **createQuota** if set to true, the plugin will use the namespace of the PVC as the Quobyte Tenant instead of **quobyteTenant**. For the best experience, this option is used with with **createTenants**. Default is `false`.
+* **createtenants** if this option is set the Plugin will create namespaces if they are absent before creating the volumes. Default is `false`.
 
 First create Quobyte admin's Secret in the system namespace. Here the Secret is created in `kube-system`:
 

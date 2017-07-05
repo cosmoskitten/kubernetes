@@ -902,7 +902,7 @@ type QuobyteVolumeSource struct {
 	// +optional
 	Group string `json:"group,omitempty" protobuf:"bytes,5,opt,name=group"`
 
-	// Tenant where the Quobyte Volume is placed
+	// Name of Quobyte Tenant that the Volume is part of
 	// Default is DEFAULT
 	// +optional
 	Tenant string `json:"tenant,omitempty" protobuf:"bytes,6,opt,name=tenant"`

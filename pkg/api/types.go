@@ -888,7 +888,7 @@ type QuobyteVolumeSource struct {
 	// +optional
 	Group string
 
-	// Tenant where the Quobyte Volume is placed
+	// Name of Quobyte Tenant that the Volume is part of
 	// Default is DEFAULT
 	// +optional
 	Tenant string
