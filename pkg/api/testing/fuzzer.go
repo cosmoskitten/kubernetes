@@ -462,6 +462,20 @@ func coreFuncs(t apitesting.TestingCommon) []interface{} {
 				sio.FSType = "xfs"
 			}
 		},
+		func(obj *api.QuobyteVolumeSource, c fuzz.Continue) {
+			obj.User = c.RandString()
+			if obj.User == "" {
+				obj.User = "root"
+			}
+			obj.Group = c.RandString()
+			if obj.Group == "" {
+				obj.Group = "nfsnobody"
+			}
+			obj.Tenant = c.RandString()
+			if obj.Tenant == "" {
+				obj.Tenant = "DEFAULT"
+			}
+		},
 		func(s *api.NamespaceSpec, c fuzz.Continue) {
 			s.Finalizers = []api.FinalizerName{api.FinalizerKubernetes}
 		},
