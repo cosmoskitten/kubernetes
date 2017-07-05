@@ -11355,7 +11355,7 @@
       "type": "string"
      },
      "tenant": {
-      "description": "Tenant where the Quobyte Volume is placed Default is DEFAULT",
+      "description": "Name of Quobyte Tenant that the Volume is part of Default is DEFAULT",
       "type": "string"
      },
      "user": {

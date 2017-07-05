@@ -2161,7 +2161,7 @@
      },
      "tenant": {
       "type": "string",
-      "description": "Tenant where the Quobyte Volume is placed Default is DEFAULT"
+      "description": "Name of Quobyte Tenant that the Volume is part of Default is DEFAULT"
      }
     }
    },

@@ -3044,7 +3044,7 @@ message QuobyteVolumeSource {
   // +optional
   optional string group = 5;
 
-  // Tenant where the Quobyte Volume is placed
+  // Name of Quobyte Tenant that the Volume is part of
   // Default is DEFAULT
   // +optional
   optional string tenant = 6;
