@@ -12,16 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-all: push
+FROM BASEIMAGE
 
-TAG = e2e
-PREFIX = gcr.io/google_containers/redis-install-3.2.0
+CROSS_BUILD_COPY qemu-QEMUARCH-static /usr/bin/
 
-container:
-	docker build --pull -t $(PREFIX):$(TAG) .
+RUN apt-get update && apt-get install -y wget bash dnsutils
+COPY peer-finder /
 
-push: container
-	gcloud docker -- push $(PREFIX):$(TAG)
-
-clean:
-	docker rmi $(PREFIX):$(TAG)
+EXPOSE 9376
+ENTRYPOINT ["/peer-finder"]

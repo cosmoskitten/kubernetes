@@ -30,6 +30,7 @@ filegroup(
         "//test/images/nettest:all-srcs",
         "//test/images/no-snat-test:all-srcs",
         "//test/images/no-snat-test-proxy:all-srcs",
+        "//test/images/pets/peer-finder:all-srcs",
         "//test/images/port-forward-tester:all-srcs",
         "//test/images/porter:all-srcs",
         "//test/images/resource-consumer:all-srcs",

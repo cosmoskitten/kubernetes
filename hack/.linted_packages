@@ -477,6 +477,7 @@ test/images/mounttest
 test/images/n-way-http
 test/images/net
 test/images/net/common
+test/images/pets/peer-finder
 test/images/port-forward-tester
 test/images/porter
 test/images/resource-consumer/consume-cpu
