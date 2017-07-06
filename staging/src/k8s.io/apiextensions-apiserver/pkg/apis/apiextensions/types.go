@@ -17,8 +17,6 @@ limitations under the License.
 package apiextensions
 
 import (
-	"net/url"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -153,7 +151,7 @@ type CustomResourceValidation struct {
 type JSONSchemaProps struct {
 	ID                   string
 	Schema               JSONSchemaURL
-	Ref                  JSONSchemaRef
+	Ref                  string
 	Description          string
 	Type                 StringOrArray
 	Format               string
@@ -185,18 +183,6 @@ type JSONSchemaProps struct {
 	Dependencies         JSONSchemaDependencies
 	AdditionalItems      *JSONSchemaPropsOrBool
 	Definitions          JSONSchemaDefinitions
-}
-
-// JSONSchemaRef represents a JSON reference that is potentially resolved.
-// It is marshaled into a string using a custom JSON marshaller.
-type JSONSchemaRef struct {
-	ReferenceURL     *url.URL
-	ReferencePointer JSONSchemaPointer
-	HasFullURL       bool
-	HasURLPathOnly   bool
-	HasFragmentOnly  bool
-	HasFileScheme    bool
-	HasFullFilePath  bool
 }
 
 // JSONSchemaPointer is the JSON pointer representation.

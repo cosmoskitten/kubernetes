@@ -69,9 +69,6 @@ func convertJSONSchemaProps(in *apiextensions.JSONSchemaProps, out *spec.Schema)
 		out.MaxProperties = in.MaxProperties
 		out.MinProperties = in.MinProperties
 		out.Required = in.Required
-		if err := convertJSONSchemaRef(&in.Ref, &out.Ref); err != nil {
-			return err
-		}
 		if err := convertJSONSchemaPropsOrArray(in.Items, out.Items); err != nil {
 			return err
 		}
@@ -92,6 +89,10 @@ func convertJSONSchemaProps(in *apiextensions.JSONSchemaProps, out *spec.Schema)
 		if err != nil {
 			return err
 		}
+		out.Ref, err = spec.NewRef(in.Ref)
+		if err != nil {
+			return err
+		}
 		if err := convertJSONSchemaPropsorBool(in.AdditionalProperties, out.AdditionalProperties); err != nil {
 			return err
 		}
@@ -109,18 +110,6 @@ func convertJSONSchemaProps(in *apiextensions.JSONSchemaProps, out *spec.Schema)
 		if err != nil {
 			return err
 		}
-	}
-	return nil
-}
-
-// TODO: Convert the ReferenceURL and ReferencePointer fields
-func convertJSONSchemaRef(in *apiextensions.JSONSchemaRef, out *spec.Ref) error {
-	if in != nil {
-		out.HasFullURL = in.HasFullURL
-		out.HasURLPathOnly = in.HasURLPathOnly
-		out.HasFragmentOnly = in.HasFragmentOnly
-		out.HasFileScheme = in.HasFileScheme
-		out.HasFullFilePath = in.HasFullFilePath
 	}
 	return nil
 }
