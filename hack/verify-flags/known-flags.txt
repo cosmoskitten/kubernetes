@@ -519,6 +519,8 @@ oidc-client-id
 oidc-groups-claim
 oidc-issuer-url
 oidc-username-claim
+on-change
+on-start
 only-idl
 oom-score-adj
 outofdisk-transition-frequency
