@@ -2703,7 +2703,14 @@ type PodSecurityContext struct {
 	// PodSecurityContext, the value specified in SecurityContext takes precedence
 	// for that container.
 	// +optional
+<<<<<<< 91441532c10bc4d9eb782bb7030f21d1d978db21:staging/src/k8s.io/api/core/v1/types.go
 	RunAsUser *int64 `json:"runAsUser,omitempty" protobuf:"varint,2,opt,name=runAsUser"`
+=======
+	RunAsUser *types.UnixUserID `json:"runAsUser,omitempty" protobuf:"varint,2,opt,name=runAsUser,casttype=k8s.io/apimachinery/pkg/types.UnixUserID"`
+
+	RunAsGroup *types.UnixGroupID `json:"runAsGroup,omitempty" protobuf:"varint,3,rep,name=runAsGroup,casttype=k8s.io/apimachinery/pkg/types.UnixGroupID"`
+
+>>>>>>> Add RunAsGroup feature:pkg/api/v1/types.go
 	// Indicates that the container must run as a non-root user.
 	// If true, the Kubelet will validate the image at runtime to ensure that it
 	// does not run as UID 0 (root) and fail to start the container if it does.
@@ -2711,12 +2718,16 @@ type PodSecurityContext struct {
 	// May also be set in SecurityContext.  If set in both SecurityContext and
 	// PodSecurityContext, the value specified in SecurityContext takes precedence.
 	// +optional
-	RunAsNonRoot *bool `json:"runAsNonRoot,omitempty" protobuf:"varint,3,opt,name=runAsNonRoot"`
+	RunAsNonRoot *bool `json:"runAsNonRoot,omitempty" protobuf:"varint,4,opt,name=runAsNonRoot"`
 	// A list of groups applied to the first process run in each container, in addition
 	// to the container's primary GID.  If unspecified, no groups will be added to
 	// any container.
 	// +optional
+<<<<<<< 91441532c10bc4d9eb782bb7030f21d1d978db21:staging/src/k8s.io/api/core/v1/types.go
 	SupplementalGroups []int64 `json:"supplementalGroups,omitempty" protobuf:"varint,4,rep,name=supplementalGroups"`
+=======
+	SupplementalGroups []types.UnixGroupID `json:"supplementalGroups,omitempty" protobuf:"varint,5,rep,name=supplementalGroups,casttype=k8s.io/apimachinery/pkg/types.UnixGroupID"`
+>>>>>>> Add RunAsGroup feature:pkg/api/v1/types.go
 	// A special supplemental group that applies to all containers in a pod.
 	// Some volume types allow the Kubelet to change the ownership of that volume
 	// to be owned by the pod:
@@ -2727,7 +2738,11 @@ type PodSecurityContext struct {
 	//
 	// If unset, the Kubelet will not modify the ownership and permissions of any volume.
 	// +optional
+<<<<<<< 91441532c10bc4d9eb782bb7030f21d1d978db21:staging/src/k8s.io/api/core/v1/types.go
 	FSGroup *int64 `json:"fsGroup,omitempty" protobuf:"varint,5,opt,name=fsGroup"`
+=======
+	FSGroup *types.UnixGroupID `json:"fsGroup,omitempty" protobuf:"varint,6,opt,name=fsGroup,casttype=k8s.io/apimachinery/pkg/types.UnixGroupID"`
+>>>>>>> Add RunAsGroup feature:pkg/api/v1/types.go
 }
 
 // PodQOSClass defines the supported qos classes of Pods.
@@ -4775,7 +4790,12 @@ type SecurityContext struct {
 	// May also be set in PodSecurityContext.  If set in both SecurityContext and
 	// PodSecurityContext, the value specified in SecurityContext takes precedence.
 	// +optional
+<<<<<<< 91441532c10bc4d9eb782bb7030f21d1d978db21:staging/src/k8s.io/api/core/v1/types.go
 	RunAsUser *int64 `json:"runAsUser,omitempty" protobuf:"varint,4,opt,name=runAsUser"`
+=======
+	RunAsUser  *types.UnixUserID  `json:"runAsUser,omitempty" protobuf:"varint,4,opt,name=runAsUser,casttype=k8s.io/apimachinery/pkg/types.UnixUserID"`
+	RunAsGroup *types.UnixGroupID `json:"runAsGroup,omitempty" protobuf:"varint,5,rep,name=runAsGroup,casttype=k8s.io/apimachinery/pkg/types.UnixGroupID"`
+>>>>>>> Add RunAsGroup feature:pkg/api/v1/types.go
 	// Indicates that the container must run as a non-root user.
 	// If true, the Kubelet will validate the image at runtime to ensure that it
 	// does not run as UID 0 (root) and fail to start the container if it does.
@@ -4783,10 +4803,11 @@ type SecurityContext struct {
 	// May also be set in PodSecurityContext.  If set in both SecurityContext and
 	// PodSecurityContext, the value specified in SecurityContext takes precedence.
 	// +optional
-	RunAsNonRoot *bool `json:"runAsNonRoot,omitempty" protobuf:"varint,5,opt,name=runAsNonRoot"`
+	RunAsNonRoot *bool `json:"runAsNonRoot,omitempty" protobuf:"varint,6,opt,name=runAsNonRoot"`
 	// Whether this container has a read-only root filesystem.
 	// Default is false.
 	// +optional
+<<<<<<< 91441532c10bc4d9eb782bb7030f21d1d978db21:staging/src/k8s.io/api/core/v1/types.go
 	ReadOnlyRootFilesystem *bool `json:"readOnlyRootFilesystem,omitempty" protobuf:"varint,6,opt,name=readOnlyRootFilesystem"`
 	// AllowPrivilegeEscalation controls whether a process can gain more
 	// privileges than its parent process. This bool directly controls if
@@ -4796,6 +4817,9 @@ type SecurityContext struct {
 	// 2) has CAP_SYS_ADMIN
 	// +optional
 	AllowPrivilegeEscalation *bool `json:"allowPrivilegeEscalation,omitempty" protobuf:"varint,7,opt,name=allowPrivilegeEscalation"`
+=======
+	ReadOnlyRootFilesystem *bool `json:"readOnlyRootFilesystem,omitempty" protobuf:"varint,7,opt,name=readOnlyRootFilesystem"`
+>>>>>>> Add RunAsGroup feature:pkg/api/v1/types.go
 }
 
 // SELinuxOptions are the labels to be applied to the container

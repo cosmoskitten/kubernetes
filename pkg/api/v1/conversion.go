@@ -464,6 +464,7 @@ func Convert_api_PodSecurityContext_To_v1_PodSecurityContext(in *api.PodSecurity
 		out.SELinuxOptions = nil
 	}
 	out.RunAsUser = in.RunAsUser
+	out.RunAsGroup = in.RunAsGroup
 	out.RunAsNonRoot = in.RunAsNonRoot
 	out.FSGroup = in.FSGroup
 	return nil
@@ -480,6 +481,7 @@ func Convert_v1_PodSecurityContext_To_api_PodSecurityContext(in *v1.PodSecurityC
 		out.SELinuxOptions = nil
 	}
 	out.RunAsUser = in.RunAsUser
+	out.RunAsGroup = in.RunAsGroup
 	out.RunAsNonRoot = in.RunAsNonRoot
 	out.FSGroup = in.FSGroup
 	return nil

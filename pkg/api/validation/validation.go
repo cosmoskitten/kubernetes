@@ -2838,6 +2838,12 @@ func ValidatePodSecurityContext(securityContext *api.PodSecurityContext, spec *a
 				allErrs = append(allErrs, field.Invalid(fldPath.Child("runAsUser"), *(securityContext.RunAsUser), msg))
 			}
 		}
+		if securityContext.RunAsGroup != nil {
+			for _, msg := range validation.IsValidGroupID(*securityContext.RunAsGroup) {
+				allErrs = append(allErrs, field.Invalid(fldPath.Child("runAsGroup"), *(securityContext.RunAsGroup), msg))
+			}
+		}
+
 		for g, gid := range securityContext.SupplementalGroups {
 			for _, msg := range validation.IsValidGroupID(gid) {
 				allErrs = append(allErrs, field.Invalid(fldPath.Child("supplementalGroups").Index(g), gid, msg))
@@ -4388,6 +4394,12 @@ func ValidateSecurityContext(sc *api.SecurityContext, fldPath *field.Path) field
 			allErrs = append(allErrs, field.Invalid(fldPath.Child("runAsUser"), *sc.RunAsUser, isNegativeErrorMsg))
 		}
 	}
+	if sc.RunAsGroup != nil {
+		if *sc.RunAsGroup < 0 {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("runAsGroup"), *sc.RunAsGroup, isNegativeErrorMsg))
+		}
+	}
+
 	return allErrs
 }
 
