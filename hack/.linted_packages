@@ -5,7 +5,6 @@ cluster/images/etcd/rollback
 cmd/clicheck
 cmd/cloud-controller-manager
 cmd/gendocs
-cmd/genkubedocs
 cmd/genman
 cmd/genswaggertypedocs
 cmd/genyaml
