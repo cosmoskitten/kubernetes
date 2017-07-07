@@ -19,6 +19,10 @@ limitations under the License.
 package informers
 
 import (
+	reflect "reflect"
+	sync "sync"
+	time "time"
+
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	admissionregistration "k8s.io/client-go/informers/admissionregistration"
@@ -34,15 +38,12 @@ import (
 	rbac "k8s.io/client-go/informers/rbac"
 	settings "k8s.io/client-go/informers/settings"
 	storage "k8s.io/client-go/informers/storage"
-	kubernetes "k8s.io/client-go/kubernetes"
+	clientset "k8s.io/client-go/kubernetes"
 	cache "k8s.io/client-go/tools/cache"
-	reflect "reflect"
-	sync "sync"
-	time "time"
 )
 
 type sharedInformerFactory struct {
-	client        kubernetes.Interface
+	client        clientset.Interface
 	lock          sync.Mutex
 	defaultResync time.Duration
 
@@ -53,7 +54,7 @@ type sharedInformerFactory struct {
 }
 
 // NewSharedInformerFactory constructs a new instance of sharedInformerFactory
-func NewSharedInformerFactory(client kubernetes.Interface, defaultResync time.Duration) SharedInformerFactory {
+func NewSharedInformerFactory(client clientset.Interface, defaultResync time.Duration) SharedInformerFactory {
 	return &sharedInformerFactory{
 		client:           client,
 		defaultResync:    defaultResync,
