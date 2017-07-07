@@ -19,15 +19,16 @@ limitations under the License.
 package v1beta1
 
 import (
+	time "time"
+
 	rbac_v1beta1 "k8s.io/api/rbac/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
 	internalinterfaces "k8s.io/client-go/informers/internalinterfaces"
-	kubernetes "k8s.io/client-go/kubernetes"
+	clientset "k8s.io/client-go/kubernetes"
 	v1beta1 "k8s.io/client-go/listers/rbac/v1beta1"
 	cache "k8s.io/client-go/tools/cache"
-	time "time"
 )
 
 // ClusterRoleBindingInformer provides access to a shared informer and lister for
@@ -41,7 +42,7 @@ type clusterRoleBindingInformer struct {
 	factory internalinterfaces.SharedInformerFactory
 }
 
-func newClusterRoleBindingInformer(client kubernetes.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
+func newClusterRoleBindingInformer(client clientset.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
 	sharedIndexInformer := cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
