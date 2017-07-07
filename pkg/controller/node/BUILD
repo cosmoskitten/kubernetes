@@ -77,6 +77,7 @@ go_test(
     library = ":go_default_library",
     tags = ["automanaged"],
     deps = [
+        "//pkg/api/install:go_default_library",
         "//pkg/api/v1/helper:go_default_library",
         "//pkg/cloudprovider:go_default_library",
         "//pkg/cloudprovider/providers/fake:go_default_library",
