@@ -1695,6 +1695,50 @@ metadata:
 			}
 		})
 	})
+
+	framework.KubeDescribe("Kubectl v1.6 deployment reaper", func() {
+		var nsFlag string
+		var name string
+
+		BeforeEach(func() {
+			nsFlag = fmt.Sprintf("--namespace=%v", ns)
+			name = "e2e-test-nginx-deployment"
+		})
+
+		AfterEach(func() {
+			By("deleting the deployment " + name)
+			framework.RunKubectlOrDie("delete", "deployment", name, nsFlag)
+
+			By("verifying replicasets were deleted")
+			rsList, err := c.Extensions().ReplicaSets(ns).List(metav1.ListOptions{})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(rsList.Items).To(HaveLen(0))
+		})
+
+		// Question: should we include "Conformance" label? It is an explicit 1.5-1.6 version skew test.
+		It("should delete all replicasets of v1.5 cluster", func() {
+			// As test grid supports +/-1 minor version for kubectl skew, setting versions
+			// this way ensures only one test runs: v1.6 kubectl against v1.5 server
+			framework.SkipUnlessKubectlVersionGTE(utilversion.MustParseSemantic("v1.6.0-alpha.0"))
+			framework.SkipUnlessServerVersionLT(utilversion.MustParseSemantic("v1.6.0-alpha.0"), c.Discovery())
+
+			By("running the image " + nginxImage)
+			framework.RunKubectlOrDie("run", name, "--image="+nginxImage, nsFlag)
+
+			// If the pod is created successfully, it means deployment and replicasets are created successfully too
+			By("verifying the pod controlled by " + name + " gets created")
+			label := labels.SelectorFromSet(labels.Set(map[string]string{"run": name}))
+			podlist, err := framework.WaitForPodsWithLabel(c, ns, label)
+			if err != nil {
+				framework.Failf("Failed getting pod controlled by %s: %v", name, err)
+			}
+			pods := podlist.Items
+			if pods == nil || len(pods) != 1 || len(pods[0].Spec.Containers) != 1 || pods[0].Spec.Containers[0].Image != nginxImage {
+				framework.RunKubectlOrDie("get", "pods", "-L", "run", nsFlag)
+				framework.Failf("Failed creating 1 pod with expected image %s. Number of pods = %v", nginxImage, len(pods))
+			}
+		})
+	})
 })
 
 // Checks whether the output split by line contains the required elements.
