@@ -50,6 +50,7 @@ func (DeploymentV1Beta1) ParamNames() []GeneratorParam {
 		{"command", false},
 		{"args", false},
 		{"env", false},
+		{"env-from", false},
 		{"requests", false},
 		{"limits", false},
 	}
@@ -62,6 +63,11 @@ func (DeploymentV1Beta1) Generate(genericParams map[string]interface{}) (runtime
 	}
 
 	envs, err := getEnvs(genericParams)
+	if err != nil {
+		return nil, err
+	}
+
+	envFroms, err := getEnvFroms(genericParams)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +98,7 @@ func (DeploymentV1Beta1) Generate(genericParams map[string]interface{}) (runtime
 	}
 
 	imagePullPolicy := v1.PullPolicy(params["image-pull-policy"])
-	if err = updatePodContainers(params, args, envs, imagePullPolicy, podSpec); err != nil {
+	if err = updatePodContainers(params, args, envs, envFroms, imagePullPolicy, podSpec); err != nil {
 		return nil, err
 	}
 
@@ -139,6 +145,7 @@ func (DeploymentAppsV1Beta1) ParamNames() []GeneratorParam {
 		{"command", false},
 		{"args", false},
 		{"env", false},
+		{"env-from", false},
 		{"requests", false},
 		{"limits", false},
 	}
@@ -151,6 +158,11 @@ func (DeploymentAppsV1Beta1) Generate(genericParams map[string]interface{}) (run
 	}
 
 	envs, err := getEnvs(genericParams)
+	if err != nil {
+		return nil, err
+	}
+
+	envFroms, err := getEnvFroms(genericParams)
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +193,7 @@ func (DeploymentAppsV1Beta1) Generate(genericParams map[string]interface{}) (run
 	}
 
 	imagePullPolicy := v1.PullPolicy(params["image-pull-policy"])
-	if err = updatePodContainers(params, args, envs, imagePullPolicy, podSpec); err != nil {
+	if err = updatePodContainers(params, args, envs, envFroms, imagePullPolicy, podSpec); err != nil {
 		return nil, err
 	}
 
@@ -286,6 +298,25 @@ func getEnvs(genericParams map[string]interface{}) ([]v1.EnvVar, error) {
 	return envs, nil
 }
 
+// getEnvFroms returns EnvFrom variables.
+func getEnvFroms(genericParams map[string]interface{}) ([]v1.EnvFromSource, error) {
+	var envFroms []v1.EnvFromSource
+	envFromStrings, found := genericParams["env-from"]
+	if found {
+		if envFromStringArray, isArray := envFromStrings.([]string); isArray {
+			var err error
+			envFroms, err = parseEnvFroms(envFromStringArray)
+			if err != nil {
+				return nil, err
+			}
+			delete(genericParams, "env-from")
+		} else {
+			return nil, fmt.Errorf("expected []string, found: %T", envFromStrings)
+		}
+	}
+	return envFroms, nil
+}
+
 type JobV1 struct{}
 
 func (JobV1) ParamNames() []GeneratorParam {
@@ -303,6 +334,7 @@ func (JobV1) ParamNames() []GeneratorParam {
 		{"command", false},
 		{"args", false},
 		{"env", false},
+		{"env-from", false},
 		{"requests", false},
 		{"limits", false},
 		{"restart", false},
@@ -316,6 +348,11 @@ func (JobV1) Generate(genericParams map[string]interface{}) (runtime.Object, err
 	}
 
 	envs, err := getEnvs(genericParams)
+	if err != nil {
+		return nil, err
+	}
+
+	envFroms, err := getEnvFroms(genericParams)
 	if err != nil {
 		return nil, err
 	}
@@ -341,7 +378,7 @@ func (JobV1) Generate(genericParams map[string]interface{}) (runtime.Object, err
 	}
 
 	imagePullPolicy := v1.PullPolicy(params["image-pull-policy"])
-	if err = updatePodContainers(params, args, envs, imagePullPolicy, podSpec); err != nil {
+	if err = updatePodContainers(params, args, envs, envFroms, imagePullPolicy, podSpec); err != nil {
 		return nil, err
 	}
 
@@ -396,6 +433,7 @@ func (CronJobV2Alpha1) ParamNames() []GeneratorParam {
 		{"command", false},
 		{"args", false},
 		{"env", false},
+		{"env-from", false},
 		{"requests", false},
 		{"limits", false},
 		{"restart", false},
@@ -410,6 +448,11 @@ func (CronJobV2Alpha1) Generate(genericParams map[string]interface{}) (runtime.O
 	}
 
 	envs, err := getEnvs(genericParams)
+	if err != nil {
+		return nil, err
+	}
+
+	envFroms, err := getEnvFroms(genericParams)
 	if err != nil {
 		return nil, err
 	}
@@ -435,7 +478,7 @@ func (CronJobV2Alpha1) Generate(genericParams map[string]interface{}) (runtime.O
 	}
 
 	imagePullPolicy := v1.PullPolicy(params["image-pull-policy"])
-	if err = updatePodContainers(params, args, envs, imagePullPolicy, podSpec); err != nil {
+	if err = updatePodContainers(params, args, envs, envFroms, imagePullPolicy, podSpec); err != nil {
 		return nil, err
 	}
 
@@ -496,6 +539,7 @@ func (BasicReplicationController) ParamNames() []GeneratorParam {
 		{"command", false},
 		{"args", false},
 		{"env", false},
+		{"env-from", false},
 		{"requests", false},
 		{"limits", false},
 	}
@@ -627,6 +671,11 @@ func (BasicReplicationController) Generate(genericParams map[string]interface{})
 		return nil, err
 	}
 
+	envFroms, err := getEnvFroms(genericParams)
+	if err != nil {
+		return nil, err
+	}
+
 	params, err := getParams(genericParams)
 	if err != nil {
 		return nil, err
@@ -653,7 +702,7 @@ func (BasicReplicationController) Generate(genericParams map[string]interface{})
 	}
 
 	imagePullPolicy := v1.PullPolicy(params["image-pull-policy"])
-	if err = updatePodContainers(params, args, envs, imagePullPolicy, podSpec); err != nil {
+	if err = updatePodContainers(params, args, envs, envFroms, imagePullPolicy, podSpec); err != nil {
 		return nil, err
 	}
 
@@ -682,7 +731,7 @@ func (BasicReplicationController) Generate(genericParams map[string]interface{})
 }
 
 // updatePodContainers updates PodSpec.Containers with passed parameters.
-func updatePodContainers(params map[string]string, args []string, envs []v1.EnvVar, imagePullPolicy v1.PullPolicy, podSpec *v1.PodSpec) error {
+func updatePodContainers(params map[string]string, args []string, envs []v1.EnvVar, envFroms []v1.EnvFromSource, imagePullPolicy v1.PullPolicy, podSpec *v1.PodSpec) error {
 	if len(args) > 0 {
 		command, err := GetBool(params, "command", false)
 		if err != nil {
@@ -697,6 +746,10 @@ func updatePodContainers(params map[string]string, args []string, envs []v1.EnvV
 
 	if len(envs) > 0 {
 		podSpec.Containers[0].Env = envs
+	}
+
+	if len(envFroms) > 0 {
+		podSpec.Containers[0].EnvFrom = envFroms
 	}
 
 	if len(imagePullPolicy) > 0 {
@@ -759,6 +812,7 @@ func (BasicPod) ParamNames() []GeneratorParam {
 		{"command", false},
 		{"args", false},
 		{"env", false},
+		{"env-from", false},
 		{"requests", false},
 		{"limits", false},
 	}
@@ -771,6 +825,11 @@ func (BasicPod) Generate(genericParams map[string]interface{}) (runtime.Object, 
 	}
 
 	envs, err := getEnvs(genericParams)
+	if err != nil {
+		return nil, err
+	}
+
+	envFroms, err := getEnvFroms(genericParams)
 	if err != nil {
 		return nil, err
 	}
@@ -837,7 +896,7 @@ func (BasicPod) Generate(genericParams map[string]interface{}) (runtime.Object, 
 		},
 	}
 	imagePullPolicy := v1.PullPolicy(params["image-pull-policy"])
-	if err = updatePodContainers(params, args, envs, imagePullPolicy, &pod.Spec); err != nil {
+	if err = updatePodContainers(params, args, envs, envFroms, imagePullPolicy, &pod.Spec); err != nil {
 		return nil, err
 	}
 
@@ -867,4 +926,45 @@ func parseEnvs(envArray []string) ([]v1.EnvVar, error) {
 		envs = append(envs, envVar)
 	}
 	return envs, nil
+}
+
+// parseEnvFroms converts string into EnvFromSource objects.
+func parseEnvFroms(envFromArray []string) ([]v1.EnvFromSource, error) {
+	envFroms := make([]v1.EnvFromSource, 0, len(envFromArray))
+	for _, envFromString := range envFromArray {
+		pos := strings.Index(envFromString, "=")
+		if pos == -1 {
+			return nil, fmt.Errorf("invalid env-from: %v", envFromString)
+		}
+		refType := envFromString[:pos]
+		name := envFromString[pos+1:]
+		if len(refType) == 0 || len(name) == 0 {
+			return nil, fmt.Errorf("invalid env-from: %v", envFromString)
+		}
+
+		var envFrom v1.EnvFromSource
+		switch refType {
+		case "ConfigMapRef":
+			envFrom = v1.EnvFromSource{
+				ConfigMapRef: &v1.ConfigMapEnvSource{
+					LocalObjectReference: v1.LocalObjectReference{
+						Name: name,
+					},
+				},
+			}
+		case "SecretRef":
+			envFrom = v1.EnvFromSource{
+				SecretRef: &v1.SecretEnvSource{
+					LocalObjectReference: v1.LocalObjectReference{
+						Name: name,
+					},
+				},
+			}
+		default:
+			return nil, fmt.Errorf("env-from can only be 'ConfigMapRef' or 'SecretRef': %v", envFrom)
+		}
+
+		envFroms = append(envFroms, envFrom)
+	}
+	return envFroms, nil
 }
