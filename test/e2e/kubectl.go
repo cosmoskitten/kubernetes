@@ -1695,6 +1695,59 @@ metadata:
 			}
 		})
 	})
+
+	framework.KubeDescribe("Kubectl deployment reaper", func() {
+		var nsFlag string
+		var name string
+		var labelFlag string
+
+		BeforeEach(func() {
+			nsFlag = fmt.Sprintf("--namespace=%v", ns)
+			name = "e2e-test-nginx-deployment"
+			labelFlag = fmt.Sprintf("--labels=run=%v", name)
+		})
+
+		It("should delete deployment and all of the resources managed by it", func() {
+			// Create deployment with a specific label so that replicasets and pods also have the label
+			By("running the image " + nginxImage)
+			framework.RunKubectlOrDie("run", name, "--image="+nginxImage, nsFlag, labelFlag)
+
+			// If the pod is created successfully, it means deployment and replicasets are created successfully too
+			By("verifying the pod controlled by " + name + " gets created")
+			label := labels.SelectorFromSet(labels.Set(map[string]string{"run": name}))
+			err := testutils.WaitForPodsWithLabelRunning(c, ns, label)
+			if err != nil {
+				framework.Failf("Failed waiting for pod controlled by %s to be running: %v", name, err)
+			}
+
+			By("deleting the deployment " + name)
+			framework.RunKubectlOrDie("delete", "deployment", name, nsFlag, "--cascade=true")
+
+			By("verifying deployment was deleted")
+			err = wait.PollImmediate(time.Second, time.Minute, func() (bool, error) {
+				_, err := c.ExtensionsV1beta1().Deployments(ns).Get(name, metav1.GetOptions{})
+				if apierrs.IsNotFound(err) {
+					return true, nil
+				} else if err != nil {
+					return false, err
+				}
+				return false, nil
+			})
+			if err != nil {
+				framework.Failf("Failed verifying deployment was deleted: %v", err)
+			}
+
+			By("verifying pods were deleted")
+			podList, err := c.Core().Pods(ns).List(metav1.ListOptions{LabelSelector: label.String()})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(podList.Items)).To(Equal(0))
+
+			By("verifying replicasets were deleted")
+			rsList, err := c.ExtensionsV1beta1().ReplicaSets(ns).List(metav1.ListOptions{LabelSelector: label.String()})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(rsList.Items)).To(Equal(0))
+		})
+	})
 })
 
 // Checks whether the output split by line contains the required elements.
