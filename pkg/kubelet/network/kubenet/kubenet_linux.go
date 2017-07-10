@@ -336,18 +336,21 @@ func (plugin *kubenetNetworkPlugin) setup(namespace string, name string, id kube
 
 	// Explicitly assign mac address to cbr0. If bridge mac address is not explicitly set will adopt the lowest MAC address of the attached veths.
 	// TODO: Remove this once upstream cni bridge plugin handles this
-	link, err := netlink.LinkByName(BridgeName)
-	if err != nil {
-		return fmt.Errorf("failed to lookup %q: %v", BridgeName, err)
-	}
-	macAddr, err := generateHardwareAddr(plugin.gateway)
-	if err != nil {
-		return err
-	}
-	glog.V(3).Infof("Configure %q mac address to %v", BridgeName, macAddr)
-	err = netlink.LinkSetHardwareAddr(link, macAddr)
-	if err != nil {
-		return fmt.Errorf("Failed to configure %q mac address to %q: %v", BridgeName, macAddr, err)
+	var macAddr net.HardwareAddr
+	if plugin.gateway.To4() != nil {
+		link, err := netlink.LinkByName(BridgeName)
+		if err != nil {
+			return fmt.Errorf("failed to lookup %q: %v", BridgeName, err)
+		}
+		macAddr, err = generateHardwareAddr(plugin.gateway)
+		if err != nil {
+			return err
+		}
+		glog.V(3).Infof("Configure %q mac address to %v", BridgeName, macAddr)
+		err = netlink.LinkSetHardwareAddr(link, macAddr)
+		if err != nil {
+			return fmt.Errorf("Failed to configure %q mac address to %q: %v", BridgeName, macAddr, err)
+		}
 	}
 
 	// Put the container bridge into promiscuous mode to force it to accept hairpin packets.
@@ -359,6 +362,16 @@ func (plugin *kubenetNetworkPlugin) setup(namespace string, name string, id kube
 			_, err := plugin.execer.Command("ip", "link", "set", BridgeName, "promisc", "on").CombinedOutput()
 			if err != nil {
 				return fmt.Errorf("Error setting promiscuous mode on %s: %v", BridgeName, err)
+			}
+		}
+		if plugin.gateway.To4() == nil {
+			i := strings.Index(string(output), "link/ether")
+			if i < 0 {
+				return fmt.Errorf("Error getting index %v", err)
+			}
+			macAddr, err = net.ParseMAC(strings.Split(string(output[i:]), " ")[1])
+			if err != nil {
+				return fmt.Errorf("Error getting mac %v", err)
 			}
 		}
 		// configure the ebtables rules to eliminate duplicate packets by best effort
