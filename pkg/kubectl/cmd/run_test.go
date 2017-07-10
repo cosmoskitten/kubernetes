@@ -114,6 +114,23 @@ func TestGetEnv(t *testing.T) {
 	}
 }
 
+func TestGetEnvFrom(t *testing.T) {
+	test := struct {
+		input    []string
+		expected []string
+	}{
+		input:    []string{"ConfigMapRef=Foo", "SecretRef=Bar"},
+		expected: []string{"ConfigMapRef=Foo", "SecretRef=Bar"},
+	}
+	cmd := &cobra.Command{}
+	cmd.Flags().StringSlice("envFrom", test.input, "")
+
+	envFromStrings := cmdutil.GetFlagStringSlice(cmd, "envFrom")
+	if len(envFromStrings) != 2 || !reflect.DeepEqual(envFromStrings, test.expected) {
+		t.Errorf("expected: %s, saw: %s", test.expected, envFromStrings)
+	}
+}
+
 func TestRunArgsFollowDashRules(t *testing.T) {
 	one := int32(1)
 	rc := &v1.ReplicationController{

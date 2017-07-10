@@ -61,6 +61,12 @@ var (
 		# Start a single instance of hazelcast and set environment variables "DNS_DOMAIN=cluster" and "POD_NAMESPACE=default" in the container.
 		kubectl run hazelcast --image=hazelcast --env="DNS_DOMAIN=cluster" --env="POD_NAMESPACE=default"
 
+		# Start a single instance of hazelcast and set environment variables from ConfigMap named "ConfigMapA" and "ConfigMapB" in the container.
+		kubectl run hazelcast --image=hazelcast --envFrom="ConfigMapRef=ConfigMapA" --envFrom="ConfigMapB"
+
+		# Start a single instance of hazelcast and set environment variables from Secret name "SecretsA" and "SecretsB" in the container.
+		kubectl run hazelcast --image=hazelcast --envFrom="SecretRef=SecretsA" --envFrom="SecretsB"
+
 		# Start a replicated instance of nginx.
 		kubectl run nginx --image=nginx --replicas=5
 
@@ -88,7 +94,7 @@ var (
 
 func NewCmdRun(f cmdutil.Factory, cmdIn io.Reader, cmdOut, cmdErr io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "run NAME --image=image [--env=\"key=value\"] [--port=port] [--replicas=replicas] [--dry-run=bool] [--overrides=inline-json] [--command] -- [COMMAND] [args...]",
+		Use:     "run NAME --image=image [--env=\"key=value\"] [--envFrom=\"ConfigMapRef|SecretRef=name\"] [--port=port] [--replicas=replicas] [--dry-run=bool] [--overrides=inline-json] [--command] -- [COMMAND] [args...]",
 		Short:   i18n.T("Run a particular image on the cluster"),
 		Long:    runLong,
 		Example: runExample,
@@ -117,6 +123,7 @@ func addRunFlags(cmd *cobra.Command) {
 	cmd.Flags().Bool("rm", false, "If true, delete resources created in this command for attached containers.")
 	cmd.Flags().String("overrides", "", i18n.T("An inline JSON override for the generated object. If this is non-empty, it is used to override the generated object. Requires that the object supply a valid apiVersion field."))
 	cmd.Flags().StringSlice("env", []string{}, "Environment variables to set in the container")
+	cmd.Flags().StringSlice("envFrom", []string{}, "Environment variables to set from ConfigMap or Secret in the container")
 	cmd.Flags().String("port", "", i18n.T("The port that this container exposes.  If --expose is true, this is also the port used by the service that is created."))
 	cmd.Flags().Int("hostport", -1, "The host port mapping for the container port. To demonstrate a single-machine container.")
 	cmd.Flags().StringP("labels", "l", "", "Labels to apply to the pod(s).")
@@ -252,6 +259,7 @@ func RunRun(f cmdutil.Factory, cmdIn io.Reader, cmdOut, cmdErr io.Writer, cmd *c
 	}
 
 	params["env"] = cmdutil.GetFlagStringSlice(cmd, "env")
+	params["envFrom"] = cmdutil.GetFlagStringSlice(cmd, "envFrom")
 
 	obj, _, mapper, mapping, err := createGeneratedObject(f, cmd, generator, names, params, cmdutil.GetFlagString(cmd, "overrides"), namespace)
 	if err != nil {
