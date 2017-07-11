@@ -19,6 +19,7 @@ package schedulercache
 import (
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -26,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	v1helper "k8s.io/kubernetes/pkg/api/v1/helper"
 	priorityutil "k8s.io/kubernetes/plugin/pkg/scheduler/algorithm/priorities/util"
 	schedutil "k8s.io/kubernetes/plugin/pkg/scheduler/util"
 )
@@ -45,11 +47,18 @@ func deepEqualWithoutGeneration(t *testing.T, testcase int, actual, expected *No
 func TestAssumePodScheduled(t *testing.T) {
 	nodeName := "node"
 	testPods := []*v1.Pod{
-		makeBasePod(nodeName, "test", "100m", "500", []v1.ContainerPort{{HostPort: 80}}),
-		makeBasePod(nodeName, "test-1", "100m", "500", []v1.ContainerPort{{HostPort: 80}}),
-		makeBasePod(nodeName, "test-2", "200m", "1Ki", []v1.ContainerPort{{HostPort: 8080}}),
-		makeBasePod(nodeName, "test-nonzero", "", "", []v1.ContainerPort{{HostPort: 80}}),
+		makeBasePod(nodeName, "test", "100m", "500", "", []v1.ContainerPort{{HostPort: 80}}),
+		makeBasePod(nodeName, "test-1", "100m", "500", "", []v1.ContainerPort{{HostPort: 80}}),
+		makeBasePod(nodeName, "test-2", "200m", "1Ki", "", []v1.ContainerPort{{HostPort: 8080}}),
+		makeBasePod(nodeName, "test-nonzero", "", "", "", []v1.ContainerPort{{HostPort: 80}}),
+		makeBasePod(nodeName, "test", "100m", "500", "oir-foo:3", []v1.ContainerPort{{HostPort: 80}}),
+		makeBasePod(nodeName, "test-1", "100m", "500", "oir-foo:3", []v1.ContainerPort{{HostPort: 80}}),
+		makeBasePod(nodeName, "test-2", "200m", "1Ki", "oir-foo:5", []v1.ContainerPort{{HostPort: 8080}}),
+		makeBasePod(nodeName, "test-2", "200m", "1Ki", "oir-foo:5", []v1.ContainerPort{{HostPort: 8080}}),
 	}
+	var testPodInvalidOIR v1.Pod
+	testPodInvalidOIR = *(testPods[0])
+	testPodInvalidOIR.Spec.Containers[0].Resources.Requests["random-invalid-oir-key"] = resource.MustParse("100")
 
 	tests := []struct {
 		pods []*v1.Pod
@@ -100,7 +109,55 @@ func TestAssumePodScheduled(t *testing.T) {
 			pods:                []*v1.Pod{testPods[3]},
 			usedPorts:           map[int]bool{80: true},
 		},
-	}}
+	}, {
+		pods: []*v1.Pod{testPods[4]},
+		wNodeInfo: &NodeInfo{
+			requestedResource: &Resource{
+				MilliCPU:           100,
+				Memory:             500,
+				OpaqueIntResources: map[v1.ResourceName]int64{"pod.alpha.kubernetes.io/opaque-int-resource-oir-foo": 3},
+			},
+			nonzeroRequest: &Resource{
+				MilliCPU: 100,
+				Memory:   500,
+			},
+			allocatableResource: &Resource{},
+			pods:                []*v1.Pod{testPods[4]},
+			usedPorts:           map[int]bool{80: true},
+		},
+	}, {
+		pods: []*v1.Pod{testPods[5], testPods[6]},
+		wNodeInfo: &NodeInfo{
+			requestedResource: &Resource{
+				MilliCPU:           300,
+				Memory:             1524,
+				OpaqueIntResources: map[v1.ResourceName]int64{"pod.alpha.kubernetes.io/opaque-int-resource-oir-foo": 8},
+			},
+			nonzeroRequest: &Resource{
+				MilliCPU: 300,
+				Memory:   1524,
+			},
+			allocatableResource: &Resource{},
+			pods:                []*v1.Pod{testPods[5], testPods[6]},
+			usedPorts:           map[int]bool{80: true, 8080: true},
+		},
+	}, {
+		pods: []*v1.Pod{&testPodInvalidOIR},
+		wNodeInfo: &NodeInfo{
+			requestedResource: &Resource{
+				MilliCPU: 100,
+				Memory:   500,
+			},
+			nonzeroRequest: &Resource{
+				MilliCPU: 100,
+				Memory:   500,
+			},
+			allocatableResource: &Resource{},
+			pods:                []*v1.Pod{testPods[0]},
+			usedPorts:           map[int]bool{80: true},
+		},
+	},
+	}
 
 	for i, tt := range tests {
 		cache := newSchedulerCache(time.Second, time.Second, nil)
@@ -140,8 +197,8 @@ func assumeAndFinishBinding(cache *schedulerCache, pod *v1.Pod, assumedTime time
 func TestExpirePod(t *testing.T) {
 	nodeName := "node"
 	testPods := []*v1.Pod{
-		makeBasePod(nodeName, "test-1", "100m", "500", []v1.ContainerPort{{HostPort: 80}}),
-		makeBasePod(nodeName, "test-2", "200m", "1Ki", []v1.ContainerPort{{HostPort: 8080}}),
+		makeBasePod(nodeName, "test-1", "100m", "500", "", []v1.ContainerPort{{HostPort: 80}}),
+		makeBasePod(nodeName, "test-2", "200m", "1Ki", "", []v1.ContainerPort{{HostPort: 8080}}),
 	}
 	now := time.Now()
 	ttl := 10 * time.Second
@@ -200,8 +257,8 @@ func TestAddPodWillConfirm(t *testing.T) {
 	ttl := 10 * time.Second
 
 	testPods := []*v1.Pod{
-		makeBasePod(nodeName, "test-1", "100m", "500", []v1.ContainerPort{{HostPort: 80}}),
-		makeBasePod(nodeName, "test-2", "200m", "1Ki", []v1.ContainerPort{{HostPort: 8080}}),
+		makeBasePod(nodeName, "test-1", "100m", "500", "", []v1.ContainerPort{{HostPort: 80}}),
+		makeBasePod(nodeName, "test-2", "200m", "1Ki", "", []v1.ContainerPort{{HostPort: 8080}}),
 	}
 	tests := []struct {
 		podsToAssume []*v1.Pod
@@ -249,7 +306,7 @@ func TestAddPodWillConfirm(t *testing.T) {
 func TestAddPodAfterExpiration(t *testing.T) {
 	nodeName := "node"
 	ttl := 10 * time.Second
-	basePod := makeBasePod(nodeName, "test", "100m", "500", []v1.ContainerPort{{HostPort: 80}})
+	basePod := makeBasePod(nodeName, "test", "100m", "500", "", []v1.ContainerPort{{HostPort: 80}})
 	tests := []struct {
 		pod *v1.Pod
 
@@ -297,8 +354,8 @@ func TestUpdatePod(t *testing.T) {
 	nodeName := "node"
 	ttl := 10 * time.Second
 	testPods := []*v1.Pod{
-		makeBasePod(nodeName, "test", "100m", "500", []v1.ContainerPort{{HostPort: 80}}),
-		makeBasePod(nodeName, "test", "200m", "1Ki", []v1.ContainerPort{{HostPort: 8080}}),
+		makeBasePod(nodeName, "test", "100m", "500", "", []v1.ContainerPort{{HostPort: 80}}),
+		makeBasePod(nodeName, "test", "200m", "1Ki", "", []v1.ContainerPort{{HostPort: 8080}}),
 	}
 	tests := []struct {
 		podsToAssume []*v1.Pod
@@ -363,8 +420,8 @@ func TestExpireAddUpdatePod(t *testing.T) {
 	nodeName := "node"
 	ttl := 10 * time.Second
 	testPods := []*v1.Pod{
-		makeBasePod(nodeName, "test", "100m", "500", []v1.ContainerPort{{HostPort: 80}}),
-		makeBasePod(nodeName, "test", "200m", "1Ki", []v1.ContainerPort{{HostPort: 8080}}),
+		makeBasePod(nodeName, "test", "100m", "500", "", []v1.ContainerPort{{HostPort: 80}}),
+		makeBasePod(nodeName, "test", "200m", "1Ki", "", []v1.ContainerPort{{HostPort: 8080}}),
 	}
 	tests := []struct {
 		podsToAssume []*v1.Pod
@@ -436,7 +493,7 @@ func TestExpireAddUpdatePod(t *testing.T) {
 // TestRemovePod tests after added pod is removed, its information should also be subtracted.
 func TestRemovePod(t *testing.T) {
 	nodeName := "node"
-	basePod := makeBasePod(nodeName, "test", "100m", "500", []v1.ContainerPort{{HostPort: 80}})
+	basePod := makeBasePod(nodeName, "test", "100m", "500", "", []v1.ContainerPort{{HostPort: 80}})
 	tests := []struct {
 		pod       *v1.Pod
 		wNodeInfo *NodeInfo
@@ -478,7 +535,7 @@ func TestRemovePod(t *testing.T) {
 
 func TestForgetPod(t *testing.T) {
 	nodeName := "node"
-	basePod := makeBasePod(nodeName, "test", "100m", "500", []v1.ContainerPort{{HostPort: 80}})
+	basePod := makeBasePod(nodeName, "test", "100m", "500", "", []v1.ContainerPort{{HostPort: 80}})
 	tests := []struct {
 		pods []*v1.Pod
 	}{{
@@ -751,12 +808,17 @@ func benchmarkExpire(b *testing.B, podNum int) {
 	}
 }
 
-func makeBasePod(nodeName, objName, cpu, mem string, ports []v1.ContainerPort) *v1.Pod {
+func makeBasePod(nodeName, objName, cpu, mem, oir string, ports []v1.ContainerPort) *v1.Pod {
 	req := v1.ResourceList{}
 	if cpu != "" {
 		req = v1.ResourceList{
 			v1.ResourceCPU:    resource.MustParse(cpu),
 			v1.ResourceMemory: resource.MustParse(mem),
+		}
+		if oir != "" {
+			name := v1helper.OpaqueIntResourceName(strings.Split(oir, ":")[0])
+			quantity := resource.MustParse(strings.Split(oir, ":")[1])
+			req[name] = quantity
 		}
 	}
 	return &v1.Pod{
@@ -782,7 +844,7 @@ func setupCacheOf1kNodes30kPods(b *testing.B) Cache {
 		nodeName := fmt.Sprintf("node-%d", i)
 		for j := 0; j < 30; j++ {
 			objName := fmt.Sprintf("%s-pod-%d", nodeName, j)
-			pod := makeBasePod(nodeName, objName, "0", "0", nil)
+			pod := makeBasePod(nodeName, objName, "0", "0", "", nil)
 
 			if err := cache.AddPod(pod); err != nil {
 				b.Fatalf("AddPod failed: %v", err)
@@ -797,7 +859,7 @@ func setupCacheWithAssumedPods(b *testing.B, podNum int, assumedTime time.Time) 
 	for i := 0; i < podNum; i++ {
 		nodeName := fmt.Sprintf("node-%d", i/10)
 		objName := fmt.Sprintf("%s-pod-%d", nodeName, i%10)
-		pod := makeBasePod(nodeName, objName, "0", "0", nil)
+		pod := makeBasePod(nodeName, objName, "0", "0", "", nil)
 
 		err := assumeAndFinishBinding(cache, pod, assumedTime)
 		if err != nil {
