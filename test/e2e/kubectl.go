@@ -1699,43 +1699,77 @@ metadata:
 	framework.KubeDescribe("Kubectl v1.6 deployment reaper", func() {
 		var nsFlag string
 		var name string
+		var labelFlag string
 
 		BeforeEach(func() {
 			nsFlag = fmt.Sprintf("--namespace=%v", ns)
 			name = "e2e-test-nginx-deployment"
+			labelFlag = fmt.Sprintf("-l run=%v", name)
 		})
 
-		AfterEach(func() {
-			By("deleting the deployment " + name)
-			framework.RunKubectlOrDie("delete", "deployment", name, nsFlag)
-
-			By("verifying replicasets were deleted")
-			rsList, err := c.Extensions().ReplicaSets(ns).List(metav1.ListOptions{})
-			Expect(err).NotTo(HaveOccurred())
-			Expect(rsList.Items).To(HaveLen(0))
-		})
-
-		// Question: should we include "Conformance" label? It is an explicit 1.5-1.6 version skew test.
+		// No conformance label added as it is an explicit version skew test
 		It("should delete all replicasets of v1.5 cluster", func() {
-			// As test grid supports +/-1 minor version for kubectl skew, setting versions
-			// this way ensures only one test runs: v1.6 kubectl against v1.5 server
-			framework.SkipUnlessKubectlVersionGTE(utilversion.MustParseSemantic("v1.6.0-alpha.0"))
-			framework.SkipUnlessServerVersionLT(utilversion.MustParseSemantic("v1.6.0-alpha.0"), c.Discovery())
-
+			// Create deployment with a specific label so that replicasets and pods also have the label
 			By("running the image " + nginxImage)
-			framework.RunKubectlOrDie("run", name, "--image="+nginxImage, nsFlag)
+			framework.RunKubectlOrDie("run", name, "--image="+nginxImage, nsFlag, labelFlag)
 
 			// If the pod is created successfully, it means deployment and replicasets are created successfully too
 			By("verifying the pod controlled by " + name + " gets created")
 			label := labels.SelectorFromSet(labels.Set(map[string]string{"run": name}))
-			podlist, err := framework.WaitForPodsWithLabel(c, ns, label)
+			err := testutils.WaitForPodsWithLabelRunning(c, ns, label)
 			if err != nil {
 				framework.Failf("Failed getting pod controlled by %s: %v", name, err)
 			}
-			pods := podlist.Items
-			if pods == nil || len(pods) != 1 || len(pods[0].Spec.Containers) != 1 || pods[0].Spec.Containers[0].Image != nginxImage {
-				framework.RunKubectlOrDie("get", "pods", "-L", "run", nsFlag)
-				framework.Failf("Failed creating 1 pod with expected image %s. Number of pods = %v", nginxImage, len(pods))
+
+			By("deleting the deployment " + name)
+			framework.RunKubectlOrDie("delete", "deployment", name, nsFlag)
+
+			var pollErr error
+
+			// Verify deletion completion in this order: deployment, replicasets, pods
+			// In accord to how garbage processor works
+
+			By("verifying deployment was deleted")
+			wait.PollImmediate(time.Second, time.Minute, func() (bool, error) {
+				deploymentList, err := c.Extensions().Deployments(ns).List(metav1.ListOptions{LabelSelector: label.String()})
+
+				if err != nil || len(deploymentList.Items) != 0 {
+					pollErr = err
+					return false, nil
+				}
+				pollErr = nil
+				return true, nil
+			})
+			if pollErr != nil {
+				framework.Failf("%v", pollErr)
+			}
+
+			By("verifying replicasets were deleted")
+			wait.PollImmediate(time.Second, time.Minute, func() (bool, error) {
+				rsList, err := c.Extensions().ReplicaSets(ns).List(metav1.ListOptions{LabelSelector: label.String()})
+				if err != nil || len(rsList.Items) != 0 {
+					pollErr = err
+					return false, nil
+				}
+				pollErr = nil
+				return true, nil
+			})
+			if pollErr != nil {
+				framework.Failf("%v", pollErr)
+			}
+
+			By("verifying pods were deleted")
+			wait.PollImmediate(time.Second, time.Minute, func() (bool, error) {
+				podList, err := c.Core().Pods(ns).List(metav1.ListOptions{LabelSelector: label.String()})
+				if err != nil || len(podList.Items) != 0 {
+					pollErr = err
+					return false, nil
+				}
+				pollErr = nil
+				return true, nil
+			})
+			if pollErr != nil {
+				framework.Failf("%v", pollErr)
 			}
 		})
 	})
