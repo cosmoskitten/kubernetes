@@ -704,10 +704,10 @@ type ISCSIVolumeSource struct {
 	// +optional
 	SecretRef *LocalObjectReference
 	// Optional: Custom initiator name per volume.
-	// If InitiatorName is specified with ISCSIInterface simulateneouly, new iSCSI interface
+	// If initiatorName is specified with iscsiInterface simultaneously, new iSCSI interface
 	// <target portal>:<volume name> will be created for the connection.
 	// +optional
-	InitiatorName string
+	InitiatorName *string
 }
 
 // Represents a Fibre Channel volume.

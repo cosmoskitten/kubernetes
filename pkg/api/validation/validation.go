@@ -358,7 +358,7 @@ func ValidateVolumes(volumes []api.Volume, fldPath *field.Path) (sets.String, fi
 	for i, vol := range volumes {
 		idxPath := fldPath.Index(i)
 		namePath := idxPath.Child("name")
-		el := validateVolumeSource(&vol.VolumeSource, idxPath)
+		el := validateVolumeSource(&vol.VolumeSource, idxPath, vol.Name)
 		if len(vol.Name) == 0 {
 			el = append(el, field.Required(namePath, ""))
 		} else {
@@ -377,7 +377,7 @@ func ValidateVolumes(volumes []api.Volume, fldPath *field.Path) (sets.String, fi
 	return allNames, allErrs
 }
 
-func validateVolumeSource(source *api.VolumeSource, fldPath *field.Path) field.ErrorList {
+func validateVolumeSource(source *api.VolumeSource, fldPath *field.Path, volName string) field.ErrorList {
 	numVolumes := 0
 	allErrs := field.ErrorList{}
 	if source.EmptyDir != nil {
@@ -443,6 +443,10 @@ func validateVolumeSource(source *api.VolumeSource, fldPath *field.Path) field.E
 		} else {
 			numVolumes++
 			allErrs = append(allErrs, validateISCSIVolumeSource(source.ISCSI, fldPath.Child("iscsi"))...)
+		}
+		if source.ISCSI.InitiatorName != nil && len(volName+":"+source.ISCSI.TargetPortal) > 64 {
+			tooLongErr := "Total length of <volume name>:<iscsi.targetPortal> must be under 64 characters if iscsi.initiatorName is specified."
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("name"), volName, tooLongErr))
 		}
 	}
 	if source.Glusterfs != nil {
@@ -1285,6 +1289,10 @@ func ValidatePersistentVolume(pv *api.PersistentVolume) field.ErrorList {
 		} else {
 			numVolumes++
 			allErrs = append(allErrs, validateISCSIVolumeSource(pv.Spec.ISCSI, specPath.Child("iscsi"))...)
+		}
+		if pv.Spec.ISCSI.InitiatorName != nil && len(pv.ObjectMeta.Name+":"+pv.Spec.ISCSI.TargetPortal) > 64 {
+			tooLongErr := "Total length of <volume name>:<iscsi.targetPortal> must be under 64 characters if iscsi.initiatorName is specified."
+			allErrs = append(allErrs, field.Invalid(metaPath.Child("name"), pv.ObjectMeta.Name, tooLongErr))
 		}
 	}
 	if pv.Spec.Cinder != nil {
