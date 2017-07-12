@@ -201,10 +201,27 @@ type GroupResources struct {
 	// The empty string represents the core API group.
 	// +optional
 	Group string `json:"group,omitempty" protobuf:"bytes,1,opt,name=group"`
-	// Resources is a list of resources within the API group.
-	// Any empty list implies every resource kind in the API group.
+	// Resources is a list of resources within the API group. Specific subresources
+	// can be matched using a "/" to indicate the subresource. For example "pods" matches
+	// requests to "pods" and "pods/logs" but "pods/logs" only matches "pods/logs".
+	//
+	// To ignore specific subresources, policies should match the subresource before the
+	// non-subresourced kind.
+	//
+	//		policy:
+	//		- level: None
+	// 		  resources: ["pods/logs"] # Ignore pods/logs.
+	// 		- level: Metadata
+	//		  resources: ["pods"] # Catch all for "pods" and all other pods subresources.
+	//
+	// An empty list implies every resource kind in the API group.
 	// +optional
 	Resources []string `json:"resources,omitempty" protobuf:"bytes,2,rep,name=resources"`
+	// ResourceNames is a list of resource instance names that the policy matches.
+	// Using this field requires Resources to be specified.
+	// An empty list implies that ever instance of the resource is matched.
+	// +optional
+	ResourceNames []string `json:"resourceNames,omitempty" protobuf:"bytes,3,rep,name=resourceNames"`
 }
 
 // ObjectReference contains enough information to let you inspect or modify the referred object.
