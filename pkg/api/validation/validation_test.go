@@ -2427,7 +2427,7 @@ func TestAlphaLocalStorageCapacityIsolation(t *testing.T) {
 		return
 	}
 	for _, tc := range testCases {
-		if errs := validateVolumeSource(&tc, field.NewPath("spec")); len(errs) != 0 {
+		if errs := validateVolumeSource(&tc, field.NewPath("spec"), "tmpvol"); len(errs) != 0 {
 			t.Errorf("expected success: %v", errs)
 		}
 	}
@@ -2438,7 +2438,7 @@ func TestAlphaLocalStorageCapacityIsolation(t *testing.T) {
 		return
 	}
 	for _, tc := range testCases {
-		if errs := validateVolumeSource(&tc, field.NewPath("spec")); len(errs) == 0 {
+		if errs := validateVolumeSource(&tc, field.NewPath("spec"), "tmpvol"); len(errs) == 0 {
 			t.Errorf("expected failure: %v", errs)
 		}
 	}

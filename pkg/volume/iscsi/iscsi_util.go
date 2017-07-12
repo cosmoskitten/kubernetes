@@ -206,12 +206,14 @@ func (util *ISCSIUtil) AttachDisk(b iscsiDiskMounter) error {
 
 	bkpPortal := b.Portals
 
-	// create new iface and copy parameters pre-configured iface to the created iface
-	if b.InitiatorName != "" {
-		err = cloneIface(b, bkpPortal[0])
+	// create new iface and copy parameters from pre-configured iface to the created iface
+	if b.initiatorName != "" {
+		// new iface name is <target portal>:<volume name>
+		newIface := bkpPortal[0] + ":" + b.volName
+		err = cloneIface(b, newIface)
 		if err == nil {
-			// update iface name with <target portal>:<volume name>
-			b.Iface = bkpPortal[0] + ":" + b.volName
+			// update iface name
+			b.Iface = newIface
 		}
 	}
 
@@ -473,29 +475,22 @@ func parseIscsiadmShow(output string) (map[string]string, error) {
 	params := make(map[string]string)
 	slice := strings.Split(output, "\n")
 	for _, line := range slice {
-		if !strings.HasPrefix(line, "iface") || strings.Contains(line, "<empty>") {
+		if !strings.HasPrefix(line, "iface.") || strings.Contains(line, "<empty>") {
 			continue
 		}
 		iface := strings.Fields(line)
 		if len(iface) != 3 || iface[1] != "=" {
-			return nil, fmt.Errorf("Error invalid iface setting: %v", iface)
+			return nil, fmt.Errorf("Error: invalid iface setting: %v", iface)
 		}
 		params[iface[0]] = iface[2]
 	}
 	return params, nil
 }
 
-func cloneIface(b iscsiDiskMounter, tp string) error {
+func cloneIface(b iscsiDiskMounter, newIface string) error {
 	var lastErr error
-	newIface := tp + ":" + b.volName
-	// create new iface
-	out, err := b.plugin.execCommand("iscsiadm", []string{"-m", "iface", "-I", newIface, "-o", "new"})
-	if err != nil {
-		lastErr = fmt.Errorf("iscsi: failed to create new iface: %s (%v)", string(out), err)
-		return lastErr
-	}
 	// get pre-configured iface records
-	out, err = b.plugin.execCommand("iscsiadm", []string{"-m", "iface", "-I", b.Iface, "-o", "show"})
+	out, err := b.plugin.execCommand("iscsiadm", []string{"-m", "iface", "-I", b.Iface, "-o", "show"})
 	if err != nil {
 		b.plugin.execCommand("iscsiadm", []string{"-m", "iface", "-I", newIface, "-o", "delete"})
 		lastErr = fmt.Errorf("iscsi: failed to show iface records: %s (%v)", string(out), err)
@@ -509,7 +504,13 @@ func cloneIface(b iscsiDiskMounter, tp string) error {
 		return lastErr
 	}
 	// update initiatorname
-	params["iface.initiatorname"] = b.InitiatorName
+	params["iface.initiatorname"] = b.initiatorName
+	// create new iface
+	out, err = b.plugin.execCommand("iscsiadm", []string{"-m", "iface", "-I", newIface, "-o", "new"})
+	if err != nil {
+		lastErr = fmt.Errorf("iscsi: failed to create new iface: %s (%v)", string(out), err)
+		return lastErr
+	}
 	// update new iface records
 	for key, val := range params {
 		b.plugin.execCommand("iscsiadm", []string{"-m", "iface", "-I", newIface, "-o", "update", "-n", key, "-v", val})
