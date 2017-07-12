@@ -170,8 +170,10 @@ func NewNamespaceController(client federationclientset.Interface, dynamicClientP
 		},
 		func(client kubeclientset.Interface, obj runtime.Object) error {
 			namespace := obj.(*apiv1.Namespace)
-			orphanDependents := false
-			err := client.Core().Namespaces().Delete(namespace.Name, &metav1.DeleteOptions{OrphanDependents: &orphanDependents})
+			propagationPolicy := metav1.DeletePropagationForeground
+			err := client.Core().Namespaces().Delete(namespace.Name, &metav1.DeleteOptions{
+				PropagationPolicy: &propagationPolicy,
+			})
 			// IsNotFound error is fine since that means the object is deleted already.
 			if errors.IsNotFound(err) {
 				return nil
