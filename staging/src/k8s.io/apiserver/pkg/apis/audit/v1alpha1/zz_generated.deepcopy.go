@@ -138,6 +138,11 @@ func DeepCopy_v1alpha1_GroupResources(in interface{}, out interface{}, c *conver
 			*out = make([]string, len(*in))
 			copy(*out, *in)
 		}
+		if in.ResourceNames != nil {
+			in, out := &in.ResourceNames, &out.ResourceNames
+			*out = make([]string, len(*in))
+			copy(*out, *in)
+		}
 		return nil
 	}
 }
