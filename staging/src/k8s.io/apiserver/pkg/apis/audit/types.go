@@ -200,10 +200,17 @@ type GroupResources struct {
 	// The empty string represents the core API group.
 	// +optional
 	Group string
-	// Resources is a list of resources within the API group.
-	// Any empty list implies every resource kind in the API group.
+	// Resources is a list of resources within the API group. Specific subresources
+	// can be matched using a "/" to indicate the subresource. For example "pods" matches
+	// requests to "pods" and "pods/logs" but "pods/logs" only matches "pods/logs".
+	// An empty list implies every resource kind in the API group.
 	// +optional
 	Resources []string
+	// ResourceNames is a list of resource instance names that the policy matches.
+	// Using this field requires Resources to be specified.
+	// An empty list implies every resource instead of the resource.
+	// +optional
+	ResourceNames []string
 }
 
 // ObjectReference contains enough information to let you inspect or modify the referred object.
