@@ -174,11 +174,12 @@ type testKMSService struct {
 	disabled bool
 }
 
-func (t *testKMSService) Decrypt(data string) ([]byte, error) {
+func (t *testKMSService) Decrypt(data string) ([]byte, bool, error) {
 	if t.disabled {
-		return []byte{}, fmt.Errorf("KMS service was disabled")
+		return []byte{}, false, fmt.Errorf("KMS service was disabled")
 	}
-	return base64.StdEncoding.DecodeString(data)
+	res, err := base64.StdEncoding.DecodeString(data)
+	return res, false, err
 }
 
 func (t *testKMSService) Encrypt(data []byte) (string, error) {
@@ -194,38 +195,31 @@ func (t *testKMSService) SetDisabledStatus(status bool) {
 
 var _ kms.Service = &testKMSService{}
 
-type testFactory struct {
-	service kms.Service
-}
-
-func (t *testFactory) NewGoogleKMSService(_, _, _, _ string) (kms.Service, error) {
-	return t.service, nil
-}
-
 func TestEncryptionProviderConfigCorrect(t *testing.T) {
 	kmsService := &testKMSService{}
-	// Create a mock kmsFactory
-	kmsFactory := &testFactory{kmsService}
+	serviceGetter := func(_ string, _ map[string]interface{}) (kms.Service, error) {
+		return kmsService, nil
+	}
 
 	// Creates compound/prefix transformers with different ordering of available transformers.
 	// Transforms data using one of them, and tries to untransform using the others.
 	// Repeats this for all possible combinations.
-	identityFirstTransformerOverrides, err := ParseEncryptionConfiguration(strings.NewReader(correctConfigWithIdentityFirst), kmsFactory)
+	identityFirstTransformerOverrides, err := ParseEncryptionConfiguration(strings.NewReader(correctConfigWithIdentityFirst), serviceGetter)
 	if err != nil {
 		t.Fatalf("error while parsing configuration file: %s.\nThe file was:\n%s", err, correctConfigWithIdentityFirst)
 	}
 
-	aesGcmFirstTransformerOverrides, err := ParseEncryptionConfiguration(strings.NewReader(correctConfigWithAesGcmFirst), kmsFactory)
+	aesGcmFirstTransformerOverrides, err := ParseEncryptionConfiguration(strings.NewReader(correctConfigWithAesGcmFirst), serviceGetter)
 	if err != nil {
 		t.Fatalf("error while parsing configuration file: %s.\nThe file was:\n%s", err, correctConfigWithAesGcmFirst)
 	}
 
-	aesCbcFirstTransformerOverrides, err := ParseEncryptionConfiguration(strings.NewReader(correctConfigWithAesCbcFirst), kmsFactory)
+	aesCbcFirstTransformerOverrides, err := ParseEncryptionConfiguration(strings.NewReader(correctConfigWithAesCbcFirst), serviceGetter)
 	if err != nil {
 		t.Fatalf("error while parsing configuration file: %s.\nThe file was:\n%s", err, correctConfigWithAesCbcFirst)
 	}
 
-	secretboxFirstTransformerOverrides, err := ParseEncryptionConfiguration(strings.NewReader(correctConfigWithSecretboxFirst), kmsFactory)
+	secretboxFirstTransformerOverrides, err := ParseEncryptionConfiguration(strings.NewReader(correctConfigWithSecretboxFirst), serviceGetter)
 	if err != nil {
 		t.Fatalf("error while parsing configuration file: %s.\nThe file was:\n%s", err, correctConfigWithSecretboxFirst)
 	}
