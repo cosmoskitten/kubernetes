@@ -143,6 +143,7 @@ func (plugin *iscsiPlugin) newMounterInternal(spec *volume.Spec, podUID types.UI
 			chap_discovery: iscsi.DiscoveryCHAPAuth,
 			chap_session:   iscsi.SessionCHAPAuth,
 			secret:         secret,
+			InitiatorName:  iscsi.InitiatorName,
 			manager:        manager,
 			plugin:         plugin},
 		fsType:       iscsi.FSType,
@@ -198,6 +199,7 @@ type iscsiDisk struct {
 	chap_discovery bool
 	chap_session   bool
 	secret         map[string]string
+	InitiatorName  string
 	plugin         *iscsiPlugin
 	// Utility interface that provides API calls to the provider to attach/detach disks.
 	manager diskManager

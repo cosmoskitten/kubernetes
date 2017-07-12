@@ -1090,6 +1090,11 @@ type ISCSIVolumeSource struct {
 	// CHAP secret for iSCSI target and initiator authentication
 	// +optional
 	SecretRef *LocalObjectReference `json:"secretRef,omitempty" protobuf:"bytes,10,opt,name=secretRef"`
+	// Custom iSCSI initiator name.
+	// If InitiatorName is specified with ISCSIInterface simulateneouly, new iSCSI interface
+	// <target portal>:<volume name> will be created for the connection.
+	// +optional
+	InitiatorName string `json:"initiatorName,omitempty" protobuf:"bytes,12,opt,name=initiatorName"`
 }
 
 // Represents a Fibre Channel volume.

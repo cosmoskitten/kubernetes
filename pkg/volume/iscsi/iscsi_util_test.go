@@ -183,3 +183,64 @@ func TestWaitForPathToExist(t *testing.T) {
 		t.Errorf("waitForPathToExist: wrong code path called for %s", devicePath[1])
 	}
 }
+
+func TestParseIscsiadmShow(t *testing.T) {
+	fakeIscsiadmOutput1 := "# BEGIN RECORD 2.0-873\n" +
+		"iface.iscsi_ifacename = default\n" +
+		"iface.transport_name = tcp\n" +
+		"iface.initiatorname = <empty>\n" +
+		"iface.mtu = 0\n" +
+		"# END RECORD"
+
+	fakeIscsiadmOutput2 := "# BEGIN RECORD 2.0-873\n" +
+		"iface.iscsi_ifacename = default\n" +
+		"iface.transport_name = cxgb4i\n" +
+		"iface.initiatorname = <empty>\n" +
+		"iface.mtu = 0\n" +
+		"# END RECORD"
+
+	fakeIscsiadmOutput3 := "# BEGIN RECORD 2.0-873\n" +
+		"iface.iscsi_ifacename = custom\n" +
+		"iface.transport_name = <empty>\n" +
+		"iface.initiatorname = <empty>\n" +
+		"iface.mtu = 0\n" +
+		"# END RECORD"
+
+	fakeIscsiadmOutput4 := "iface.iscsi_ifacename=error"
+	fakeIscsiadmOutput5 := "iface.iscsi_ifacename + error"
+
+	expectedIscsiadmOutput1 := map[string]string{
+		"iface.iscsi_ifacename": "default",
+		"iface.transport_name":  "tcp",
+		"iface.mtu":             "0"}
+
+	expectedIscsiadmOutput2 := map[string]string{
+		"iface.iscsi_ifacename": "default",
+		"iface.transport_name":  "cxgb4i",
+		"iface.mtu":             "0"}
+
+	expectedIscsiadmOutput3 := map[string]string{
+		"iface.iscsi_ifacename": "custom",
+		"iface.mtu":             "0"}
+
+	params, _ := parseIscsiadmShow(fakeIscsiadmOutput1)
+	if !reflect.DeepEqual(params, expectedIscsiadmOutput1) {
+		t.Errorf("parseIscsiadmShow: Fail to parse iface record: %s", params)
+	}
+	params, _ = parseIscsiadmShow(fakeIscsiadmOutput2)
+	if !reflect.DeepEqual(params, expectedIscsiadmOutput2) {
+		t.Errorf("parseIscsiadmShow: Fail to parse iface record: %s", params)
+	}
+	params, _ = parseIscsiadmShow(fakeIscsiadmOutput3)
+	if !reflect.DeepEqual(params, expectedIscsiadmOutput3) {
+		t.Errorf("parseIscsiadmShow: Fail to parse iface record: %s", params)
+	}
+	_, err := parseIscsiadmShow(fakeIscsiadmOutput4)
+	if err == nil {
+		t.Errorf("parseIscsiadmShow: Fail to handle invalid record: iface %s", fakeIscsiadmOutput4)
+	}
+	_, err = parseIscsiadmShow(fakeIscsiadmOutput5)
+	if err == nil {
+		t.Errorf("parseIscsiadmShow: Fail to handle invalid record: iface %s", fakeIscsiadmOutput5)
+	}
+}
