@@ -207,7 +207,7 @@ func (util *ISCSIUtil) AttachDisk(b iscsiDiskMounter) error {
 	bkpPortal := b.Portals
 
 	// create new iface and copy parameters from pre-configured iface to the created iface
-	if b.initiatorName != "" {
+	if b.InitiatorName != "" {
 		// new iface name is <target portal>:<volume name>
 		newIface := bkpPortal[0] + ":" + b.volName
 		err = cloneIface(b, newIface)
@@ -343,12 +343,13 @@ func (util *ISCSIUtil) DetachDisk(c iscsiDiskUnmounter, mntPath string) error {
 		refCount, err := getDevicePrefixRefCount(c.mounter, prefix)
 		if err == nil && refCount == 0 {
 			var bkpPortal []string
-			var iqn, iface string
+			var iqn, iface, initiatorName string
 			found := true
 
 			// load iscsi disk config from json file
 			if err := util.loadISCSI(c.iscsiDisk, mntPath); err == nil {
 				bkpPortal, iqn, iface = c.iscsiDisk.Portals, c.iscsiDisk.Iqn, c.iscsiDisk.Iface
+				initiatorName = c.iscsiDisk.InitiatorName
 			} else {
 				// If the iscsi disk config is not found, fall back to the original behavior.
 				// This portal/iqn/iface is no longer referenced, log out.
@@ -384,7 +385,8 @@ func (util *ISCSIUtil) DetachDisk(c iscsiDiskUnmounter, mntPath string) error {
 				}
 			}
 			// Delete the iface after all sessions have logged out
-			if iface == (portals[0]+":"+c.volName) && found {
+			// If the iface is not created via iscsi plugin, skip to delete
+			if initiatorName != "" && found && iface == (portals[0]+":"+c.volName) {
 				delete := []string{"-m", "iface", "-I", iface, "-o", "delete"}
 				out, err := c.plugin.execCommand("iscsiadm", delete)
 				if err != nil {
@@ -504,7 +506,7 @@ func cloneIface(b iscsiDiskMounter, newIface string) error {
 		return lastErr
 	}
 	// update initiatorname
-	params["iface.initiatorname"] = b.initiatorName
+	params["iface.initiatorname"] = b.InitiatorName
 	// create new iface
 	out, err = b.plugin.execCommand("iscsiadm", []string{"-m", "iface", "-I", newIface, "-o", "new"})
 	if err != nil {
