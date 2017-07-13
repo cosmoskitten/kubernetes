@@ -25,7 +25,6 @@ import (
 
 	kubeadmapi "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm"
 	kubeadmapiext "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/v1alpha1"
-	"k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/validation"
 	kubeadmconstants "k8s.io/kubernetes/cmd/kubeadm/app/constants"
 	certphase "k8s.io/kubernetes/cmd/kubeadm/app/phases/certs"
 	"k8s.io/kubernetes/cmd/kubeadm/app/phases/certs/pkiutil"
@@ -123,7 +122,7 @@ func newSubCmdCerts() []*cobra.Command {
 }
 
 // runCmdFunc creates a cobra.Command Run function, by composing the call to the given cmdFunc with necessary additional steps (e.g preparation of inpunt parameters)
-func runCmdFunc(cmdFunc func(cfg *kubeadmapi.MasterConfiguration) error, cfgPath *string, cfg *kubeadmapiext.MasterConfiguration) func(cmd *cobra.Command, args []string) {
+func runCmdFunc(cmdFunc func(*kubeadmapi.MasterConfiguration) error, cfgPath *string, versionedcfg *kubeadmapiext.MasterConfiguration) func(cmd *cobra.Command, args []string) {
 
 	// the following statement build a clousure that wraps a call to a CreateCertFunc, binding
 	// the function itself with the specific parameters of each sub command.
@@ -131,24 +130,9 @@ func runCmdFunc(cmdFunc func(cfg *kubeadmapi.MasterConfiguration) error, cfgPath
 	// are shared between sub commnands and gets access to current value e.g. flags value.
 
 	return func(cmd *cobra.Command, args []string) {
-		internalcfg := &kubeadmapi.MasterConfiguration{}
-
-		// Takes passed flags into account; the defaulting is executed once again enforcing assignement of
-		// static default values to cfg only for values not provided with flags
-		api.Scheme.Default(cfg)
-		api.Scheme.Convert(cfg, internalcfg, nil)
-
-		// Loads configuration from config file, if provided
-		// Nb. --config overrides command line flags
-		err := configutil.TryLoadMasterConfiguration(*cfgPath, internalcfg)
-		kubeadmutil.CheckErr(err)
-
-		// Applies dynamic defaults to settings not provided with flags
-		err = configutil.SetInitDynamicDefaults(internalcfg)
-		kubeadmutil.CheckErr(err)
-
-		// Validates cfg (flags/configs + defaults + dynamic defaults)
-		err = validation.ValidateMasterConfiguration(internalcfg).ToAggregate()
+		// Take the configuration populated from flags, override it with the config file if specified
+		// Default the configuration and validate. Return the internal version of the API object
+		internalcfg, err := configutil.MakeMasterConfigurationFromDefaults(*cfgPath, versionedcfg)
 		kubeadmutil.CheckErr(err)
 
 		// Execute the cmdFunc

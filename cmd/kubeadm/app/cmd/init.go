@@ -19,7 +19,6 @@ package cmd
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"path/filepath"
 	"strconv"
 	"text/template"
@@ -27,7 +26,6 @@ import (
 	"github.com/renstrom/dedent"
 	"github.com/spf13/cobra"
 
-	"k8s.io/apimachinery/pkg/runtime"
 	kubeadmapi "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm"
 	kubeadmapiext "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/v1alpha1"
 	"k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/validation"
@@ -80,13 +78,10 @@ func NewCmdInit(out io.Writer) *cobra.Command {
 		Use:   "init",
 		Short: "Run this in order to set up the Kubernetes master",
 		Run: func(cmd *cobra.Command, args []string) {
-			api.Scheme.Default(cfg)
-			internalcfg := &kubeadmapi.MasterConfiguration{}
-			api.Scheme.Convert(cfg, internalcfg, nil)
+			kubeadmutil.CheckErr(ValidateFlags(cmd))
 
-			i, err := NewInit(cfgPath, internalcfg, skipPreFlight, skipTokenPrint)
+			i, err := NewInit(cfgPath, cfg, skipPreFlight, skipTokenPrint)
 			kubeadmutil.CheckErr(err)
-			kubeadmutil.CheckErr(i.Validate(cmd))
 			kubeadmutil.CheckErr(i.Run(out))
 		},
 	}
@@ -154,22 +149,13 @@ func NewCmdInit(out io.Writer) *cobra.Command {
 	return cmd
 }
 
-func NewInit(cfgPath string, cfg *kubeadmapi.MasterConfiguration, skipPreFlight, skipTokenPrint bool) (*Init, error) {
+func NewInit(cfgPath string, externalcfg *kubeadmapiext.MasterConfiguration, skipPreFlight, skipTokenPrint bool) (*Init, error) {
 
 	fmt.Println("[kubeadm] WARNING: kubeadm is in beta, please do not use it for production clusters.")
 
-	if cfgPath != "" {
-		b, err := ioutil.ReadFile(cfgPath)
-		if err != nil {
-			return nil, fmt.Errorf("unable to read config from %q [%v]", cfgPath, err)
-		}
-		if err := runtime.DecodeInto(api.Codecs.UniversalDecoder(), b, cfg); err != nil {
-			return nil, fmt.Errorf("unable to decode config from %q [%v]", cfgPath, err)
-		}
-	}
-
-	// Set defaults dynamically that the API group defaulting can't (by fetching information from the internet, looking up network interfaces, etc.)
-	err := configutil.SetInitDynamicDefaults(cfg)
+	// Take the configuration populated from flags, override it with the config file if specified
+	// Default the configuration and validate. Return the internal version of the API object
+	cfg, err := configutil.MakeMasterConfigurationFromDefaults(cfgPath, externalcfg)
 	if err != nil {
 		return nil, err
 	}
@@ -204,12 +190,12 @@ type Init struct {
 	skipTokenPrint bool
 }
 
-// Validate validates configuration passed to "kubeadm init"
-func (i *Init) Validate(cmd *cobra.Command) error {
+// ValidateFlags validates the flags passed to "kubeadm init"
+func ValidateFlags(cmd *cobra.Command) error {
 	if err := validation.ValidateMixedArguments(cmd.PersistentFlags()); err != nil {
 		return err
 	}
-	return validation.ValidateMasterConfiguration(i.cfg).ToAggregate()
+	return nil
 }
 
 // Run executes master node provisioning, including certificates, needed static pod manifests, etc.

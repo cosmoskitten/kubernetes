@@ -26,10 +26,12 @@ import (
 	kubeadmapi "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm"
 	kubeadmconstants "k8s.io/kubernetes/cmd/kubeadm/app/constants"
 	kubeadmutil "k8s.io/kubernetes/cmd/kubeadm/app/util"
+	kubeadmapiext "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/v1alpha1"
 	tokenutil "k8s.io/kubernetes/cmd/kubeadm/app/util/token"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/util/node"
 	"k8s.io/kubernetes/pkg/util/version"
+	"k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/validation"
 )
 
 func SetInitDynamicDefaults(cfg *kubeadmapi.MasterConfiguration) error {
@@ -72,7 +74,7 @@ func SetInitDynamicDefaults(cfg *kubeadmapi.MasterConfiguration) error {
 }
 
 // TryLoadMasterConfiguration tries to loads a Master configuration from the given file (if defined)
-func TryLoadMasterConfiguration(cfgPath string, cfg *kubeadmapi.MasterConfiguration) error {
+func TryLoadMasterConfiguration(cfgPath string, cfg *kubeadmapiext.MasterConfiguration) error {
 
 	if cfgPath != "" {
 		b, err := ioutil.ReadFile(cfgPath)
@@ -85,4 +87,32 @@ func TryLoadMasterConfiguration(cfgPath string, cfg *kubeadmapi.MasterConfigurat
 	}
 
 	return nil
+}
+
+// MakeMasterConfigurationFromDefaults returns the internal version of the API object from a (possibly populated) external version of the object
+// If a path is specified, the function overwrites cfg with the contents of the file.
+func MakeMasterConfigurationFromDefaults(cfgPath string, cfg *kubeadmapiext.MasterConfiguration) (*kubeadmapi.MasterConfiguration, error) {
+	internalcfg := &kubeadmapi.MasterConfiguration{}
+
+	// Loads configuration from config file, if provided
+	// Nb. --config overrides command line flags
+	if err := TryLoadMasterConfiguration(cfgPath, cfg); err != nil {
+		return nil, err
+	}
+
+	// Takes passed flags into account; the defaulting is executed once again enforcing assignement of
+	// static default values to cfg only for values not provided with flags
+	api.Scheme.Default(cfg)
+	api.Scheme.Convert(cfg, internalcfg, nil)
+
+	// Applies dynamic defaults to settings not provided with flags
+	if err := SetInitDynamicDefaults(internalcfg); err != nil {
+		return nil, err
+	}
+
+	// Validates cfg (flags/configs + defaults + dynamic defaults)
+	if err := validation.ValidateMasterConfiguration(internalcfg).ToAggregate(); err != nil {
+		return nil, err
+	}
+	return internalcfg, nil
 }
