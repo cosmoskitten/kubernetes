@@ -219,6 +219,9 @@ type ObjectMappingFactory interface {
 	// AttachablePodForObject returns the pod to which to attach given an object.
 	AttachablePodForObject(object runtime.Object, timeout time.Duration) (*api.Pod, error)
 
+	// MostAccuratePodTemplateForObject return a pod template given an object.
+	MostAccuratePodTemplateForObject(object runtime.Object, timeout time.Duration) (*api.PodTemplateSpec, error)
+
 	// Returns a schema that can validate objects stored on disk.
 	Validator(validate bool, cacheDir string) (validation.Schema, error)
 	// SwaggerSchema returns the schema declaration for the provided group version kind.
@@ -326,6 +329,33 @@ func GetFirstPod(client coreclient.PodsGetter, namespace string, selector labels
 		return nil, 0, fmt.Errorf("%#v is not a pod event", event)
 	}
 	return pod, 1, nil
+}
+
+// GetAllPods returns all pods matching the namespace and label selector
+func GetAllPods(client coreclient.PodsGetter, namespace string, selector labels.Selector, sortBy func([]*v1.Pod) sort.Interface) ([]*api.Pod, error) {
+	options := metav1.ListOptions{LabelSelector: selector.String()}
+	res := []*api.Pod{}
+	podList, err := client.Pods(namespace).List(options)
+	if err != nil {
+		return nil, err
+	}
+	pods := []*v1.Pod{}
+	for i := range podList.Items {
+		pod := podList.Items[i]
+		externalPod := &v1.Pod{}
+		k8s_api_v1.Convert_api_Pod_To_v1_Pod(&pod, externalPod, nil)
+		pods = append(pods, externalPod)
+	}
+
+	if len(pods) > 0 {
+		sort.Sort(sortBy(pods))
+		for j := range pods {
+			internalPod := &api.Pod{}
+			k8s_api_v1.Convert_v1_Pod_To_api_Pod(pods[j], internalPod, nil)
+			res = append(res, internalPod)
+		}
+	}
+	return res, nil
 }
 
 func makePortsString(ports []api.ServicePort, useNodePort bool) string {

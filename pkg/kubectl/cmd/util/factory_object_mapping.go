@@ -30,6 +30,7 @@ import (
 	swagger "github.com/emicklei/go-restful-swagger12"
 
 	"k8s.io/api/core/v1"
+	extensions_v1beta1 "k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -44,8 +45,10 @@ import (
 	"k8s.io/kubernetes/pkg/apis/apps"
 	"k8s.io/kubernetes/pkg/apis/batch"
 	"k8s.io/kubernetes/pkg/apis/extensions"
+	k8s_extentions_v1beta1 "k8s.io/kubernetes/pkg/apis/extensions/v1beta1"
 	client "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/controller"
+	deploymentutil "k8s.io/kubernetes/pkg/controller/deployment/util"
 	"k8s.io/kubernetes/pkg/kubectl"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/util/openapi"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
@@ -400,6 +403,114 @@ func (f *ring1Factory) AttachablePodForObject(object runtime.Object, timeout tim
 	sortBy := func(pods []*v1.Pod) sort.Interface { return sort.Reverse(controller.ActivePods(pods)) }
 	pod, _, err := GetFirstPod(clientset.Core(), namespace, selector, timeout, sortBy)
 	return pod, err
+}
+
+func (f *ring1Factory) MostAccuratePodTemplateForObject(object runtime.Object, timeout time.Duration) (*api.PodTemplateSpec, error) {
+	sortBy := func(pods []*v1.Pod) sort.Interface { return controller.ActivePods(pods) }
+	clientset, err := f.clientAccessFactory.ClientSetForVersion(nil)
+	if err != nil {
+		return nil, err
+	}
+	var podSpec *api.PodTemplateSpec
+	var pod *api.Pod
+	var selector labels.Selector
+	var namespace string
+	switch t := object.(type) {
+	case *extensions.ReplicaSet:
+		namespace = t.Namespace
+		selector = labels.SelectorFromSet(t.Spec.Selector.MatchLabels)
+		if err != nil {
+			return &t.Spec.Template, fmt.Errorf("invalid label selector: %v", err)
+		}
+		pods, err := GetAllPods(clientset.Core(), namespace, selector, sortBy)
+		if err != nil || len(pods) == 0 {
+			return &t.Spec.Template, err
+		}
+		pod = pods[0]
+	case *api.ReplicationController:
+		namespace = t.Namespace
+		selector = labels.SelectorFromSet(t.Spec.Selector)
+		if err != nil {
+			return t.Spec.Template, fmt.Errorf("invalid label selector: %v", err)
+		}
+		pods, err := GetAllPods(clientset.Core(), namespace, selector, sortBy)
+		if err != nil || len(pods) == 0 {
+			return t.Spec.Template, err
+		}
+		pod = pods[0]
+	case *apps.StatefulSet:
+		namespace = t.Namespace
+		selector, err = metav1.LabelSelectorAsSelector(t.Spec.Selector)
+		if err != nil {
+			return &t.Spec.Template, fmt.Errorf("invalid label selector: %v", err)
+		}
+		pods, err := GetAllPods(clientset.Core(), namespace, selector, sortBy)
+		if err != nil || len(pods) == 0 {
+			return &t.Spec.Template, err
+		}
+		pod = pods[0]
+	case *extensions.Deployment:
+		namespace = t.Namespace
+		selector, err = metav1.LabelSelectorAsSelector(t.Spec.Selector)
+		if err != nil {
+			return &t.Spec.Template, fmt.Errorf("invalid label selector: %v", err)
+		}
+		options := metav1.ListOptions{LabelSelector: selector.String()}
+		var allRs []*extensions_v1beta1.ReplicaSet
+		rsList, err := clientset.Extensions().ReplicaSets(namespace).List(options)
+		if err != nil {
+			return &t.Spec.Template, err
+		}
+		for _, rs := range rsList.Items {
+			rs_external := &extensions_v1beta1.ReplicaSet{}
+			k8s_extentions_v1beta1.Convert_extensions_ReplicaSet_To_v1beta1_ReplicaSet(&rs, rs_external, nil)
+			allRs = append(allRs, rs_external)
+		}
+		d := &extensions_v1beta1.Deployment{}
+		api.Scheme.Convert(t, d, nil)
+		rs, err := deploymentutil.FindNewReplicaSet(d, allRs)
+		if err != nil {
+			return &t.Spec.Template, err
+		}
+		rs_selector, err := metav1.LabelSelectorAsSelector(rs.Spec.Selector)
+		if err != nil {
+			return &t.Spec.Template, fmt.Errorf("invalid label selector: %v", err)
+		}
+		pods, err := GetAllPods(clientset.Core(), namespace, rs_selector, sortBy)
+		if err != nil || len(pods) == 0 {
+			return &t.Spec.Template, err
+		}
+		pod = pods[0]
+	case *batch.Job:
+		namespace = t.Namespace
+		selector, err = metav1.LabelSelectorAsSelector(t.Spec.Selector)
+		if err != nil {
+			return nil, fmt.Errorf("invalid label selector: %v", err)
+		}
+		pods, err := GetAllPods(clientset.Core(), namespace, selector, sortBy)
+		if err != nil || len(pods) == 0 {
+			return &t.Spec.Template, err
+		}
+		pod = pods[0]
+	case *api.Pod:
+		podSpec = &api.PodTemplateSpec{
+			ObjectMeta: t.ObjectMeta,
+			Spec:       t.Spec,
+		}
+	default:
+		gvks, _, err := api.Scheme.ObjectKinds(object)
+		if err != nil {
+			return nil, err
+		}
+		return nil, fmt.Errorf("cannot get pod template of %v: not implemented", gvks[0])
+	}
+	if pod != nil {
+		podSpec = &api.PodTemplateSpec{
+			ObjectMeta: pod.ObjectMeta,
+			Spec:       pod.Spec,
+		}
+	}
+	return podSpec, err
 }
 
 func (f *ring1Factory) Validator(validate bool, cacheDir string) (validation.Schema, error) {
