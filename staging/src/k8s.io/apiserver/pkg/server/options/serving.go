@@ -70,6 +70,10 @@ type GeneratableKeyCert struct {
 	// PairName is the name which will be used with CertDirectory to make a cert and key names
 	// It becomes CertDirector/PairName.crt and CertDirector/PairName.key
 	PairName string
+
+	// CipherSuites is the list of allowed cipher suites for the server.
+	// Values are from tls package constants (https://golang.org/pkg/crypto/tls/#pkg-constants).
+	CipherSuites []string
 }
 
 func NewSecureServingOptions() *SecureServingOptions {
@@ -124,6 +128,11 @@ func (s *SecureServingOptions) AddFlags(fs *pflag.FlagSet) {
 		"certificate authority will used for secure access from Admission "+
 		"Controllers. This must be a valid PEM-encoded CA bundle. Altneratively, the certificate authority "+
 		"can be appended to the certificate provided by --tls-cert-file.")
+
+	fs.StringSliceVar(&s.ServerCert.CipherSuites, "tls-cipher-suites", s.ServerCert.CipherSuites,
+		"Comma-separated list of cipher suites for the server. "+
+			"Values are from tls package constants (https://golang.org/pkg/crypto/tls/#pkg-constants). "+
+			"If ommited, the default Go cipher suites will be used")
 
 	fs.Var(utilflag.NewNamedCertKeyArray(&s.SNICertKeys), "tls-sni-cert-key", ""+
 		"A pair of x509 certificate and private key file paths, optionally suffixed with a list of "+
@@ -244,6 +253,16 @@ func (s *SecureServingOptions) applyServingInfoTo(c *server.Config) error {
 		secureServingInfo.CACert = &tls.Certificate{
 			Certificate: [][]byte{block.Bytes},
 		}
+	}
+
+	if len(s.ServerCert.CipherSuites) != 0 {
+		csFlag := utilflag.NewCipherSuitesFlag()
+		cipherSuites, err := csFlag.StrToUInt16(s.ServerCert.CipherSuites)
+		if err != nil {
+			return err
+		}
+
+		secureServingInfo.CipherSuites = cipherSuites
 	}
 
 	// load SNI certs
