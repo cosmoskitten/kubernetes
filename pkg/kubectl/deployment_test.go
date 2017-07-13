@@ -17,8 +17,10 @@ limitations under the License.
 package kubectl
 
 import (
-	"reflect"
+	"encoding/json"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	"k8s.io/api/core/v1"
@@ -130,8 +132,11 @@ func TestDeploymentGenerate(t *testing.T) {
 		case !test.expectErr && err == nil:
 			// do nothing and drop through
 		}
-		if !reflect.DeepEqual(obj.(*extensionsv1beta1.Deployment), test.expected) {
-			t.Errorf("expected:\n%#v\nsaw:\n%#v", test.expected, obj.(*extensionsv1beta1.Deployment))
+		expectedBytes, _ := json.MarshalIndent(test.expected, "", "\t")
+		receivedBytes, _ := json.MarshalIndent(obj, "", "\t")
+		expectedStr, receivedStr := string(expectedBytes), string(receivedBytes)
+		if expectedStr != receivedStr {
+			t.Errorf("expected:\n%s\nsaw:\n%s", expectedStr, receivedStr)
 		}
 	}
 }
@@ -240,8 +245,37 @@ func TestAppsDeploymentGenerate(t *testing.T) {
 		case !test.expectErr && err == nil:
 			// do nothing and drop through
 		}
-		if !reflect.DeepEqual(obj.(*appsv1beta1.Deployment), test.expected) {
-			t.Errorf("expected:\n%#v\nsaw:\n%#v", test.expected, obj.(*appsv1beta1.Deployment))
+		expectedBytes, _ := json.MarshalIndent(test.expected, "", "\t")
+		receivedBytes, _ := json.MarshalIndent(obj, "", "\t")
+		expectedStr, receivedStr := string(expectedBytes), string(receivedBytes)
+		if expectedStr != receivedStr {
+			t.Errorf("expected:\n%s\nsaw:\n%s", expectedStr, receivedStr)
 		}
 	}
+}
+
+func TestBaseDeploymentGenerator_validate(t *testing.T) {
+	// Valid params should not result in an error.
+	b := BaseDeploymentGenerator{
+		Name:    "my-deployment",
+		Images:  []string{"nginx"},
+		Command: []string{"/bin/bash"},
+	}
+	assert.NoError(t, b.validate())
+
+	// You should not be able to specify a Command when there are multiple
+	// Images.
+	b = BaseDeploymentGenerator{
+		Name:    "my-deployment",
+		Images:  []string{"nginx", "alpine"},
+		Command: []string{"/bin/bash"},
+	}
+	assert.Error(t, b.validate())
+
+	// But multiple Images with no Command is fine.
+	b = BaseDeploymentGenerator{
+		Name:   "my-deployment",
+		Images: []string{"nginx", "alpine"},
+	}
+	assert.NoError(t, b.validate())
 }
