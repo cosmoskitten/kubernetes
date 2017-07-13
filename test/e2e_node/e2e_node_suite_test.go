@@ -35,8 +35,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	nodeutil "k8s.io/kubernetes/pkg/api/v1/node"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
-	commontest "k8s.io/kubernetes/test/e2e/common"
 	"k8s.io/kubernetes/test/e2e/framework"
+	commontest "k8s.io/kubernetes/test/e2e_common"
 	"k8s.io/kubernetes/test/e2e_node/services"
 	"k8s.io/kubernetes/test/e2e_node/system"
 
