@@ -60,6 +60,9 @@ func NewCmdCreateDeployment(f cmdutil.Factory, cmdOut, cmdErr io.Writer) *cobra.
 	cmdutil.AddGeneratorFlags(cmd, cmdutil.DeploymentBasicV1Beta1GeneratorName)
 	cmd.Flags().StringSlice("image", []string{}, "Image name to run.")
 	cmd.MarkFlagRequired("image")
+
+	addCommonDeploymentFlags(cmd)
+
 	return cmd
 }
 
@@ -99,14 +102,24 @@ func generatorFromName(
 	generatorName string,
 	imageNames []string,
 	deploymentName string,
+	labels string,
+	replicas int32,
+	env []string,
+	limits string,
+	requests string,
 ) (kubectl.StructuredGenerator, bool) {
 
 	switch generatorName {
 	case cmdutil.DeploymentBasicAppsV1Beta1GeneratorName:
 		generator := &kubectl.DeploymentBasicAppsGeneratorV1{
 			BaseDeploymentGenerator: kubectl.BaseDeploymentGenerator{
-				Name:   deploymentName,
-				Images: imageNames,
+				Name:     deploymentName,
+				Images:   imageNames,
+				Labels:   labels,
+				Replicas: replicas,
+				Env:      env,
+				Limits:   limits,
+				Requests: requests,
 			},
 		}
 		return generator, true
@@ -114,8 +127,13 @@ func generatorFromName(
 	case cmdutil.DeploymentBasicV1Beta1GeneratorName:
 		generator := &kubectl.DeploymentBasicGeneratorV1{
 			BaseDeploymentGenerator: kubectl.BaseDeploymentGenerator{
-				Name:   deploymentName,
-				Images: imageNames,
+				Name:     deploymentName,
+				Images:   imageNames,
+				Labels:   labels,
+				Replicas: replicas,
+				Env:      env,
+				Limits:   limits,
+				Requests: requests,
 			},
 		}
 		return generator, true
@@ -153,7 +171,14 @@ func createDeployment(f cmdutil.Factory, cmdOut, cmdErr io.Writer,
 	generatorName = fallbackGeneratorNameIfNecessary(generatorName, resourcesList, cmdErr)
 
 	imageNames := cmdutil.GetFlagStringSlice(cmd, "image")
-	generator, ok := generatorFromName(generatorName, imageNames, deploymentName)
+	labels := cmdutil.GetFlagString(cmd, "labels")
+	replicas := cmdutil.GetFlagInt(cmd, "replicas")
+	env := cmdutil.GetFlagStringArray(cmd, "env")
+	limits := cmdutil.GetFlagString(cmd, "limits")
+	requests := cmdutil.GetFlagString(cmd, "requests")
+
+	generator, ok := generatorFromName(generatorName, imageNames,
+		deploymentName, labels, int32(replicas), env, limits, requests)
 	if !ok {
 		return errUnsupportedGenerator(cmd, generatorName)
 	}

@@ -34,38 +34,50 @@ import (
 
 func Test_generatorFromName(t *testing.T) {
 	const (
-		nonsenseName   = "not-a-real-generator-name"
-		basicName      = cmdutil.DeploymentBasicV1Beta1GeneratorName
-		basicAppsName  = cmdutil.DeploymentBasicAppsV1Beta1GeneratorName
-		deploymentName = "deployment-name"
+		nonsenseName         = "not-a-real-generator-name"
+		basicName            = cmdutil.DeploymentBasicV1Beta1GeneratorName
+		basicAppsName        = cmdutil.DeploymentBasicAppsV1Beta1GeneratorName
+		deploymentName       = "deployment-name"
+		labels               = ""
+		replicas       int32 = 1
+		limits               = ""
+		requests             = ""
 	)
+	env := []string{}
 	imageNames := []string{"image-1", "image-2"}
 
-	generator, ok := generatorFromName(nonsenseName, imageNames, deploymentName)
+	generator, ok := generatorFromName(nonsenseName, imageNames, deploymentName, labels,
+		replicas, env, limits, requests)
 	assert.Nil(t, generator)
 	assert.False(t, ok)
 
-	generator, ok = generatorFromName(basicName, imageNames, deploymentName)
+	generator, ok = generatorFromName(basicName, imageNames, deploymentName, labels,
+		replicas, env, limits, requests)
 	assert.True(t, ok)
 
 	{
 		expectedGenerator := &kubectl.DeploymentBasicGeneratorV1{
 			BaseDeploymentGenerator: kubectl.BaseDeploymentGenerator{
-				Name:   deploymentName,
-				Images: imageNames,
+				Name:     deploymentName,
+				Images:   imageNames,
+				Env:      env,
+				Replicas: replicas,
 			},
 		}
 		assert.Equal(t, expectedGenerator, generator)
 	}
 
-	generator, ok = generatorFromName(basicAppsName, imageNames, deploymentName)
+	generator, ok = generatorFromName(basicAppsName, imageNames, deploymentName, labels,
+		replicas, env, limits, requests)
 	assert.True(t, ok)
 
 	{
 		expectedGenerator := &kubectl.DeploymentBasicAppsGeneratorV1{
 			BaseDeploymentGenerator: kubectl.BaseDeploymentGenerator{
-				Name:   deploymentName,
-				Images: imageNames,
+				Name:     deploymentName,
+				Images:   imageNames,
+				Env:      env,
+				Replicas: replicas,
 			},
 		}
 		assert.Equal(t, expectedGenerator, generator)
