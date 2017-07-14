@@ -404,9 +404,9 @@ func Convert_api_PodStatusResult_To_v1_PodStatusResult(in *api.PodStatusResult, 
 		if err != nil {
 			return err
 		}
-		out.Annotations[PodDeferContainersStatusesKey] = string(value)
+		out.Annotations[v1.PodDeferContainersStatusesKey] = string(value)
 	} else {
-		delete(out.Annotations, PodDeferContainersStatusesKey)
+		delete(out.Annotations, v1.PodDeferContainersStatusesKey)
 	}
 	return nil
 }
@@ -434,7 +434,7 @@ func Convert_v1_PodStatusResult_To_api_PodStatusResult(in *v1.PodStatusResult, o
 	}
 	//Move the deferContainer Annotation to inernal repr. field
 	if value, ok := in.Annotations[v1.PodDeferContainersStatusesKey]; ok {
-		var values []ContainerStatus
+		var values []v1.ContainerStatus
 		if err := json.Unmarshal([]byte(value), &values); err != nil {
 			return err
 		}
@@ -499,9 +499,9 @@ func Convert_api_PodTemplateSpec_To_v1_PodTemplateSpec(in *api.PodTemplateSpec, 
 		if err != nil {
 			return err
 		}
-		out.Annotations[PodDeferContainersAnnotationKey] = string(value)
+		out.Annotations[v1.PodDeferContainersAnnotationKey] = string(value)
 	} else {
-		delete(out.Annotations, PodDeferContainersAnnotationKey)
+		delete(out.Annotations, v1.PodDeferContainersAnnotationKey)
 	}
 	return nil
 }
@@ -540,8 +540,8 @@ func Convert_v1_PodTemplateSpec_To_api_PodTemplateSpec(in *v1.PodTemplateSpec, o
 		in.Spec.InitContainers = tmpPodTemp.Template.Spec.InitContainers
 	}
 	// Move the defer Container annotation to the internal repr. field
-	if value, ok := in.Annotations[PodDeferContainersAnnotationKey]; ok {
-		var values []Container
+	if value, ok := in.Annotations[v1.PodDeferContainersAnnotationKey]; ok {
+		var values []v1.Container
 		if err := json.Unmarshal([]byte(value), &values); err != nil {
 			return err
 		}
@@ -663,14 +663,14 @@ func Convert_api_Pod_To_v1_Pod(in *api.Pod, out *v1.Pod, s conversion.Scope) err
 		if err != nil {
 			return err
 		}
-		out.Annotations[PodDeferContainersAnnotationKey] = string(value)
+		out.Annotations[v1.PodDeferContainersAnnotationKey] = string(value)
 	}
 	if len(out.Status.DeferContainerStatuses) > 0 {
 		value, err := json.Marshal(out.Status.DeferContainerStatuses)
 		if err != nil {
 			return err
 		}
-		out.Annotations[PodDeferContainersStatusesKey] = string(value)
+		out.Annotations[v1.PodDeferContainersStatusesKey] = string(value)
 	}
 
 	return nil
@@ -708,8 +708,8 @@ func Convert_v1_Pod_To_api_Pod(in *v1.Pod, out *api.Pod, s conversion.Scope) err
 	}
 
 	// Annotation conversion for deferContainers
-	if value, ok := in.Annotations[PodDeferContainersAnnotationKey]; ok {
-		var values []Container
+	if value, ok := in.Annotations[v1.PodDeferContainersAnnotationKey]; ok {
+		var values []v1.Container
 		if err := json.Unmarshal([]byte(value), &values); err != nil {
 			return err
 		}
@@ -746,8 +746,8 @@ func Convert_v1_Pod_To_api_Pod(in *v1.Pod, out *api.Pod, s conversion.Scope) err
 		in.Status.InitContainerStatuses = values
 	}
 	//DeferContainer related conversion code
-	if value, ok := in.Annotations[PodDeferContainersStatusesKey]; ok {
-		var values []ContainerStatus
+	if value, ok := in.Annotations[v1.PodDeferContainersStatusesKey]; ok {
+		var values []v1.ContainerStatus
 		if err := json.Unmarshal([]byte(value), &values); err != nil {
 			return err
 		}
