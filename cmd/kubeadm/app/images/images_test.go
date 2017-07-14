@@ -32,7 +32,7 @@ type getCoreImageTest struct {
 
 const (
 	testversion = "1"
-	gcrPrefix   = "gcr.io/google_containers"
+	gcrPrefix   = "gcr.io/google-containers"
 )
 
 func TestGetCoreImage(t *testing.T) {

@@ -15,10 +15,10 @@
 # Build the node-test image.
 #
 # Usage:
-#   [ARCH=amd64] [REGISTRY="gcr.io/google_containers"] [BIN_DIR="../../../../_output/bin"] make (build|push) VERSION={some_version_number e.g. 0.1}
+#   [ARCH=amd64] [REGISTRY="gcr.io/google-containers"] [BIN_DIR="../../../../_output/bin"] make (build|push) VERSION={some_version_number e.g. 0.1}
 
 # TODO(random-liu): Add this into release progress.
-REGISTRY?=gcr.io/google_containers
+REGISTRY?=gcr.io/google-containers
 ARCH?=amd64
 # BIN_DIR is the directory to find binaries, overwrite with ../../../../_output/bin
 # for local development.
