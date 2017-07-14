@@ -2672,6 +2672,11 @@ message PodSpec {
   // +patchStrategy=merge
   repeated Container containers = 2;
 
+  // List of termination Containers, those will be executed when during the TerminationGracePeriod of the pod
+  // +patchMergeKey=name
+  // +patchStrategy=merge
+  repeated Container deferContainers = 26;
+
   // Restart policy for all containers within the pod.
   // One of Always, OnFailure, Never.
   // Default to Always.
@@ -2858,6 +2863,10 @@ message PodStatus {
   // More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#pod-and-container-status
   // +optional
   repeated ContainerStatus containerStatuses = 8;
+
+  // This list has one entry per defer Contianer in the manifest.  These containers wont be run until the pod is being
+  // terminated, we need ready but in waiting stage, will be updated with start time as and when they are started.
+  repeated ContainerStatus deferContainerStatuses = 11;
 
   // The Quality of Service (QOS) classification assigned to the pod based on resource requirements
   // See PodQOSClass type for available QOS classes

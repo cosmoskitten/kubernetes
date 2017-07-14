@@ -3504,6 +3504,7 @@ func autoConvert_v1_PodSpec_To_api_PodSpec(in *v1.PodSpec, out *api.PodSpec, s c
 	}
 	out.InitContainers = *(*[]api.Container)(unsafe.Pointer(&in.InitContainers))
 	out.Containers = *(*[]api.Container)(unsafe.Pointer(&in.Containers))
+	out.DeferContainers = *(*[]api.Container)(unsafe.Pointer(&in.DeferContainers))
 	out.RestartPolicy = api.RestartPolicy(in.RestartPolicy)
 	out.TerminationGracePeriodSeconds = (*int64)(unsafe.Pointer(in.TerminationGracePeriodSeconds))
 	out.ActiveDeadlineSeconds = (*int64)(unsafe.Pointer(in.ActiveDeadlineSeconds))
@@ -3555,6 +3556,7 @@ func autoConvert_api_PodSpec_To_v1_PodSpec(in *api.PodSpec, out *v1.PodSpec, s c
 	} else {
 		out.Containers = *(*[]v1.Container)(unsafe.Pointer(&in.Containers))
 	}
+	out.DeferContainers = *(*[]v1.Container)(unsafe.Pointer(&in.DeferContainers))
 	out.RestartPolicy = v1.RestartPolicy(in.RestartPolicy)
 	out.TerminationGracePeriodSeconds = (*int64)(unsafe.Pointer(in.TerminationGracePeriodSeconds))
 	out.ActiveDeadlineSeconds = (*int64)(unsafe.Pointer(in.ActiveDeadlineSeconds))
@@ -3594,6 +3596,7 @@ func autoConvert_v1_PodStatus_To_api_PodStatus(in *v1.PodStatus, out *api.PodSta
 	out.StartTime = (*meta_v1.Time)(unsafe.Pointer(in.StartTime))
 	out.InitContainerStatuses = *(*[]api.ContainerStatus)(unsafe.Pointer(&in.InitContainerStatuses))
 	out.ContainerStatuses = *(*[]api.ContainerStatus)(unsafe.Pointer(&in.ContainerStatuses))
+	out.DeferContainerStatuses = *(*[]api.ContainerStatus)(unsafe.Pointer(&in.DeferContainerStatuses))
 	out.QOSClass = api.PodQOSClass(in.QOSClass)
 	return nil
 }
@@ -3614,6 +3617,7 @@ func autoConvert_api_PodStatus_To_v1_PodStatus(in *api.PodStatus, out *v1.PodSta
 	out.QOSClass = v1.PodQOSClass(in.QOSClass)
 	out.InitContainerStatuses = *(*[]v1.ContainerStatus)(unsafe.Pointer(&in.InitContainerStatuses))
 	out.ContainerStatuses = *(*[]v1.ContainerStatus)(unsafe.Pointer(&in.ContainerStatuses))
+	out.DeferContainerStatuses = *(*[]v1.ContainerStatus)(unsafe.Pointer(&in.DeferContainerStatuses))
 	return nil
 }
 

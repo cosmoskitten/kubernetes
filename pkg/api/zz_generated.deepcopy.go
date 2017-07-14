@@ -2560,6 +2560,15 @@ func DeepCopy_api_PodSpec(in interface{}, out interface{}, c *conversion.Cloner)
 				}
 			}
 		}
+		if in.DeferContainers != nil {
+			in, out := &in.DeferContainers, &out.DeferContainers
+			*out = make([]Container, len(*in))
+			for i := range *in {
+				if err := DeepCopy_api_Container(&(*in)[i], &(*out)[i], c); err != nil {
+					return err
+				}
+			}
+		}
 		if in.TerminationGracePeriodSeconds != nil {
 			in, out := &in.TerminationGracePeriodSeconds, &out.TerminationGracePeriodSeconds
 			*out = new(int64)
@@ -2659,6 +2668,15 @@ func DeepCopy_api_PodStatus(in interface{}, out interface{}, c *conversion.Clone
 		}
 		if in.ContainerStatuses != nil {
 			in, out := &in.ContainerStatuses, &out.ContainerStatuses
+			*out = make([]ContainerStatus, len(*in))
+			for i := range *in {
+				if err := DeepCopy_api_ContainerStatus(&(*in)[i], &(*out)[i], c); err != nil {
+					return err
+				}
+			}
+		}
+		if in.DeferContainerStatuses != nil {
+			in, out := &in.DeferContainerStatuses, &out.DeferContainerStatuses
 			*out = make([]ContainerStatus, len(*in))
 			for i := range *in {
 				if err := DeepCopy_api_ContainerStatus(&(*in)[i], &(*out)[i], c); err != nil {
