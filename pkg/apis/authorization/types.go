@@ -144,3 +144,53 @@ type SubjectAccessReviewStatus struct {
 	// For instance, RBAC can be missing a role, but enough roles are still present and bound to reason about the request.
 	EvaluationError string
 }
+
+// +genclient=true
+// +noMethods=true
+
+// SelfSubjectRulesReview enumerates the set of actions the current user can perform within a namespace.
+// The returned list of actions may be incomplete depending on the server's authorization mode,
+// and any errors experienced during the evaluation.
+type SelfSubjectRulesReview struct {
+	metav1.TypeMeta
+
+	// Status is filled in by the server and indicates the set of actions a user can perform.
+	Status SubjectRulesReviewStatus
+}
+
+// SubjectRulesReviewStatus is contains the result of a rules check
+type SubjectRulesReviewStatus struct {
+	// ResourceRules is the list of actions the subject is allowed to perform on resources.
+	// The list ordering isn't significant, may contain duplicates, and possibly be incomplete.
+	ResourceRules []ResourceRule
+	// NonResourceRules is the list of actions the subject is allowed to perform on non-resources.
+	// The list ordering isn't significant, may contain duplicates, and possibly be incomplete.
+	NonResourceRules []NonResourceRule
+	// EvaluationError can appear in combination with Rules.  It means some error happened during evaluation
+	// that may have prevented additional rules from being populated.
+	EvaluationError string
+}
+
+// ResourceRules is the list of actions the subject is allowed to perform on resources. The list ordering isn't significant,
+// may contain duplicates, and possibly be incomplete.
+type ResourceRule struct {
+	// Verb is a of kubernetes resource API verbs, like: get, list, watch, create, update, delete, proxy.  "*" means all.
+	Verbs []string
+	// APIGroups is the name of the APIGroup that contains the resources.  If multiple API groups are specified, any action requested against one of
+	// the enumerated resources in any API group will be allowed.  "*" means all.
+	APIGroups []string
+	// Resources is a list of resources this rule applies to.  ResourceAll represents all resources.  "*" means all.
+	Resources []string
+	// ResourceNames is an optional white list of names that the rule applies to.  An empty set means that everything is allowed.  "*" means all.
+	ResourceNames []string
+}
+
+// NonResourceRule holds information that describes a rule for the non-resource
+type NonResourceRule struct {
+	// Verb is a of kubernetes non-resource API verbs, like: get, post, put, delete, patch, head, options.  "*" means all.
+	Verbs []string
+
+	// NonResourceURLs is a set of partial urls that a user should have access to.  *s are allowed, but only as the full,
+	// final step in the path.  "*" means all.
+	NonResourceURLs []string
+}
