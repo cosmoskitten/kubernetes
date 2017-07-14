@@ -116,9 +116,18 @@ func IsStandardContainerResourceName(str string) bool {
 }
 
 // IsOpaqueIntResourceName returns true if the resource name has the opaque
-// integer resource prefix.
+// integer resource prefix, or it is another unknown resource name not in the
+// default namespace.
 func IsOpaqueIntResourceName(name api.ResourceName) bool {
-	return strings.HasPrefix(string(name), api.ResourceOpaqueIntPrefix)
+	return IsCustomNamespacedResourceName(name)
+}
+
+// Returns true if the resource name is not in the kubernetes.io/ namespace.
+// Note: partially-qualified (unprefixed) names are assumed by default to be
+//       in the kubernetes.io/ namespace.
+func IsCustomNamespacedResourceName(name api.ResourceName) bool {
+	return strings.Contains(string(name), "/") &&
+		!strings.HasPrefix(string(name), api.ResourceDefaultNamespacePrefix)
 }
 
 // OpaqueIntResourceName returns a ResourceName with the canonical opaque
