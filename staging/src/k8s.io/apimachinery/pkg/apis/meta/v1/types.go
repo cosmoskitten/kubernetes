@@ -69,6 +69,10 @@ type ListMeta struct {
 	// More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#concurrency-control-and-consistency
 	// +optional
 	ResourceVersion string `json:"resourceVersion,omitempty" protobuf:"bytes,2,opt,name=resourceVersion"`
+
+	// Next may be set if the user set a limit on the number of responses. The value is opaque
+	// and may be passed to the same endpoint as the from field with or without a limit.
+	Next string `json:"next,omitempty" protobuf:"bytes,3,opt,name=next"`
 }
 
 // These are internal finalizer values for Kubernetes-like APIs, must be qualified name unless defined here
@@ -328,6 +332,15 @@ type ListOptions struct {
 	// Timeout for the list/watch call.
 	// +optional
 	TimeoutSeconds *int64 `json:"timeoutSeconds,omitempty" protobuf:"varint,5,opt,name=timeoutSeconds"`
+
+	// From is the continuation of a previous list call and will begin the list at the appropriate
+	// location. It is an qpaque value and may change serialization across server versions. If the
+	// continuation is not possible an error will be returned and you must start over. This may
+	// return an empty response in the event all requested fields are filtered out.
+	From string `json:"from,omitempty" protobuf:"bytes,7,opt,name=from"`
+	// Limit is a maximum number of responses to return for a list call. If more items exist, the
+	// server will set the next field on the list metadata to a token you can pass as from.
+	Limit int64 `json:"limit,omitempty" protobuf:"varint,8,opt,name=limit"`
 }
 
 // ExportOptions is the query options to the standard REST get call.

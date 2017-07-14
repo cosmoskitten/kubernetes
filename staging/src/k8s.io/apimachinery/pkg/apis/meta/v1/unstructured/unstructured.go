@@ -548,6 +548,8 @@ type UnstructuredList struct {
 	Items []Unstructured `json:"items"`
 }
 
+var _ metav1.List = &UnstructuredList{}
+
 // MarshalJSON ensures that the unstructured list object produces proper
 // JSON when passed to Go's standard JSON library.
 func (u *UnstructuredList) MarshalJSON() ([]byte, error) {
@@ -600,6 +602,14 @@ func (u *UnstructuredList) GetSelfLink() string {
 
 func (u *UnstructuredList) SetSelfLink(selfLink string) {
 	u.setNestedField(selfLink, "metadata", "selfLink")
+}
+
+func (u *UnstructuredList) GetNext() string {
+	return getNestedString(u.Object, "metadata", "next")
+}
+
+func (u *UnstructuredList) SetNext(version string) {
+	u.setNestedField(version, "metadata", "next")
 }
 
 func (u *UnstructuredList) SetGroupVersionKind(gvk schema.GroupVersionKind) {

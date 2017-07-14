@@ -491,7 +491,13 @@ func (x *JobTemplateSpec) CodecEncodeSelf(e *codec1978.Encoder) {
 				z.EncSendContainerState(codecSelfer_containerArrayElem1234)
 				if yyq2[1] {
 					yy9 := &x.Spec
-					yy9.CodecEncodeSelf(e)
+					yym10 := z.EncBinary()
+					_ = yym10
+					if false {
+					} else if z.HasExtensions() && z.EncExt(yy9) {
+					} else {
+						z.EncFallback(yy9)
+					}
 				} else {
 					r.EncodeNil()
 				}
@@ -501,7 +507,13 @@ func (x *JobTemplateSpec) CodecEncodeSelf(e *codec1978.Encoder) {
 					r.EncodeString(codecSelferC_UTF81234, string("spec"))
 					z.EncSendContainerState(codecSelfer_containerMapValue1234)
 					yy11 := &x.Spec
-					yy11.CodecEncodeSelf(e)
+					yym12 := z.EncBinary()
+					_ = yym12
+					if false {
+					} else if z.HasExtensions() && z.EncExt(yy11) {
+					} else {
+						z.EncFallback(yy11)
+					}
 				}
 			}
 			if yyr2 || yy2arr2 {
@@ -583,7 +595,13 @@ func (x *JobTemplateSpec) codecDecodeSelfFromMap(l int, d *codec1978.Decoder) {
 				x.Spec = pkg3_v1.JobSpec{}
 			} else {
 				yyv6 := &x.Spec
-				yyv6.CodecDecodeSelf(d)
+				yym7 := z.DecBinary()
+				_ = yym7
+				if false {
+				} else if z.HasExtensions() && z.DecExt(yyv6) {
+				} else {
+					z.DecFallback(yyv6, false)
+				}
 			}
 		default:
 			z.DecStructFieldNotFound(-1, yys3)
@@ -596,16 +614,16 @@ func (x *JobTemplateSpec) codecDecodeSelfFromArray(l int, d *codec1978.Decoder) 
 	var h codecSelfer1234
 	z, r := codec1978.GenHelperDecoder(d)
 	_, _, _ = h, z, r
-	var yyj7 int
-	var yyb7 bool
-	var yyhl7 bool = l >= 0
-	yyj7++
-	if yyhl7 {
-		yyb7 = yyj7 > l
+	var yyj8 int
+	var yyb8 bool
+	var yyhl8 bool = l >= 0
+	yyj8++
+	if yyhl8 {
+		yyb8 = yyj8 > l
 	} else {
-		yyb7 = r.CheckBreak()
+		yyb8 = r.CheckBreak()
 	}
-	if yyb7 {
+	if yyb8 {
 		z.DecSendContainerState(codecSelfer_containerArrayEnd1234)
 		return
 	}
@@ -613,22 +631,22 @@ func (x *JobTemplateSpec) codecDecodeSelfFromArray(l int, d *codec1978.Decoder) 
 	if r.TryDecodeAsNil() {
 		x.ObjectMeta = pkg1_v1.ObjectMeta{}
 	} else {
-		yyv8 := &x.ObjectMeta
-		yym9 := z.DecBinary()
-		_ = yym9
+		yyv9 := &x.ObjectMeta
+		yym10 := z.DecBinary()
+		_ = yym10
 		if false {
-		} else if z.HasExtensions() && z.DecExt(yyv8) {
+		} else if z.HasExtensions() && z.DecExt(yyv9) {
 		} else {
-			z.DecFallback(yyv8, false)
+			z.DecFallback(yyv9, false)
 		}
 	}
-	yyj7++
-	if yyhl7 {
-		yyb7 = yyj7 > l
+	yyj8++
+	if yyhl8 {
+		yyb8 = yyj8 > l
 	} else {
-		yyb7 = r.CheckBreak()
+		yyb8 = r.CheckBreak()
 	}
-	if yyb7 {
+	if yyb8 {
 		z.DecSendContainerState(codecSelfer_containerArrayEnd1234)
 		return
 	}
@@ -636,21 +654,27 @@ func (x *JobTemplateSpec) codecDecodeSelfFromArray(l int, d *codec1978.Decoder) 
 	if r.TryDecodeAsNil() {
 		x.Spec = pkg3_v1.JobSpec{}
 	} else {
-		yyv10 := &x.Spec
-		yyv10.CodecDecodeSelf(d)
+		yyv11 := &x.Spec
+		yym12 := z.DecBinary()
+		_ = yym12
+		if false {
+		} else if z.HasExtensions() && z.DecExt(yyv11) {
+		} else {
+			z.DecFallback(yyv11, false)
+		}
 	}
 	for {
-		yyj7++
-		if yyhl7 {
-			yyb7 = yyj7 > l
+		yyj8++
+		if yyhl8 {
+			yyb8 = yyj8 > l
 		} else {
-			yyb7 = r.CheckBreak()
+			yyb8 = r.CheckBreak()
 		}
-		if yyb7 {
+		if yyb8 {
 			break
 		}
 		z.DecSendContainerState(codecSelfer_containerArrayElem1234)
-		z.DecStructFieldNotFound(yyj7-1, "")
+		z.DecStructFieldNotFound(yyj8-1, "")
 	}
 	z.DecSendContainerState(codecSelfer_containerArrayEnd1234)
 }

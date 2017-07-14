@@ -966,8 +966,13 @@ func (x *NetworkPolicyPort) CodecEncodeSelf(e *codec1978.Encoder) {
 						r.EncodeNil()
 					} else {
 						yy4 := *x.Protocol
-						yysf5 := &yy4
-						yysf5.CodecEncodeSelf(e)
+						yym5 := z.EncBinary()
+						_ = yym5
+						if false {
+						} else if z.HasExtensions() && z.EncExt(yy4) {
+						} else {
+							r.EncodeString(codecSelferC_UTF81234, string(yy4))
+						}
 					}
 				} else {
 					r.EncodeNil()
@@ -981,8 +986,13 @@ func (x *NetworkPolicyPort) CodecEncodeSelf(e *codec1978.Encoder) {
 						r.EncodeNil()
 					} else {
 						yy6 := *x.Protocol
-						yysf7 := &yy6
-						yysf7.CodecEncodeSelf(e)
+						yym7 := z.EncBinary()
+						_ = yym7
+						if false {
+						} else if z.HasExtensions() && z.EncExt(yy6) {
+						} else {
+							r.EncodeString(codecSelferC_UTF81234, string(yy6))
+						}
 					}
 				}
 			}
@@ -1095,7 +1105,13 @@ func (x *NetworkPolicyPort) codecDecodeSelfFromMap(l int, d *codec1978.Decoder) 
 				if x.Protocol == nil {
 					x.Protocol = new(pkg3_v1.Protocol)
 				}
-				x.Protocol.CodecDecodeSelf(d)
+				yym5 := z.DecBinary()
+				_ = yym5
+				if false {
+				} else if z.HasExtensions() && z.DecExt(x.Protocol) {
+				} else {
+					*((*string)(x.Protocol)) = r.DecodeString()
+				}
 			}
 		case "port":
 			if r.TryDecodeAsNil() {
@@ -1106,11 +1122,11 @@ func (x *NetworkPolicyPort) codecDecodeSelfFromMap(l int, d *codec1978.Decoder) 
 				if x.Port == nil {
 					x.Port = new(pkg4_intstr.IntOrString)
 				}
-				yym6 := z.DecBinary()
-				_ = yym6
+				yym7 := z.DecBinary()
+				_ = yym7
 				if false {
 				} else if z.HasExtensions() && z.DecExt(x.Port) {
-				} else if !yym6 && z.IsJSONHandle() {
+				} else if !yym7 && z.IsJSONHandle() {
 					z.DecJSONUnmarshal(x.Port)
 				} else {
 					z.DecFallback(x.Port, false)
@@ -1127,16 +1143,16 @@ func (x *NetworkPolicyPort) codecDecodeSelfFromArray(l int, d *codec1978.Decoder
 	var h codecSelfer1234
 	z, r := codec1978.GenHelperDecoder(d)
 	_, _, _ = h, z, r
-	var yyj7 int
-	var yyb7 bool
-	var yyhl7 bool = l >= 0
-	yyj7++
-	if yyhl7 {
-		yyb7 = yyj7 > l
+	var yyj8 int
+	var yyb8 bool
+	var yyhl8 bool = l >= 0
+	yyj8++
+	if yyhl8 {
+		yyb8 = yyj8 > l
 	} else {
-		yyb7 = r.CheckBreak()
+		yyb8 = r.CheckBreak()
 	}
-	if yyb7 {
+	if yyb8 {
 		z.DecSendContainerState(codecSelfer_containerArrayEnd1234)
 		return
 	}
@@ -1149,15 +1165,21 @@ func (x *NetworkPolicyPort) codecDecodeSelfFromArray(l int, d *codec1978.Decoder
 		if x.Protocol == nil {
 			x.Protocol = new(pkg3_v1.Protocol)
 		}
-		x.Protocol.CodecDecodeSelf(d)
+		yym10 := z.DecBinary()
+		_ = yym10
+		if false {
+		} else if z.HasExtensions() && z.DecExt(x.Protocol) {
+		} else {
+			*((*string)(x.Protocol)) = r.DecodeString()
+		}
 	}
-	yyj7++
-	if yyhl7 {
-		yyb7 = yyj7 > l
+	yyj8++
+	if yyhl8 {
+		yyb8 = yyj8 > l
 	} else {
-		yyb7 = r.CheckBreak()
+		yyb8 = r.CheckBreak()
 	}
-	if yyb7 {
+	if yyb8 {
 		z.DecSendContainerState(codecSelfer_containerArrayEnd1234)
 		return
 	}
@@ -1170,28 +1192,28 @@ func (x *NetworkPolicyPort) codecDecodeSelfFromArray(l int, d *codec1978.Decoder
 		if x.Port == nil {
 			x.Port = new(pkg4_intstr.IntOrString)
 		}
-		yym10 := z.DecBinary()
-		_ = yym10
+		yym12 := z.DecBinary()
+		_ = yym12
 		if false {
 		} else if z.HasExtensions() && z.DecExt(x.Port) {
-		} else if !yym10 && z.IsJSONHandle() {
+		} else if !yym12 && z.IsJSONHandle() {
 			z.DecJSONUnmarshal(x.Port)
 		} else {
 			z.DecFallback(x.Port, false)
 		}
 	}
 	for {
-		yyj7++
-		if yyhl7 {
-			yyb7 = yyj7 > l
+		yyj8++
+		if yyhl8 {
+			yyb8 = yyj8 > l
 		} else {
-			yyb7 = r.CheckBreak()
+			yyb8 = r.CheckBreak()
 		}
-		if yyb7 {
+		if yyb8 {
 			break
 		}
 		z.DecSendContainerState(codecSelfer_containerArrayElem1234)
-		z.DecStructFieldNotFound(yyj7-1, "")
+		z.DecStructFieldNotFound(yyj8-1, "")
 	}
 	z.DecSendContainerState(codecSelfer_containerArrayEnd1234)
 }
