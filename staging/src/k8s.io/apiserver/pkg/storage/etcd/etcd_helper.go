@@ -362,7 +362,7 @@ func (h *etcdHelper) GetToList(ctx context.Context, key string, resourceVersion 
 		return err
 	}
 	trace.Step("Object decoded")
-	if err := h.versioner.UpdateList(listObj, response.Index); err != nil {
+	if err := h.versioner.UpdateList(listObj, response.Index, ""); err != nil {
 		return err
 	}
 	return nil
@@ -442,7 +442,7 @@ func (h *etcdHelper) List(ctx context.Context, key string, resourceVersion strin
 		return err
 	}
 	trace.Step("Node list decoded")
-	if err := h.versioner.UpdateList(listObj, index); err != nil {
+	if err := h.versioner.UpdateList(listObj, index, ""); err != nil {
 		return err
 	}
 	return nil

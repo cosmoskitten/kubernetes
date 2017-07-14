@@ -18,10 +18,12 @@ package etcd3
 
 import (
 	"bytes"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"path"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -383,7 +385,7 @@ func (s *store) GetToList(ctx context.Context, key string, resourceVersion strin
 		return err
 	}
 	// update version with cluster level revision
-	return s.versioner.UpdateList(listObj, uint64(getResp.Header.Revision))
+	return s.versioner.UpdateList(listObj, uint64(getResp.Header.Revision), "")
 }
 
 // List implements storage.Interface.List.
@@ -399,7 +401,54 @@ func (s *store) List(ctx context.Context, key, resourceVersion string, pred stor
 	if !strings.HasSuffix(key, "/") {
 		key += "/"
 	}
-	getResp, err := s.client.KV.Get(ctx, key, clientv3.WithPrefix())
+	keyPrefix := key
+
+	var fromKey string
+	var fromRV int64
+	if len(pred.From) > 0 {
+		out, err := base64.RawURLEncoding.DecodeString(pred.From)
+		if err != nil {
+			return fmt.Errorf("from key is not valid: %v", err)
+		}
+		from := string(out)
+		cleaned := path.Clean(from)
+		if cleaned != from || cleaned == "." || cleaned == "/" {
+			return fmt.Errorf("from key is not valid")
+		}
+		if strings.HasPrefix(cleaned, "/") {
+			cleaned = cleaned[1:]
+		}
+		if len(cleaned) == 0 {
+			return fmt.Errorf("from key is not valid")
+		}
+		parts := strings.SplitN(cleaned, "/", 2)
+		if len(parts) != 2 {
+			return fmt.Errorf("from is not valid")
+		}
+		fromRV, err = strconv.ParseInt(parts[0], 10, 64)
+		if err != nil {
+			return fmt.Errorf("from resource version is not valid")
+		}
+		fromKey = keyPrefix + parts[1] + "\x00"
+	}
+
+	var options []clientv3.OpOption
+	switch {
+	case len(fromKey) > 0 && pred.Limit > 0:
+		options = []clientv3.OpOption{clientv3.WithRev(fromRV), clientv3.WithRange(key + "\xFF"), clientv3.WithLimit(pred.Limit)}
+		glog.Infof("DEBUG: key=%s range=%s limit=%d", key, fromKey, pred.Limit)
+		key = fromKey
+	case len(fromKey) > 0:
+		options = []clientv3.OpOption{clientv3.WithRev(fromRV), clientv3.WithRange(key + "\xFF")}
+		glog.Infof("DEBUG: key=%s range=%s", key, fromKey)
+		key = fromKey
+	case pred.Limit > 0:
+		options = []clientv3.OpOption{clientv3.WithPrefix(), clientv3.WithLimit(pred.Limit)}
+		glog.Infof("DEBUG: key=%s limit=%d", key, pred.Limit)
+	default:
+		options = []clientv3.OpOption{clientv3.WithPrefix()}
+	}
+	getResp, err := s.client.KV.Get(ctx, key, options...)
 	if err != nil {
 		return err
 	}
@@ -408,7 +457,7 @@ func (s *store) List(ctx context.Context, key, resourceVersion string, pred stor
 	for _, kv := range getResp.Kvs {
 		data, _, err := s.transformer.TransformFromStorage(kv.Value, authenticatedDataString(kv.Key))
 		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("unable to transform key %q: %v", key, err))
+			utilruntime.HandleError(fmt.Errorf("unable to transform key %q: %v", kv.Key, err))
 			continue
 		}
 
@@ -417,11 +466,30 @@ func (s *store) List(ctx context.Context, key, resourceVersion string, pred stor
 			rev:  uint64(kv.ModRevision),
 		})
 	}
+
 	if err := decodeList(elems, storage.SimpleFilter(pred), listPtr, s.codec, s.versioner); err != nil {
 		return err
 	}
+
+	var nextKey string
+	if getResp.More {
+		if len(getResp.Kvs) == 0 {
+			// TODO: incomplete error handling
+			return fmt.Errorf("etcd indicated more results were present, but returned no actual keys")
+		}
+		fullKey := string(getResp.Kvs[len(getResp.Kvs)-1].Key)
+		nextKey = strings.TrimPrefix(fullKey, keyPrefix)
+		if nextKey == fullKey {
+			return fmt.Errorf("returned key did not match our prefix")
+		}
+		if fromRV == 0 {
+			fromRV = getResp.Header.Revision
+		}
+		nextKey = base64.RawURLEncoding.EncodeToString([]byte(fmt.Sprintf("%d/%s", fromRV, nextKey)))
+	}
+
 	// update version with cluster level revision
-	return s.versioner.UpdateList(listObj, uint64(getResp.Header.Revision))
+	return s.versioner.UpdateList(listObj, uint64(getResp.Header.Revision), nextKey)
 }
 
 // Watch implements storage.Interface.Watch.
@@ -552,8 +620,8 @@ func decode(codec runtime.Codec, versioner storage.Versioner, value []byte, objP
 
 // decodeList decodes a list of values into a list of objects, with resource version set to corresponding rev.
 // On success, ListPtr would be set to the list of objects.
-func decodeList(elems []*elemForDecode, filter storage.FilterFunc, ListPtr interface{}, codec runtime.Codec, versioner storage.Versioner) error {
-	v, err := conversion.EnforcePtr(ListPtr)
+func decodeList(elems []*elemForDecode, filter storage.FilterFunc, listPtr interface{}, codec runtime.Codec, versioner storage.Versioner) error {
+	v, err := conversion.EnforcePtr(listPtr)
 	if err != nil || v.Kind() != reflect.Slice {
 		panic("need ptr to slice")
 	}

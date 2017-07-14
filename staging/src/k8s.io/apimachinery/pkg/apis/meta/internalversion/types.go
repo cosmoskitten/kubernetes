@@ -45,4 +45,7 @@ type ListOptions struct {
 	ResourceVersion string
 	// Timeout for the list/watch call.
 	TimeoutSeconds *int64
+
+	From  string
+	Limit int64
 }

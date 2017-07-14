@@ -35,7 +35,7 @@ type Versioner interface {
 	// UpdateList sets the resource version into an API list object. Returns an error if the object
 	// cannot be updated correctly. May return nil if the requested object does not need metadata
 	// from database.
-	UpdateList(obj runtime.Object, resourceVersion uint64) error
+	UpdateList(obj runtime.Object, resourceVersion uint64, nextKey string) error
 	// ObjectResourceVersion returns the resource version (for persistence) of the specified object.
 	// Should return an error if the specified object does not have a persistable version.
 	ObjectResourceVersion(obj runtime.Object) (uint64, error)

@@ -70,6 +70,17 @@ type ListMetaAccessor interface {
 	GetListMeta() List
 }
 
+// Common lets you work with core metadata from any of the versioned or
+// internal API objects. Attempting to set or retrieve a field on an object that does
+// not support that field will be a no-op and return a default value.
+// TODO: move this, and TypeMeta and ListMeta, to a different package
+type Common interface {
+	GetResourceVersion() string
+	SetResourceVersion(version string)
+	GetSelfLink() string
+	SetSelfLink(selfLink string)
+}
+
 // List lets you work with list metadata from any of the versioned or
 // internal API objects. Attempting to set or retrieve a field on an object that does
 // not support that field will be a no-op and return a default value.
@@ -79,6 +90,8 @@ type List interface {
 	SetResourceVersion(version string)
 	GetSelfLink() string
 	SetSelfLink(selfLink string)
+	GetNext() string
+	SetNext(next string)
 }
 
 // Type exposes the type and APIVersion of versioned or internal API objects.
@@ -94,6 +107,8 @@ func (meta *ListMeta) GetResourceVersion() string        { return meta.ResourceV
 func (meta *ListMeta) SetResourceVersion(version string) { meta.ResourceVersion = version }
 func (meta *ListMeta) GetSelfLink() string               { return meta.SelfLink }
 func (meta *ListMeta) SetSelfLink(selfLink string)       { meta.SelfLink = selfLink }
+func (meta *ListMeta) GetNext() string                   { return meta.Next }
+func (meta *ListMeta) SetNext(next string)               { meta.Next = next }
 
 func (obj *TypeMeta) GetObjectKind() schema.ObjectKind { return obj }
 
