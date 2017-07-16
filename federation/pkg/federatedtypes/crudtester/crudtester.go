@@ -32,6 +32,11 @@ const (
 	AnnotationTestFederationCRUDUpdate string = "federation.kubernetes.io/test-federation-crud-update"
 )
 
+// The value for timeout should effectively be "forever." Obviously we don't want our tests to truly lock up forever, but 100s
+// is long enough that it is effectively forever for the things that can slow down a run on a heavily contended machine
+// (GC, seeks, etc)
+var ForeverTimeout = time.Second * 100
+
 // TestLogger defines operations common across different types of testing
 type TestLogger interface {
 	Fatalf(format string, args ...interface{})
@@ -139,11 +144,11 @@ func (c *FederatedTypeCRUDTester) CheckDelete(obj pkgruntime.Object, orphanDepen
 
 	deletingInCluster := (orphanDependents != nil && *orphanDependents == false)
 
-	waitTimeout := wait.ForeverTestTimeout
-	if deletingInCluster {
-		// May need extra time to delete both federation and cluster resources
-		waitTimeout = c.clusterWaitTimeout
-	}
+	waitTimeout := ForeverTimeout
+	//if deletingInCluster {
+	//	// May need extra time to delete both federation and cluster resources
+	//	waitTimeout = c.clusterWaitTimeout
+	//}
 
 	// Wait for deletion.  The federation resource will only be removed once orphan deletion has been
 	// completed or deemed unnecessary.
@@ -155,7 +160,7 @@ func (c *FederatedTypeCRUDTester) CheckDelete(obj pkgruntime.Object, orphanDepen
 		return false, err
 	})
 	if err != nil {
-		c.tl.Fatalf("Error deleting federated %s %q: %v", c.kind, qualifiedName, err)
+		c.tl.Fatalf("Error deleting federated %s %q in %s: %v", c.kind, qualifiedName, waitTimeout, err)
 	}
 
 	var stateMsg string = "present"
