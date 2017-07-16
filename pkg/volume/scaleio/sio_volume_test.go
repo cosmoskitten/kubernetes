@@ -367,7 +367,7 @@ func TestVolumeProvisioner(t *testing.T) {
 	}
 }
 
-func TestVolumeProvisionerWithZeroCapacity(t *testing.T) {
+func TestVolumeProvisionerWithDefaultCapacity(t *testing.T) {
 	plugMgr, tmpDir := newPluginMgr(t)
 	defer os.RemoveAll(tmpDir)
 
@@ -392,12 +392,6 @@ func TestVolumeProvisionerWithZeroCapacity(t *testing.T) {
 		api.ReadWriteOnce,
 	}
 
-	// incomplete options, test should fail
-	_, err = sioPlug.NewProvisioner(options)
-	if err == nil {
-		t.Fatal("expected failure due to incomplete options")
-	}
-
 	options.Parameters = map[string]string{
 		confKey.gateway:          "http://test.scaleio:11111",
 		confKey.system:           "sio",
@@ -420,8 +414,13 @@ func TestVolumeProvisionerWithZeroCapacity(t *testing.T) {
 	}
 	sioVol.sioMgr.client = sio
 
-	_, err = provisioner.Provision()
-	if err == nil {
-		t.Fatalf("call to Provision() should have failed with zero capacity specified", err)
+	spec, err := provisioner.Provision()
+	if err != nil {
+		t.Fatalf("call to Provision() failed: %v ", err)
+	}
+
+	cap := spec.Spec.Capacity[api.ResourceName(api.ResourceStorage)]
+	if cap.Value() != int64(8*1024*1024*1024) {
+		t.Fatalf("unexpected default volume capacity of %", cap)
 	}
 }
