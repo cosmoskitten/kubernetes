@@ -249,20 +249,14 @@ func TestVolumeProvisioner(t *testing.T) {
 
 	options := volume.VolumeOptions{
 		ClusterName: "testcluster",
-		PVName:      "pvc-sio-dynamic-vol",
 		PVC:         volumetest.CreateTestPVC("100Mi", []api.PersistentVolumeAccessMode{api.ReadWriteOnce}),
 		PersistentVolumeReclaimPolicy: api.PersistentVolumeReclaimDelete,
 	}
+	options.PVC.Name = "testpvc"
 	options.PVC.Namespace = testns
 
 	options.PVC.Spec.AccessModes = []api.PersistentVolumeAccessMode{
 		api.ReadWriteOnce,
-	}
-
-	// incomplete options, test should fail
-	_, err = sioPlug.NewProvisioner(options)
-	if err == nil {
-		t.Fatal("expected failure due to incomplete options")
 	}
 
 	options.Parameters = map[string]string{
@@ -297,8 +291,8 @@ func TestVolumeProvisioner(t *testing.T) {
 	// validate provision
 	actualSpecName := spec.Name
 	actualVolName := spec.Spec.PersistentVolumeSource.ScaleIO.VolumeName
-	if !strings.HasPrefix(actualSpecName, "pvc-") {
-		t.Errorf("expecting volume name to start with pov-, got %s", actualSpecName)
+	if !strings.HasPrefix(actualSpecName, "pv-") {
+		t.Errorf("expecting volume name to start with pv-, got %s", actualSpecName)
 	}
 
 	vol, err := sio.FindVolume(actualVolName)
@@ -364,6 +358,38 @@ func TestVolumeProvisioner(t *testing.T) {
 		t.Errorf("TearDown() failed, volume path still exists: %s", path)
 	} else if !os.IsNotExist(err) {
 		t.Errorf("Deleter did not delete path %v: %v", path, err)
+	}
+}
+
+func TestVolumeProvisionerWithIncompleteConfig(t *testing.T) {
+	plugMgr, tmpDir := newPluginMgr(t)
+	defer os.RemoveAll(tmpDir)
+
+	plug, err := plugMgr.FindPluginByName(sioPluginName)
+	if err != nil {
+		t.Errorf("Can't find the plugin %v", sioPluginName)
+	}
+	sioPlug, ok := plug.(*sioPlugin)
+	if !ok {
+		t.Errorf("Cannot assert plugin to be type sioPlugin")
+	}
+
+	options := volume.VolumeOptions{
+		ClusterName: "testcluster",
+		PVName:      "pvc-sio-dynamic-vol",
+		PVC:         volumetest.CreateTestPVC("100Mi", []api.PersistentVolumeAccessMode{api.ReadWriteOnce}),
+		PersistentVolumeReclaimPolicy: api.PersistentVolumeReclaimDelete,
+	}
+	options.PVC.Namespace = testns
+
+	options.PVC.Spec.AccessModes = []api.PersistentVolumeAccessMode{
+		api.ReadWriteOnce,
+	}
+
+	// incomplete options, test should fail
+	_, err = sioPlug.NewProvisioner(options)
+	if err == nil {
+		t.Fatal("expected failure due to incomplete options")
 	}
 }
 

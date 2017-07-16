@@ -88,7 +88,7 @@ func (v *sioVolume) SetUpAt(dir string, fsGroup *int64) error {
 	v.plugin.volumeMtx.LockKey(v.volSpecName)
 	defer v.plugin.volumeMtx.UnlockKey(v.volSpecName)
 
-	glog.V(4).Info(log("setting up volume %s", v.volSpecName))
+	glog.V(4).Info(log("setting up volume for PV.spec %s", v.volSpecName))
 	if err := v.setSioMgr(); err != nil {
 		glog.Error(log("setup failed to create scalio manager: %v", err))
 		return err
@@ -145,7 +145,7 @@ func (v *sioVolume) SetUpAt(dir string, fsGroup *int64) error {
 		volume.SetVolumeOwnership(v, fsGroup)
 	}
 
-	glog.V(4).Info(log("successfully setup volume %s attached %s:%s as %s", v.volSpecName, v.volName, devicePath, dir))
+	glog.V(4).Info(log("successfully setup PV %s: volume %s mapped as %s mounted at %s", v.volSpecName, v.volName, devicePath, dir))
 	return nil
 }
 
@@ -196,7 +196,7 @@ func (v *sioVolume) TearDownAt(dir string) error {
 	// use "last attempt wins" strategy to detach volume from node
 	// only allow volume to detach when it is not busy (not being used by other pods)
 	if !deviceBusy {
-		glog.V(4).Info(log("teardown is attempting to detach/unmap volume for %s", v.volSpecName))
+		glog.V(4).Info(log("teardown is attempting to detach/unmap volume for PV %s", v.volSpecName))
 		if err := v.resetSioMgr(); err != nil {
 			glog.Error(log("teardown failed, unable to reset scalio mgr: %v", err))
 		}
@@ -229,7 +229,7 @@ func (v *sioVolume) Delete() error {
 		return err
 	}
 
-	glog.V(4).Info(log("successfully deleted pvc %s", v.volSpecName))
+	glog.V(4).Info(log("successfully deleted PV %s with volume %s", v.volSpecName, v.volName))
 	return nil
 }
 
@@ -239,14 +239,15 @@ func (v *sioVolume) Delete() error {
 var _ volume.Provisioner = &sioVolume{}
 
 func (v *sioVolume) Provision() (*api.PersistentVolume, error) {
-	glog.V(4).Info(log("attempting to dynamically provision pvc %v", v.options.PVName))
+	glog.V(4).Info(log("attempting to dynamically provision pvc %v", v.options.PVC.Name))
 
 	if !volume.AccessModesContainedInAll(v.plugin.GetAccessModes(), v.options.PVC.Spec.AccessModes) {
 		return nil, fmt.Errorf("invalid AccessModes %v: only AccessModes %v are supported", v.options.PVC.Spec.AccessModes, v.plugin.GetAccessModes())
 	}
 
 	// setup volume attrributes
-	name := v.generateVolName()
+	name := v.options.PVC.Name
+	genName := v.generateName(name, 7)
 	capacity := v.options.PVC.Spec.Resources.Requests[api.ResourceName(api.ResourceStorage)]
 	volSizeBytes := capacity.Value()
 	volSizeGB := int64(volume.RoundUpSize(volSizeBytes, 1024*1024*1024))
@@ -262,14 +263,18 @@ func (v *sioVolume) Provision() (*api.PersistentVolume, error) {
 	}
 
 	// create volume
-	vol, err := v.sioMgr.CreateVolume(name, volSizeGB)
+	volName := fmt.Sprintf("vol-%s", genName)
+	if len(volName) > 30 {
+		volName = volName[:30]
+	}
+	vol, err := v.sioMgr.CreateVolume(volName, volSizeGB)
 	if err != nil {
 		glog.Error(log("provision failed while creating volume: %v", err))
 		return nil, err
 	}
 
 	// prepare data for pv
-	v.configData[confKey.volumeName] = name
+	v.configData[confKey.volumeName] = volName
 	sslEnabled, err := strconv.ParseBool(v.configData[confKey.sslEnabled])
 	if err != nil {
 		glog.Warning(log("failed to parse parameter sslEnabled, setting to false"))
@@ -282,9 +287,10 @@ func (v *sioVolume) Provision() (*api.PersistentVolume, error) {
 	}
 
 	// describe created pv
+	pvName := fmt.Sprintf("pv-%s", genName)
 	pv := &api.PersistentVolume{
 		ObjectMeta: meta.ObjectMeta{
-			Name:      v.options.PVName,
+			Name:      pvName,
 			Namespace: v.options.PVC.Namespace,
 			Labels:    map[string]string{},
 			Annotations: map[string]string{
@@ -308,7 +314,7 @@ func (v *sioVolume) Provision() (*api.PersistentVolume, error) {
 					ProtectionDomain: v.configData[confKey.protectionDomain],
 					StoragePool:      v.configData[confKey.storagePool],
 					StorageMode:      v.configData[confKey.storageMode],
-					VolumeName:       name,
+					VolumeName:       volName,
 					FSType:           v.configData[confKey.fsType],
 					ReadOnly:         readOnly,
 				},
@@ -319,14 +325,14 @@ func (v *sioVolume) Provision() (*api.PersistentVolume, error) {
 		pv.Spec.AccessModes = v.plugin.GetAccessModes()
 	}
 
-	glog.V(4).Info(log("provisioner dynamically created pvc %v with volume %s successfully", pv.Name, vol.Name))
+	glog.V(4).Info(log("provisioner created pv %v and volume %s successfully", pvName, vol.Name))
 	return pv, nil
 }
 
 // setSioMgr creates scaleio mgr from cached config data if found
 // otherwise, setups new config data and create mgr
 func (v *sioVolume) setSioMgr() error {
-	glog.V(4).Info(log("setting up sio mgr for vol  %s", v.volSpecName))
+	glog.V(4).Info(log("setting up sio mgr for spec  %s", v.volSpecName))
 	podDir := v.plugin.host.GetPodPluginDir(v.podUID, sioPluginName)
 	configName := path.Join(podDir, sioConfigFileName)
 	if v.sioMgr == nil {
@@ -464,6 +470,6 @@ func (v *sioVolume) setSioMgrFromSpec() error {
 	return nil
 }
 
-func (v *sioVolume) generateVolName() string {
-	return "sio-" + strings.Replace(string(uuid.NewUUID()), "-", "", -1)[0:25]
+func (v *sioVolume) generateName(prefix string, size int) string {
+	return fmt.Sprintf("%s-%s", prefix, strings.Replace(string(uuid.NewUUID()), "-", "", -1)[0:size])
 }
