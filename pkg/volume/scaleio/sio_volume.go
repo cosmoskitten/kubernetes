@@ -104,9 +104,9 @@ func (v *sioVolume) SetUpAt(dir string, fsGroup *int64) error {
 		return nil
 	}
 
-	// attach the volume and mount
+	enableMultiMaps := true // enable multiple volume mapping by default
 	volName := v.volName
-	devicePath, err := v.sioMgr.AttachVolume(volName)
+	devicePath, err := v.sioMgr.AttachVolume(volName, enableMultiMaps)
 	if err != nil {
 		glog.Error(log("setup of volume %v:  %v", v.volSpecName, err))
 		return err
@@ -138,6 +138,11 @@ func (v *sioVolume) SetUpAt(dir string, fsGroup *int64) error {
 			return err
 		}
 		return err
+	}
+
+	if !v.readOnly && fsGroup != nil {
+		glog.V(4).Info(log("applying  value FSGroup ownership"))
+		volume.SetVolumeOwnership(v, fsGroup)
 	}
 
 	glog.V(4).Info(log("successfully setup volume %s attached %s:%s as %s", v.volSpecName, v.volName, devicePath, dir))

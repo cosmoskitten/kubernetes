@@ -149,6 +149,7 @@ func TestVolumeMounterUnmounter(t *testing.T) {
 				VolumeName:       testSioVol,
 				FSType:           "ext4",
 				SecretRef:        &api.LocalObjectReference{Name: "sio-secret"},
+				ReadOnly:         false,
 			},
 		},
 	}
@@ -189,6 +190,10 @@ func TestVolumeMounterUnmounter(t *testing.T) {
 		} else {
 			t.Errorf("SetUp() failed: %v", err)
 		}
+	}
+
+	if !sio.isMultiMap {
+		t.Errorf("SetUp() - expecting multiple volume mappings")
 	}
 
 	// rebuild spec
@@ -249,6 +254,10 @@ func TestVolumeProvisioner(t *testing.T) {
 		PersistentVolumeReclaimPolicy: api.PersistentVolumeReclaimDelete,
 	}
 	options.PVC.Namespace = testns
+
+	options.PVC.Spec.AccessModes = []api.PersistentVolumeAccessMode{
+		api.ReadWriteOnce,
+	}
 
 	// incomplete options, test should fail
 	_, err = sioPlug.NewProvisioner(options)
@@ -317,6 +326,12 @@ func TestVolumeProvisioner(t *testing.T) {
 	if err := sioMounter.SetUp(nil); err != nil {
 		t.Errorf("Expected success, got: %v", err)
 	}
+
+	// isMultiMap applied
+	if !sio.isMultiMap {
+		t.Errorf("SetUp()  expecting attached volume with multi-mapping")
+	}
+
 	// teardown dynamic vol
 	sioUnmounter, err := sioPlug.NewUnmounter(spec.Name, podUID)
 	if err != nil {
