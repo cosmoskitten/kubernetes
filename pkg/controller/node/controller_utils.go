@@ -39,7 +39,6 @@ import (
 	"k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/kubelet/util/format"
 	nodepkg "k8s.io/kubernetes/pkg/util/node"
-	utilversion "k8s.io/kubernetes/pkg/util/version"
 
 	"github.com/golang/glog"
 )
@@ -118,16 +117,6 @@ func setPodTerminationReason(kubeClient clientset.Interface, pod *v1.Pod, nodeNa
 	return updatedPod, nil
 }
 
-func forcefullyDeletePod(c clientset.Interface, pod *v1.Pod) error {
-	var zero int64
-	glog.Infof("NodeController is force deleting Pod: %v:%v", pod.Namespace, pod.Name)
-	err := c.Core().Pods(pod.Namespace).Delete(pod.Name, &metav1.DeleteOptions{GracePeriodSeconds: &zero})
-	if err == nil {
-		glog.V(4).Infof("forceful deletion of %s succeeded", pod.Name)
-	}
-	return err
-}
-
 // forcefullyDeleteNode immediately the node. The pods on the node are cleaned
 // up by the podGC.
 func forcefullyDeleteNode(kubeClient clientset.Interface, nodeName string) error {
@@ -137,68 +126,9 @@ func forcefullyDeleteNode(kubeClient clientset.Interface, nodeName string) error
 	return nil
 }
 
-// maybeDeleteTerminatingPod non-gracefully deletes pods that are terminating
-// that should not be gracefully terminated.
-func (nc *NodeController) maybeDeleteTerminatingPod(obj interface{}) {
-	pod, ok := obj.(*v1.Pod)
-	if !ok {
-		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-		if !ok {
-			glog.Errorf("Couldn't get object from tombstone %#v", obj)
-			return
-		}
-		pod, ok = tombstone.Obj.(*v1.Pod)
-		if !ok {
-			glog.Errorf("Tombstone contained object that is not a Pod %#v", obj)
-			return
-		}
-	}
-
-	// consider only terminating pods
-	if pod.DeletionTimestamp == nil {
-		return
-	}
-
-	node, err := nc.nodeLister.Get(pod.Spec.NodeName)
-	// if there is no such node, do nothing and let the podGC clean it up.
-	if errors.IsNotFound(err) {
-		return
-	}
-	if err != nil {
-		// this can only happen if the Store.KeyFunc has a problem creating
-		// a key for the pod. If it happens once, it will happen again so
-		// don't bother requeuing the pod.
-		utilruntime.HandleError(err)
-		return
-	}
-
-	// delete terminating pods that have been scheduled on
-	// nodes that do not support graceful termination
-	// TODO(mikedanese): this can be removed when we no longer
-	// guarantee backwards compatibility of master API to kubelets with
-	// versions less than 1.1.0
-	v, err := utilversion.ParseSemantic(node.Status.NodeInfo.KubeletVersion)
-	if err != nil {
-		glog.V(0).Infof("Couldn't parse version %q of node: %v", node.Status.NodeInfo.KubeletVersion, err)
-		utilruntime.HandleError(nc.forcefullyDeletePod(pod))
-		return
-	}
-	if v.LessThan(gracefulDeletionVersion) {
-		utilruntime.HandleError(nc.forcefullyDeletePod(pod))
-		return
-	}
-}
-
 // update ready status of all pods running on given node from master
 // return true if success
 func markAllPodsNotReady(kubeClient clientset.Interface, node *v1.Node) error {
-	// Don't set pods to NotReady if the kubelet is running a version that
-	// doesn't understand how to correct readiness.
-	// TODO: Remove this check when we no longer guarantee backward compatibility
-	// with node versions < 1.2.0.
-	if nodeRunningOutdatedKubelet(node) {
-		return nil
-	}
 	nodeName := node.Name
 	glog.V(2).Infof("Update ready status of pods on node [%v]", nodeName)
 	opts := metav1.ListOptions{FieldSelector: fields.OneTermEqualSelector(api.PodHostField, nodeName).String()}
@@ -231,23 +161,6 @@ func markAllPodsNotReady(kubeClient clientset.Interface, node *v1.Node) error {
 		return nil
 	}
 	return fmt.Errorf("%v", strings.Join(errMsg, "; "))
-}
-
-// nodeRunningOutdatedKubelet returns true if the kubeletVersion reported
-// in the nodeInfo of the given node is "outdated", meaning < 1.2.0.
-// Older versions were inflexible and modifying pod.Status directly through
-// the apiserver would result in unexpected outcomes.
-func nodeRunningOutdatedKubelet(node *v1.Node) bool {
-	v, err := utilversion.ParseSemantic(node.Status.NodeInfo.KubeletVersion)
-	if err != nil {
-		glog.Errorf("couldn't parse version %q of node %v", node.Status.NodeInfo.KubeletVersion, err)
-		return true
-	}
-	if v.LessThan(podStatusReconciliationVersion) {
-		glog.Infof("Node %v running kubelet at (%v) which is less than the minimum version that allows nodecontroller to mark pods NotReady (%v).", node.Name, v, podStatusReconciliationVersion)
-		return true
-	}
-	return false
 }
 
 func nodeExistsInCloudProvider(cloud cloudprovider.Interface, nodeName types.NodeName) (bool, error) {

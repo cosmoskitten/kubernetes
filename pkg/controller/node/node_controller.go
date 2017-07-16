@@ -51,7 +51,6 @@ import (
 	utilnode "k8s.io/kubernetes/pkg/util/node"
 	"k8s.io/kubernetes/pkg/util/system"
 	taintutils "k8s.io/kubernetes/pkg/util/taints"
-	utilversion "k8s.io/kubernetes/pkg/util/version"
 	"k8s.io/kubernetes/plugin/pkg/scheduler/algorithm"
 
 	"github.com/golang/glog"
@@ -63,12 +62,7 @@ func init() {
 }
 
 var (
-	ErrCloudInstance        = errors.New("cloud provider doesn't support instances.")
-	gracefulDeletionVersion = utilversion.MustParseSemantic("v1.1.0")
-
-	// The minimum kubelet version for which the nodecontroller
-	// can safely flip pod.Status to NotReady.
-	podStatusReconciliationVersion = utilversion.MustParseSemantic("v1.2.0")
+	ErrCloudInstance = errors.New("cloud provider doesn't support instances.")
 
 	UnreachableTaintTemplate = &v1.Taint{
 		Key:    algorithm.TaintNodeUnreachable,
@@ -170,7 +164,6 @@ type NodeController struct {
 
 	taintManager *NoExecuteTaintManager
 
-	forcefullyDeletePod        func(*v1.Pod) error
 	nodeExistsInCloudProvider  func(types.NodeName) (bool, error)
 	computeZoneStateFunc       func(nodeConditions []*v1.NodeCondition) (int, zoneState)
 	enterPartialDisruptionFunc func(nodeNum int) float32
@@ -259,7 +252,6 @@ func NewNodeController(
 		serviceCIDR:                 serviceCIDR,
 		allocateNodeCIDRs:           allocateNodeCIDRs,
 		allocatorType:               allocatorType,
-		forcefullyDeletePod:         func(p *v1.Pod) error { return forcefullyDeletePod(kubeClient, p) },
 		nodeExistsInCloudProvider:   func(nodeName types.NodeName) (bool, error) { return nodeExistsInCloudProvider(cloud, nodeName) },
 		evictionLimiterQPS:          evictionLimiterQPS,
 		secondaryEvictionLimiterQPS: secondaryEvictionLimiterQPS,
@@ -278,14 +270,12 @@ func NewNodeController(
 
 	podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			nc.maybeDeleteTerminatingPod(obj)
 			pod := obj.(*v1.Pod)
 			if nc.taintManager != nil {
 				nc.taintManager.PodUpdated(nil, pod)
 			}
 		},
 		UpdateFunc: func(prev, obj interface{}) {
-			nc.maybeDeleteTerminatingPod(obj)
 			prevPod := prev.(*v1.Pod)
 			newPod := obj.(*v1.Pod)
 			if nc.taintManager != nil {
