@@ -67,10 +67,6 @@ var (
 	ErrCloudInstance        = errors.New("cloud provider doesn't support instances.")
 	gracefulDeletionVersion = utilversion.MustParseSemantic("v1.1.0")
 
-	// The minimum kubelet version for which the nodecontroller
-	// can safely flip pod.Status to NotReady.
-	podStatusReconciliationVersion = utilversion.MustParseSemantic("v1.2.0")
-
 	UnreachableTaintTemplate = &v1.Taint{
 		Key:    algorithm.TaintNodeUnreachable,
 		Effect: v1.TaintEffectNoExecute,
