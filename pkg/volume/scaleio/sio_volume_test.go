@@ -366,3 +366,62 @@ func TestVolumeProvisioner(t *testing.T) {
 		t.Errorf("Deleter did not delete path %v: %v", path, err)
 	}
 }
+
+func TestVolumeProvisionerWithZeroCapacity(t *testing.T) {
+	plugMgr, tmpDir := newPluginMgr(t)
+	defer os.RemoveAll(tmpDir)
+
+	plug, err := plugMgr.FindPluginByName(sioPluginName)
+	if err != nil {
+		t.Errorf("Can't find the plugin %v", sioPluginName)
+	}
+	sioPlug, ok := plug.(*sioPlugin)
+	if !ok {
+		t.Errorf("Cannot assert plugin to be type sioPlugin")
+	}
+
+	options := volume.VolumeOptions{
+		ClusterName: "testcluster",
+		PVName:      "pvc-sio-dynamic-vol",
+		PVC:         volumetest.CreateTestPVC("0Mi", []api.PersistentVolumeAccessMode{api.ReadWriteOnce}),
+		PersistentVolumeReclaimPolicy: api.PersistentVolumeReclaimDelete,
+	}
+	options.PVC.Namespace = testns
+
+	options.PVC.Spec.AccessModes = []api.PersistentVolumeAccessMode{
+		api.ReadWriteOnce,
+	}
+
+	// incomplete options, test should fail
+	_, err = sioPlug.NewProvisioner(options)
+	if err == nil {
+		t.Fatal("expected failure due to incomplete options")
+	}
+
+	options.Parameters = map[string]string{
+		confKey.gateway:          "http://test.scaleio:11111",
+		confKey.system:           "sio",
+		confKey.protectionDomain: testSioPD,
+		confKey.storagePool:      "default",
+		confKey.secretRef:        "sio-secret",
+	}
+
+	provisioner, err := sioPlug.NewProvisioner(options)
+	if err != nil {
+		t.Fatalf("failed to create new provisioner: %v", err)
+	}
+	if provisioner == nil {
+		t.Fatal("got a nil provisioner")
+	}
+	sio := newFakeSio()
+	sioVol := provisioner.(*sioVolume)
+	if err := sioVol.setSioMgrFromConfig(); err != nil {
+		t.Fatalf("failed to create scaleio mgr from config: %v", err)
+	}
+	sioVol.sioMgr.client = sio
+
+	_, err = provisioner.Provision()
+	if err == nil {
+		t.Fatalf("call to Provision() should have failed with zero capacity specified", err)
+	}
+}

@@ -248,6 +248,10 @@ func (v *sioVolume) Provision() (*api.PersistentVolume, error) {
 	// setup volume attrributes
 	name := v.generateVolName()
 	capacity := v.options.PVC.Spec.Resources.Requests[api.ResourceName(api.ResourceStorage)]
+	if capacity.Value() == 0 {
+		return nil, fmt.Errorf("invalid capacity size of %v specified", capacity.Value())
+	}
+
 	volSizeBytes := capacity.Value()
 	volSizeGB := int64(volume.RoundUpSize(volSizeBytes, 1024*1024*1024))
 
