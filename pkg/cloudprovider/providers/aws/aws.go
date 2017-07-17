@@ -956,6 +956,11 @@ func (c *Cloud) Routes() (cloudprovider.Routes, bool) {
 	return c, true
 }
 
+// ClusterID returns true if the cluster has a clusterID
+func (c *Cloud) HasClusterID() bool {
+	return len(c.tagging.clusterID()) > 0
+}
+
 // NodeAddresses is an implementation of Instances.NodeAddresses.
 func (c *Cloud) NodeAddresses(name types.NodeName) ([]v1.NodeAddress, error) {
 	if c.selfAWSInstance.nodeName == name || len(name) == 0 {

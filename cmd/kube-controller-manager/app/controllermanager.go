@@ -401,6 +401,14 @@ func CreateControllerContext(s *options.CMServer, rootClientBuilder, clientBuild
 		cloud.Initialize(rootClientBuilder)
 	}
 
+	if cloud.HasClusterID() == false {
+		if s.AllowUntaggedCloud == true {
+			glog.Warning("Detected a cluster without a ClusterID.  A ClusterID will be required in the future.  Please tag your cluster to avoid any future issues.")
+		} else {
+			return ControllerContext{}, fmt.Errorf("No ClusterID Found.  A ClusterID is required for the cloud provider to function properly.  This check can be bypassed by setting the allow-untagged-cloud option")
+		}
+	}
+
 	ctx := ControllerContext{
 		ClientBuilder:      clientBuilder,
 		InformerFactory:    sharedInformers,
