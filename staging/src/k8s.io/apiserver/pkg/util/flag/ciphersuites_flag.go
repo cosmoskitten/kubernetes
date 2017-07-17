@@ -18,7 +18,8 @@ package flag
 
 import (
 	"crypto/tls"
-	"fmt"
+
+	"github.com/golang/glog"
 )
 
 // ciphers maps strings into tls package cipher constants in
@@ -48,14 +49,21 @@ var ciphers = map[string]uint16{
 	"TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305":  tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
 }
 
-func CipherSuites(cipherNames []string) ([]uint16, error) {
+func CipherSuites(cipherNames []string) []uint16 {
+	if len(cipherNames) == 0 {
+		return nil
+	}
 	ciphersIntSlice := make([]uint16, 0)
 	for _, cipher := range cipherNames {
 		intValue, ok := ciphers[cipher]
 		if !ok {
-			return nil, fmt.Errorf("Cipher suite %s not supported or doesn't exist", cipher)
+			glog.Warningf("Cipher suite %s not supported or doesn't exist", cipher)
+			continue
 		}
 		ciphersIntSlice = append(ciphersIntSlice, intValue)
 	}
-	return ciphersIntSlice, nil
+	if len(ciphersIntSlice) == 0 {
+		return nil
+	}
+	return ciphersIntSlice
 }

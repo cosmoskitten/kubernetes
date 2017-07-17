@@ -27,49 +27,40 @@ import (
 
 func TestStrToUInt16(t *testing.T) {
 	tests := []struct {
-		flag           []string
-		expected       []uint16
-		expected_error bool
+		flag     []string
+		expected []uint16
 	}{
 		{
 			// Happy case
-			flag:           []string{"TLS_RSA_WITH_RC4_128_SHA", "TLS_RSA_WITH_AES_128_CBC_SHA", "TLS_ECDHE_RSA_WITH_RC4_128_SHA", "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA"},
-			expected:       []uint16{tls.TLS_RSA_WITH_RC4_128_SHA, tls.TLS_RSA_WITH_AES_128_CBC_SHA, tls.TLS_ECDHE_RSA_WITH_RC4_128_SHA, tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA},
-			expected_error: false,
+			flag:     []string{"TLS_RSA_WITH_RC4_128_SHA", "TLS_RSA_WITH_AES_128_CBC_SHA", "TLS_ECDHE_RSA_WITH_RC4_128_SHA", "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA"},
+			expected: []uint16{tls.TLS_RSA_WITH_RC4_128_SHA, tls.TLS_RSA_WITH_AES_128_CBC_SHA, tls.TLS_ECDHE_RSA_WITH_RC4_128_SHA, tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA},
 		},
 		{
 			// One flag only
-			flag:           []string{"TLS_RSA_WITH_RC4_128_SHA"},
-			expected:       []uint16{tls.TLS_RSA_WITH_RC4_128_SHA},
-			expected_error: false,
+			flag:     []string{"TLS_RSA_WITH_RC4_128_SHA"},
+			expected: []uint16{tls.TLS_RSA_WITH_RC4_128_SHA},
 		},
 		{
 			// Empty flag
-			flag:           []string{},
-			expected:       []uint16{},
-			expected_error: false,
+			flag:     []string{},
+			expected: nil,
 		},
 		{
 			// Duplicated flag
-			flag:           []string{"TLS_RSA_WITH_RC4_128_SHA", "TLS_RSA_WITH_AES_128_CBC_SHA", "TLS_ECDHE_RSA_WITH_RC4_128_SHA", "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA", "TLS_RSA_WITH_RC4_128_SHA"},
-			expected:       []uint16{tls.TLS_RSA_WITH_RC4_128_SHA, tls.TLS_RSA_WITH_AES_128_CBC_SHA, tls.TLS_ECDHE_RSA_WITH_RC4_128_SHA, tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA, tls.TLS_RSA_WITH_RC4_128_SHA},
-			expected_error: false,
+			flag:     []string{"TLS_RSA_WITH_RC4_128_SHA", "TLS_RSA_WITH_AES_128_CBC_SHA", "TLS_ECDHE_RSA_WITH_RC4_128_SHA", "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA", "TLS_RSA_WITH_RC4_128_SHA"},
+			expected: []uint16{tls.TLS_RSA_WITH_RC4_128_SHA, tls.TLS_RSA_WITH_AES_128_CBC_SHA, tls.TLS_ECDHE_RSA_WITH_RC4_128_SHA, tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA, tls.TLS_RSA_WITH_RC4_128_SHA},
 		},
 		{
 			// Invalid flag
-			flag:           []string{"foo"},
-			expected:       nil,
-			expected_error: true,
+			flag:     []string{"foo"},
+			expected: nil,
 		},
 	}
 
 	for i, test := range tests {
-		uIntFlags, err := CipherSuites(test.flag)
+		uIntFlags := CipherSuites(test.flag)
 		if reflect.DeepEqual(uIntFlags, test.expected) == false {
 			t.Errorf("%d: expected %+v, got %+v", i, test.expected, uIntFlags)
-		}
-		if test.expected_error && err == nil {
-			t.Errorf("%d: expecting error, got %+v", i, err)
 		}
 	}
 }

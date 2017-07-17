@@ -229,10 +229,7 @@ func (s *SecureServingOptions) applyServingInfoTo(c *server.Config) error {
 	}
 
 	if len(s.CipherSuites) != 0 {
-		cipherSuites, err := utilflag.CipherSuites(s.CipherSuites)
-		if err != nil {
-			return err
-		}
+		cipherSuites := utilflag.CipherSuites(s.CipherSuites)
 		secureServingInfo.CipherSuites = cipherSuites
 	}
 
