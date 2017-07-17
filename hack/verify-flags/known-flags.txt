@@ -10,6 +10,7 @@ allocate-node-cidrs
 allowed-not-ready-nodes
 allow-missing-template-keys
 allow-privileged
+allow-untagged-cloud
 anonymous-auth
 api-burst
 api-external-dns-names

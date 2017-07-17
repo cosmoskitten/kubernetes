@@ -702,6 +702,11 @@ func (vs *VSphere) ScrubDNS(nameservers, searches []string) (nsOut, srchOut []st
 	return nameservers, searches
 }
 
+// HasClusterID returns true if the cluster has a clusterID
+func (vs *VSphere) HasClusterID() bool {
+	return true
+}
+
 // Returns vSphere objects virtual machine, virtual device list, datastore and datacenter.
 func getVirtualMachineDevices(ctx context.Context, cfg *VSphereConfig, c *govmomi.Client, name string) (*object.VirtualMachine, object.VirtualDeviceList, *object.Datacenter, error) {
 	// Create a new finder

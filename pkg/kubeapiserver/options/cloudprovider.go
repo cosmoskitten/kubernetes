@@ -30,6 +30,7 @@ import (
 type CloudProviderOptions struct {
 	CloudConfigFile string
 	CloudProvider   string
+	AllowUntagged   bool
 }
 
 func NewCloudProviderOptions() *CloudProviderOptions {
