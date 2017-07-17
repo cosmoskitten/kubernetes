@@ -10,6 +10,7 @@ go_test(
     name = "go_default_test",
     srcs = [
         "map_string_bool_test.go",
+        "ciphersuites_flag_test.go",
         "namedcertkey_flag_test.go",
     ],
     library = ":go_default_library",
@@ -23,6 +24,7 @@ go_test(
 go_library(
     name = "go_default_library",
     srcs = [
+        "ciphersuites_flag.go",
         "configuration_map.go",
         "flags.go",
         "map_string_bool.go",

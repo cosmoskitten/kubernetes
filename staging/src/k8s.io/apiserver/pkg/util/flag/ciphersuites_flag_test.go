@@ -46,7 +46,7 @@ func TestStrToUInt16(t *testing.T) {
 		{
 			// Empty flag
 			flag:           []string{},
-			expected:       []uint16{},
+			expected:       nil,
 			expected_error: false,
 		},
 		{
