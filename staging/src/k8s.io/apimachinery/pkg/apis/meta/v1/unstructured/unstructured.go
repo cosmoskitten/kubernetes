@@ -548,7 +548,7 @@ type UnstructuredList struct {
 	Items []Unstructured `json:"items"`
 }
 
-var _ metav1.List = &UnstructuredList{}
+var _ metav1.ListInterface = &UnstructuredList{}
 
 // MarshalJSON ensures that the unstructured list object produces proper
 // JSON when passed to Go's standard JSON library.
