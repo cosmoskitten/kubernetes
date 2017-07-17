@@ -45,6 +45,20 @@ func validateServiceNodePort(options *ServerRunOptions) []error {
 	return errors
 }
 
+func validateAuditLogFlags(options *ServerRunOptions) []error {
+	errors := []error{}
+	if options.Audit.LogOptions.MaxAge < 0 {
+		errors = append(errors, fmt.Errorf("--audit-log-maxage %v can't be a negative number", options.Audit.LogOptions.MaxAge))
+	}
+	if options.Audit.LogOptions.MaxBackups < 0 {
+		errors = append(errors, fmt.Errorf("--audit-log-maxbackup %v can't be a negative number", options.Audit.LogOptions.MaxBackups))
+	}
+	if options.Audit.LogOptions.MaxSize < 0 {
+		errors = append(errors, fmt.Errorf("--audit-log-maxsize %v can't be a negative number", options.Audit.LogOptions.MaxSize))
+	}
+	return errors
+}
+
 // Validate checks ServerRunOptions and return a slice of found errors.
 func (options *ServerRunOptions) Validate() []error {
 	var errors []error
@@ -55,6 +69,9 @@ func (options *ServerRunOptions) Validate() []error {
 		errors = append(errors, errs...)
 	}
 	if errs := validateServiceNodePort(options); len(errs) > 0 {
+		errors = append(errors, errs...)
+	}
+	if errs := validateAuditLogFlags(options); len(errs) > 0 {
 		errors = append(errors, errs...)
 	}
 	if errs := options.SecureServing.Validate(); len(errs) > 0 {
