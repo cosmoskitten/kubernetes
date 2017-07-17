@@ -29,6 +29,7 @@ go_library(
         "//test/e2e/framework:go_default_library",
         "//test/e2e/metrics:go_default_library",
         "//test/utils:go_default_library",
+        "//test/utils/imagemanifest:go_default_library",
         "//vendor/github.com/onsi/ginkgo:go_default_library",
         "//vendor/github.com/onsi/gomega:go_default_library",
         "//vendor/k8s.io/api/admissionregistration/v1alpha1:go_default_library",

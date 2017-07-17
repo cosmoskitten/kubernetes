@@ -61,6 +61,7 @@ filegroup(
     name = "all-srcs",
     srcs = [
         ":package-srcs",
+        "//test/utils/imagemanifest:all-srcs",
         "//test/utils/junit:all-srcs",
     ],
     tags = ["automanaged"],

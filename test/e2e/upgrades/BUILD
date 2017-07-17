@@ -29,6 +29,7 @@ go_library(
         "//pkg/util/version:go_default_library",
         "//test/e2e/common:go_default_library",
         "//test/e2e/framework:go_default_library",
+        "//test/utils/imagemanifest:go_default_library",
         "//vendor/github.com/onsi/ginkgo:go_default_library",
         "//vendor/github.com/onsi/gomega:go_default_library",
         "//vendor/github.com/onsi/gomega/gstruct:go_default_library",

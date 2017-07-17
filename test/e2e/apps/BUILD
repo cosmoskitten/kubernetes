@@ -42,6 +42,7 @@ go_library(
         "//plugin/pkg/scheduler/schedulercache:go_default_library",
         "//test/e2e/framework:go_default_library",
         "//test/utils:go_default_library",
+        "//test/utils/imagemanifest:go_default_library",
         "//vendor/github.com/davecgh/go-spew/spew:go_default_library",
         "//vendor/github.com/onsi/ginkgo:go_default_library",
         "//vendor/github.com/onsi/gomega:go_default_library",

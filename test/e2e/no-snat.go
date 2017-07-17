@@ -31,15 +31,17 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	// . "github.com/onsi/gomega"
+	"k8s.io/kubernetes/test/utils/imagemanifest"
 )
 
 const (
-	testPodPort  = 8080
-	testPodImage = "gcr.io/google_containers/no-snat-test-amd64:1.0.1"
+	testPodPort = 8080
 
-	testProxyPort  = 31235 // Firewall rule allows external traffic on ports 30000-32767. I just picked a random one.
-	testProxyImage = "gcr.io/google_containers/no-snat-test-proxy-amd64:1.0.1"
+	testProxyPort = 31235 // Firewall rule allows external traffic on ports 30000-32767. I just picked a random one.
 )
+
+var testPodImage = imagemanifest.GetnoSnatTestImage()
+var testProxyImage = imagemanifest.GetnoSnatTestProxyImage()
 
 var (
 	testPod = v1.Pod{

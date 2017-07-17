@@ -35,6 +35,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"k8s.io/kubernetes/test/utils/imagemanifest"
 )
 
 func getOOMScoreForPid(pid int) (int, error) {
@@ -168,7 +169,7 @@ var _ = framework.KubeDescribe("Container Manager Misc [Serial]", func() {
 					Spec: v1.PodSpec{
 						Containers: []v1.Container{
 							{
-								Image: "gcr.io/google_containers/nginx-slim:0.7",
+								Image: imagemanifest.GetnginxSlimImage(),
 								Name:  podName,
 								Resources: v1.ResourceRequirements{
 									Limits: v1.ResourceList{
@@ -209,7 +210,7 @@ var _ = framework.KubeDescribe("Container Manager Misc [Serial]", func() {
 					Spec: v1.PodSpec{
 						Containers: []v1.Container{
 							{
-								Image: "gcr.io/google_containers/test-webserver:e2e",
+								Image: imagemanifest.GettestWebserverImage(),
 								Name:  podName,
 								Resources: v1.ResourceRequirements{
 									Requests: v1.ResourceList{

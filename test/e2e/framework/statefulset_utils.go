@@ -38,6 +38,7 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"k8s.io/kubernetes/test/e2e/manifest"
+	"k8s.io/kubernetes/test/utils/imagemanifest"
 )
 
 const (
@@ -762,7 +763,7 @@ func NewStatefulSet(name, ns, governingSvcName string, replicas int32, statefulP
 					Containers: []v1.Container{
 						{
 							Name:         "nginx",
-							Image:        "gcr.io/google_containers/nginx-slim:0.7",
+							Image:        imagemanifest.GetnginxSlimImage(),
 							VolumeMounts: mounts,
 						},
 					},

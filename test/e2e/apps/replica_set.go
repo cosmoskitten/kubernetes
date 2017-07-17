@@ -33,6 +33,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"k8s.io/kubernetes/test/utils/imagemanifest"
 )
 
 func newRS(rsName string, replicas int32, rsPodLabels map[string]string, imageName string, image string) *extensions.ReplicaSet {
@@ -85,7 +86,7 @@ var _ = SIGDescribe("ReplicaSet", func() {
 		// requires private images
 		framework.SkipUnlessProviderIs("gce", "gke")
 
-		testReplicaSetServeImageOrFail(f, "private", "gcr.io/k8s-authenticated-test/serve_hostname:v1.4")
+		testReplicaSetServeImageOrFail(f, "private", imagemanifest.GetserveHostnameImage())
 	})
 
 	It("should surface a failure condition on a common issue like exceeded quota", func() {

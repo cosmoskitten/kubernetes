@@ -25,14 +25,16 @@ import (
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kubernetes/test/e2e/framework"
+	"k8s.io/kubernetes/test/utils/imagemanifest"
 )
 
 const (
-	etcHostsImageName          = "gcr.io/google_containers/netexec:1.7"
 	etcHostsPodName            = "test-pod"
 	etcHostsHostNetworkPodName = "test-host-network-pod"
 	etcHostsPartialContent     = "# Kubernetes-managed hosts file."
 )
+
+var etcHostsImageName = imagemanifest.GetnetexecImage()
 
 type KubeletManagedHostConfig struct {
 	hostNetworkPod *v1.Pod

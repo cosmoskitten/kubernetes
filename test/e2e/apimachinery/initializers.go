@@ -32,6 +32,7 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	clientretry "k8s.io/kubernetes/pkg/client/retry"
 	"k8s.io/kubernetes/test/e2e/framework"
+	"k8s.io/kubernetes/test/utils/imagemanifest"
 )
 
 var _ = SIGDescribe("Initializers", func() {
@@ -228,7 +229,7 @@ func newInitPod(podName string) *v1.Pod {
 			Containers: []v1.Container{
 				{
 					Name:  containerName,
-					Image: "gcr.io/google_containers/porter:4524579c0eb935c056c8e75563b4e1eda31587e0",
+					Image: imagemanifest.GetporterImage(),
 					Env:   []v1.EnvVar{{Name: fmt.Sprintf("SERVE_PORT_%d", port), Value: "foo"}},
 					Ports: []v1.ContainerPort{{ContainerPort: int32(port)}},
 				},

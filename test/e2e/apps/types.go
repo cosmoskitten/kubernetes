@@ -19,19 +19,20 @@ package apps
 import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	batchv2alpha1 "k8s.io/kubernetes/pkg/apis/batch/v2alpha1"
+	"k8s.io/kubernetes/test/utils/imagemanifest"
 )
 
 const (
-	NautilusImage  = "gcr.io/google_containers/update-demo:nautilus"
-	KittenImage    = "gcr.io/google_containers/update-demo:kitten"
-	NginxImage     = "gcr.io/google_containers/nginx-slim:0.7"
 	NginxImageName = "nginx"
-	RedisImage     = "gcr.io/k8s-testimages/redis:e2e"
 	RedisImageName = "redis"
-	NewNginxImage  = "gcr.io/google_containers/nginx-slim:0.8"
 )
 
 var (
+	NautilusImage                    = imagemanifest.GetnautilusImage()
+	KittenImage                      = imagemanifest.GetkittenImage()
 	CronJobGroupVersionResource      = schema.GroupVersionResource{Group: batchv2alpha1.GroupName, Version: "v2alpha1", Resource: "cronjobs"}
+	NginxImage                       = imagemanifest.GetnginxSlimImage()
+	NewNginxImage                    = imagemanifest.GetNewnginxSlimImage()
+	RedisImage                       = imagemanifest.GetredisImage()
 	ScheduledJobGroupVersionResource = schema.GroupVersionResource{Group: batchv2alpha1.GroupName, Version: "v2alpha1", Resource: "scheduledjobs"}
 )

@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
+	"k8s.io/kubernetes/test/utils/imagemanifest"
 
 	. "github.com/onsi/ginkgo"
 )
@@ -46,7 +47,7 @@ func testPreStop(c clientset.Interface, ns string) {
 			Containers: []v1.Container{
 				{
 					Name:  "server",
-					Image: "gcr.io/google_containers/nettest:1.7",
+					Image: imagemanifest.GetnettestImage(),
 					Ports: []v1.ContainerPort{{ContainerPort: 8080}},
 				},
 			},
@@ -79,7 +80,7 @@ func testPreStop(c clientset.Interface, ns string) {
 			Containers: []v1.Container{
 				{
 					Name:    "tester",
-					Image:   "gcr.io/google_containers/busybox:1.24",
+					Image:   imagemanifest.GetBusyboxImage(),
 					Command: []string{"sleep", "600"},
 					Lifecycle: &v1.Lifecycle{
 						PreStop: &v1.Handler{

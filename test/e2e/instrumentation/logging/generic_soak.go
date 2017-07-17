@@ -28,6 +28,7 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/kubernetes/test/e2e/framework"
 	"k8s.io/kubernetes/test/e2e/instrumentation"
+	"k8s.io/kubernetes/test/utils/imagemanifest"
 )
 
 var _ = instrumentation.SIGDescribe("Logging soak [Performance] [Slow] [Disruptive]", func() {
@@ -100,7 +101,7 @@ func RunLogPodsWithSleepOf(f *framework.Framework, sleep time.Duration, podname 
 			return v1.PodSpec{
 				Containers: []v1.Container{{
 					Name:  "logging-soak",
-					Image: "gcr.io/google_containers/busybox:1.24",
+					Image: imagemanifest.GetBusyboxImage(),
 					Args: []string{
 						"/bin/sh",
 						"-c",

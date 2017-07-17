@@ -38,6 +38,7 @@ import (
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/kubernetes/pkg/api/testapi"
 	"k8s.io/kubernetes/test/e2e/framework"
+	"k8s.io/kubernetes/test/utils/imagemanifest"
 )
 
 const (
@@ -601,7 +602,7 @@ func testPDPod(diskNames []string, targetNode types.NodeName, readOnly bool, num
 			containers[i].Name = fmt.Sprintf("mycontainer%v", i+1)
 		}
 
-		containers[i].Image = "gcr.io/google_containers/busybox:1.24"
+		containers[i].Image = imagemanifest.GetBusyboxImage()
 
 		containers[i].Command = []string{"sleep", "6000"}
 

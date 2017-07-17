@@ -39,6 +39,7 @@ go_library(
         "//pkg/kubelet/apis:go_default_library",
         "//pkg/volume/util/volumehelper:go_default_library",
         "//test/e2e/framework:go_default_library",
+        "//test/utils/imagemanifest:go_default_library",
         "//vendor/github.com/aws/aws-sdk-go/aws:go_default_library",
         "//vendor/github.com/aws/aws-sdk-go/aws/session:go_default_library",
         "//vendor/github.com/aws/aws-sdk-go/service/ec2:go_default_library",

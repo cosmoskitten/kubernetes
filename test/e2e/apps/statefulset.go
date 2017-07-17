@@ -34,6 +34,7 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/test/e2e/framework"
+	"k8s.io/kubernetes/test/utils/imagemanifest"
 )
 
 const (
@@ -796,7 +797,7 @@ var _ = SIGDescribe("StatefulSet", func() {
 					Containers: []v1.Container{
 						{
 							Name:  "nginx",
-							Image: "gcr.io/google_containers/nginx-slim:0.7",
+							Image: imagemanifest.GetnginxSlimImage(),
 							Ports: []v1.ContainerPort{conflictingPort},
 						},
 					},

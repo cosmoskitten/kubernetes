@@ -35,6 +35,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"k8s.io/kubernetes/test/utils/imagemanifest"
 )
 
 var _ = framework.KubeDescribe("Pods Extended", func() {
@@ -62,7 +63,7 @@ var _ = framework.KubeDescribe("Pods Extended", func() {
 					Containers: []v1.Container{
 						{
 							Name:  "nginx",
-							Image: "gcr.io/google_containers/nginx-slim:0.7",
+							Image: imagemanifest.GetnginxSlimImage(),
 						},
 					},
 				},
@@ -212,7 +213,7 @@ var _ = framework.KubeDescribe("Pods Extended", func() {
 					Containers: []v1.Container{
 						{
 							Name:  "nginx",
-							Image: "gcr.io/google_containers/nginx-slim:0.7",
+							Image: imagemanifest.GetnginxSlimImage(),
 							Resources: v1.ResourceRequirements{
 								Limits: v1.ResourceList{
 									"cpu":    resource.MustParse("100m"),

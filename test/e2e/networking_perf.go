@@ -26,6 +26,7 @@ import (
 	. "github.com/onsi/gomega"
 	"k8s.io/api/core/v1"
 	"k8s.io/kubernetes/test/e2e/framework"
+	"k8s.io/kubernetes/test/utils/imagemanifest"
 )
 
 const (
@@ -63,7 +64,7 @@ var _ = framework.KubeDescribe("Networking IPerf [Experimental] [Slow] [Feature:
 				return v1.PodSpec{
 					Containers: []v1.Container{{
 						Name:  "iperf-server",
-						Image: "gcr.io/google_containers/iperf:e2e",
+						Image: imagemanifest.GetiperfImage(),
 						Args: []string{
 							"/bin/sh",
 							"-c",
@@ -91,7 +92,7 @@ var _ = framework.KubeDescribe("Networking IPerf [Experimental] [Slow] [Feature:
 					Containers: []v1.Container{
 						{
 							Name:  "iperf-client",
-							Image: "gcr.io/google_containers/iperf:e2e",
+							Image: imagemanifest.GetiperfImage(),
 							Args: []string{
 								"/bin/sh",
 								"-c",

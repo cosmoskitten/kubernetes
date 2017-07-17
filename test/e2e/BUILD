@@ -117,6 +117,8 @@ go_library(
         "//test/e2e_federation:go_default_library",
         "//test/images/net/nat:go_default_library",
         "//test/utils:go_default_library",
+        "//test/utils/imagemanifest:go_default_library",
+        "//test/utils/junit:go_default_library",
         "//vendor/github.com/golang/glog:go_default_library",
         "//vendor/github.com/google/cadvisor/info/v1:go_default_library",
         "//vendor/github.com/onsi/ginkgo:go_default_library",

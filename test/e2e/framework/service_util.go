@@ -40,6 +40,7 @@ import (
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/client/retry"
 	testutils "k8s.io/kubernetes/test/utils"
+	"k8s.io/kubernetes/test/utils/imagemanifest"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -570,7 +571,7 @@ func (j *ServiceTestJig) newRCTemplate(namespace string) *v1.ReplicationControll
 					Containers: []v1.Container{
 						{
 							Name:  "netexec",
-							Image: "gcr.io/google_containers/netexec:1.7",
+							Image: imagemanifest.GetnetexecImage(),
 							Args:  []string{"--http-port=80", "--udp-port=80"},
 							ReadinessProbe: &v1.Probe{
 								PeriodSeconds: 3,
@@ -917,7 +918,7 @@ func NewServerTest(client clientset.Interface, namespace string, serviceName str
 	t.services = make(map[string]bool)
 
 	t.Name = "webserver"
-	t.Image = "gcr.io/google_containers/test-webserver:e2e"
+	t.Image = imagemanifest.GettestWebserverImage()
 
 	return t
 }

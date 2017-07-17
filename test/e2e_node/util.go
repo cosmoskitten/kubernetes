@@ -43,6 +43,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"k8s.io/kubernetes/test/utils/imagemanifest"
 )
 
 // TODO(random-liu): Get this automatically from kubelet flag.
@@ -50,6 +51,7 @@ var kubeletAddress = flag.String("kubelet-address", "http://127.0.0.1:10255", "H
 
 var startServices = flag.Bool("start-services", true, "If true, start local node services")
 var stopServices = flag.Bool("stop-services", true, "If true, stop local node services after running tests")
+var BusyboxImage = imagemanifest.GetBusyboxImage()
 
 func getNodeSummary() (*stats.Summary, error) {
 	req, err := http.NewRequest("GET", *kubeletAddress+"/stats/summary", nil)

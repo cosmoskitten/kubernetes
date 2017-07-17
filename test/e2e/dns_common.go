@@ -30,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
+	"k8s.io/kubernetes/test/utils/imagemanifest"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -179,7 +180,7 @@ func (t *dnsTestCommon) createUtilPod() {
 			Containers: []v1.Container{
 				{
 					Name:    "util",
-					Image:   "gcr.io/google_containers/dnsutils:e2e",
+					Image:   imagemanifest.GetdnsutilsImage(),
 					Command: []string{"sleep", "10000"},
 					Ports: []v1.ContainerPort{
 						{ContainerPort: servicePort, Protocol: "TCP"},
