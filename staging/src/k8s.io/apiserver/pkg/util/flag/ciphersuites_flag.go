@@ -49,6 +49,9 @@ var ciphers = map[string]uint16{
 }
 
 func CipherSuites(cipherNames []string) ([]uint16, error) {
+	if len(cipherNames) == 0 {
+		return nil, nil
+	}
 	ciphersIntSlice := make([]uint16, 0)
 	for _, cipher := range cipherNames {
 		intValue, ok := ciphers[cipher]
