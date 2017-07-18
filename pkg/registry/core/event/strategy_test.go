@@ -36,10 +36,12 @@ func testEvent(name string) *api.Event {
 			Name:      name,
 			Namespace: "default",
 		},
-		InvolvedObject: api.ObjectReference{
+		Object: &api.ObjectReference{
 			Namespace: "default",
 		},
-		Reason: "forTesting",
+		Action: api.EventAction{
+			Action: "forTesting",
+		},
 	}
 }
 
@@ -49,7 +51,7 @@ func TestGetAttrs(t *testing.T) {
 			Name:      "f0118",
 			Namespace: "default",
 		},
-		InvolvedObject: api.ObjectReference{
+		Object: &api.ObjectReference{
 			Kind:            "Pod",
 			Name:            "foo",
 			Namespace:       "baz",
@@ -58,24 +60,26 @@ func TestGetAttrs(t *testing.T) {
 			ResourceVersion: "0",
 			FieldPath:       "",
 		},
-		Reason: "ForTesting",
+		Action: api.EventAction{
+			Action: "ForTesting",
+		},
 		Source: api.EventSource{Component: "test"},
 		Type:   api.EventTypeNormal,
 	}
 	field := EventToSelectableFields(eventA)
 	expect := fields.Set{
-		"metadata.name":                  "f0118",
-		"metadata.namespace":             "default",
-		"involvedObject.kind":            "Pod",
-		"involvedObject.name":            "foo",
-		"involvedObject.namespace":       "baz",
-		"involvedObject.uid":             "long uid string",
-		"involvedObject.apiVersion":      api.Registry.GroupOrDie(api.GroupName).GroupVersion.String(),
-		"involvedObject.resourceVersion": "0",
-		"involvedObject.fieldPath":       "",
-		"reason":                         "ForTesting",
-		"source":                         "test",
-		"type":                           api.EventTypeNormal,
+		"metadata.name":          "f0118",
+		"metadata.namespace":     "default",
+		"object.kind":            "Pod",
+		"object.name":            "foo",
+		"object.namespace":       "baz",
+		"object.uid":             "long uid string",
+		"object.apiVersion":      api.Registry.GroupOrDie(api.GroupName).GroupVersion.String(),
+		"object.resourceVersion": "0",
+		"object.fieldPath":       "",
+		"action.action":          "ForTesting",
+		"source":                 "test",
+		"type":                   api.EventTypeNormal,
 	}
 	if e, a := expect, field; !reflect.DeepEqual(e, a) {
 		t.Errorf("diff: %s", diff.ObjectDiff(e, a))

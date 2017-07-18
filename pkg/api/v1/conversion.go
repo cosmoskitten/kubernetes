@@ -714,18 +714,44 @@ func Convert_v1_ResourceList_To_api_ResourceList(in *v1.ResourceList, out *api.R
 	return nil
 }
 
+func Convert_v1_Event_To_api_Event(in *v1.Event, out *api.Event, s conversion.Scope) error {
+	if err := autoConvert_v1_Event_To_api_Event(in, out, s); err != nil {
+		return err
+	}
+	var object api.ObjectReference
+	if err := Convert_v1_ObjectReference_To_api_ObjectReference(&in.InvolvedObject, &object, s); err != nil {
+		return err
+	}
+	out.Object = &object
+	out.Action.Action = in.Reason
+	return nil
+}
+
+func Convert_api_Event_To_v1_Event(in *api.Event, out *v1.Event, s conversion.Scope) error {
+	if err := autoConvert_api_Event_To_v1_Event(in, out, s); err != nil {
+		return err
+	}
+	if in.Object != nil {
+		if err := Convert_api_ObjectReference_To_v1_ObjectReference(in.Object, &out.InvolvedObject, s); err != nil {
+			return err
+		}
+	}
+	out.Reason = in.Action.Action
+	return nil
+}
+
 func AddFieldLabelConversionsForEvent(scheme *runtime.Scheme) error {
 	return scheme.AddFieldLabelConversionFunc("v1", "Event",
 		func(label, value string) (string, string, error) {
 			switch label {
-			case "involvedObject.kind",
-				"involvedObject.namespace",
-				"involvedObject.name",
-				"involvedObject.uid",
-				"involvedObject.apiVersion",
-				"involvedObject.resourceVersion",
-				"involvedObject.fieldPath",
-				"reason",
+			case "object.kind",
+				"object.namespace",
+				"object.name",
+				"object.uid",
+				"object.apiVersion",
+				"object.resourceVersion",
+				"object.fieldPath",
+				"action.action",
 				"source",
 				"type",
 				"metadata.namespace",

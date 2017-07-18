@@ -46,8 +46,10 @@ func validNewEvent(namespace string) *api.Event {
 			Name:      "foo",
 			Namespace: namespace,
 		},
-		Reason: "forTesting",
-		InvolvedObject: api.ObjectReference{
+		Action: api.EventAction{
+			Action: "forTesting",
+		},
+		Object: &api.ObjectReference{
 			Name:      "bar",
 			Namespace: namespace,
 		},
@@ -80,13 +82,13 @@ func TestUpdate(t *testing.T) {
 		// valid updateFunc
 		func(obj runtime.Object) runtime.Object {
 			object := obj.(*api.Event)
-			object.Reason = "forDifferentTesting"
+			object.Action.Action = "forDifferentTesting"
 			return object
 		},
 		// invalid updateFunc
 		func(obj runtime.Object) runtime.Object {
 			object := obj.(*api.Event)
-			object.InvolvedObject.Namespace = "different-namespace"
+			object.Object.Namespace = "different-namespace"
 			return object
 		},
 	)

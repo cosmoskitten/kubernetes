@@ -141,8 +141,8 @@ func (c *admissionController) publishEvent(a admission.Attributes, msg string) {
 	}
 
 	event := &api.Event{
-		InvolvedObject: *ref,
-		Message:        msg,
+		Object:  ref,
+		Message: msg,
 		Source: api.EventSource{
 			Component: fmt.Sprintf("schedulingpolicy"),
 		},

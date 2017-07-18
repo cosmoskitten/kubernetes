@@ -1,5 +1,5 @@
 /*
-Copyright 2014 The Kubernetes Authors.
+Copyright 2017 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,94 +25,79 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/registry/generic"
-	"k8s.io/apiserver/pkg/registry/rest"
-	"k8s.io/apiserver/pkg/storage"
+	apistorage "k8s.io/apiserver/pkg/storage"
 	"k8s.io/apiserver/pkg/storage/names"
 	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/api/validation"
+	"k8s.io/kubernetes/pkg/apis/events/validation"
 )
 
+// eventStrategy implements verification logic for Pod Presets.
 type eventStrategy struct {
 	runtime.ObjectTyper
 	names.NameGenerator
 }
 
-// Strategy is the default logic that pplies when creating and updating
-// Event objects via the REST API.
+// Strategy is the default logic that applies when creating and updating Pod Preset objects.
 var Strategy = eventStrategy{api.Scheme, names.SimpleNameGenerator}
 
-func (eventStrategy) DefaultGarbageCollectionPolicy() rest.GarbageCollectionPolicy {
-	return rest.Unsupported
-}
-
+// NamespaceScoped returns true because all Events need to be within a namespace.
 func (eventStrategy) NamespaceScoped() bool {
 	return true
 }
 
+// PrepareForCreate clears the status of a Pod Preset before creation.
 func (eventStrategy) PrepareForCreate(ctx genericapirequest.Context, obj runtime.Object) {
 }
 
+// PrepareForUpdate clears fields that are not allowed to be set by end users on update.
 func (eventStrategy) PrepareForUpdate(ctx genericapirequest.Context, obj, old runtime.Object) {
 }
 
+// Validate validates a new Event.
 func (eventStrategy) Validate(ctx genericapirequest.Context, obj runtime.Object) field.ErrorList {
-	event := obj.(*api.Event)
-	return validation.ValidateEvent(event)
+	pip := obj.(*api.Event)
+	return validation.ValidateEvent(pip)
 }
 
 // Canonicalize normalizes the object after validation.
-func (eventStrategy) Canonicalize(obj runtime.Object) {
-}
-
+// AllowCreateOnUpdate is false for Event; this means POST is needed to create one.
 func (eventStrategy) AllowCreateOnUpdate() bool {
-	return true
+	return false
 }
 
+func (eventStrategy) Canonicalize(obj runtime.Object) {}
+
+// ValidateUpdate is the default update validation for an end user.
 func (eventStrategy) ValidateUpdate(ctx genericapirequest.Context, obj, old runtime.Object) field.ErrorList {
 	event := obj.(*api.Event)
 	return validation.ValidateEvent(event)
 }
 
+// AllowUnconditionalUpdate is the default update policy for Pod Preset objects.
 func (eventStrategy) AllowUnconditionalUpdate() bool {
 	return true
 }
 
-// GetAttrs returns labels and fields of a given object for filtering purposes.
-func GetAttrs(obj runtime.Object) (labels.Set, fields.Set, bool, error) {
-	event, ok := obj.(*api.Event)
-	if !ok {
-		return nil, nil, false, fmt.Errorf("not an event")
-	}
-	return labels.Set(event.Labels), EventToSelectableFields(event), event.Initializers != nil, nil
+// SelectableFields returns a field set that represents the object.
+func SelectableFields(pip *api.Event) fields.Set {
+	return generic.ObjectMetaFieldsSet(&pip.ObjectMeta, true)
 }
 
-func MatchEvent(label labels.Selector, field fields.Selector) storage.SelectionPredicate {
-	return storage.SelectionPredicate{
+// GetAttrs returns labels and fields of a given object for filtering purposes.
+func GetAttrs(obj runtime.Object) (labels.Set, fields.Set, bool, error) {
+	pip, ok := obj.(*api.Event)
+	if !ok {
+		return nil, nil, false, fmt.Errorf("given object is not a Event")
+	}
+	return labels.Set(pip.ObjectMeta.Labels), SelectableFields(pip), pip.Initializers != nil, nil
+}
+
+// Matcher is the filter used by the generic etcd backend to watch events
+// from etcd to clients of the apiserver only interested in specific labels/fields.
+func Matcher(label labels.Selector, field fields.Selector) apistorage.SelectionPredicate {
+	return apistorage.SelectionPredicate{
 		Label:    label,
 		Field:    field,
 		GetAttrs: GetAttrs,
 	}
-}
-
-// EventToSelectableFields returns a field set that represents the object
-func EventToSelectableFields(event *api.Event) fields.Set {
-	objectMetaFieldsSet := generic.ObjectMetaFieldsSet(&event.ObjectMeta, true)
-	specificFieldsSet := fields.Set{
-		"action.action": event.Action.Action,
-		"source":        event.Source.Component,
-		"type":          event.Type,
-	}
-	if event.Object != nil {
-		objectSpecificFieldsSet := fields.Set{
-			"object.kind":            event.Object.Kind,
-			"object.namespace":       event.Object.Namespace,
-			"object.name":            event.Object.Name,
-			"object.uid":             string(event.Object.UID),
-			"object.apiVersion":      event.Object.APIVersion,
-			"object.resourceVersion": event.Object.ResourceVersion,
-			"object.fieldPath":       event.Object.FieldPath,
-		}
-		specificFieldsSet = generic.MergeFieldsSets(specificFieldsSet, objectSpecificFieldsSet)
-	}
-	return generic.MergeFieldsSets(objectMetaFieldsSet, specificFieldsSet)
 }
