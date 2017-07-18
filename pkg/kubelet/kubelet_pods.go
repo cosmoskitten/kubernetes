@@ -109,16 +109,17 @@ func (kl *Kubelet) makeDevices(pod *v1.Pod, container *v1.Container) ([]kubecont
 
 // makeMounts determines the mount points for the given container.
 func makeMounts(pod *v1.Pod, podDir string, container *v1.Container, hostName, hostDomain, podIP string, podVolumes kubecontainer.VolumeMap) ([]kubecontainer.Mount, error) {
-	// Kubernetes only mounts on /etc/hosts if :
-	// - container does not use hostNetwork and
-	// - container is not an infrastructure(pause) container
+	// Kubernetes only mounts on /etc/hosts if:
+	// - container is not an infrastructure (pause) container
 	// - container is not already mounting on /etc/hosts
-	// When the pause container is being created, its IP is still unknown. Hence, PodIP will not have been set.
-	// OS is not Windows
+	// - OS is not Windows
+	// Kubernetes will not mount /etc/hosts if:
+	// - when the pause container is being created, its IP is still unknown. Hence, PodIP will not have been set.
 	mountEtcHostsFile := len(podIP) > 0 && runtime.GOOS != "windows"
 	glog.V(3).Infof("container: %v/%v/%v podIP: %q creating hosts mount: %v", pod.Namespace, pod.Name, container.Name, podIP, mountEtcHostsFile)
 	mounts := []kubecontainer.Mount{}
 	for _, mount := range container.VolumeMounts {
+		// do not mount /etc/hosts if container is already mounting on the path
 		mountEtcHostsFile = mountEtcHostsFile && (mount.MountPath != etcHostsPath)
 		vol, ok := podVolumes[mount.Name]
 		if !ok || vol.Mounter == nil {
