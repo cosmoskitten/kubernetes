@@ -225,12 +225,15 @@ func makeHostsMount(podDir, podIP, hostName, hostDomainName string, hostAliases 
 // ensureHostsFile ensures that the given host file has an up-to-date ip, host
 // name, and domain name.
 func ensureHostsFile(fileName, hostIP, hostName, hostDomainName string, hostAliases []v1.HostAlias) error {
-	hostsFileContent := managedHostsFileContent(hostIP, hostName, hostDomainName, hostAliases)
+	hostsFileContent, err := managedHostsFileContent(hostIP, hostName, hostDomainName, hostAliases)
+	if err != nil {
+		return err
+	}
 	return ioutil.WriteFile(fileName, hostsFileContent, 0644)
 }
 
 // managedHostsFileContent is the content of the managed etc hosts
-func managedHostsFileContent(hostIP, hostName, hostDomainName string, hostAliases []v1.HostAlias) []byte {
+func managedHostsFileContent(hostIP, hostName, hostDomainName string, hostAliases []v1.HostAlias) ([]byte, error) {
 	var buffer bytes.Buffer
 	buffer.WriteString("# Kubernetes-managed hosts file.\n")
 	buffer.WriteString("127.0.0.1\tlocalhost\n")                      // ipv4 localhost
@@ -250,7 +253,7 @@ func managedHostsFileContent(hostIP, hostName, hostDomainName string, hostAliase
 			buffer.WriteString(fmt.Sprintf("%s\t%s\n", hostAlias.IP, hostname))
 		}
 	}
-	return buffer.Bytes()
+	return buffer.Bytes(), nil
 }
 
 // truncatePodHostnameIfNeeded truncates the pod hostname if it's longer than 63 chars.
