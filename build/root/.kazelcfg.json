@@ -7,12 +7,15 @@
 		"./plugin",
 		"./test",
 		"./federation",
-		"./examples"
+		"./examples",
+		"./cluster"
 	],
 	"SkippedPaths": [
 		"^_.*",
 		"^staging.*",
-		"_vendor"
+		"_vendor",
+		"^cluster/gce/cos",
+		"^cluster/gce/ubuntu"
 	],
 	"AddSourcesRules": true,
 	"VendorMultipleBuildFiles": true,

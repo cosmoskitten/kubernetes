@@ -524,7 +524,7 @@ bazel-build:
 	@echo "$$BAZEL_BUILD_HELP_INFO"
 else
 bazel-build:
-	bazel build //cmd/... //pkg/... //federation/... //plugin/... //third_party/... //examples/... //test/... //vendor/k8s.io/...
+	bazel build //cmd/... //pkg/... //federation/... //plugin/... //third_party/... //examples/... //test/... //vendor/k8s.io/... //cluster/...
 endif
 
 
