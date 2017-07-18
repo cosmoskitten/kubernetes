@@ -19,16 +19,19 @@ package fuzzer
 import (
 	"reflect"
 	"strconv"
+	"time"
 
 	fuzz "github.com/google/gofuzz"
 
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	runtimeserializer "k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/intstr"
+
 	"k8s.io/kubernetes/pkg/api"
 )
 
@@ -438,6 +441,25 @@ var Funcs = func(codecs runtimeserializer.CodecFactory) []interface{} {
 		func(s *api.NodeStatus, c fuzz.Continue) {
 			c.FuzzNoCustom(s)
 			s.Allocatable = s.Capacity
+		},
+		func(e *api.Event, c fuzz.Continue) {
+			c.FuzzNoCustom(e)
+			e.EventTime = metav1.MicroTime{Time: time.Unix(1, 1000)}
+			if e.Count != 0 {
+				e.Series = &api.EventSeries{}
+			}
+			if e.Series != nil {
+				e.Series.HeartbeatTime = metav1.MicroTime{Time: time.Unix(2, 2000)}
+				e.Series.LastObservedTime = metav1.MicroTime{Time: time.Unix(3, 3000)}
+				e.Series.Count = e.Count
+			}
+			e.Source.Host = ""
+			e.Origin = e.Source
+			e.Type = ""
+			e.FirstTimestamp = metav1.Time{}
+			e.LastTimestamp = metav1.Time{}
+			e.Object = &e.InvolvedObject
+			e.Action.Action = e.Reason
 		},
 	}
 }
