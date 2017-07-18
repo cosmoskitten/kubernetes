@@ -139,11 +139,11 @@ func watchRollbackEvent(w watch.Interface) string {
 func isRollbackEvent(e *api.Event) (bool, string) {
 	rollbackEventReasons := []string{deploymentutil.RollbackRevisionNotFound, deploymentutil.RollbackTemplateUnchanged, deploymentutil.RollbackDone}
 	for _, reason := range rollbackEventReasons {
-		if e.Reason == reason {
+		if e.Action.Action == reason {
 			if reason == deploymentutil.RollbackDone {
 				return true, rollbackSuccess
 			}
-			return true, fmt.Sprintf("%s (%s: %s)", rollbackSkipped, e.Reason, e.Message)
+			return true, fmt.Sprintf("%s (%s: %s)", rollbackSkipped, e.Action.Action, e.Message)
 		}
 	}
 	return false, ""

@@ -2350,10 +2350,10 @@ func DumpNodeDebugInfo(c clientset.Interface, nodeNames []string, logFunc func(f
 // with latency metrics, beware of calling it during a test.
 func getNodeEvents(c clientset.Interface, nodeName string) []v1.Event {
 	selector := fields.Set{
-		"involvedObject.kind":      "Node",
-		"involvedObject.name":      nodeName,
-		"involvedObject.namespace": metav1.NamespaceAll,
-		"source":                   "kubelet",
+		"object.kind":      "Node",
+		"object.name":      nodeName,
+		"object.namespace": metav1.NamespaceAll,
+		"source":           "kubelet",
 	}.AsSelector().String()
 	options := metav1.ListOptions{FieldSelector: selector}
 	events, err := c.Core().Events(metav1.NamespaceSystem).List(options)

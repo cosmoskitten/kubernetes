@@ -353,8 +353,8 @@ func (c *podPresetPlugin) addEvent(pod *api.Pod, pip *settings.PodPreset, messag
 	}
 
 	e := &api.Event{
-		InvolvedObject: *ref,
-		Message:        message,
+		Object:  ref,
+		Message: message,
 		Source: api.EventSource{
 			Component: fmt.Sprintf("pip %s", pip.GetName()),
 		},

@@ -146,10 +146,10 @@ var _ = framework.KubeDescribe("NodeProblemDetector", func() {
 			}`
 			By("Generate event list options")
 			selector := fields.Set{
-				"involvedObject.kind":      "Node",
-				"involvedObject.name":      framework.TestContext.NodeName,
-				"involvedObject.namespace": metav1.NamespaceAll,
-				"source":                   source,
+				"object.kind":      "Node",
+				"object.name":      framework.TestContext.NodeName,
+				"object.namespace": metav1.NamespaceAll,
+				"source":           source,
 			}.AsSelector().String()
 			eventListOptions = metav1.ListOptions{FieldSelector: selector}
 			By("Create the test log file")

@@ -34,7 +34,7 @@ func TestValidateEvent(t *testing.T) {
 					Name:      "test1",
 					Namespace: "foo",
 				},
-				InvolvedObject: api.ObjectReference{
+				Object: &api.ObjectReference{
 					Namespace: "bar",
 					Kind:      "Pod",
 				},
@@ -46,7 +46,7 @@ func TestValidateEvent(t *testing.T) {
 					Name:      "test2",
 					Namespace: "aoeu-_-aoeu",
 				},
-				InvolvedObject: api.ObjectReference{
+				Object: &api.ObjectReference{
 					Namespace: "aoeu-_-aoeu",
 					Kind:      "Pod",
 				},
@@ -58,7 +58,7 @@ func TestValidateEvent(t *testing.T) {
 					Name:      "test3",
 					Namespace: metav1.NamespaceDefault,
 				},
-				InvolvedObject: api.ObjectReference{
+				Object: &api.ObjectReference{
 					APIVersion: "v1",
 					Kind:       "Node",
 				},
@@ -70,7 +70,7 @@ func TestValidateEvent(t *testing.T) {
 					Name:      "test4",
 					Namespace: metav1.NamespaceDefault,
 				},
-				InvolvedObject: api.ObjectReference{
+				Object: &api.ObjectReference{
 					APIVersion: "v1",
 					Kind:       "Namespace",
 				},
@@ -82,7 +82,7 @@ func TestValidateEvent(t *testing.T) {
 					Name:      "test5",
 					Namespace: metav1.NamespaceDefault,
 				},
-				InvolvedObject: api.ObjectReference{
+				Object: &api.ObjectReference{
 					APIVersion: "extensions/v1beta1",
 					Kind:       "NoKind",
 					Namespace:  metav1.NamespaceDefault,
@@ -95,7 +95,7 @@ func TestValidateEvent(t *testing.T) {
 					Name:      "test6",
 					Namespace: metav1.NamespaceDefault,
 				},
-				InvolvedObject: api.ObjectReference{
+				Object: &api.ObjectReference{
 					APIVersion: "extensions/v1beta1",
 					Kind:       "Job",
 					Namespace:  "foo",
@@ -108,7 +108,7 @@ func TestValidateEvent(t *testing.T) {
 					Name:      "test7",
 					Namespace: metav1.NamespaceDefault,
 				},
-				InvolvedObject: api.ObjectReference{
+				Object: &api.ObjectReference{
 					APIVersion: "extensions/v1beta1",
 					Kind:       "Job",
 					Namespace:  metav1.NamespaceDefault,
@@ -121,7 +121,7 @@ func TestValidateEvent(t *testing.T) {
 					Name:      "test8",
 					Namespace: metav1.NamespaceDefault,
 				},
-				InvolvedObject: api.ObjectReference{
+				Object: &api.ObjectReference{
 					APIVersion: "other/v1beta1",
 					Kind:       "Job",
 					Namespace:  "foo",
@@ -134,7 +134,7 @@ func TestValidateEvent(t *testing.T) {
 					Name:      "test9",
 					Namespace: "foo",
 				},
-				InvolvedObject: api.ObjectReference{
+				Object: &api.ObjectReference{
 					APIVersion: "other/v1beta1",
 					Kind:       "Job",
 					Namespace:  "foo",
@@ -147,7 +147,7 @@ func TestValidateEvent(t *testing.T) {
 					Name:      "test10",
 					Namespace: metav1.NamespaceDefault,
 				},
-				InvolvedObject: api.ObjectReference{
+				Object: &api.ObjectReference{
 					APIVersion: "extensions",
 					Kind:       "Job",
 					Namespace:  "foo",
@@ -160,7 +160,7 @@ func TestValidateEvent(t *testing.T) {
 					Name:      "test11",
 					Namespace: "foo",
 				},
-				InvolvedObject: api.ObjectReference{
+				Object: &api.ObjectReference{
 					// must register in v1beta1 to be true
 					APIVersion: "extensions/v1beta1",
 					Kind:       "Job",
@@ -175,7 +175,7 @@ func TestValidateEvent(t *testing.T) {
 					Name:      "test12",
 					Namespace: "foo",
 				},
-				InvolvedObject: api.ObjectReference{
+				Object: &api.ObjectReference{
 					APIVersion: "other/v1beta1",
 					Kind:       "FooBar",
 					Namespace:  "bar",
@@ -189,7 +189,7 @@ func TestValidateEvent(t *testing.T) {
 					Name:      "test13",
 					Namespace: "",
 				},
-				InvolvedObject: api.ObjectReference{
+				Object: &api.ObjectReference{
 					APIVersion: "other/v1beta1",
 					Kind:       "FooBar",
 					Namespace:  "bar",
@@ -203,7 +203,7 @@ func TestValidateEvent(t *testing.T) {
 					Name:      "test14",
 					Namespace: "foo",
 				},
-				InvolvedObject: api.ObjectReference{
+				Object: &api.ObjectReference{
 					APIVersion: "other/v1beta1",
 					Kind:       "FooBar",
 					Namespace:  "",
@@ -215,7 +215,7 @@ func TestValidateEvent(t *testing.T) {
 
 	for _, item := range table {
 		if e, a := item.valid, len(ValidateEvent(item.Event)) == 0; e != a {
-			t.Errorf("%v: expected %v, got %v", item.Event.Name, e, a)
+			t.Errorf("%v: expected %v, got %v: %v", item.Event.Name, e, a, ValidateEvent(item.Event))
 		}
 	}
 }

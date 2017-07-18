@@ -136,11 +136,11 @@ var _ = SIGDescribe("NodeOutOfDisk [Serial] [Flaky] [Disruptive]", func() {
 		By(fmt.Sprintf("Finding a failed scheduler event for pod %s", pendingPodName))
 		wait.Poll(2*time.Second, 5*time.Minute, func() (bool, error) {
 			selector := fields.Set{
-				"involvedObject.kind":      "Pod",
-				"involvedObject.name":      pendingPodName,
-				"involvedObject.namespace": ns,
-				"source":                   v1.DefaultSchedulerName,
-				"reason":                   "FailedScheduling",
+				"object.kind":      "Pod",
+				"object.name":      pendingPodName,
+				"object.namespace": ns,
+				"source":           v1.DefaultSchedulerName,
+				"reason":           "FailedScheduling",
 			}.AsSelector().String()
 			options := metav1.ListOptions{FieldSelector: selector}
 			schedEvents, err := c.Core().Events(ns).List(options)
