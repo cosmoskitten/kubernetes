@@ -225,12 +225,12 @@ func makeHostsMount(podDir, podIP, hostName, hostDomainName string, hostAliases 
 // ensureHostsFile ensures that the given host file has an up-to-date ip, host
 // name, and domain name.
 func ensureHostsFile(fileName, hostIP, hostName, hostDomainName string, hostAliases []v1.HostAlias) error {
-	content := hostsFileContent(hostIP, hostName, hostDomainName, hostAliases)
-	return ioutil.WriteFile(fileName, content, 0644)
+	hostsFileContent := managedHostsFileContent(hostIP, hostName, hostDomainName, hostAliases)
+	return ioutil.WriteFile(fileName, hostsFileContent, 0644)
 }
 
-// hostsFileContent is the content of the managed etc hosts
-func hostsFileContent(hostIP, hostName, hostDomainName string, hostAliases []v1.HostAlias) []byte {
+// managedHostsFileContent is the content of the managed etc hosts
+func managedHostsFileContent(hostIP, hostName, hostDomainName string, hostAliases []v1.HostAlias) []byte {
 	var buffer bytes.Buffer
 	buffer.WriteString("# Kubernetes-managed hosts file.\n")
 	buffer.WriteString("127.0.0.1\tlocalhost\n")                      // ipv4 localhost
