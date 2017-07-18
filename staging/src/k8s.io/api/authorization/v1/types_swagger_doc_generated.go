@@ -47,6 +47,16 @@ func (NonResourceAttributes) SwaggerDoc() map[string]string {
 	return map_NonResourceAttributes
 }
 
+var map_NonResourceRule = map[string]string{
+	"":                "NonResourceRule holds information that describes a rule for the non-resource",
+	"verbs":           "Verb is a of kubernetes non-resource API verbs, like: get, post, put, delete, patch, head, options.  \"*\" means all.",
+	"nonResourceURLs": "NonResourceURLs is a set of partial urls that a user should have access to.  *s are allowed, but only as the full, final step in the path.  \"*\" means all.",
+}
+
+func (NonResourceRule) SwaggerDoc() map[string]string {
+	return map_NonResourceRule
+}
+
 var map_ResourceAttributes = map[string]string{
 	"":            "ResourceAttributes includes the authorization attributes available for resource requests to the Authorizer interface",
 	"namespace":   "Namespace is the namespace of the action being requested.  Currently, there is no distinction between no namespace and all namespaces \"\" (empty) is defaulted for LocalSubjectAccessReviews \"\" (empty) is empty for cluster-scoped resources \"\" (empty) means \"all\" for namespace scoped resources from a SubjectAccessReview or SelfSubjectAccessReview",
@@ -60,6 +70,18 @@ var map_ResourceAttributes = map[string]string{
 
 func (ResourceAttributes) SwaggerDoc() map[string]string {
 	return map_ResourceAttributes
+}
+
+var map_ResourceRule = map[string]string{
+	"":              "ResourceRules is the list of actions the subject is allowed to perform on resources. The list ordering isn't significant, may contain duplicates, and possibly be incomplete.",
+	"verbs":         "Verb is a of kubernetes resource API verbs, like: get, list, watch, create, update, delete, proxy.  \"*\" means all.",
+	"apiGroups":     "APIGroups is the name of the APIGroup that contains the resources.  If multiple API groups are specified, any action requested against one of the enumerated resources in any API group will be allowed.  \"*\" means all.",
+	"resources":     "Resources is a list of resources this rule applies to.  ResourceAll represents all resources.  \"*\" means all.",
+	"resourceNames": "ResourceNames is an optional white list of names that the rule applies to.  An empty set means that everything is allowed.  \"*\" means all.",
+}
+
+func (ResourceRule) SwaggerDoc() map[string]string {
+	return map_ResourceRule
 }
 
 var map_SelfSubjectAccessReview = map[string]string{
@@ -80,6 +102,15 @@ var map_SelfSubjectAccessReviewSpec = map[string]string{
 
 func (SelfSubjectAccessReviewSpec) SwaggerDoc() map[string]string {
 	return map_SelfSubjectAccessReviewSpec
+}
+
+var map_SelfSubjectRulesReview = map[string]string{
+	"":       "SelfSubjectRulesReview enumerates the set of actions the current user can perform within a namespace. The returned list of actions may be incomplete depending on the server's authorization mode, and any errors experienced during the evaluation.",
+	"status": "Status is filled in by the server and indicates the set of actions a user can perform.",
+}
+
+func (SelfSubjectRulesReview) SwaggerDoc() map[string]string {
+	return map_SelfSubjectRulesReview
 }
 
 var map_SubjectAccessReview = map[string]string{
@@ -114,6 +145,17 @@ var map_SubjectAccessReviewStatus = map[string]string{
 
 func (SubjectAccessReviewStatus) SwaggerDoc() map[string]string {
 	return map_SubjectAccessReviewStatus
+}
+
+var map_SubjectRulesReviewStatus = map[string]string{
+	"":                 "SubjectRulesReviewStatus is contains the result of a rules check",
+	"resourceRules":    "ResourceRules is the list of actions the subject is allowed to perform on resources. The list ordering isn't significant, may contain duplicates, and possibly be incomplete.",
+	"nonResourceRules": "NonResourceRules is the list of actions the subject is allowed to perform on non-resources. The list ordering isn't significant, may contain duplicates, and possibly be incomplete.",
+	"evaluationError":  "EvaluationError can appear in combination with Rules.  It means some error happened during evaluation that may have prevented additional rules from being populated.",
+}
+
+func (SubjectRulesReviewStatus) SwaggerDoc() map[string]string {
+	return map_SubjectRulesReviewStatus
 }
 
 // AUTO-GENERATED FUNCTIONS END HERE

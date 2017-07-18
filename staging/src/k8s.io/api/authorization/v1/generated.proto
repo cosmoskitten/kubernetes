@@ -65,6 +65,17 @@ message NonResourceAttributes {
   optional string verb = 2;
 }
 
+// NonResourceRule holds information that describes a rule for the non-resource
+message NonResourceRule {
+  // Verb is a of kubernetes non-resource API verbs, like: get, post, put, delete, patch, head, options.  "*" means all.
+  repeated string verbs = 1;
+
+  // NonResourceURLs is a set of partial urls that a user should have access to.  *s are allowed, but only as the full,
+  // final step in the path.  "*" means all.
+  // +optional
+  repeated string nonResourceURLs = 2;
+}
+
 // ResourceAttributes includes the authorization attributes available for resource requests to the Authorizer interface
 message ResourceAttributes {
   // Namespace is the namespace of the action being requested.  Currently, there is no distinction between no namespace and all namespaces
@@ -99,6 +110,26 @@ message ResourceAttributes {
   optional string name = 7;
 }
 
+// ResourceRules is the list of actions the subject is allowed to perform on resources. The list ordering isn't significant,
+// may contain duplicates, and possibly be incomplete.
+message ResourceRule {
+  // Verb is a of kubernetes resource API verbs, like: get, list, watch, create, update, delete, proxy.  "*" means all.
+  repeated string verbs = 1;
+
+  // APIGroups is the name of the APIGroup that contains the resources.  If multiple API groups are specified, any action requested against one of
+  // the enumerated resources in any API group will be allowed.  "*" means all.
+  // +optional
+  repeated string apiGroups = 2;
+
+  // Resources is a list of resources this rule applies to.  ResourceAll represents all resources.  "*" means all.
+  // +optional
+  repeated string resources = 3;
+
+  // ResourceNames is an optional white list of names that the rule applies to.  An empty set means that everything is allowed.  "*" means all.
+  // +optional
+  repeated string resourceNames = 4;
+}
+
 // SelfSubjectAccessReview checks whether or the current user can perform an action.  Not filling in a
 // spec.namespace means "in all namespaces".  Self is a special case, because users should always be able
 // to check whether they can perform an action
@@ -124,6 +155,15 @@ message SelfSubjectAccessReviewSpec {
   // NonResourceAttributes describes information for a non-resource access request
   // +optional
   optional NonResourceAttributes nonResourceAttributes = 2;
+}
+
+// SelfSubjectRulesReview enumerates the set of actions the current user can perform within a namespace.
+// The returned list of actions may be incomplete depending on the server's authorization mode,
+// and any errors experienced during the evaluation.
+message SelfSubjectRulesReview {
+  // Status is filled in by the server and indicates the set of actions a user can perform.
+  // +optional
+  optional SubjectRulesReviewStatus status = 2;
 }
 
 // SubjectAccessReview checks whether or not a user or group can perform an action.
@@ -177,6 +217,22 @@ message SubjectAccessReviewStatus {
   // EvaluationError is an indication that some error occurred during the authorization check.
   // It is entirely possible to get an error and be able to continue determine authorization status in spite of it.
   // For instance, RBAC can be missing a role, but enough roles are still present and bound to reason about the request.
+  // +optional
+  optional string evaluationError = 3;
+}
+
+// SubjectRulesReviewStatus is contains the result of a rules check
+message SubjectRulesReviewStatus {
+  // ResourceRules is the list of actions the subject is allowed to perform on resources.
+  // The list ordering isn't significant, may contain duplicates, and possibly be incomplete.
+  repeated ResourceRule resourceRules = 1;
+
+  // NonResourceRules is the list of actions the subject is allowed to perform on non-resources.
+  // The list ordering isn't significant, may contain duplicates, and possibly be incomplete.
+  repeated NonResourceRule nonResourceRules = 2;
+
+  // EvaluationError can appear in combination with Rules.  It means some error happened during evaluation
+  // that may have prevented additional rules from being populated.
   // +optional
   optional string evaluationError = 3;
 }

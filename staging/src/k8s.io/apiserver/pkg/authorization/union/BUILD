@@ -13,7 +13,10 @@ go_test(
     srcs = ["union_test.go"],
     library = ":go_default_library",
     tags = ["automanaged"],
-    deps = ["//vendor/k8s.io/apiserver/pkg/authorization/authorizer:go_default_library"],
+    deps = [
+        "//vendor/k8s.io/apiserver/pkg/authentication/user:go_default_library",
+        "//vendor/k8s.io/apiserver/pkg/authorization/authorizer:go_default_library",
+    ],
 )
 
 go_library(
@@ -22,6 +25,7 @@ go_library(
     tags = ["automanaged"],
     deps = [
         "//vendor/k8s.io/apimachinery/pkg/util/errors:go_default_library",
+        "//vendor/k8s.io/apiserver/pkg/authentication/user:go_default_library",
         "//vendor/k8s.io/apiserver/pkg/authorization/authorizer:go_default_library",
     ],
 )
