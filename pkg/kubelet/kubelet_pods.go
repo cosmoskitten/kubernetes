@@ -115,7 +115,7 @@ func makeMounts(pod *v1.Pod, podDir string, container *v1.Container, hostName, h
 	// - container is not already mounting on /etc/hosts
 	// When the pause container is being created, its IP is still unknown. Hence, PodIP will not have been set.
 	// OS is not Windows
-	mountEtcHostsFile := !pod.Spec.HostNetwork && len(podIP) > 0 && runtime.GOOS != "windows"
+	mountEtcHostsFile := len(podIP) > 0 && runtime.GOOS != "windows"
 	glog.V(3).Infof("container: %v/%v/%v podIP: %q creating hosts mount: %v", pod.Namespace, pod.Name, container.Name, podIP, mountEtcHostsFile)
 	mounts := []kubecontainer.Mount{}
 	for _, mount := range container.VolumeMounts {
@@ -197,7 +197,7 @@ func makeMounts(pod *v1.Pod, podDir string, container *v1.Container, hostName, h
 	}
 	if mountEtcHostsFile {
 		hostAliases := pod.Spec.HostAliases
-		hostsMount, err := makeHostsMount(podDir, podIP, hostName, hostDomain, hostAliases)
+		hostsMount, err := makeHostsMount(podDir, podIP, hostName, hostDomain, hostAliases, pod.Spec.HostNetwork)
 		if err != nil {
 			return nil, err
 		}
@@ -208,9 +208,9 @@ func makeMounts(pod *v1.Pod, podDir string, container *v1.Container, hostName, h
 
 // makeHostsMount makes the mountpoint for the hosts file that the containers
 // in a pod are injected with.
-func makeHostsMount(podDir, podIP, hostName, hostDomainName string, hostAliases []v1.HostAlias) (*kubecontainer.Mount, error) {
+func makeHostsMount(podDir, podIP, hostName, hostDomainName string, hostAliases []v1.HostAlias, useHostNetwork bool) (*kubecontainer.Mount, error) {
 	hostsFilePath := path.Join(podDir, "etc-hosts")
-	if err := ensureHostsFile(hostsFilePath, podIP, hostName, hostDomainName, hostAliases); err != nil {
+	if err := ensureHostsFile(hostsFilePath, podIP, hostName, hostDomainName, hostAliases, useHostNetwork); err != nil {
 		return nil, err
 	}
 	return &kubecontainer.Mount{
@@ -224,15 +224,34 @@ func makeHostsMount(podDir, podIP, hostName, hostDomainName string, hostAliases 
 
 // ensureHostsFile ensures that the given host file has an up-to-date ip, host
 // name, and domain name.
-func ensureHostsFile(fileName, hostIP, hostName, hostDomainName string, hostAliases []v1.HostAlias) error {
-	hostsFileContent, err := managedHostsFileContent(hostIP, hostName, hostDomainName, hostAliases)
+func ensureHostsFile(fileName, hostIP, hostName, hostDomainName string, hostAliases []v1.HostAlias, useHostNetwork bool) error {
+	var hostsFileContent []byte
+	var err error
+
+	if useHostNetwork {
+		// if Pod is using host network, read hosts file from the node's filesystem.
+		hostsFileContent, err = nodeHostsFileContent()
+	} else {
+		// if Pod is not using host network, create a managed hosts file with Pod IP and other information.
+		hostsFileContent, err = managedHostsFileContent(hostIP, hostName, hostDomainName, hostAliases)
+	}
+
 	if err != nil {
 		return err
 	}
+
 	return ioutil.WriteFile(fileName, hostsFileContent, 0644)
 }
 
-// managedHostsFileContent is the content of the managed etc hosts
+// nodeHostsFileContent reads the content of node's hosts file.
+func nodeHostsFileContent() ([]byte, error) {
+	// Location of the hosts file on the node. `/etc/hosts` for *nix systems.
+	nodeHostsFilename := path.Join("/", "etc", "hosts")
+	return ioutil.ReadFile(nodeHostsFilename)
+}
+
+// managedHostsFileContent generates the content of the managed etc hosts based on Pod IP and other
+// information.
 func managedHostsFileContent(hostIP, hostName, hostDomainName string, hostAliases []v1.HostAlias) ([]byte, error) {
 	var buffer bytes.Buffer
 	buffer.WriteString("# Kubernetes-managed hosts file.\n")
