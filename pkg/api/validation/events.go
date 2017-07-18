@@ -18,6 +18,7 @@ package validation
 
 import (
 	"fmt"
+	"time"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -31,32 +32,48 @@ import (
 // ValidateEvent makes sure that the event makes sense.
 func ValidateEvent(event *api.Event) field.ErrorList {
 	allErrs := field.ErrorList{}
+	zeroTime := time.Time{}
 
-	// Make sure event.Namespace and the involvedObject.Namespace agree
-	if len(event.InvolvedObject.Namespace) == 0 {
-		// event.Namespace must also be empty (or "default", for compatibility with old clients)
-		if event.Namespace != metav1.NamespaceNone && event.Namespace != metav1.NamespaceDefault {
-			allErrs = append(allErrs, field.Invalid(field.NewPath("involvedObject", "namespace"), event.InvolvedObject.Namespace, "does not match event.namespace"))
+	// "New" Events need to have EventTime set, so it's validating old object.
+	if event.EventTime.Time == zeroTime {
+		// Make sure event.Namespace and the involvedObject.Namespace agree
+		if event.Object != nil {
+			if len(event.Object.Namespace) == 0 {
+				// event.Namespace must also be empty (or "default", for compatibility with old clients)
+				if event.Namespace != metav1.NamespaceNone && event.Namespace != metav1.NamespaceDefault {
+					allErrs = append(allErrs, field.Invalid(field.NewPath("object", "namespace"), event.Object.Namespace, "does not match event.namespace"))
+				}
+			} else {
+				// event namespace must match
+				if event.Object != nil && event.Namespace != event.Object.Namespace {
+					allErrs = append(allErrs, field.Invalid(field.NewPath("object", "namespace"), event.Object.Namespace, "does not match event.namespace"))
+				}
+			}
+
+			// For kinds we recognize, make sure involvedObject.Namespace is set for namespaced kinds
+			if event.Object != nil {
+				if namespaced, err := isNamespacedKind(event.Object.Kind, event.Object.APIVersion); err == nil {
+					if namespaced && len(event.Object.Namespace) == 0 {
+						allErrs = append(allErrs, field.Required(field.NewPath("object", "namespace"), fmt.Sprintf("required for kind %s", event.Object.Kind)))
+					}
+					if !namespaced && len(event.Object.Namespace) > 0 {
+						allErrs = append(allErrs, field.Invalid(field.NewPath("object", "namespace"), event.Object.Namespace, fmt.Sprintf("not allowed for kind %s", event.Object.Kind)))
+					}
+				}
+			}
+		}
+
+		for _, msg := range validation.IsDNS1123Subdomain(event.Namespace) {
+			allErrs = append(allErrs, field.Invalid(field.NewPath("namespace"), event.Namespace, msg))
 		}
 	} else {
-		// event namespace must match
-		if event.Namespace != event.InvolvedObject.Namespace {
-			allErrs = append(allErrs, field.Invalid(field.NewPath("involvedObject", "namespace"), event.InvolvedObject.Namespace, "does not match event.namespace"))
+		// Check if basic fields match
+		if event.Series != nil && event.Series.Count != event.Count {
+			allErrs = append(allErrs, field.Invalid(field.NewPath("series", "count"), event.Series.Count, "does not match event.count"))
 		}
-	}
-
-	// For kinds we recognize, make sure involvedObject.Namespace is set for namespaced kinds
-	if namespaced, err := isNamespacedKind(event.InvolvedObject.Kind, event.InvolvedObject.APIVersion); err == nil {
-		if namespaced && len(event.InvolvedObject.Namespace) == 0 {
-			allErrs = append(allErrs, field.Required(field.NewPath("involvedObject", "namespace"), fmt.Sprintf("required for kind %s", event.InvolvedObject.Kind)))
+		if event.Origin.Component != event.Source.Component || event.Origin.Host != event.Source.Host {
+			allErrs = append(allErrs, field.Invalid(field.NewPath("origin"), event.Origin, "does not match event.source"))
 		}
-		if !namespaced && len(event.InvolvedObject.Namespace) > 0 {
-			allErrs = append(allErrs, field.Invalid(field.NewPath("involvedObject", "namespace"), event.InvolvedObject.Namespace, fmt.Sprintf("not allowed for kind %s", event.InvolvedObject.Kind)))
-		}
-	}
-
-	for _, msg := range validation.IsDNS1123Subdomain(event.Namespace) {
-		allErrs = append(allErrs, field.Invalid(field.NewPath("namespace"), event.Namespace, msg))
 	}
 	return allErrs
 }

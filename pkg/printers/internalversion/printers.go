@@ -1314,8 +1314,11 @@ func printEvent(obj *api.Event, options printers.PrintOptions) ([]metav1alpha1.T
 		LastTimestamp = translateTimestamp(obj.LastTimestamp)
 	}
 	row.Cells = append(row.Cells, LastTimestamp, FirstTimestamp,
-		obj.Count, obj.Name, obj.InvolvedObject.Kind,
-		obj.InvolvedObject.FieldPath, obj.Type, obj.Reason,
+		obj.Count, obj.Name)
+	if obj.Object != nil {
+		row.Cells = append(row.Cells, obj.Object.Kind, obj.Object.FieldPath)
+	}
+	row.Cells = append(row.Cells, obj.Type, obj.Action.Action,
 		formatEventSource(obj.Source), obj.Message)
 
 	return []metav1alpha1.TableRow{row}, nil

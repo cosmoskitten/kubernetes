@@ -90,10 +90,10 @@ var _ = framework.KubeDescribe("Events", func() {
 		By("checking for scheduler event about the pod")
 		framework.ExpectNoError(wait.Poll(time.Second*2, time.Second*60, func() (bool, error) {
 			selector := fields.Set{
-				"involvedObject.kind":      "Pod",
-				"involvedObject.uid":       string(podWithUid.UID),
-				"involvedObject.namespace": f.Namespace.Name,
-				"source":                   v1.DefaultSchedulerName,
+				"object.kind":      "Pod",
+				"object.uid":       string(podWithUid.UID),
+				"object.namespace": f.Namespace.Name,
+				"source":           v1.DefaultSchedulerName,
 			}.AsSelector().String()
 			options := metav1.ListOptions{FieldSelector: selector}
 			events, err := f.ClientSet.Core().Events(f.Namespace.Name).List(options)
@@ -110,10 +110,10 @@ var _ = framework.KubeDescribe("Events", func() {
 		By("checking for kubelet event about the pod")
 		framework.ExpectNoError(wait.Poll(time.Second*2, time.Second*60, func() (bool, error) {
 			selector := fields.Set{
-				"involvedObject.uid":       string(podWithUid.UID),
-				"involvedObject.kind":      "Pod",
-				"involvedObject.namespace": f.Namespace.Name,
-				"source":                   "kubelet",
+				"object.uid":       string(podWithUid.UID),
+				"object.kind":      "Pod",
+				"object.namespace": f.Namespace.Name,
+				"source":           "kubelet",
 			}.AsSelector().String()
 			options := metav1.ListOptions{FieldSelector: selector}
 			events, err = f.ClientSet.Core().Events(f.Namespace.Name).List(options)

@@ -130,20 +130,20 @@ func (e *events) GetFieldSelector(involvedObjectName, involvedObjectNamespace, i
 		field[GetInvolvedObjectNameFieldLabel(apiVersion)] = *involvedObjectName
 	}
 	if involvedObjectNamespace != nil {
-		field["involvedObject.namespace"] = *involvedObjectNamespace
+		field["object.namespace"] = *involvedObjectNamespace
 	}
 	if involvedObjectKind != nil {
-		field["involvedObject.kind"] = *involvedObjectKind
+		field["object.kind"] = *involvedObjectKind
 	}
 	if involvedObjectUID != nil {
-		field["involvedObject.uid"] = *involvedObjectUID
+		field["object.uid"] = *involvedObjectUID
 	}
 	return field.AsSelector()
 }
 
 // Returns the appropriate field label to use for name of the involved object as per the given API version.
 func GetInvolvedObjectNameFieldLabel(version string) string {
-	return "involvedObject.name"
+	return "object.name"
 }
 
 // TODO: This is a temporary arrangement and will be removed once all clients are moved to use the clientset.

@@ -690,9 +690,9 @@ var _ = SIGDescribe("Density", func() {
 				for i := 0; i < len(namespaces); i++ {
 					nsName := namespaces[i].Name
 					selector := fields.Set{
-						"involvedObject.kind":      "Pod",
-						"involvedObject.namespace": nsName,
-						"source":                   v1.DefaultSchedulerName,
+						"object.kind":      "Pod",
+						"object.namespace": nsName,
+						"source":           v1.DefaultSchedulerName,
 					}.AsSelector().String()
 					options := metav1.ListOptions{FieldSelector: selector}
 					schedEvents, err := c.Core().Events(nsName).List(options)

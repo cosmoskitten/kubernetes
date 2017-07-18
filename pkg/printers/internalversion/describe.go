@@ -2857,14 +2857,18 @@ func DescribeEvents(el *api.EventList, w PrefixWriter) {
 	w.Write(LEVEL_0, "Events:\n  FirstSeen\tLastSeen\tCount\tFrom\tSubObjectPath\tType\tReason\tMessage\n")
 	w.Write(LEVEL_1, "---------\t--------\t-----\t----\t-------------\t--------\t------\t-------\n")
 	for _, e := range el.Items {
+		objectFieldPath := "nil"
+		if e.Object != nil {
+			objectFieldPath = e.Object.FieldPath
+		}
 		w.Write(LEVEL_1, "%s\t%s\t%d\t%v\t%v\t%v\t%v\t%v\n",
 			translateTimestamp(e.FirstTimestamp),
 			translateTimestamp(e.LastTimestamp),
 			e.Count,
 			formatEventSource(e.Source),
-			e.InvolvedObject.FieldPath,
+			objectFieldPath,
 			e.Type,
-			e.Reason,
+			e.Action.Action,
 			e.Message)
 	}
 }
