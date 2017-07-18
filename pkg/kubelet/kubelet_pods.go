@@ -245,9 +245,9 @@ func ensureHostsFile(fileName, hostIP, hostName, hostDomainName string, hostAlia
 
 // nodeHostsFileContent reads the content of node's hosts file.
 func nodeHostsFileContent() ([]byte, error) {
-	// Location of the hosts file on the node. `/etc/hosts` for *nix systems.
-	nodeHostsFilename := path.Join("/", "etc", "hosts")
-	return ioutil.ReadFile(nodeHostsFilename)
+	// `etcHostsPath` references the location of the hosts file on the node.
+	// `/etc/hosts` for *nix systems.
+	return ioutil.ReadFile(etcHostsPath)
 }
 
 // managedHostsFileContent generates the content of the managed etc hosts based on Pod IP and other
