@@ -447,6 +447,6 @@ func TestVolumeProvisionerWithDefaultCapacity(t *testing.T) {
 
 	cap := spec.Spec.Capacity[api.ResourceName(api.ResourceStorage)]
 	if cap.Value() != int64(8*1024*1024*1024) {
-		t.Fatalf("unexpected default volume capacity of %", cap)
+		t.Fatalf("unexpected default volume capacity of %v", cap)
 	}
 }
