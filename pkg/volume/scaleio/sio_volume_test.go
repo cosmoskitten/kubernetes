@@ -240,11 +240,11 @@ func TestVolumeProvisioner(t *testing.T) {
 
 	plug, err := plugMgr.FindPluginByName(sioPluginName)
 	if err != nil {
-		t.Errorf("Can't find the plugin %v", sioPluginName)
+		t.Fatalf("Can't find the plugin %v", sioPluginName)
 	}
 	sioPlug, ok := plug.(*sioPlugin)
 	if !ok {
-		t.Errorf("Cannot assert plugin to be type sioPlugin")
+		t.Fatal("Cannot assert plugin to be type sioPlugin")
 	}
 
 	options := volume.VolumeOptions{
@@ -318,7 +318,7 @@ func TestVolumeProvisioner(t *testing.T) {
 	}
 	sioVol.sioMgr.client = sio
 	if err := sioMounter.SetUp(nil); err != nil {
-		t.Errorf("Expected success, got: %v", err)
+		t.Fatalf("Expected success, got: %v", err)
 	}
 
 	// isMultiMap applied
@@ -367,11 +367,11 @@ func TestVolumeProvisionerWithIncompleteConfig(t *testing.T) {
 
 	plug, err := plugMgr.FindPluginByName(sioPluginName)
 	if err != nil {
-		t.Errorf("Can't find the plugin %v", sioPluginName)
+		t.Fatalf("Can't find the plugin %v", sioPluginName)
 	}
 	sioPlug, ok := plug.(*sioPlugin)
 	if !ok {
-		t.Errorf("Cannot assert plugin to be type sioPlugin")
+		t.Fatal("Cannot assert plugin to be type sioPlugin")
 	}
 
 	options := volume.VolumeOptions{
@@ -399,11 +399,11 @@ func TestVolumeProvisionerWithDefaultCapacity(t *testing.T) {
 
 	plug, err := plugMgr.FindPluginByName(sioPluginName)
 	if err != nil {
-		t.Errorf("Can't find the plugin %v", sioPluginName)
+		t.Fatalf("Can't find the plugin %v", sioPluginName)
 	}
 	sioPlug, ok := plug.(*sioPlugin)
 	if !ok {
-		t.Errorf("Cannot assert plugin to be type sioPlugin")
+		t.Fatal("Cannot assert plugin to be type sioPlugin")
 	}
 
 	options := volume.VolumeOptions{
