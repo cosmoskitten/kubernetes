@@ -4069,6 +4069,9 @@ type EventSource struct {
 	// Node name on which the event is generated.
 	// +optional
 	Host string `json:"host,omitempty" protobuf:"bytes,2,opt,name=host"`
+	// Identifies the component emitting the Event
+	// +optional
+	ID string `json:"id,omitempty" protobuf:"bytes,3,opt,name=id"`
 }
 
 // Valid values for event types (new types could be added in future)
@@ -4123,7 +4126,85 @@ type Event struct {
 	// Type of this event (Normal, Warning), new types could be added in the future
 	// +optional
 	Type string `json:"type,omitempty" protobuf:"bytes,9,opt,name=type"`
+
+	// Time when this Event was first observed.
+	// +optional
+	EventTime metav1.MicroTime `json:"eventTime,omitempty" protobuf:"bytes,10,opt,name=eventTime"`
+
+	// Data about the Event series this event represents or nil if it's a singleton Event.
+	// +optional
+	Series *EventSeries `json:"series,omitempty" protobuf:"bytes,11,opt,name=series"`
+
+	// Component that generated the Event.
+	// +optional
+	Origin EventSource `json:"origin,omitempty" protobuf:"bytes,12,opt,name=origin"`
+
+	// What Origin did/failed to do.
+	// +optional
+	Action EventAction `json:"action,omitempty" protobuf:"bytes,13,opt,name=action"`
+
+	// On what Origin acted upon.
+	// +optional
+	Object *ObjectReference `json:"object,omitempty" protobuf:"bytes,14,opt,name=object"`
+
+	// Optional secondary Object for more complex actions.
+	// +optional
+	SecondaryObject *ObjectReference `json:"secondaryObject,omitempty" protobuf:"bytes,15,opt,name=secondaryObject"`
+
+	// +optional
+	Severity EventSeverity `json:"severity,omitempty" protobuf:"bytes,16,opt,name=severity"`
 }
+
+type EventSeries struct {
+	// Unique identifier of the Event series.
+	// +optional
+	UID string `json:"uid" protobuf:"bytes,1,opt,name=uid"`
+	// Number of Events in this series until last heartbeat.
+	// +optional
+	Count int32 `json:"count" protobuf:"varint,2,opt,name=count"`
+	// Time when last Event from the series was seen before last heartbeat.
+	// +optional
+	LastObservedTime metav1.MicroTime `json:"lastObservedTime" protobuf:"bytes,3,opt,name=lastObservedTime"`
+	// Last time when seried data was updated.
+	// +optional
+	HeartbeatTime metav1.MicroTime `json:"lastHeartbeat" protobuf:"bytes,4,opt,name=lastHeartbeat"`
+	// Information whether this series is ongoing or finished.
+	// +optional
+	State EventSeriesState `json:"state" protobuf:"bytes,5,opt,name=state"`
+}
+
+// Information about action that was taken
+type EventAction struct {
+	// +optional
+	Action string `json:"action" protobuf:"bytes,1,opt,name=action"`
+	// +optional
+	Reason string `json:"reason" protobuf:"bytes,2,opt,name=reason"`
+}
+
+type EventSeverity string
+
+const (
+	// e.g. Pod scheduled
+	EventSeverityInProd EventSeverity = "InProd"
+
+	// e.g. Pod unable to schedule, cluster autoscaler adding Node
+	EventSeverityTakeALookTomorrow EventSeverity = "TakeALookTomorrow"
+
+	// e.g. Node unreachable - something is wrong, but there's a
+	// possibility it will recover by itself
+	EventSeverityInvestigateInstantly EventSeverity = "InvestigateInstantly"
+
+	// e.g. ClusterAutoscaler out of quota - something needs user
+	// action
+	EventSeverityWakeMeUpInTheMiddleOfTheNight EventSeverity = "WakeMeUpInTheMiddleOfTheNight"
+)
+
+type EventSeriesState string
+
+const (
+	EventSeriesStateOngoing  EventSeriesState = "Ongoing"
+	EventSeriesStateFinished EventSeriesState = "Finished"
+)
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 

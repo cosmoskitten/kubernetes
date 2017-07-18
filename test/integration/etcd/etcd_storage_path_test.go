@@ -206,6 +206,14 @@ var etcdStorageData = map[schema.GroupVersionResource]struct {
 	},
 	// --
 
+	// k8s.io/kubernetes/pkg/apis/events/v1beta1
+	gvr("events.k8s.io", "v1beta1", "events"): {
+		stub:             `{"object": {"namespace": "etcdstoragepathtestnamespace"}, "involvedObject": {"namespace": "etcdstoragepathtestnamespace"}, "message": "some data here", "metadata": {"name": "event2"}, "eventTime": "2017-08-09T15:04:05.000000Z"}`,
+		expectedEtcdPath: "/registry/events/etcdstoragepathtestnamespace/event2",
+		expectedGVK:      gvkP("", "v1", "Event"),
+	},
+	// --
+
 	// k8s.io/kubernetes/pkg/apis/extensions/v1beta1
 	gvr("extensions", "v1beta1", "daemonsets"): {
 		stub:             `{"metadata": {"name": "ds1"}, "spec": {"selector": {"matchLabels": {"u": "t"}}, "template": {"metadata": {"labels": {"u": "t"}}, "spec": {"containers": [{"image": "fedora:latest", "name": "container5"}]}}}}`,
