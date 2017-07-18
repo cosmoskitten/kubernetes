@@ -752,6 +752,14 @@ func Convert_v1_ResourceList_To_api_ResourceList(in *v1.ResourceList, out *api.R
 	return nil
 }
 
+func Convert_api_Event_To_v1_Event(in *api.Event, out *v1.Event, s conversion.Scope) error {
+	return autoConvert_api_Event_To_v1_Event(in, out, s)
+}
+
+func Convert_api_EventSource_To_v1_EventSource(in *api.EventSource, out *v1.EventSource, s conversion.Scope) error {
+	return autoConvert_api_EventSource_To_v1_EventSource(in, out, s)
+}
+
 func AddFieldLabelConversionsForEvent(scheme *runtime.Scheme) error {
 	return scheme.AddFieldLabelConversionFunc("v1", "Event",
 		func(label, value string) (string, string, error) {

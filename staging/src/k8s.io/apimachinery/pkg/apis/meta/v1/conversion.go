@@ -38,6 +38,7 @@ func AddConversionFuncs(scheme *runtime.Scheme) error {
 		Convert_intstr_IntOrString_To_intstr_IntOrString,
 
 		Convert_unversioned_Time_To_unversioned_Time,
+		Convert_unversioned_MicroTime_To_unversioned_MicroTime,
 
 		Convert_Slice_string_To_unversioned_Time,
 
@@ -176,6 +177,12 @@ func Convert_intstr_IntOrString_To_intstr_IntOrString(in, out *intstr.IntOrStrin
 
 // +k8s:conversion-fn=copy-only
 func Convert_unversioned_Time_To_unversioned_Time(in *Time, out *Time, s conversion.Scope) error {
+	// Cannot deep copy these, because time.Time has unexported fields.
+	*out = *in
+	return nil
+}
+
+func Convert_unversioned_MicroTime_To_unversioned_MicroTime(in *MicroTime, out *MicroTime, s conversion.Scope) error {
 	// Cannot deep copy these, because time.Time has unexported fields.
 	*out = *in
 	return nil

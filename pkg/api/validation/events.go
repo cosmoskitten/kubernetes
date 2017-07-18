@@ -18,7 +18,9 @@ package validation
 
 import (
 	"fmt"
+	"time"
 
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -31,32 +33,52 @@ import (
 // ValidateEvent makes sure that the event makes sense.
 func ValidateEvent(event *api.Event) field.ErrorList {
 	allErrs := field.ErrorList{}
+	zeroTime := time.Time{}
 
-	// Make sure event.Namespace and the involvedObject.Namespace agree
-	if len(event.InvolvedObject.Namespace) == 0 {
-		// event.Namespace must also be empty (or "default", for compatibility with old clients)
-		if event.Namespace != metav1.NamespaceNone && event.Namespace != metav1.NamespaceDefault {
-			allErrs = append(allErrs, field.Invalid(field.NewPath("involvedObject", "namespace"), event.InvolvedObject.Namespace, "does not match event.namespace"))
+	// "New" Events need to have EventTime set, so it's validating old object.
+	if event.EventTime.Time == zeroTime {
+		// Make sure event.Namespace and the involvedObject.Namespace agree
+		if len(event.InvolvedObject.Namespace) == 0 {
+			// event.Namespace must also be empty (or "default", for compatibility with old clients)
+			if event.Namespace != metav1.NamespaceNone && event.Namespace != metav1.NamespaceDefault {
+				allErrs = append(allErrs, field.Invalid(field.NewPath("involvedObject", "namespace"), event.InvolvedObject.Namespace, "does not match event.namespace"))
+			}
+		} else {
+			// event namespace must match
+			if event.Namespace != event.InvolvedObject.Namespace {
+				allErrs = append(allErrs, field.Invalid(field.NewPath("involvedObject", "namespace"), event.InvolvedObject.Namespace, "does not match event.namespace"))
+			}
+		}
+
+		// For kinds we recognize, make sure involvedObject.Namespace is set for namespaced kinds
+		if namespaced, err := isNamespacedKind(event.InvolvedObject.Kind, event.InvolvedObject.APIVersion); err == nil {
+			if namespaced && len(event.InvolvedObject.Namespace) == 0 {
+				allErrs = append(allErrs, field.Required(field.NewPath("involvedObject", "namespace"), fmt.Sprintf("required for kind %s", event.InvolvedObject.Kind)))
+			}
+			if !namespaced && len(event.InvolvedObject.Namespace) > 0 {
+				allErrs = append(allErrs, field.Invalid(field.NewPath("involvedObject", "namespace"), event.InvolvedObject.Namespace, fmt.Sprintf("not allowed for kind %s", event.InvolvedObject.Kind)))
+			}
+		}
+
+		for _, msg := range validation.IsDNS1123Subdomain(event.Namespace) {
+			allErrs = append(allErrs, field.Invalid(field.NewPath("namespace"), event.Namespace, msg))
 		}
 	} else {
-		// event namespace must match
-		if event.Namespace != event.InvolvedObject.Namespace {
-			allErrs = append(allErrs, field.Invalid(field.NewPath("involvedObject", "namespace"), event.InvolvedObject.Namespace, "does not match event.namespace"))
+		// Check if basic fields match
+		if event.Object != nil {
+			if !apiequality.Semantic.DeepEqual(*event.Object, event.InvolvedObject) {
+				allErrs = append(allErrs, field.Invalid(field.NewPath("object"), event.Object, "does not match event.involvedObject"))
+			}
 		}
-	}
-
-	// For kinds we recognize, make sure involvedObject.Namespace is set for namespaced kinds
-	if namespaced, err := isNamespacedKind(event.InvolvedObject.Kind, event.InvolvedObject.APIVersion); err == nil {
-		if namespaced && len(event.InvolvedObject.Namespace) == 0 {
-			allErrs = append(allErrs, field.Required(field.NewPath("involvedObject", "namespace"), fmt.Sprintf("required for kind %s", event.InvolvedObject.Kind)))
+		if event.Series != nil && event.Series.Count != event.Count {
+			allErrs = append(allErrs, field.Invalid(field.NewPath("series", "count"), event.Series.Count, "does not match event.count"))
 		}
-		if !namespaced && len(event.InvolvedObject.Namespace) > 0 {
-			allErrs = append(allErrs, field.Invalid(field.NewPath("involvedObject", "namespace"), event.InvolvedObject.Namespace, fmt.Sprintf("not allowed for kind %s", event.InvolvedObject.Kind)))
+		if event.Origin.Component != event.Source.Component || event.Origin.Host != event.Source.Host {
+			allErrs = append(allErrs, field.Invalid(field.NewPath("origin"), event.Origin, "does not match event.source"))
 		}
-	}
-
-	for _, msg := range validation.IsDNS1123Subdomain(event.Namespace) {
-		allErrs = append(allErrs, field.Invalid(field.NewPath("namespace"), event.Namespace, msg))
+		if event.Action.Action != event.Reason {
+			allErrs = append(allErrs, field.Invalid(field.NewPath("action", "action"), event.Action.Action, "does not match event.reason"))
+		}
 	}
 	return allErrs
 }
