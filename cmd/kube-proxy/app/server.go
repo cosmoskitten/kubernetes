@@ -49,6 +49,7 @@ import (
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/apis/componentconfig"
 	"k8s.io/kubernetes/pkg/apis/componentconfig/v1alpha1"
+	"k8s.io/kubernetes/pkg/apis/componentconfig/validation"
 	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	informers "k8s.io/kubernetes/pkg/client/informers/informers_generated/internalversion"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
@@ -198,6 +199,10 @@ func (o *Options) Complete() error {
 func (o *Options) Validate(args []string) error {
 	if len(args) != 0 {
 		return errors.New("no arguments are supported")
+	}
+
+	if errs := validation.ValidateKubeProxyConfiguration(o.config); len(errs) != 0 {
+		return errs.ToAggregate()
 	}
 
 	return nil
