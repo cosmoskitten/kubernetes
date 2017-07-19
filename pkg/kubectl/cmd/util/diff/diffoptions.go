@@ -31,6 +31,7 @@ import (
 	"k8s.io/kubernetes/pkg/kubectl"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
+	"os"
 )
 
 // Options contains all the options for running the apply diff-last-applied cli command.
@@ -44,6 +45,7 @@ type Options struct {
 	Factory            cmdutil.Factory
 	Out                io.Writer
 	ErrOut             io.Writer
+	DiffViewer         string
 }
 
 // Complete completes all the required options for apply diff-last-applied
@@ -139,6 +141,10 @@ func deleteEmptyAnnotations(obj runtime.Object) error {
 
 // Validate validates all the required options for apply diff-last-applied.
 func (o *Options) Validate(f cmdutil.Factory, cmd *cobra.Command) error {
+	//f.DiffEnvs() for now only have one element
+	if len(os.Getenv(f.DiffEnvs()[0])) > 0 && len(o.DiffViewer) > 0 {
+		return fmt.Errorf("flag diff-viewer and KUBECTL_EXTERNAL_DIFF could not be both specified")
+	}
 	return nil
 }
 
@@ -153,7 +159,7 @@ func (o *Options) RunDiffLastApplied(f cmdutil.Factory, cmd *cobra.Command) erro
 	if err != nil {
 		return err
 	}
-	diff := cmdutil.NewDefaultCmdTool(cmdutil.DiffCmd, f.DiffEnvs())
+	diff := cmdutil.NewDefaultCmdTool(cmdutil.DiffCmd, f.DiffEnvs(), o.DiffViewer)
 
 	tmpFileSlice := []cmdutil.TempFile{
 		//be careful with the order of DiffBufferModified and DiffBufferOriginal

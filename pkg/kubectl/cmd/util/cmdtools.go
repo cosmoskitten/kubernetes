@@ -64,8 +64,8 @@ type CmdTool struct {
 // the proper command line. for editor: If the provided editor has no spaces,
 // or no quotes, it is treated as a bare command to be loaded.
 // Otherwise, the string will be passed to the user's shell for execution.
-func NewDefaultCmdTool(name CmdName, envs []string) CmdTool {
-	exec, shell := defaultEnv(name, envs)
+func NewDefaultCmdTool(name CmdName, envs []string, diffViewer string) CmdTool {
+	exec, shell := defaultEnv(name, envs, diffViewer)
 	return CmdTool{
 		Name:  name,
 		Args:  exec,
@@ -85,7 +85,7 @@ func defaultEnvShell() []string {
 	return []string{shell, flag}
 }
 
-func defaultEnv(cmdName CmdName, envs []string) ([]string, bool) {
+func defaultEnv(cmdName CmdName, envs []string, diffViewer string) ([]string, bool) {
 	var cmd string
 	for _, env := range envs {
 		if len(env) > 0 {
@@ -100,7 +100,10 @@ func defaultEnv(cmdName CmdName, envs []string) ([]string, bool) {
 		case EditorCmd:
 			cmd = platformize(defaultEditor, windowsEditor)
 		case DiffCmd:
-			cmd = checkGitDiffInstalled(gitDiff, normalDiff)
+			if len(diffViewer) == 0 {
+				cmd = checkGitDiffInstalled(gitDiff, normalDiff)
+			}
+			cmd = diffViewer
 		}
 	}
 

@@ -31,8 +31,9 @@ import (
 var (
 	applyDiffLastAppliedLong = templates.LongDesc(i18n.T(`
 		Opens up a 2-way diff in the default diff viewer. This should follow the same semantics as 'git diff'.
-		It should accept an environment variable KUBECTL_EXTERNAL_DIFF=meld to specify a custom diff tool.
-		If not specified, the 'git diff' command should be used, if 'git diff' not found, it will degenerate to use diff.
+		It should accept either a flag --diff-viewer=meld or check the environment variable KUBECTL_EXTERNAL_DIFF=meld,
+		but flag and environment variable can not be both specified. If none of them specified, first 'git diff --no-index'
+		command should be used, if 'git' not found, it will degenerate to use 'diff'.
 		`))
 
 	applyDiffLastAppliedExample = templates.Examples(i18n.T(`
@@ -57,6 +58,7 @@ func NewCmdApplyDiffLastApplied(f cmdutil.Factory, out, err io.Writer) *cobra.Co
 	cmdutil.AddOutputVarFlagsForJsonYaml(cmd, &options.Output, "yaml")
 	usage := "that contains the last-applied-configuration annotations"
 	kubectl.AddJsonFilenameFlag(cmd, &options.FilenameOptions.Filenames, "Filename, directory, or URL to files "+usage)
+	cmd.Flags().StringVarP(&options.DiffViewer, "diff-viewer", "", "", "use diff-viewer to specify a external diff tool")
 
 	return cmd
 }

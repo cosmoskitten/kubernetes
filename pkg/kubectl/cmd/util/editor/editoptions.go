@@ -156,7 +156,7 @@ func (o *EditOptions) Validate() error {
 }
 
 func (o *EditOptions) Run() error {
-	edit := cmdutil.NewDefaultCmdTool(cmdutil.EditorCmd, o.f.EditorEnvs())
+	edit := cmdutil.NewDefaultCmdTool(cmdutil.EditorCmd, o.f.EditorEnvs(), "")
 	// editFn is invoked for each edit session (once with a list for normal edit, once for each individual resource in a edit-on-create invocation)
 	editFn := func(infos []*resource.Info) error {
 		var (
