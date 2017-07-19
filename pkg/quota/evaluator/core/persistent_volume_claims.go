@@ -142,7 +142,7 @@ func (p *pvcEvaluator) GroupKind() schema.GroupKind {
 
 // Handles returns true if the evaluator should handle the specified operation.
 func (p *pvcEvaluator) Handles(operation admission.Operation) bool {
-	return admission.Create == operation
+	return admission.Create == operation || admission.Update == operation
 }
 
 // Matches returns true if the evaluator matches the specified quota with the provided input item

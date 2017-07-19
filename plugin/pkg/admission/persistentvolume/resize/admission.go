@@ -1,0 +1,142 @@
+/*
+Copyright 2017 The Kubernetes Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package resize
+
+import (
+	"fmt"
+	"io"
+
+	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apiserver/pkg/admission"
+	"k8s.io/kubernetes/pkg/api"
+	informers "k8s.io/kubernetes/pkg/client/informers/informers_generated/internalversion"
+	pvlister "k8s.io/kubernetes/pkg/client/listers/core/internalversion"
+	kubeapiserveradmission "k8s.io/kubernetes/pkg/kubeapiserver/admission"
+)
+
+const (
+	// PluginName is the name of pvc resize admission plugin
+	PluginName = "PersistentVolumeClaimResize"
+)
+
+// Register registers a plugin
+func Register(plugins *admission.Plugins) {
+	plugins.Register(PluginName, func(config io.Reader) (admission.Interface, error) {
+		plugin := newPlugin()
+		return plugin, nil
+	})
+}
+
+var _ admission.Interface = &persistentVolumeClaimResize{}
+var _ = kubeapiserveradmission.WantsInternalKubeInformerFactory(&persistentVolumeClaimResize{})
+
+type persistentVolumeClaimResize struct {
+	*admission.Handler
+
+	pvLister pvlister.PersistentVolumeLister
+}
+
+func newPlugin() *persistentVolumeClaimResize {
+	return &persistentVolumeClaimResize{
+		Handler: admission.NewHandler(admission.Update),
+	}
+}
+
+func (pvcr *persistentVolumeClaimResize) SetInternalKubeInformerFactory(f informers.SharedInformerFactory) {
+	informer := f.Core().InternalVersion().PersistentVolumes()
+	pvcr.pvLister = informer.Lister()
+	pvcr.SetReadyFunc(informer.Informer().HasSynced)
+}
+
+// Validate ensures lister is set.
+func (pvcr *persistentVolumeClaimResize) Validate() error {
+	if pvcr.pvLister == nil {
+		return fmt.Errorf("missing lister")
+	}
+	return nil
+}
+
+func (pvcr *persistentVolumeClaimResize) Admit(a admission.Attributes) error {
+	if a.GetResource().GroupResource() != api.Resource("persistentvolumeclaims") {
+		return nil
+	}
+
+	if len(a.GetSubresource()) != 0 {
+		return nil
+	}
+
+	//new pvc size > old pvc size
+	pvc, ok := a.GetObject().(*api.PersistentVolumeClaim)
+	// if we can't convert then we don't handle this object so just return
+	if !ok {
+		return nil
+	}
+	oldPvc, ok := a.GetOldObject().(*api.PersistentVolumeClaim)
+	if !ok {
+		return nil
+	}
+
+	pvcCapacityClone, err := api.Scheme.DeepCopy(pvc.Spec.Resources.Requests[api.ResourceStorage])
+	if err != nil {
+		fmt.Println("pvc storage resource request copy error")
+		return nil
+	}
+	pvcStorage, ok := pvcCapacityClone.(resource.Quantity)
+	if !ok {
+		fmt.Println("failed to cast object to Quantity")
+		return nil
+	}
+
+	oldPvcCapacityClone, err := api.Scheme.DeepCopy(oldPvc.Spec.Resources.Requests[api.ResourceStorage])
+	if err != nil {
+		fmt.Println("old pvc storage resource request copy error")
+		return nil
+	}
+	oldPvcStorage, ok := oldPvcCapacityClone.(resource.Quantity)
+	if !ok {
+		fmt.Println("failed to cast object to Quantity")
+		return nil
+	}
+	pvcStorage.Sub(oldPvcStorage)
+	if pvcStorage.Sign() < 0 {
+		return admission.NewForbidden(a, fmt.Errorf("requested size must be bigger that current size"))
+	}
+
+	// volume plugin must support resize
+	pv, err := pvcr.pvLister.Get(pvc.Spec.VolumeName)
+	if err != nil {
+		fmt.Println("can not find the pv bound to the pvc")
+		return nil
+	}
+
+	if !pvcr.checkVolumePlugin(pv) {
+		return admission.NewForbidden(a, fmt.Errorf("volume plugin does not support resize"))
+	}
+
+	return nil
+}
+
+// checkVolumePlugin checks whether the volume plugin supports resize
+func (pvcr *persistentVolumeClaimResize) checkVolumePlugin(pv *api.PersistentVolume) bool {
+	if pv.Spec.AWSElasticBlockStore != nil || pv.Spec.GCEPersistentDisk != nil ||
+		pv.Spec.Glusterfs != nil || pv.Spec.Cinder != nil || pv.Spec.VsphereVolume != nil ||
+		pv.Spec.RBD != nil || pv.Spec.AzureDisk != nil {
+		return true
+	}
+	return false
+
+}
