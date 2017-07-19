@@ -685,6 +685,8 @@ const (
 type HostPathType string
 
 const (
+	// For backwards compatible, leave it empty if unset
+	HostPathUnset HostPathType = ""
 	// If nothing exists at the given path, an empty directory will be created there.
 	HostPathDirectoryOrCreate HostPathType = "DirectoryOrCreate"
 	// A directory must exist at the given path
@@ -709,7 +711,7 @@ type HostPathVolumeSource struct {
 	// More info: https://kubernetes.io/docs/concepts/storage/volumes#hostpath
 	Path string `json:"path" protobuf:"bytes,1,opt,name=path"`
 	// Type for HostPath Volume
-	// Defaults to DirectoryOrCreate
+	// Defaults to ""
 	// More info: https://kubernetes.io/docs/concepts/storage/volumes#hostpath
 	// +optional
 	Type *HostPathType `json:"type,omitempty" protobuf:"bytes,2,opt,name=type"`
