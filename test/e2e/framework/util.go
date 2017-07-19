@@ -72,13 +72,14 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 
+	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/api/testapi"
 	v1helper "k8s.io/kubernetes/pkg/api/v1/helper"
 	nodeutil "k8s.io/kubernetes/pkg/api/v1/node"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	batchinternal "k8s.io/kubernetes/pkg/apis/batch"
 	extensionsinternal "k8s.io/kubernetes/pkg/apis/extensions"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/client/conditions"
 	"k8s.io/kubernetes/pkg/cloudprovider/providers/azure"
@@ -2331,7 +2332,7 @@ func isNodeUntainted(node *v1.Node) bool {
 	fakePod := &v1.Pod{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Pod",
-			APIVersion: api.Registry.GroupOrDie(v1.GroupName).GroupVersion.String(),
+			APIVersion: testapi.Groups[v1.GroupName].GroupVersion().String(),
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "fake-not-scheduled",
@@ -2459,6 +2460,15 @@ func GetNodeTTLAnnotationValue(c clientset.Interface) (time.Duration, error) {
 
 func AddOrUpdateLabelOnNode(c clientset.Interface, nodeName string, labelKey, labelValue string) {
 	ExpectNoError(testutil.AddLabelsToNode(c, nodeName, map[string]string{labelKey: labelValue}))
+}
+
+func AddOrUpdateLabelOnNodeAndReturnOldValue(c clientset.Interface, nodeName string, labelKey, labelValue string) string {
+	var oldValue string
+	node, err := c.Core().Nodes().Get(nodeName, metav1.GetOptions{})
+	ExpectNoError(err)
+	oldValue = node.Labels[labelKey]
+	ExpectNoError(testutil.AddLabelsToNode(c, nodeName, map[string]string{labelKey: labelValue}))
+	return oldValue
 }
 
 func ExpectNodeHasLabel(c clientset.Interface, nodeName string, labelKey string, labelValue string) {
@@ -4287,17 +4297,17 @@ func CheckConnectivityToHost(f *Framework, nodeName, podName, host string, timeo
 }
 
 // CoreDump SSHs to the master and all nodes and dumps their logs into dir.
-// It shells out to cluster/log-dump.sh to accomplish this.
+// It shells out to cluster/log-dump/log-dump.sh to accomplish this.
 func CoreDump(dir string) {
 	if TestContext.DisableLogDump {
 		Logf("Skipping dumping logs from cluster")
 		return
 	}
-	cmd := exec.Command(path.Join(TestContext.RepoRoot, "cluster", "log-dump.sh"), dir)
+	cmd := exec.Command(path.Join(TestContext.RepoRoot, "cluster", "log-dump", "log-dump.sh"), dir)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		Logf("Error running cluster/log-dump.sh: %v", err)
+		Logf("Error running cluster/log-dump/log-dump.sh: %v", err)
 	}
 }
 

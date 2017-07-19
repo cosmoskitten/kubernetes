@@ -29,9 +29,9 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	kubeadmapi "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm"
 	kubeadmconstants "k8s.io/kubernetes/cmd/kubeadm/app/constants"
-	"k8s.io/kubernetes/cmd/kubeadm/app/images"
 	kubeadmutil "k8s.io/kubernetes/cmd/kubeadm/app/util"
 	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/plugin/pkg/scheduler/algorithm"
 )
 
 // CreateEssentialAddons creates the kube-proxy and kube-dns addons
@@ -44,10 +44,14 @@ func CreateEssentialAddons(cfg *kubeadmapi.MasterConfiguration, client *clientse
 		return fmt.Errorf("error when parsing kube-proxy configmap template: %v", err)
 	}
 
-	proxyDaemonSetBytes, err := kubeadmutil.ParseTemplate(KubeProxyDaemonSet, struct{ Image, ClusterCIDR, MasterTaintKey string }{
-		Image:          images.GetCoreImage("proxy", cfg, cfg.UnifiedControlPlaneImage),
-		ClusterCIDR:    getClusterCIDR(cfg.Networking.PodSubnet),
-		MasterTaintKey: kubeadmconstants.LabelNodeRoleMaster,
+	proxyDaemonSetBytes, err := kubeadmutil.ParseTemplate(KubeProxyDaemonSet, struct{ ImageRepository, Arch, Version, ImageOverride, ClusterCIDR, MasterTaintKey, CloudTaintKey string }{
+		ImageRepository: cfg.ImageRepository,
+		Arch:            runtime.GOARCH,
+		Version:         kubeadmutil.KubernetesVersionToImageTag(cfg.KubernetesVersion),
+		ImageOverride:   cfg.UnifiedControlPlaneImage,
+		ClusterCIDR:     getClusterCIDR(cfg.Networking.PodSubnet),
+		MasterTaintKey:  kubeadmconstants.LabelNodeRoleMaster,
+		CloudTaintKey:   algorithm.TaintExternalCloudProvider,
 	})
 	if err != nil {
 		return fmt.Errorf("error when parsing kube-proxy daemonset template: %v", err)

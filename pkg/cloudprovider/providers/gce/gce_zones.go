@@ -23,6 +23,7 @@ import (
 	compute "google.golang.org/api/compute/v1"
 
 	"k8s.io/kubernetes/pkg/cloudprovider"
+	"strings"
 )
 
 func newZonesMetricContext(request, region string) *metricContext {
@@ -44,7 +45,7 @@ func (gce *GCECloud) GetZone() (cloudprovider.Zone, error) {
 func (gce *GCECloud) ListZonesInRegion(region string) ([]*compute.Zone, error) {
 	mc := newZonesMetricContext("list", region)
 	filter := fmt.Sprintf("region eq %v", gce.getRegionLink(region))
-	list, err := gce.service.Zones.List(gce.networkProjectID).Filter(filter).Do()
+	list, err := gce.service.Zones.List(gce.projectID).Filter(filter).Do()
 	if err != nil {
 		return nil, mc.Observe(err)
 	}
@@ -52,5 +53,5 @@ func (gce *GCECloud) ListZonesInRegion(region string) ([]*compute.Zone, error) {
 }
 
 func (gce *GCECloud) getRegionLink(region string) string {
-	return fmt.Sprintf("https://www.googleapis.com/compute/v1/projects/%v/regions/%v", gce.networkProjectID, region)
+	return gce.service.BasePath + strings.Join([]string{gce.projectID, "regions", region}, "/")
 }

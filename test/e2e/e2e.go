@@ -33,7 +33,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtimeutils "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
+	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/pkg/cloudprovider/providers/azure"
 	gcecloud "k8s.io/kubernetes/pkg/cloudprovider/providers/gce"
 	"k8s.io/kubernetes/pkg/util/logs"
@@ -80,7 +80,6 @@ func setupProviderConfig() error {
 			managedZones = []string{zone}
 		}
 		cloudConfig.Provider, err = gcecloud.CreateGCECloud(framework.TestContext.CloudConfig.ApiEndpoint,
-			framework.TestContext.CloudConfig.ProjectID,
 			framework.TestContext.CloudConfig.ProjectID,
 			region, zone, managedZones, "" /* networkUrl */, "" /* subnetworkUrl */, nil, /* nodeTags */
 			"" /* nodeInstancePerfix */, nil /* tokenSource */, false /* useMetadataServer */)

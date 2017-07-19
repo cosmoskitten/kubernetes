@@ -37,6 +37,7 @@ import (
 	apiconfigphase "k8s.io/kubernetes/cmd/kubeadm/app/phases/apiconfig"
 	controlplanephase "k8s.io/kubernetes/cmd/kubeadm/app/phases/controlplane"
 	kubeconfigphase "k8s.io/kubernetes/cmd/kubeadm/app/phases/kubeconfig"
+	markmasterphase "k8s.io/kubernetes/cmd/kubeadm/app/phases/markmaster"
 	selfhostingphase "k8s.io/kubernetes/cmd/kubeadm/app/phases/selfhosting"
 	tokenphase "k8s.io/kubernetes/cmd/kubeadm/app/phases/token"
 	"k8s.io/kubernetes/cmd/kubeadm/app/preflight"
@@ -87,6 +88,12 @@ func NewCmdInit(out io.Writer) *cobra.Command {
 			i, err := NewInit(cfgPath, internalcfg, skipPreFlight, skipTokenPrint)
 			kubeadmutil.CheckErr(err)
 			kubeadmutil.CheckErr(i.Validate(cmd))
+
+			// TODO: remove this warning in 1.9
+			if !cmd.Flags().Lookup("token-ttl").Changed {
+				fmt.Println("[kubeadm] WARNING: starting in 1.8, tokens expire after 24 hours by default (if you require a non-expiring token use --token-ttl 0)")
+			}
+
 			kubeadmutil.CheckErr(i.Run(out))
 		},
 	}
@@ -206,7 +213,7 @@ type Init struct {
 
 // Validate validates configuration passed to "kubeadm init"
 func (i *Init) Validate(cmd *cobra.Command) error {
-	if err := validation.ValidateMixedArguments(cmd.PersistentFlags()); err != nil {
+	if err := validation.ValidateMixedArguments(cmd.Flags()); err != nil {
 		return err
 	}
 	return validation.ValidateMasterConfiguration(i.cfg).ToAggregate()
@@ -224,7 +231,7 @@ func (i *Init) Run(out io.Writer) error {
 	// PHASE 2: Generate kubeconfig files for the admin and the kubelet
 
 	masterEndpoint := fmt.Sprintf("https://%s:%d", i.cfg.API.AdvertiseAddress, i.cfg.API.BindPort)
-	err = kubeconfigphase.CreateInitKubeConfigFiles(masterEndpoint, i.cfg.CertificatesDir, kubeadmapi.GlobalEnvParams.KubernetesDir, i.cfg.NodeName)
+	err = kubeconfigphase.CreateInitKubeConfigFiles(masterEndpoint, i.cfg.CertificatesDir, kubeadmconstants.KubernetesDir, i.cfg.NodeName)
 	if err != nil {
 		return err
 	}
@@ -234,13 +241,13 @@ func (i *Init) Run(out io.Writer) error {
 		return err
 	}
 
-	adminKubeConfigPath := filepath.Join(kubeadmapi.GlobalEnvParams.KubernetesDir, kubeadmconstants.AdminKubeConfigFileName)
+	adminKubeConfigPath := filepath.Join(kubeadmconstants.KubernetesDir, kubeadmconstants.AdminKubeConfigFileName)
 	client, err := kubeadmutil.CreateClientAndWaitForAPI(adminKubeConfigPath)
 	if err != nil {
 		return err
 	}
 
-	if err := apiconfigphase.UpdateMasterRoleLabelsAndTaints(client, i.cfg.NodeName); err != nil {
+	if err := markmasterphase.MarkMaster(client, i.cfg.NodeName); err != nil {
 		return err
 	}
 
@@ -291,7 +298,7 @@ func (i *Init) Run(out io.Writer) error {
 	}
 
 	ctx := map[string]string{
-		"KubeConfigPath": filepath.Join(kubeadmapi.GlobalEnvParams.KubernetesDir, kubeadmconstants.AdminKubeConfigFileName),
+		"KubeConfigPath": filepath.Join(kubeadmconstants.KubernetesDir, kubeadmconstants.AdminKubeConfigFileName),
 		"KubeConfigName": kubeadmconstants.AdminKubeConfigFileName,
 		"Token":          i.cfg.Token,
 		"MasterIP":       i.cfg.API.AdvertiseAddress,

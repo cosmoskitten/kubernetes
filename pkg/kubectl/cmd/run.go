@@ -117,6 +117,7 @@ func addRunFlags(cmd *cobra.Command) {
 	cmd.Flags().Bool("rm", false, "If true, delete resources created in this command for attached containers.")
 	cmd.Flags().String("overrides", "", i18n.T("An inline JSON override for the generated object. If this is non-empty, it is used to override the generated object. Requires that the object supply a valid apiVersion field."))
 	cmd.Flags().StringArray("env", []string{}, "Environment variables to set in the container")
+	cmd.Flags().String("serviceaccount", "", "Service account to set in the pod spec")
 	cmd.Flags().String("port", "", i18n.T("The port that this container exposes.  If --expose is true, this is also the port used by the service that is created."))
 	cmd.Flags().Int("hostport", -1, "The host port mapping for the container port. To demonstrate a single-machine container.")
 	cmd.Flags().StringP("labels", "l", "", "Labels to apply to the pod(s).")
@@ -362,7 +363,7 @@ func RunRun(f cmdutil.Factory, cmdIn io.Reader, cmdOut, cmdErr io.Writer, cmd *c
 				return unknownRcErr
 			}
 			return uexec.CodeExitError{
-				Err:  fmt.Errorf("pod %s/%s terminated", pod.Namespace, pod.Name),
+				Err:  fmt.Errorf("pod %s/%s terminated (%s)\n%s", pod.Namespace, pod.Name, pod.Status.ContainerStatuses[0].State.Terminated.Reason, pod.Status.ContainerStatuses[0].State.Terminated.Message),
 				Code: int(rc),
 			}
 		default:

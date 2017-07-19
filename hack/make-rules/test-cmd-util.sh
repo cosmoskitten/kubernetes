@@ -71,6 +71,7 @@ statefulsets="statefulsets"
 static="static"
 storageclass="storageclass"
 subjectaccessreviews="subjectaccessreviews"
+selfsubjectaccessreviews="selfsubjectaccessreviews"
 thirdpartyresources="thirdpartyresources"
 customresourcedefinitions="customresourcedefinitions"
 daemonsets="daemonsets"
@@ -797,7 +798,7 @@ __EOF__
   chmod +x /tmp/tmp-editor.sh
   # Pre-condition: valid-pod POD has image nginx
   kube::test::get_object_assert pods "{{range.items}}{{$image_field}}:{{end}}" 'nginx:'
-  EDITOR=/tmp/tmp-editor.sh kubectl edit "${kube_flags[@]}" pods/valid-pod
+  [[ "$(EDITOR=/tmp/tmp-editor.sh kubectl edit "${kube_flags[@]}" pods/valid-pod --output-patch=true | grep Patch:)" ]]
   # Post-condition: valid-pod POD has image gcr.io/google_containers/serve_hostname
   kube::test::get_object_assert pods "{{range.items}}{{$image_field}}:{{end}}" 'gcr.io/google_containers/serve_hostname:'
   # cleaning
@@ -4492,6 +4493,27 @@ runTests() {
     record_command run_authorization_tests
   fi
 
+  # kubectl auth can-i
+  # kube-apiserver is started with authorization mode AlwaysAllow, so kubectl can-i always returns yes
+  if kube::test::if_supports_resource "${subjectaccessreviews}" ; then
+    output_message=$(kubectl auth can-i '*' '*' 2>&1 "${kube_flags[@]}")
+    kube::test::if_has_string "${output_message}" "yes"
+
+    output_message=$(kubectl auth can-i get pods --subresource=log 2>&1 "${kube_flags[@]}")
+    kube::test::if_has_string "${output_message}" "yes"
+
+    output_message=$(kubectl auth can-i get invalid_resource 2>&1 "${kube_flags[@]}")
+    kube::test::if_has_string "${output_message}" "the server doesn't have a resource type"
+
+    output_message=$(kubectl auth can-i get /logs/ 2>&1 "${kube_flags[@]}")
+    kube::test::if_has_string "${output_message}" "yes"
+
+    output_message=$(! kubectl auth can-i get /logs/ --subresource=log 2>&1 "${kube_flags[@]}")
+    kube::test::if_has_string "${output_message}" "subresource can not be used with nonResourceURL"
+
+    output_message=$(kubectl auth can-i list jobs.batch/bar -n foo --quiet 2>&1 "${kube_flags[@]}")
+    kube::test::if_empty_string "${output_message}"
+  fi
 
   #####################
   # Retrieve multiple #

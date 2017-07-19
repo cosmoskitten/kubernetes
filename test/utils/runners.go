@@ -37,11 +37,11 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/apimachinery/pkg/util/wait"
+	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/kubernetes/pkg/api"
 	batchinternal "k8s.io/kubernetes/pkg/apis/batch"
 	extensionsinternal "k8s.io/kubernetes/pkg/apis/extensions"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 
 	"github.com/golang/glog"
@@ -108,6 +108,7 @@ type RunObjectConfig interface {
 	SetClient(clientset.Interface)
 	SetInternalClient(internalclientset.Interface)
 	GetReplicas() int
+	GetLabelValue(string) (string, bool)
 }
 
 type RCConfig struct {
@@ -498,6 +499,11 @@ func (config *RCConfig) SetInternalClient(c internalclientset.Interface) {
 
 func (config *RCConfig) GetReplicas() int {
 	return config.Replicas
+}
+
+func (config *RCConfig) GetLabelValue(key string) (string, bool) {
+	value, found := config.Labels[key]
+	return value, found
 }
 
 func (config *RCConfig) create() error {

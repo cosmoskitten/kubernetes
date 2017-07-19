@@ -33,13 +33,13 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
+	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/transport"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/apis/batch"
 	"k8s.io/kubernetes/pkg/apis/extensions"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/test/e2e/framework"
 	testutils "k8s.io/kubernetes/test/utils"
@@ -61,6 +61,7 @@ const (
 	nodeCountPerNamespace = 100
 	// How many threads will be used to create/delete services during this test.
 	serviceOperationsParallelism = 1
+	svcLabelKey                  = "svc-label"
 )
 
 var randomKind = schema.GroupKind{Kind: "Random"}
@@ -458,6 +459,8 @@ func GenerateConfigsForGroup(
 			MemRequest:     26214400, // 25MB
 			SecretNames:    secretNames,
 			ConfigMapNames: configMapNames,
+			// Define a label to group every 2 RCs into one service.
+			Labels: map[string]string{svcLabelKey: groupName + "-" + strconv.Itoa((i+1)/2)},
 		}
 
 		if kind == randomKind {
@@ -483,10 +486,19 @@ func GenerateConfigsForGroup(
 }
 
 func generateServicesForConfigs(configs []testutils.RunObjectConfig) []*v1.Service {
-	services := make([]*v1.Service, 0, len(configs))
+	services := make([]*v1.Service, 0)
+	currentSvcLabel := ""
 	for _, config := range configs {
+		svcLabel, found := config.GetLabelValue(svcLabelKey)
+		if !found || svcLabel == currentSvcLabel {
+			continue
+		}
+		currentSvcLabel = svcLabel
 		serviceName := config.GetName() + "-svc"
-		labels := map[string]string{"name": config.GetName()}
+		labels := map[string]string{
+			"name":      config.GetName(),
+			svcLabelKey: currentSvcLabel,
+		}
 		service := &v1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      serviceName,

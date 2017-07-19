@@ -24,10 +24,11 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/uuid"
+	clientset "k8s.io/client-go/kubernetes"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/common"
 	"k8s.io/kubernetes/test/e2e/framework"
 	testutils "k8s.io/kubernetes/test/utils"
@@ -51,9 +52,11 @@ type pausePodConfig struct {
 	Resources                         *v1.ResourceRequirements
 	Tolerations                       []v1.Toleration
 	NodeName                          string
+	Ports                             []v1.ContainerPort
+	OwnerReferences                   []metav1.OwnerReference
 }
 
-var _ = framework.KubeDescribe("SchedulerPredicates [Serial]", func() {
+var _ = SIGDescribe("SchedulerPredicates [Serial]", func() {
 	var cs clientset.Interface
 	var nodeList *v1.NodeList
 	var systemPodsNo int
@@ -337,7 +340,7 @@ var _ = framework.KubeDescribe("SchedulerPredicates [Serial]", func() {
 	})
 
 	// Keep the same steps with the test on NodeSelector,
-	// but specify Affinity in Pod.Annotations, instead of NodeSelector.
+	// but specify Affinity in Pod.Spec.Affinity, instead of NodeSelector.
 	It("validates that required NodeAffinity setting is respected if matching", func() {
 		nodeName := GetNodeThatCanRunPod(f)
 
@@ -387,7 +390,7 @@ var _ = framework.KubeDescribe("SchedulerPredicates [Serial]", func() {
 	})
 
 	// labelSelector Operator is DoesNotExist but values are there in requiredDuringSchedulingIgnoredDuringExecution
-	// part of podAffinity,so validation fails.
+	// part of podAffinity, so validation fails.
 	It("validates that a pod with an invalid podAffinity is rejected because of the LabelSelectorRequirement is invalid", func() {
 		By("Trying to launch a pod with an invalid pod Affinity data.")
 		podName := "without-label-" + string(uuid.NewUUID())
@@ -639,30 +642,6 @@ var _ = framework.KubeDescribe("SchedulerPredicates [Serial]", func() {
 		Expect(labelPod.Spec.NodeName).To(Equal(nodeName))
 	})
 
-	// Verify that an escaped JSON string of pod affinity and pod anti affinity in a YAML PodSpec works.
-	It("validates that embedding the JSON PodAffinity and PodAntiAffinity setting as a string in the annotation value work", func() {
-		nodeName, _ := runAndKeepPodWithLabelAndGetNodeName(f)
-
-		By("Trying to apply a label with fake az info on the found node.")
-		k := "e2e.inter-pod-affinity.kubernetes.io/zone"
-		v := "e2e-az1"
-		framework.AddOrUpdateLabelOnNode(cs, nodeName, k, v)
-		framework.ExpectNodeHasLabel(cs, nodeName, k, v)
-		defer framework.RemoveLabelOffNode(cs, nodeName, k)
-
-		By("Trying to launch a pod that with PodAffinity & PodAntiAffinity setting as embedded JSON string in the annotation value.")
-		pod := createPodWithPodAffinity(f, "kubernetes.io/hostname")
-		// check that pod got scheduled. We intentionally DO NOT check that the
-		// pod is running because this will create a race condition with the
-		// kubelet and the scheduler: the scheduler might have scheduled a pod
-		// already when the kubelet does not know about its new label yet. The
-		// kubelet will then refuse to launch the pod.
-		framework.ExpectNoError(framework.WaitForPodNotPending(cs, ns, pod.Name))
-		labelPod, err := cs.Core().Pods(ns).Get(pod.Name, metav1.GetOptions{})
-		framework.ExpectNoError(err)
-		Expect(labelPod.Spec.NodeName).To(Equal(nodeName))
-	})
-
 	// 1. Run a pod to get an available node, then delete the pod
 	// 2. Taint the node with a random taint
 	// 3. Try to relaunch the pod with tolerations tolerate the taints on node,
@@ -749,9 +728,10 @@ var _ = framework.KubeDescribe("SchedulerPredicates [Serial]", func() {
 func initPausePod(f *framework.Framework, conf pausePodConfig) *v1.Pod {
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        conf.Name,
-			Labels:      conf.Labels,
-			Annotations: conf.Annotations,
+			Name:            conf.Name,
+			Labels:          conf.Labels,
+			Annotations:     conf.Annotations,
+			OwnerReferences: conf.OwnerReferences,
 		},
 		Spec: v1.PodSpec{
 			NodeSelector: conf.NodeSelector,
@@ -760,6 +740,7 @@ func initPausePod(f *framework.Framework, conf pausePodConfig) *v1.Pod {
 				{
 					Name:  conf.Name,
 					Image: framework.GetPauseImageName(f.ClientSet),
+					Ports: conf.Ports,
 				},
 			},
 			Tolerations: conf.Tolerations,
@@ -946,6 +927,32 @@ func verifyResult(c clientset.Interface, expectedScheduled int, expectedNotSched
 
 	Expect(len(notScheduledPods)).To(Equal(expectedNotScheduled), printOnce(fmt.Sprintf("Not scheduled Pods: %#v", notScheduledPods)))
 	Expect(len(scheduledPods)).To(Equal(expectedScheduled), printOnce(fmt.Sprintf("Scheduled Pods: %#v", scheduledPods)))
+}
+
+// verifyReplicasResult is wrapper of verifyResult for a group pods with same "name: labelName" label, which means they belong to same RC
+func verifyReplicasResult(c clientset.Interface, expectedScheduled int, expectedNotScheduled int, ns string, labelName string) {
+	allPods := getPodsByLabels(c, ns, map[string]string{"name": labelName})
+	scheduledPods, notScheduledPods := framework.GetPodsScheduled(masterNodes, allPods)
+
+	printed := false
+	printOnce := func(msg string) string {
+		if !printed {
+			printed = true
+			return msg
+		} else {
+			return ""
+		}
+	}
+
+	Expect(len(notScheduledPods)).To(Equal(expectedNotScheduled), printOnce(fmt.Sprintf("Not scheduled Pods: %#v", notScheduledPods)))
+	Expect(len(scheduledPods)).To(Equal(expectedScheduled), printOnce(fmt.Sprintf("Scheduled Pods: %#v", scheduledPods)))
+}
+
+func getPodsByLabels(c clientset.Interface, ns string, labelsMap map[string]string) *v1.PodList {
+	selector := labels.SelectorFromSet(labels.Set(labelsMap))
+	allPods, err := c.Core().Pods(ns).List(metav1.ListOptions{LabelSelector: selector.String()})
+	framework.ExpectNoError(err)
+	return allPods
 }
 
 func runAndKeepPodWithLabelAndGetNodeName(f *framework.Framework) (string, string) {

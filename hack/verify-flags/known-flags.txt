@@ -187,6 +187,7 @@ docker-exec-handler
 docker-password
 docker-server
 docker-username
+dockershim-checkpoint-dir
 driver-port
 drop-embedded-fields
 dry-run
@@ -334,6 +335,7 @@ http-port
 ignore-daemonsets
 ignore-not-found
 image-config-file
+image-description
 image-gc-high-threshold
 image-gc-low-threshold
 image-project
@@ -524,6 +526,7 @@ output-base
 output-directory
 output-file-base
 output-package
+output-patch
 output-print-type
 output-version
 out-version
@@ -671,6 +674,8 @@ system-cgroups
 system-pods-startup-timeout
 system-reserved
 system-reserved-cgroup
+system-spec-file
+system-spec-name
 system-validate-mode
 target-port
 target-ram-mb

@@ -9,14 +9,16 @@ load(
 
 go_test(
     name = "go_default_test",
-    srcs = ["evictions_test.go"],
+    size = "large",
+    srcs = [
+        "evictions_test.go",
+        "main_test.go",
+    ],
     tags = [
         "automanaged",
         "integration",
     ],
     deps = [
-        "//pkg/client/clientset_generated/clientset:go_default_library",
-        "//pkg/client/informers/informers_generated/externalversions:go_default_library",
         "//pkg/controller/disruption:go_default_library",
         "//test/integration/framework:go_default_library",
         "//vendor/k8s.io/api/core/v1:go_default_library",
@@ -26,6 +28,8 @@ go_test(
         "//vendor/k8s.io/apimachinery/pkg/util/errors:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/util/intstr:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/util/wait:go_default_library",
+        "//vendor/k8s.io/client-go/informers:go_default_library",
+        "//vendor/k8s.io/client-go/kubernetes:go_default_library",
         "//vendor/k8s.io/client-go/rest:go_default_library",
         "//vendor/k8s.io/client-go/tools/cache:go_default_library",
     ],

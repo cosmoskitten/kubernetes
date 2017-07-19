@@ -55,8 +55,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/authentication/serviceaccount"
 	genericregistry "k8s.io/apiserver/pkg/registry/generic/registry"
+	clientset "k8s.io/client-go/kubernetes"
 	batchv2alpha1 "k8s.io/kubernetes/pkg/apis/batch/v2alpha1"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	uexec "k8s.io/kubernetes/pkg/util/exec"
@@ -186,7 +186,7 @@ func runKubectlRetryOrDie(args ...string) string {
 }
 
 // duplicated setup to avoid polluting "normal" clients with alpha features which confuses the generated clients
-var _ = kubectlDescribe("Kubectl alpha client", func() {
+var _ = SIGDescribe("Kubectl alpha client", func() {
 	defer GinkgoRecover()
 	f := framework.NewDefaultFramework("kubectl")
 
@@ -275,7 +275,7 @@ var _ = kubectlDescribe("Kubectl alpha client", func() {
 	})
 })
 
-var _ = kubectlDescribe("Kubectl client", func() {
+var _ = SIGDescribe("Kubectl client", func() {
 	defer GinkgoRecover()
 	f := framework.NewDefaultFramework("kubectl")
 

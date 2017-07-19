@@ -31,7 +31,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/uuid"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
+	clientset "k8s.io/client-go/kubernetes"
 	priorityutil "k8s.io/kubernetes/plugin/pkg/scheduler/algorithm/priorities/util"
 	"k8s.io/kubernetes/test/e2e/common"
 	"k8s.io/kubernetes/test/e2e/framework"
@@ -57,7 +57,7 @@ var podRequestedResource *v1.ResourceRequirements = &v1.ResourceRequirements{
 }
 
 // This test suite is used to verifies scheduler priority functions based on the default provider
-var _ = framework.KubeDescribe("SchedulerPriorities [Serial]", func() {
+var _ = SIGDescribe("SchedulerPriorities [Serial]", func() {
 	var cs clientset.Interface
 	var nodeList *v1.NodeList
 	var systemPodsNo int
@@ -398,7 +398,7 @@ func createBalancedPodForNodes(f *framework.Framework, cs clientset.Interface, n
 
 		needCreateResource["memory"] = *resource.NewQuantity(int64((ratio-memFraction)*float64(memAllocatableVal)), resource.BinarySI)
 
-		err := testutils.StartPods(cs, 1, ns, "priority-balanced-mem-"+node.Name,
+		err := testutils.StartPods(cs, 1, ns, string(uuid.NewUUID()),
 			*initPausePod(f, pausePodConfig{
 				Name:   "",
 				Labels: balancePodLabel,

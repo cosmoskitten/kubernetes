@@ -39,10 +39,10 @@ import (
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	"k8s.io/apiserver/pkg/server/filters"
 	serverstorage "k8s.io/apiserver/pkg/server/storage"
+	clientset "k8s.io/client-go/kubernetes"
 	federationv1beta1 "k8s.io/kubernetes/federation/apis/federation/v1beta1"
 	"k8s.io/kubernetes/federation/cmd/federation-apiserver/app/options"
 	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	informers "k8s.io/kubernetes/pkg/client/informers/informers_generated/internalversion"
 	"k8s.io/kubernetes/pkg/generated/openapi"
@@ -87,7 +87,7 @@ func Run(s *options.ServerRunOptions, stopCh <-chan struct{}) error {
 // stop with the given channel.
 func NonBlockingRun(s *options.ServerRunOptions, stopCh <-chan struct{}) error {
 	// register all admission plugins
-	registerAllAdmissionPlugins(s.Admission.Plugins)
+	RegisterAllAdmissionPlugins(s.Admission.Plugins)
 
 	// set defaults
 	if err := s.GenericServerRunOptions.DefaultAdvertiseAddress(s.SecureServing); err != nil {
