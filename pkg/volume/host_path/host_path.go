@@ -455,6 +455,8 @@ func checkType(path string, pathType *v1.HostPathType) error {
 
 func checkTypeInternal(ftc hostPathTypeChecker, pathType *v1.HostPathType) error {
 	switch *pathType {
+	case v1.HostPathUnset:
+		return nil
 	case v1.HostPathDirectoryOrCreate:
 		if !ftc.Exists() {
 			return ftc.MakeDir()
