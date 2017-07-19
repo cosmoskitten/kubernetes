@@ -79,6 +79,20 @@ var (
 		Key:    algorithm.TaintNodeNotReady,
 		Effect: v1.TaintEffectNoExecute,
 	}
+
+	nodeConditionToTaintKeyMap = map[v1.NodeConditionType]string{
+		v1.NodeMemoryPressure:     algorithm.TaintNodeMemoryPressure,
+		v1.NodeOutOfDisk:          algorithm.TaintNodeOutOfDisk,
+		v1.NodeDiskPressure:       algorithm.TaintNodeDiskPressure,
+		v1.NodeNetworkUnavailable: algorithm.TaintNodeNetworkUnavailable,
+	}
+
+	taintKeyToNodeConditionMap = map[string]v1.NodeConditionType{
+		algorithm.TaintNodeNetworkUnavailable: v1.NodeNetworkUnavailable,
+		algorithm.TaintNodeMemoryPressure:     v1.NodeMemoryPressure,
+		algorithm.TaintNodeOutOfDisk:          v1.NodeOutOfDisk,
+		algorithm.TaintNodeDiskPressure:       v1.NodeDiskPressure,
+	}
 )
 
 const (
@@ -189,6 +203,10 @@ type NodeController struct {
 	// if set to true NodeController will taint Nodes with 'TaintNodeNotReady' and 'TaintNodeUnreachable'
 	// taints instead of evicting Pods itself.
 	useTaintBasedEvictions bool
+
+	// if set to true, NodeController will taint Nodes based on its condition for 'NetworkUnavailable',
+	// 'MemoryPressure', 'OutOfDisk' and 'DiskPressure'.
+	taintNodeByCondition bool
 }
 
 // NewNodeController returns a new node controller to sync instances from cloudprovider.
@@ -215,7 +233,9 @@ func NewNodeController(
 	allocateNodeCIDRs bool,
 	allocatorType CIDRAllocatorType,
 	runTaintManager bool,
-	useTaintBasedEvictions bool) (*NodeController, error) {
+	useTaintBasedEvictions bool,
+	taintNodeByCondition bool,
+) (*NodeController, error) {
 	eventBroadcaster := record.NewBroadcaster()
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "controllermanager"})
 	eventBroadcaster.StartLogging(glog.Infof)
@@ -396,6 +416,17 @@ func NewNodeController(
 		nc.taintManager = NewNoExecuteTaintManager(kubeClient)
 	}
 
+	if nc.taintNodeByCondition {
+		nodeInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+			AddFunc: createAddNodeHandler(func(node *v1.Node) error {
+				return nc.doNoScheduleTaintingPass(node)
+			}),
+			UpdateFunc: createUpdateNodeHandler(func(_, newNode *v1.Node) error {
+				return nc.doNoScheduleTaintingPass(newNode)
+			}),
+		})
+	}
+
 	nc.nodeLister = nodeInformer.Lister()
 	nc.nodeInformerSynced = nodeInformer.Informer().HasSynced
 
@@ -434,6 +465,34 @@ func (nc *NodeController) doEvictionPass() {
 	}
 }
 
+func (nc *NodeController) doNoScheduleTaintingPass(node *v1.Node) error {
+	// Map node's condition to Taints.
+	taints := []v1.Taint{}
+	for _, condition := range node.Status.Conditions {
+		if _, found := nodeConditionToTaintKeyMap[condition.Type]; found {
+			if condition.Status == v1.ConditionTrue {
+				taints = append(taints, v1.Taint{
+					Key:    nodeConditionToTaintKeyMap[condition.Type],
+					Effect: v1.TaintEffectNoSchedule,
+				})
+			}
+		}
+	}
+	nodeTaints := taintutils.TaintSetFilter(node.Spec.Taints, func(t *v1.Taint) bool {
+		_, found := taintKeyToNodeConditionMap[t.Key]
+		return found
+	})
+	taintsToAdd, taintsToDel := taintutils.TaintSetDiff(taints, nodeTaints)
+	// If nothing to add not delete, return true directly.
+	if len(taintsToAdd) == 0 && len(taintsToDel) == 0 {
+		return nil
+	}
+	if !swapNodeControllerTaint(nc.kubeClient, taintsToAdd, taintsToDel, node) {
+		return fmt.Errorf("failed to swap taints of node %+v", node)
+	}
+	return nil
+}
+
 func (nc *NodeController) doNoExecuteTaintingPass() {
 	nc.evictorLock.Lock()
 	defer nc.evictorLock.Unlock()
@@ -468,7 +527,7 @@ func (nc *NodeController) doNoExecuteTaintingPass() {
 				return true, 0
 			}
 
-			return swapNodeControllerTaint(nc.kubeClient, &taintToAdd, &oppositeTaint, node), 0
+			return swapNodeControllerTaint(nc.kubeClient, []*v1.Taint{&taintToAdd}, []*v1.Taint{&oppositeTaint}, node), 0
 		})
 	}
 }
@@ -551,7 +610,7 @@ func (nc *NodeController) monitorNodeStatus() error {
 		nc.knownNodeSet[added[i].Name] = added[i]
 		nc.addPodEvictorForNewZone(added[i])
 		if nc.useTaintBasedEvictions {
-			nc.markNodeAsHealthy(added[i])
+			nc.markNodeAsReachable(added[i])
 		} else {
 			nc.cancelPodEviction(added[i])
 		}
@@ -605,7 +664,7 @@ func (nc *NodeController) monitorNodeStatus() error {
 					// We want to update the taint straight away if Node is already tainted with the UnreachableTaint
 					if taintutils.TaintExists(node.Spec.Taints, UnreachableTaintTemplate) {
 						taintToAdd := *NotReadyTaintTemplate
-						if !swapNodeControllerTaint(nc.kubeClient, &taintToAdd, UnreachableTaintTemplate, node) {
+						if !swapNodeControllerTaint(nc.kubeClient, []*v1.Taint{&taintToAdd}, []*v1.Taint{UnreachableTaintTemplate}, node) {
 							glog.Errorf("Failed to instantly swap UnreachableTaint to NotReadyTaint. Will try again in the next cycle.")
 						}
 					} else if nc.markNodeForTainting(node) {
@@ -632,7 +691,7 @@ func (nc *NodeController) monitorNodeStatus() error {
 					// We want to update the taint straight away if Node is already tainted with the UnreachableTaint
 					if taintutils.TaintExists(node.Spec.Taints, NotReadyTaintTemplate) {
 						taintToAdd := *UnreachableTaintTemplate
-						if !swapNodeControllerTaint(nc.kubeClient, &taintToAdd, NotReadyTaintTemplate, node) {
+						if !swapNodeControllerTaint(nc.kubeClient, []*v1.Taint{&taintToAdd}, []*v1.Taint{NotReadyTaintTemplate}, node) {
 							glog.Errorf("Failed to instantly swap UnreachableTaint to NotReadyTaint. Will try again in the next cycle.")
 						}
 					} else if nc.markNodeForTainting(node) {
@@ -656,7 +715,7 @@ func (nc *NodeController) monitorNodeStatus() error {
 			}
 			if observedReadyCondition.Status == v1.ConditionTrue {
 				if nc.useTaintBasedEvictions {
-					removed, err := nc.markNodeAsHealthy(node)
+					removed, err := nc.markNodeAsReachable(node)
 					if err != nil {
 						glog.Errorf("Failed to remove taints from node %v. Will retry in next iteration.", node.Name)
 					}
@@ -751,7 +810,7 @@ func (nc *NodeController) handleDisruption(zoneToNodeConditions map[string][]*v1
 			glog.V(0).Info("NodeController detected that all Nodes are not-Ready. Entering master disruption mode.")
 			for i := range nodes {
 				if nc.useTaintBasedEvictions {
-					_, err := nc.markNodeAsHealthy(nodes[i])
+					_, err := nc.markNodeAsReachable(nodes[i])
 					if err != nil {
 						glog.Errorf("Failed to remove taints from Node %v", nodes[i].Name)
 					}
@@ -1069,15 +1128,15 @@ func (nc *NodeController) markNodeForTainting(node *v1.Node) bool {
 	return nc.zoneNoExecuteTainer[utilnode.GetZoneKey(node)].Add(node.Name, string(node.UID))
 }
 
-func (nc *NodeController) markNodeAsHealthy(node *v1.Node) (bool, error) {
+func (nc *NodeController) markNodeAsReachable(node *v1.Node) (bool, error) {
 	nc.evictorLock.Lock()
 	defer nc.evictorLock.Unlock()
-	err := controller.RemoveTaintOffNode(nc.kubeClient, node.Name, UnreachableTaintTemplate, node)
+	err := controller.RemoveTaintOffNode(nc.kubeClient, node.Name, UnreachableTaintTemplate)
 	if err != nil {
 		glog.Errorf("Failed to remove taint from node %v: %v", node.Name, err)
 		return false, err
 	}
-	err = controller.RemoveTaintOffNode(nc.kubeClient, node.Name, NotReadyTaintTemplate, node)
+	err = controller.RemoveTaintOffNode(nc.kubeClient, node.Name, NotReadyTaintTemplate)
 	if err != nil {
 		glog.Errorf("Failed to remove taint from node %v: %v", node.Name, err)
 		return false, err
