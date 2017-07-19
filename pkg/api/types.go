@@ -600,6 +600,8 @@ const (
 type HostPathType string
 
 const (
+	// For backwards compatible, leave it empty if unset
+	HostPathUnset HostPathType = ""
 	// If nothing exists at the given path, an empty directory will be created there.
 	HostPathDirectoryOrCreate HostPathType = "DirectoryOrCreate"
 	// A directory must exist at the given path
@@ -621,7 +623,7 @@ const (
 type HostPathVolumeSource struct {
 	// If the path is a symlink, it will follow the link to the real path.
 	Path string
-	// Defaults to DirectoryOrCreate
+	// Defaults to ""
 	Type *HostPathType
 }
 
