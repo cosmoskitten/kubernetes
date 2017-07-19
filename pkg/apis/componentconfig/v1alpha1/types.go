@@ -442,7 +442,7 @@ type KubeletConfiguration struct {
 	//   "hairpin-veth":       set the hairpin flag on container veth interfaces.
 	//   "none":               do nothing.
 	// Generally, one must set --hairpin-mode=veth-flag to achieve hairpin NAT,
-	// because promiscous-bridge assumes the existence of a container bridge named cbr0.
+	// because promiscuous-bridge assumes the existence of a container bridge named cbr0.
 	HairpinMode string `json:"hairpinMode"`
 	// maxPods is the number of pods that can run on this Kubelet.
 	MaxPods int32 `json:"maxPods"`
@@ -561,7 +561,7 @@ type KubeletConfiguration struct {
 	// Refer to [Node Allocatable](https://git.k8s.io/community/contributors/design-proposals/node-allocatable.md) doc for more information.
 	KubeReservedCgroup string `json:"kubeReservedCgroup,omitempty"`
 	// This flag specifies the various Node Allocatable enforcements that Kubelet needs to perform.
-	// This flag accepts a list of options. Acceptible options are `pods`, `system-reserved` & `kube-reserved`.
+	// This flag accepts a list of options. Acceptable options are `pods`, `system-reserved` & `kube-reserved`.
 	// Refer to [Node Allocatable](https://git.k8s.io/community/contributors/design-proposals/node-allocatable.md) doc for more information.
 	EnforceNodeAllocatable []string `json:"enforceNodeAllocatable"`
 	// This flag, if set, will avoid including `EvictionHard` limits while computing Node Allocatable.
