@@ -885,7 +885,11 @@ func (o ReplicaSetsBySizeNewer) Less(i, j int) bool {
 	return *(o[i].Spec.Replicas) > *(o[j].Spec.Replicas)
 }
 
-func AddOrUpdateTaintOnNode(c clientset.Interface, nodeName string, taint *v1.Taint) error {
+func AddOrUpdateTaintOnNode(c clientset.Interface, nodeName string, taints ...*v1.Taint) error {
+	if len(taints) == 0 {
+		return nil
+	}
+
 	firstTry := true
 	return clientretry.RetryOnConflict(UpdateTaintBackoff, func() error {
 		var err error
@@ -901,13 +905,22 @@ func AddOrUpdateTaintOnNode(c clientset.Interface, nodeName string, taint *v1.Ta
 		if err != nil {
 			return err
 		}
-		newNode, ok, err := taintutils.AddOrUpdateTaint(oldNode, taint)
-		if err != nil {
-			return fmt.Errorf("Failed to update taint annotation!")
+
+		var newNode *v1.Node
+		oldNodeCopy := oldNode
+		for _, taint := range taints {
+			curNewNode, ok, err := taintutils.AddOrUpdateTaint(oldNodeCopy, taint)
+			if err != nil {
+				return fmt.Errorf("Failed to update taint annotation!")
+			}
+			if !ok {
+				return nil
+			}
+
+			newNode = curNewNode
+			oldNodeCopy = curNewNode
 		}
-		if !ok {
-			return nil
-		}
+
 		return PatchNodeTaints(c, nodeName, oldNode, newNode)
 	})
 }
@@ -916,20 +929,11 @@ func AddOrUpdateTaintOnNode(c clientset.Interface, nodeName string, taint *v1.Ta
 // won't fail if target taint doesn't exist or has been removed.
 // If passed a node it'll check if there's anything to be done, if taint is not present it won't issue
 // any API calls.
-func RemoveTaintOffNode(c clientset.Interface, nodeName string, taint *v1.Taint, node *v1.Node) error {
-	// Short circuit for limiting amount of API calls.
-	if node != nil {
-		match := false
-		for i := range node.Spec.Taints {
-			if node.Spec.Taints[i].MatchTaint(taint) {
-				match = true
-				break
-			}
-		}
-		if !match {
-			return nil
-		}
+func RemoveTaintOffNode(c clientset.Interface, nodeName string, taints ...*v1.Taint) error {
+	if len(taints) == 0 {
+		return nil
 	}
+
 	firstTry := true
 	return clientretry.RetryOnConflict(UpdateTaintBackoff, func() error {
 		var err error
@@ -945,13 +949,22 @@ func RemoveTaintOffNode(c clientset.Interface, nodeName string, taint *v1.Taint,
 		if err != nil {
 			return err
 		}
-		newNode, ok, err := taintutils.RemoveTaint(oldNode, taint)
-		if err != nil {
-			return fmt.Errorf("Failed to update taint annotation!")
+
+		var newNode *v1.Node
+		oldNodeCopy := oldNode
+		for _, taint := range taints {
+			curNewNode, ok, err := taintutils.RemoveTaint(oldNodeCopy, taint)
+			if err != nil {
+				return fmt.Errorf("Failed to update taint annotation!")
+			}
+			if !ok {
+				return nil
+			}
+
+			newNode = curNewNode
+			oldNodeCopy = curNewNode
 		}
-		if !ok {
-			return nil
-		}
+
 		return PatchNodeTaints(c, nodeName, oldNode, newNode)
 	})
 }
