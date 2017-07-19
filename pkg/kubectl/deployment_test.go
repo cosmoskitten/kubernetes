@@ -279,3 +279,56 @@ func TestBaseDeploymentGenerator_validate(t *testing.T) {
 	}
 	assert.NoError(t, b.validate())
 }
+
+func Test_baseDeploymentGeneratorFromParams(t *testing.T) {
+	params := map[string]interface{}{
+		"name":     "hello-world",
+		"image":    []string{"nginx"},
+		"replicas": 4,
+		"limits":   "memory=8Mi",
+		"requests": "memory=4Mi",
+		"command":  []string{"cmd"},
+		"args":     []string{"arg"},
+	}
+	generator, err := baseDeploymentGeneratorFromParams(params)
+
+	assert.NoError(t, err)
+	assert.Equal(t, &BaseDeploymentGenerator{
+		Name:     "hello-world",
+		Images:   []string{"nginx"},
+		Replicas: 4,
+		Limits:   "memory=8Mi",
+		Requests: "memory=4Mi",
+		Command:  []string{"cmd"},
+		Args:     []string{"arg"},
+	}, generator)
+
+	// Try putting a variable of the wrong type into the params map and
+	// ensure it's caught.
+	params["replicas"] = "over 9000"
+	_, err = baseDeploymentGeneratorFromParams(params)
+	assert.Error(t, err)
+}
+
+func TestBaseDeploymentGenerator_structuredGenerator(t *testing.T) {
+	baseGenerator := BaseDeploymentGenerator{
+		Name:     "hello-world",
+		Images:   []string{"nginx@v1"},
+		Replicas: 9,
+	}
+
+	podSpec, labels, selector, replicas, err := baseGenerator.structuredGenerate()
+	assert.NoError(t, err)
+	assert.Equal(t, v1.PodSpec{
+		Containers: []v1.Container{{
+			Name:  "nginx",
+			Image: "nginx@v1",
+		}},
+	}, podSpec)
+	expectedLabels := map[string]string{
+		"app": "hello-world",
+	}
+	assert.Equal(t, expectedLabels, labels)
+	assert.Equal(t, metav1.LabelSelector{MatchLabels: expectedLabels}, selector)
+	assert.Equal(t, int32(9), replicas)
+}
