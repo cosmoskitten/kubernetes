@@ -17,32 +17,44 @@ limitations under the License.
 package cache
 
 import (
+	"sync"
 	"testing"
 	"time"
 
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
-// TestPopReleaseLock tests that when processor listener blocks on chan,
-// it should release the lock for pendingNotifications.
-func TestPopReleaseLock(t *testing.T) {
-	pl := newProcessListener(nil, 0, 0, time.Now())
+const (
+	concurrencyLevel = 5
+)
+
+func BenchmarkListener(b *testing.B) {
+	var wg wait.Group
+	defer wg.Wait() // Wait for .run and .pop to stop
+
 	stopCh := make(chan struct{})
-	defer close(stopCh)
-	// make pop() block on nextCh: waiting for receiver to get notification.
-	pl.add(1)
-	go pl.pop(stopCh)
+	defer close(stopCh) // Tell .run and .pop to stop
 
-	resultCh := make(chan struct{})
-	go func() {
-		pl.lock.Lock()
-		close(resultCh)
-	}()
+	var notification addNotification
 
-	select {
-	case <-resultCh:
-	case <-time.After(wait.ForeverTestTimeout):
-		t.Errorf("Timeout after %v", wait.ForeverTestTimeout)
-	}
-	pl.lock.Unlock()
+	var swg sync.WaitGroup
+	swg.Add(b.N)
+	b.SetParallelism(concurrencyLevel)
+	pl := newProcessListener(&ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			swg.Done()
+		},
+	}, 0, 0, time.Now())
+	wg.StartWithChannel(stopCh, pl.run)
+	wg.StartWithChannel(stopCh, pl.pop)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			pl.add(stopCh, notification)
+		}
+	})
+	swg.Wait() // Block until all notifications have been received
+	b.StopTimer()
 }

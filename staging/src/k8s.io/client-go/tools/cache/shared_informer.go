@@ -332,7 +332,7 @@ func (s *sharedIndexInformer) AddEventHandlerWithResyncPeriod(handler ResourceEv
 
 	items := s.indexer.List()
 	for i := range items {
-		listener.add(addNotification{newObj: items[i]})
+		listener.add(s.stopCh, addNotification{newObj: items[i]})
 	}
 }
 
@@ -350,18 +350,18 @@ func (s *sharedIndexInformer) HandleDeltas(obj interface{}) error {
 				if err := s.indexer.Update(d.Object); err != nil {
 					return err
 				}
-				s.processor.distribute(updateNotification{oldObj: old, newObj: d.Object}, isSync)
+				s.processor.distribute(s.stopCh, updateNotification{oldObj: old, newObj: d.Object}, isSync)
 			} else {
 				if err := s.indexer.Add(d.Object); err != nil {
 					return err
 				}
-				s.processor.distribute(addNotification{newObj: d.Object}, isSync)
+				s.processor.distribute(s.stopCh, addNotification{newObj: d.Object}, isSync)
 			}
 		case Deleted:
 			if err := s.indexer.Delete(d.Object); err != nil {
 				return err
 			}
-			s.processor.distribute(deleteNotification{oldObj: d.Object}, false)
+			s.processor.distribute(s.stopCh, deleteNotification{oldObj: d.Object}, false)
 		}
 	}
 	return nil
@@ -382,17 +382,17 @@ func (p *sharedProcessor) addListener(listener *processorListener) {
 	p.syncingListeners = append(p.syncingListeners, listener)
 }
 
-func (p *sharedProcessor) distribute(obj interface{}, sync bool) {
+func (p *sharedProcessor) distribute(stopCh <-chan struct{}, obj interface{}, sync bool) {
 	p.listenersLock.RLock()
 	defer p.listenersLock.RUnlock()
 
 	if sync {
 		for _, listener := range p.syncingListeners {
-			listener.add(obj)
+			listener.add(stopCh, obj)
 		}
 	} else {
 		for _, listener := range p.listeners {
-			listener.add(obj)
+			listener.add(stopCh, obj)
 		}
 	}
 }
@@ -443,18 +443,8 @@ func (p *sharedProcessor) resyncCheckPeriodChanged(resyncCheckPeriod time.Durati
 }
 
 type processorListener struct {
-	// lock/cond protects access to 'pendingNotifications'.
-	lock sync.RWMutex
-	cond sync.Cond
-
-	// pendingNotifications is an unbounded slice that holds all notifications not yet distributed
-	// there is one per listener, but a failing/stalled listener will have infinite pendingNotifications
-	// added until we OOM.
-	// TODO This is no worse that before, since reflectors were backed by unbounded DeltaFIFOs, but
-	// we should try to do something better
-	pendingNotifications []interface{}
-
 	nextCh chan interface{}
+	addCh  chan interface{}
 
 	handler ResourceEventHandler
 
@@ -472,60 +462,58 @@ type processorListener struct {
 
 func newProcessListener(handler ResourceEventHandler, requestedResyncPeriod, resyncPeriod time.Duration, now time.Time) *processorListener {
 	ret := &processorListener{
-		pendingNotifications:  []interface{}{},
 		nextCh:                make(chan interface{}),
+		addCh:                 make(chan interface{}),
 		handler:               handler,
 		requestedResyncPeriod: requestedResyncPeriod,
 		resyncPeriod:          resyncPeriod,
 	}
-
-	ret.cond.L = &ret.lock
 
 	ret.determineNextResync(now)
 
 	return ret
 }
 
-func (p *processorListener) add(notification interface{}) {
-	p.lock.Lock()
-	defer p.lock.Unlock()
-
-	p.pendingNotifications = append(p.pendingNotifications, notification)
-	p.cond.Broadcast()
+func (p *processorListener) add(stopCh <-chan struct{}, notification interface{}) {
+	select {
+	case <-stopCh:
+	case p.addCh <- notification:
+	}
 }
 
 func (p *processorListener) pop(stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 
+	// pendingNotifications is an unbounded slice that holds all notifications not yet distributed
+	// there is one per listener, but a failing/stalled listener will have infinite pendingNotifications
+	// added until we OOM.
+	// TODO This is no worse that before, since reflectors were backed by unbounded DeltaFIFOs, but
+	// we should try to do something better
+	var pendingNotifications []interface{}
+	var nextCh chan<- interface{}
+	var notification interface{}
 	for {
-		blockingGet := func() (interface{}, bool) {
-			p.lock.Lock()
-			defer p.lock.Unlock()
-
-			for len(p.pendingNotifications) == 0 {
-				// check if we're shutdown
-				select {
-				case <-stopCh:
-					return nil, true
-				default:
-				}
-				p.cond.Wait()
-			}
-
-			nt := p.pendingNotifications[0]
-			p.pendingNotifications = p.pendingNotifications[1:]
-			return nt, false
-		}
-
-		notification, stopped := blockingGet()
-		if stopped {
-			return
-		}
-
 		select {
 		case <-stopCh:
 			return
-		case p.nextCh <- notification:
+		case nextCh <- notification:
+			// Notification dispatched
+			if len(pendingNotifications) == 0 { // Nothing to pop
+				nextCh = nil
+				notification = nil
+			} else {
+				notification = pendingNotifications[0]
+				pendingNotifications[0] = nil
+				pendingNotifications = pendingNotifications[1:]
+			}
+		case notificationToAdd := <-p.addCh:
+			if nextCh == nil { // No notification to pop
+				// Optimize the case - skip adding to pendingNotifications
+				notification = notificationToAdd
+				nextCh = p.nextCh
+			} else { // There is already a notification waiting to be dispatched
+				pendingNotifications = append(pendingNotifications, notificationToAdd)
+			}
 		}
 	}
 }
@@ -537,11 +525,6 @@ func (p *processorListener) run(stopCh <-chan struct{}) {
 		var next interface{}
 		select {
 		case <-stopCh:
-			func() {
-				p.lock.Lock()
-				defer p.lock.Unlock()
-				p.cond.Broadcast()
-			}()
 			return
 		case next = <-p.nextCh:
 		}
