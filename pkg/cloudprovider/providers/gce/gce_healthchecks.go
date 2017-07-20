@@ -37,7 +37,7 @@ var (
 )
 
 func init() {
-	if v, err := utilversion.ParseGeneric("1.7.0"); err != nil {
+	if v, err := utilversion.ParseGeneric("1.7.2"); err != nil {
 		panic(err)
 	} else {
 		minNodesHealthCheckVersion = v
