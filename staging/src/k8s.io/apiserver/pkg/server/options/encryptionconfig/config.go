@@ -57,7 +57,8 @@ func GetTransformerOverrides(filepath string) (map[schema.GroupResource]value.Tr
 
 // ParseEncryptionConfiguration parses configuration data and returns the transformer overrides
 func ParseEncryptionConfiguration(f io.Reader) (map[schema.GroupResource]value.Transformer, error) {
-	configFileContents, err := ioutil.ReadAll(f)
+	// Upper limit of 100 KB on file size.
+	configFileContents, err := ioutil.ReadAll(io.LimitReader(f, 102400))
 	if err != nil {
 		return nil, fmt.Errorf("could not read contents: %v", err)
 	}
