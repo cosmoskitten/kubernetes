@@ -197,5 +197,10 @@ message PolicyRule {
   //  "/healthz*" - Log all health checks
   // +optional
   repeated string nonResourceURLs = 7;
+
+  // OmitStages specify events generated in which stages will not be emitted to backend
+  // Allowed stages are RequestReceived,ResponseStarted,ResponseComplete,Panic
+  // empty list means every events will be emitted.
+  repeated string omitStages = 8;
 }
 
