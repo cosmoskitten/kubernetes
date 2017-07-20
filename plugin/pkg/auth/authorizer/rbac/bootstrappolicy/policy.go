@@ -358,6 +358,27 @@ func ClusterRoles() []rbac.ClusterRole {
 				eventsRule(),
 			},
 		},
+		{
+			// a role making the csrapprover controller approve a node client CSR
+			ObjectMeta: metav1.ObjectMeta{Name: "system:csr-approver:approve-node-client-csr"},
+			Rules: []rbac.PolicyRule{
+				rbac.NewRule("create").Groups(certificatesGroup).Resources("certificatesigningrequests/nodeclient").RuleOrDie(),
+			},
+		},
+		{
+			// a role making the csrapprover controller approve a node client CSR requested by the node itself
+			ObjectMeta: metav1.ObjectMeta{Name: "system:csr-approver:approve-node-client-renewal-csr"},
+			Rules: []rbac.PolicyRule{
+				rbac.NewRule("create").Groups(certificatesGroup).Resources("certificatesigningrequests/selfnodeclient").RuleOrDie(),
+			},
+		},
+		{
+			// a role making the csrapprover controller approve a node server CSR requested by the node itself
+			ObjectMeta: metav1.ObjectMeta{Name: "system:csr-approver:approve-node-server-renewal-csr"},
+			Rules: []rbac.PolicyRule{
+				rbac.NewRule("create").Groups(certificatesGroup).Resources("certificatesigningrequests/selfnodeserver").RuleOrDie(),
+			},
+		},
 	}
 	addClusterRoleLabel(roles)
 	return roles

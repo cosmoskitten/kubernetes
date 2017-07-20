@@ -370,6 +370,54 @@ items:
     creationTimestamp: null
     labels:
       kubernetes.io/bootstrapping: rbac-defaults
+    name: system:csr-approver:approve-node-client-csr
+  rules:
+  - apiGroups:
+    - certificates.k8s.io
+    resources:
+    - certificatesigningrequests/nodeclient
+    verbs:
+    - create
+- apiVersion: rbac.authorization.k8s.io/v1beta1
+  kind: ClusterRole
+  metadata:
+    annotations:
+      rbac.authorization.kubernetes.io/autoupdate: "true"
+    creationTimestamp: null
+    labels:
+      kubernetes.io/bootstrapping: rbac-defaults
+    name: system:csr-approver:approve-node-client-renewal-csr
+  rules:
+  - apiGroups:
+    - certificates.k8s.io
+    resources:
+    - certificatesigningrequests/selfnodeclient
+    verbs:
+    - create
+- apiVersion: rbac.authorization.k8s.io/v1beta1
+  kind: ClusterRole
+  metadata:
+    annotations:
+      rbac.authorization.kubernetes.io/autoupdate: "true"
+    creationTimestamp: null
+    labels:
+      kubernetes.io/bootstrapping: rbac-defaults
+    name: system:csr-approver:approve-node-server-renewal-csr
+  rules:
+  - apiGroups:
+    - certificates.k8s.io
+    resources:
+    - certificatesigningrequests/selfnodeserver
+    verbs:
+    - create
+- apiVersion: rbac.authorization.k8s.io/v1beta1
+  kind: ClusterRole
+  metadata:
+    annotations:
+      rbac.authorization.kubernetes.io/autoupdate: "true"
+    creationTimestamp: null
+    labels:
+      kubernetes.io/bootstrapping: rbac-defaults
     name: system:discovery
   rules:
   - nonResourceURLs:
