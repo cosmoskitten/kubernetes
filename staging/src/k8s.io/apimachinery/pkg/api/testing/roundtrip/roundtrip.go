@@ -19,7 +19,6 @@ package roundtrip
 import (
 	"bytes"
 	"encoding/hex"
-	"fmt"
 	"math/rand"
 	"reflect"
 	"strings"
@@ -216,10 +215,12 @@ func roundTripToAllExternalVersions(t *testing.T, scheme *runtime.Scheme, codecF
 		}
 		t.Logf("\tround tripping to %v %v", externalGVK, externalGoType)
 
+		t.Logf("\t\tjson")
 		roundTrip(t, scheme, apitesting.TestCodec(codecFactory, externalGVK.GroupVersion()), object)
 
 		// TODO remove this hack after we're past the intermediate steps
 		if !skipProtobuf && externalGVK.Group != "kubeadm.k8s.io" {
+			t.Logf("\t\tprotobuf")
 			s := protobuf.NewSerializer(scheme, scheme, "application/arbitrary.content.type")
 			protobufCodec := codecFactory.CodecForVersions(s, s, externalGVK.GroupVersion(), nil)
 			roundTrip(t, scheme, protobufCodec, object)
@@ -269,12 +270,14 @@ func roundTrip(t *testing.T, scheme *runtime.Scheme, codec runtime.Codec, object
 	original := object
 
 	// deep copy the original object
-	copied, err := scheme.DeepCopy(object)
-	if err != nil {
-		panic(fmt.Sprintf("unable to copy: %v", err))
-	}
-	object = copied.(runtime.Object)
+	object = object.DeepCopyObject()
 	name := reflect.TypeOf(object).Elem().Name()
+	if !apiequality.Semantic.DeepEqual(original, object) {
+		t.Errorf("%v: DeepCopy altered the object, diff: %v", name, diff.ObjectReflectDiff(original, object))
+		t.Errorf("%s", spew.Sdump(original))
+		t.Errorf("%s", spew.Sdump(object))
+		return
+	}
 
 	// catch deepcopy errors early
 	if !apiequality.Semantic.DeepEqual(original, object) {
