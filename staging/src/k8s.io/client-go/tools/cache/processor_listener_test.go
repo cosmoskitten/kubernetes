@@ -29,12 +29,6 @@ const (
 )
 
 func BenchmarkListener(b *testing.B) {
-	var wg wait.Group
-	defer wg.Wait() // Wait for .run and .pop to stop
-
-	stopCh := make(chan struct{})
-	defer close(stopCh) // Tell .run and .pop to stop
-
 	var notification addNotification
 
 	var swg sync.WaitGroup
@@ -45,14 +39,17 @@ func BenchmarkListener(b *testing.B) {
 			swg.Done()
 		},
 	}, 0, 0, time.Now())
-	wg.StartWithChannel(stopCh, pl.run)
-	wg.StartWithChannel(stopCh, pl.pop)
+	var wg wait.Group
+	defer wg.Wait()       // Wait for .run and .pop to stop
+	defer close(pl.addCh) // Tell .run and .pop to stop
+	wg.Start(pl.run)
+	wg.Start(pl.pop)
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			pl.add(stopCh, notification)
+			pl.add(notification)
 		}
 	})
 	swg.Wait() // Block until all notifications have been received

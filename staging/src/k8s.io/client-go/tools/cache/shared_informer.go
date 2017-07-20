@@ -138,16 +138,12 @@ type sharedIndexInformer struct {
 	// clock allows for testability
 	clock clock.Clock
 
-	started     bool
-	startedLock sync.Mutex
+	started, stopped bool
+	startedLock      sync.Mutex
 
 	// blockDeltas gives a way to stop all event distribution so that a late event handler
 	// can safely join the shared informer.
 	blockDeltas sync.Mutex
-	// stopCh is the channel used to stop the main Run process.  We have to track it so that
-	// late joiners can have a proper stop
-	stopCh <-chan struct{}
-	wg     wait.Group
 }
 
 // dummyController hides the fact that a SharedInformer is different from a dedicated one
@@ -205,21 +201,23 @@ func (s *sharedIndexInformer) Run(stopCh <-chan struct{}) {
 
 		s.controller = New(cfg)
 		s.controller.(*controller).clock = s.clock
-		s.stopCh = stopCh
 		s.started = true
 	}()
 
-	defer s.wg.Wait()
+	// Separate stop channel because Processor should be stopped strictly after controller
+	processorStopCh := make(chan struct{})
+	var wg wait.Group
+	defer wg.Wait()              // Wait for Processor to stop
+	defer close(processorStopCh) // Tell Processor to stop
+	wg.StartWithChannel(processorStopCh, s.cacheMutationDetector.Run)
+	wg.StartWithChannel(processorStopCh, s.processor.run)
 
-	s.wg.StartWithChannel(stopCh, s.cacheMutationDetector.Run)
-	s.wg.StartWithChannel(stopCh, s.processor.run)
+	defer func() {
+		s.startedLock.Lock()
+		defer s.startedLock.Unlock()
+		s.stopped = true // Don't want any new listeners
+	}()
 	s.controller.Run(stopCh)
-}
-
-func (s *sharedIndexInformer) isStarted() bool {
-	s.startedLock.Lock()
-	defer s.startedLock.Unlock()
-	return s.started
 }
 
 func (s *sharedIndexInformer) HasSynced() bool {
@@ -290,6 +288,10 @@ func (s *sharedIndexInformer) AddEventHandlerWithResyncPeriod(handler ResourceEv
 	s.startedLock.Lock()
 	defer s.startedLock.Unlock()
 
+	if s.stopped {
+		return
+	}
+
 	if resyncPeriod > 0 {
 		if resyncPeriod < minimumResyncPeriod {
 			glog.Warningf("resyncPeriod %d is too small. Changing it to the minimum allowed value of %d", resyncPeriod, minimumResyncPeriod)
@@ -325,14 +327,9 @@ func (s *sharedIndexInformer) AddEventHandlerWithResyncPeriod(handler ResourceEv
 	s.blockDeltas.Lock()
 	defer s.blockDeltas.Unlock()
 
-	s.processor.addListener(listener)
-
-	s.wg.StartWithChannel(s.stopCh, listener.run)
-	s.wg.StartWithChannel(s.stopCh, listener.pop)
-
-	items := s.indexer.List()
-	for i := range items {
-		listener.add(s.stopCh, addNotification{newObj: items[i]})
+	s.processor.addAndStartListener(listener)
+	for _, item := range s.indexer.List() {
+		listener.add(addNotification{newObj: item})
 	}
 }
 
@@ -350,18 +347,18 @@ func (s *sharedIndexInformer) HandleDeltas(obj interface{}) error {
 				if err := s.indexer.Update(d.Object); err != nil {
 					return err
 				}
-				s.processor.distribute(s.stopCh, updateNotification{oldObj: old, newObj: d.Object}, isSync)
+				s.processor.distribute(updateNotification{oldObj: old, newObj: d.Object}, isSync)
 			} else {
 				if err := s.indexer.Add(d.Object); err != nil {
 					return err
 				}
-				s.processor.distribute(s.stopCh, addNotification{newObj: d.Object}, isSync)
+				s.processor.distribute(addNotification{newObj: d.Object}, isSync)
 			}
 		case Deleted:
 			if err := s.indexer.Delete(d.Object); err != nil {
 				return err
 			}
-			s.processor.distribute(s.stopCh, deleteNotification{oldObj: d.Object}, false)
+			s.processor.distribute(deleteNotification{oldObj: d.Object}, false)
 		}
 	}
 	return nil
@@ -372,42 +369,61 @@ type sharedProcessor struct {
 	listeners        []*processorListener
 	syncingListeners []*processorListener
 	clock            clock.Clock
+	wg               wait.Group
+}
+
+func (p *sharedProcessor) addAndStartListener(listener *processorListener) {
+	p.listenersLock.Lock()
+	defer p.listenersLock.Unlock()
+
+	p.addListenerLocked(listener)
+	p.wg.Start(listener.run)
+	p.wg.Start(listener.pop)
 }
 
 func (p *sharedProcessor) addListener(listener *processorListener) {
 	p.listenersLock.Lock()
 	defer p.listenersLock.Unlock()
 
+	p.addListenerLocked(listener)
+}
+
+func (p *sharedProcessor) addListenerLocked(listener *processorListener) {
 	p.listeners = append(p.listeners, listener)
 	p.syncingListeners = append(p.syncingListeners, listener)
 }
 
-func (p *sharedProcessor) distribute(stopCh <-chan struct{}, obj interface{}, sync bool) {
+func (p *sharedProcessor) distribute(obj interface{}, sync bool) {
 	p.listenersLock.RLock()
 	defer p.listenersLock.RUnlock()
 
 	if sync {
 		for _, listener := range p.syncingListeners {
-			listener.add(stopCh, obj)
+			listener.add(obj)
 		}
 	} else {
 		for _, listener := range p.listeners {
-			listener.add(stopCh, obj)
+			listener.add(obj)
 		}
 	}
 }
 
 func (p *sharedProcessor) run(stopCh <-chan struct{}) {
-	var wg wait.Group
 	func() {
 		p.listenersLock.RLock()
 		defer p.listenersLock.RUnlock()
 		for _, listener := range p.listeners {
-			wg.StartWithChannel(stopCh, listener.run)
-			wg.StartWithChannel(stopCh, listener.pop)
+			p.wg.Start(listener.run)
+			p.wg.Start(listener.pop)
 		}
 	}()
-	wg.Wait()
+	<-stopCh
+	p.listenersLock.RLock()
+	defer p.listenersLock.RUnlock()
+	for _, listener := range p.listeners {
+		close(listener.addCh) // Tell .pop() to stop
+	}
+	p.wg.Wait() // Wait for all .pop() and .run() to stop
 }
 
 // shouldResync queries every listener to determine if any of them need a resync, based on each
@@ -474,15 +490,13 @@ func newProcessListener(handler ResourceEventHandler, requestedResyncPeriod, res
 	return ret
 }
 
-func (p *processorListener) add(stopCh <-chan struct{}, notification interface{}) {
-	select {
-	case <-stopCh:
-	case p.addCh <- notification:
-	}
+func (p *processorListener) add(notification interface{}) {
+	p.addCh <- notification
 }
 
-func (p *processorListener) pop(stopCh <-chan struct{}) {
+func (p *processorListener) pop() {
 	defer utilruntime.HandleCrash()
+	defer close(p.nextCh) // Tell .run() to stop
 
 	// pendingNotifications is an unbounded slice that holds all notifications not yet distributed
 	// there is one per listener, but a failing/stalled listener will have infinite pendingNotifications
@@ -494,8 +508,6 @@ func (p *processorListener) pop(stopCh <-chan struct{}) {
 	var notification interface{}
 	for {
 		select {
-		case <-stopCh:
-			return
 		case nextCh <- notification:
 			// Notification dispatched
 			if len(pendingNotifications) == 0 { // Nothing to pop
@@ -506,7 +518,10 @@ func (p *processorListener) pop(stopCh <-chan struct{}) {
 				pendingNotifications[0] = nil
 				pendingNotifications = pendingNotifications[1:]
 			}
-		case notificationToAdd := <-p.addCh:
+		case notificationToAdd, ok := <-p.addCh:
+			if !ok {
+				return
+			}
 			if nextCh == nil { // No notification to pop
 				// Optimize the case - skip adding to pendingNotifications
 				notification = notificationToAdd
@@ -518,17 +533,10 @@ func (p *processorListener) pop(stopCh <-chan struct{}) {
 	}
 }
 
-func (p *processorListener) run(stopCh <-chan struct{}) {
+func (p *processorListener) run() {
 	defer utilruntime.HandleCrash()
 
-	for {
-		var next interface{}
-		select {
-		case <-stopCh:
-			return
-		case next = <-p.nextCh:
-		}
-
+	for next := range p.nextCh {
 		switch notification := next.(type) {
 		case updateNotification:
 			p.handler.OnUpdate(notification.oldObj, notification.newObj)
