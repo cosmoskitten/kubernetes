@@ -120,7 +120,7 @@ func TestChecker(t *testing.T) {
 			policy.Rules = append(policy.Rules, rules[rule])
 		}
 		require.Contains(t, attrs, req)
-		actual := NewChecker(&policy).Level(attrs[req])
+		actual, _ := NewChecker(&policy).Level(attrs[req])
 		assert.Equal(t, expected, actual, "request:%s rules:%s", req, strings.Join(ruleNames, ","))
 	}
 

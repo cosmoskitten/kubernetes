@@ -98,14 +98,14 @@ func (*fancyResponseWriter) Flush() {}
 func (*fancyResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) { return nil, nil, nil }
 
 func TestConstructResponseWriter(t *testing.T) {
-	actual := decorateResponseWriter(&simpleResponseWriter{}, nil, nil)
+	actual := decorateResponseWriter(&simpleResponseWriter{}, nil, nil, nil)
 	switch v := actual.(type) {
 	case *auditResponseWriter:
 	default:
 		t.Errorf("Expected auditResponseWriter, got %v", reflect.TypeOf(v))
 	}
 
-	actual = decorateResponseWriter(&fancyResponseWriter{}, nil, nil)
+	actual = decorateResponseWriter(&fancyResponseWriter{}, nil, nil, nil)
 	switch v := actual.(type) {
 	case *fancyResponseWriterDelegator:
 	default:
@@ -115,7 +115,7 @@ func TestConstructResponseWriter(t *testing.T) {
 
 func TestDecorateResponseWriterWithoutChannel(t *testing.T) {
 	ev := &auditinternal.Event{}
-	actual := decorateResponseWriter(&simpleResponseWriter{}, ev, nil)
+	actual := decorateResponseWriter(&simpleResponseWriter{}, ev, nil, nil)
 
 	// write status. This will not block because firstEventSentCh is nil
 	actual.WriteHeader(42)
@@ -129,7 +129,7 @@ func TestDecorateResponseWriterWithoutChannel(t *testing.T) {
 
 func TestDecorateResponseWriterWithImplicitWrite(t *testing.T) {
 	ev := &auditinternal.Event{}
-	actual := decorateResponseWriter(&simpleResponseWriter{}, ev, nil)
+	actual := decorateResponseWriter(&simpleResponseWriter{}, ev, nil, nil)
 
 	// write status. This will not block because firstEventSentCh is nil
 	actual.Write([]byte("foo"))
@@ -144,7 +144,7 @@ func TestDecorateResponseWriterWithImplicitWrite(t *testing.T) {
 func TestDecorateResponseWriterChannel(t *testing.T) {
 	sink := &fakeAuditSink{}
 	ev := &auditinternal.Event{}
-	actual := decorateResponseWriter(&simpleResponseWriter{}, ev, sink)
+	actual := decorateResponseWriter(&simpleResponseWriter{}, ev, sink, nil)
 
 	done := make(chan struct{})
 	go func() {
@@ -390,7 +390,7 @@ func TestAuditLegacy(t *testing.T) {
 	} {
 		var buf bytes.Buffer
 		backend := pluginlog.NewBackend(&buf, pluginlog.FormatLegacy)
-		policyChecker := policy.FakeChecker(auditinternal.LevelRequestResponse)
+		policyChecker := policy.FakeChecker(auditinternal.LevelRequestResponse, nil)
 		handler := WithAudit(http.HandlerFunc(test.handler), &fakeRequestContextMapper{
 			user: &user.DefaultInfo{Name: "admin"},
 		}, backend, policyChecker, func(r *http.Request, ri *request.RequestInfo) bool {
@@ -838,7 +838,7 @@ func TestAuditJson(t *testing.T) {
 	} {
 		var buf bytes.Buffer
 		backend := pluginlog.NewBackend(&buf, pluginlog.FormatJson)
-		policyChecker := policy.FakeChecker(auditinternal.LevelRequestResponse)
+		policyChecker := policy.FakeChecker(auditinternal.LevelRequestResponse, nil)
 		handler := WithAudit(http.HandlerFunc(test.handler), &fakeRequestContextMapper{
 			user: &user.DefaultInfo{Name: "admin"},
 		}, backend, policyChecker, func(r *http.Request, ri *request.RequestInfo) bool {
@@ -930,7 +930,7 @@ func (*fakeRequestContextMapper) Update(req *http.Request, context request.Conte
 }
 
 func TestAuditNoPanicOnNilUser(t *testing.T) {
-	policyChecker := policy.FakeChecker(auditinternal.LevelRequestResponse)
+	policyChecker := policy.FakeChecker(auditinternal.LevelRequestResponse, nil)
 	handler := WithAudit(&fakeHTTPHandler{}, &fakeRequestContextMapper{}, &fakeAuditSink{}, policyChecker, nil)
 	req, _ := http.NewRequest("GET", "/api/v1/namespaces/default/pods", nil)
 	req.RemoteAddr = "127.0.0.1"
@@ -943,7 +943,7 @@ func TestAuditLevelNone(t *testing.T) {
 	handler = http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(200)
 	})
-	policyChecker := policy.FakeChecker(auditinternal.LevelNone)
+	policyChecker := policy.FakeChecker(auditinternal.LevelNone, nil)
 	handler = WithAudit(handler, &fakeRequestContextMapper{
 		user: &user.DefaultInfo{Name: "admin"},
 	}, sink, policyChecker, nil)
