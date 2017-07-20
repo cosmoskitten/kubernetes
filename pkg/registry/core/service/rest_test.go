@@ -1538,6 +1538,92 @@ func TestUpdateNodePort(t *testing.T) {
 			},
 			expectSpecifiedNodePorts: []int{},
 		},
+		{
+			name: "Add new ServicePort with a different protocol without changing NodePort",
+			oldService: &api.Service{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+				Spec: api.ServiceSpec{
+					Selector:        map[string]string{"bar": "baz"},
+					SessionAffinity: api.ServiceAffinityNone,
+					Type:            api.ServiceTypeNodePort,
+					Ports: []api.ServicePort{
+						{
+							Name:       "port-tcp",
+							Port:       53,
+							TargetPort: intstr.FromInt(6502),
+							Protocol:   api.ProtocolTCP,
+							NodePort:   30053,
+						},
+					},
+				},
+			},
+			newService: &api.Service{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+				Spec: api.ServiceSpec{
+					Selector:        map[string]string{"bar": "baz"},
+					SessionAffinity: api.ServiceAffinityNone,
+					Type:            api.ServiceTypeNodePort,
+					Ports: []api.ServicePort{
+						{
+							Name:       "port-tcp",
+							Port:       53,
+							TargetPort: intstr.FromInt(6502),
+							Protocol:   api.ProtocolTCP,
+							NodePort:   30053,
+						},
+						{
+							Name:       "port-udp",
+							Port:       53,
+							TargetPort: intstr.FromInt(6502),
+							Protocol:   api.ProtocolUDP,
+							NodePort:   30053,
+						},
+					},
+				},
+			},
+			expectSpecifiedNodePorts: []int{30053, 30053},
+		},
+		{
+			name: "Change service type from ClusterIP to NodePort with same NodePort number but different protocols",
+			oldService: &api.Service{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+				Spec: api.ServiceSpec{
+					Selector:        map[string]string{"bar": "baz"},
+					SessionAffinity: api.ServiceAffinityNone,
+					Type:            api.ServiceTypeClusterIP,
+					Ports: []api.ServicePort{{
+						Port:       6502,
+						Protocol:   api.ProtocolTCP,
+						TargetPort: intstr.FromInt(6502),
+					}},
+				},
+			},
+			newService: &api.Service{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+				Spec: api.ServiceSpec{
+					Selector:        map[string]string{"bar": "baz"},
+					SessionAffinity: api.ServiceAffinityNone,
+					Type:            api.ServiceTypeNodePort,
+					Ports: []api.ServicePort{
+						{
+							Name:       "port-tcp",
+							Port:       53,
+							TargetPort: intstr.FromInt(6502),
+							Protocol:   api.ProtocolTCP,
+							NodePort:   30053,
+						},
+						{
+							Name:       "port-udp",
+							Port:       53,
+							TargetPort: intstr.FromInt(6502),
+							Protocol:   api.ProtocolUDP,
+							NodePort:   30053,
+						},
+					},
+				},
+			},
+			expectSpecifiedNodePorts: []int{30053, 30053},
+		},
 	}
 
 	for _, test := range testCases {
@@ -1559,6 +1645,5 @@ func TestUpdateNodePort(t *testing.T) {
 		} else if !reflect.DeepEqual(serviceNodePorts, test.expectSpecifiedNodePorts) {
 			t.Errorf("%q: expected NodePorts %v, but got %v", test.name, test.expectSpecifiedNodePorts, serviceNodePorts)
 		}
-
 	}
 }
