@@ -22,6 +22,9 @@ filegroup(
 
 filegroup(
     name = "all-srcs",
-    srcs = [":package-srcs"],
+    srcs = [
+        ":package-srcs",
+        "//vendor/golang.org/x/sys/windows/registry:all-srcs",
+    ],
     tags = ["automanaged"],
 )
