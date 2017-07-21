@@ -308,6 +308,15 @@ func (kl *Kubelet) GetPodCgroupParent(pod *v1.Pod) string {
 	return cgroupParent
 }
 
+// GenerateRunContainerEnvs generates the environment variables for runtime container
+func (kl *Kubelet) GenerateRunContainerEnvs(pod *v1.Pod, container *v1.Container, podIP string) ([]kubecontainer.EnvVar, error) {
+	envs, err := kl.makeEnvironmentVariables(pod, container, podIP)
+	if err != nil {
+		return nil, err
+	}
+	return envs, nil
+}
+
 // GenerateRunContainerOptions generates the RunContainerOptions, which can be used by
 // the container runtime to set parameters for launching a container.
 func (kl *Kubelet) GenerateRunContainerOptions(pod *v1.Pod, container *v1.Container, podIP string) (*kubecontainer.RunContainerOptions, bool, error) {
@@ -334,7 +343,7 @@ func (kl *Kubelet) GenerateRunContainerOptions(pod *v1.Pod, container *v1.Contai
 	if err != nil {
 		return nil, false, err
 	}
-	opts.Envs, err = kl.makeEnvironmentVariables(pod, container, podIP)
+	opts.Envs, err = kl.GenerateRunContainerEnvs(pod, container, podIP)
 	if err != nil {
 		return nil, false, err
 	}

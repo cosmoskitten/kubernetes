@@ -48,6 +48,7 @@ type HandlerRunner interface {
 // RuntimeHelper wraps kubelet to make container runtime
 // able to get necessary informations like the RunContainerOptions, DNS settings, Host IP.
 type RuntimeHelper interface {
+	GenerateRunContainerEnvs(pod *v1.Pod, container *v1.Container, podIP string) (contEnvs []EnvVar, err error)
 	GenerateRunContainerOptions(pod *v1.Pod, container *v1.Container, podIP string) (contOpts *RunContainerOptions, useClusterFirstPolicy bool, err error)
 	GetClusterDNS(pod *v1.Pod) (dnsServers []string, dnsSearches []string, useClusterFirstPolicy bool, err error)
 	// GetPodCgroupParent returns the the CgroupName identifer, and its literal cgroupfs form on the host
@@ -145,6 +146,19 @@ func ExpandContainerCommandOnlyStatic(containerCommand []string, envs []v1.EnvVa
 		}
 	}
 	return command
+}
+
+func ExpandContainerVolumeMounts(container *v1.Container, envs []EnvVar) (volumeMounts []v1.VolumeMount) {
+	mapping := expansion.MappingFuncFor(EnvVarsToMap(envs))
+
+	if len(container.VolumeMounts) != 0 {
+		for _, mount := range container.VolumeMounts {
+			mount.SubPath = expansion.Expand(mount.SubPath, mapping)
+			volumeMounts = append(volumeMounts, mount)
+		}
+	}
+
+	return 
 }
 
 func ExpandContainerCommandAndArgs(container *v1.Container, envs []EnvVar) (command []string, args []string) {

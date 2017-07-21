@@ -138,6 +138,45 @@ func TestExpandCommandAndArgs(t *testing.T) {
 	}
 }
 
+func TestExpandVolumeMounts(t *testing.T) {
+	cases := []struct {
+		name            string
+		container       *v1.Container
+		envs            []EnvVar
+		expectedSubPath string
+	}{
+		{
+			name:      "none",
+			container: &v1.Container{
+				VolumeMounts: []v1.VolumeMount{{SubPath: "foo"}},
+			},
+			expectedSubPath: "foo",
+		},
+		{
+			name: "volumes expanded",
+			container: &v1.Container{
+				VolumeMounts: []v1.VolumeMount{{SubPath: "foo/$(POD_NAME)"}},
+			},
+			envs: []EnvVar{
+				{
+					Name:  "POD_NAME",
+					Value: "bar",
+				},
+			},
+			expectedSubPath: "foo/bar",
+		},
+	}
+
+	for _, tc := range cases {
+		actualMounts := ExpandContainerVolumeMounts(tc.container, tc.envs)
+
+		if e, a := tc.expectedSubPath, actualMounts[0].SubPath; !reflect.DeepEqual(e, a) {
+			t.Errorf("%v: unexpected subpath; expected %v, got %v", tc.name, e, a)
+		}
+	}
+
+}
+
 func TestShouldContainerBeRestarted(t *testing.T) {
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{

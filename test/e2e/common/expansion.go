@@ -130,4 +130,59 @@ var _ = framework.KubeDescribe("Variable Expansion", func() {
 			"test-value",
 		})
 	})
+
+	It("should allow substituting values in a volume subpath [Conformance]", func() {
+		podName := "var-expansion-" + string(uuid.NewUUID())
+		pod := &v1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      podName,
+				Labels:    map[string]string{"name": podName},
+			},
+			Spec: v1.PodSpec{
+				Containers: []v1.Container{
+					{
+						Name:    "dapi-container",
+						Image:   "gcr.io/google_containers/busybox:1.24",
+						Command: []string{"sh", "-c", "test -d /testcontainer/" + podName + ";echo $?"},
+						Env: []v1.EnvVar{
+							{
+								Name:  "POD_NAME",
+								Value: podName,
+							},
+						},
+						VolumeMounts: []v1.VolumeMount{
+							{
+								Name:      "workdir1",
+								MountPath: "/logscontainer",
+								SubPath:   "$(POD_NAME)",
+							},
+							{
+								Name:      "workdir2",
+								MountPath: "/testcontainer",
+							},
+						},
+					},
+				},
+				RestartPolicy: v1.RestartPolicyNever,
+				Volumes: []v1.Volume{
+					{
+						Name: "workdir1",
+						VolumeSource: v1.VolumeSource{
+							HostPath: &v1.HostPathVolumeSource{Path: "/tmp"},
+						},
+					},
+					{
+						Name: "workdir2",
+						VolumeSource: v1.VolumeSource{
+							HostPath: &v1.HostPathVolumeSource{Path: "/tmp"},
+						},
+					},
+				},
+			},
+		}
+
+		f.TestContainerOutput("substitution in volume subpath", pod, 0, []string{
+			"0",
+		})
+	})
 })
