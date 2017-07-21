@@ -30,7 +30,7 @@ const (
 	KubeControllerManagerImage = "controller-manager"
 	KubeSchedulerImage         = "scheduler"
 
-	etcdVersion = "3.0.17"
+	etcdVersion = "3.1.10"
 )
 
 func GetCoreImage(image string, cfg *kubeadmapi.MasterConfiguration, overrideImage string) string {

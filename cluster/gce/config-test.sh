@@ -138,7 +138,7 @@ ENABLE_CLUSTER_MONITORING="${KUBE_ENABLE_CLUSTER_MONITORING:-influxdb}"
 # Useful for scheduling heapster in large clusters with nodes of small size.
 HEAPSTER_MACHINE_TYPE="${HEAPSTER_MACHINE_TYPE:-}"
 
-# Set etcd image (e.g. 3.0.17-alpha.1) and version (e.g. 3.0.17) if you need
+# Set etcd image (e.g. gcr.io/google_containers/etcd) and version (e.g. 3.1.10) if you need
 # non-default version.
 ETCD_IMAGE="${TEST_ETCD_IMAGE:-}"
 ETCD_VERSION="${TEST_ETCD_VERSION:-}"
