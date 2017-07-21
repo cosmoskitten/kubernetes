@@ -160,7 +160,7 @@ killApiServer
 
 kube::etcd::stop
 TARGET_STORAGE="etcd3" \
-  TARGET_VERSION="3.0.17" \
+  TARGET_VERSION="3.1.10" \
   DATA_DIRECTORY="${ETCD_DIR}" \
   ETCD=$(which etcd) \
   ETCDCTL=$(which etcdctl) \
@@ -196,7 +196,7 @@ for test in ${tests[@]}; do
     namespace="${namespace}/"
   fi
   kube::log::status "Verifying ${resource}/${namespace}${name} has updated storage version ${new_storage_version} in etcd"
-  ETCDCTL_API=3 ${ETCDCTL} --endpoints="${ETCD_HOST}:${ETCD_PORT}" get "/${ETCD_PREFIX}/${resource}/${namespace}${name}" | grep ${new_storage_version}
+  ETCDCTL_API=3 ${ETCDCTL} --endpoints="http://${ETCD_HOST}:${ETCD_PORT}" get "/${ETCD_PREFIX}/${resource}/${namespace}${name}" | grep ${new_storage_version}
 done
 
 killApiServer
