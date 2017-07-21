@@ -196,7 +196,7 @@ var _ envelope.Service = &testEnvelopeService{}
 
 func TestEncryptionProviderConfigCorrect(t *testing.T) {
 	envelopeService := &testEnvelopeService{}
-	serviceGetter := func(_ string, _ map[string]interface{}) (envelope.Service, error) {
+	serviceGetter := func(_ string) (envelope.Service, error) {
 		return envelopeService, nil
 	}
 
