@@ -88,10 +88,11 @@ func NewNsenterMounter() *NsenterMounter {
 var _ = Interface(&NsenterMounter{})
 
 const (
-	hostRootFsPath        = "/rootfs"
-	hostProcMountsPath    = "/rootfs/proc/1/mounts"
-	hostProcMountinfoPath = "/rootfs/proc/1/mountinfo"
-	nsenterPath           = "nsenter"
+	hostRootFsPath         = "/rootfs"
+	hostProcMountsPath     = "/rootfs/proc/1/mounts"
+	hostProcMountinfoPath  = "/rootfs/proc/1/mountinfo"
+	hostMountNamespacePath = "/rootfs/proc/1/ns/mnt"
+	nsenterPath            = "nsenter"
 )
 
 // Mount runs mount(8) in the host's root mount namespace.  Aside from this
@@ -130,7 +131,7 @@ func (n *NsenterMounter) doNsenterMount(source, target, fstype string, options [
 // requested mount.
 func (n *NsenterMounter) makeNsenterArgs(source, target, fstype string, options []string) []string {
 	nsenterArgs := []string{
-		"--mount=/rootfs/proc/1/ns/mnt",
+		"--mount=" + hostMountNamespacePath,
 		"--",
 		n.absHostPath("mount"),
 	}
@@ -143,7 +144,7 @@ func (n *NsenterMounter) makeNsenterArgs(source, target, fstype string, options 
 // Unmount runs umount(8) in the host's mount namespace.
 func (n *NsenterMounter) Unmount(target string) error {
 	args := []string{
-		"--mount=/rootfs/proc/1/ns/mnt",
+		"--mount=" + hostMountNamespacePath,
 		"--",
 		n.absHostPath("umount"),
 		target,
@@ -190,7 +191,7 @@ func (n *NsenterMounter) IsLikelyNotMountPoint(file string) (bool, error) {
 	// the first of multiple possible mountpoints using --first-only.
 	// Also add fstype output to make sure that the output of target file will give the full path
 	// TODO: Need more refactoring for this function. Track the solution with issue #26996
-	args := []string{"--mount=/rootfs/proc/1/ns/mnt", "--", n.absHostPath("findmnt"), "-o", "target,fstype", "--noheadings", "--first-only", "--target", file}
+	args := []string{"--mount=" + hostMountNamespacePath, "--", n.absHostPath("findmnt"), "-o", "target,fstype", "--noheadings", "--first-only", "--target", file}
 	glog.V(5).Infof("findmnt command: %v %v", nsenterPath, args)
 
 	exec := exec.New()
@@ -256,12 +257,12 @@ func (n *NsenterMounter) absHostPath(command string) string {
 	return path
 }
 
-func (n *NsenterMounter) MakeShared(path string) error {
+func (n *NsenterMounter) MakeRShared(path string) error {
 	nsenterCmd := nsenterPath
 	nsenterArgs := []string{
-		"--mount=/rootfs/proc/1/ns/mnt",
+		"--mount=" + hostMountNamespacePath,
 		"--",
 		n.absHostPath("mount"),
 	}
-	return doMakeShared(path, hostProcMountinfoPath, nsenterCmd, nsenterArgs)
+	return doMakeRShared(path, hostProcMountinfoPath, nsenterCmd, nsenterArgs)
 }

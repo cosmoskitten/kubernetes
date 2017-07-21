@@ -75,7 +75,7 @@ func (mi *fakeMountInterface) PathIsDevice(pathname string) (bool, error) {
 	return true, nil
 }
 
-func (mi *fakeMountInterface) MakeShared(path string) error {
+func (mi *fakeMountInterface) MakeRShared(path string) error {
 	return nil
 }
 

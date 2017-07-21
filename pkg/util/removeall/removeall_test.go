@@ -66,7 +66,7 @@ func (mounter *fakeMounter) IsLikelyNotMountPoint(file string) (bool, error) {
 	return true, nil
 }
 
-func (mounter *fakeMounter) MakeShared(path string) error {
+func (mounter *fakeMounter) MakeRShared(path string) error {
 	return nil
 }
 
