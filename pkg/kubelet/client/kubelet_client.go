@@ -93,7 +93,8 @@ func (c *KubeletClientConfig) transportConfig() *transport.Config {
 			KeyFile:  c.KeyFile,
 			KeyData:  c.KeyData,
 		},
-		BearerToken: c.BearerToken,
+		BearerToken:       c.BearerToken,
+		ConnectionTimeout: 7 * time.Second,
 	}
 	if c.EnableHttps && !cfg.HasCA() {
 		cfg.TLS.Insecure = true
