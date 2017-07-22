@@ -21,6 +21,7 @@ import (
 	"os"
 	"reflect"
 	"testing"
+	"time"
 
 	"k8s.io/apimachinery/pkg/util/diff"
 	restclient "k8s.io/client-go/rest"
@@ -76,7 +77,8 @@ users:
 		TLSClientConfig: restclient.TLSClientConfig{
 			CAData: []byte(`Test`),
 		},
-		BearerToken: "mytoken-b",
+		BearerToken:       "mytoken-b",
+		ConnectionTimeout: 7 * time.Second,
 	}
 
 	if !reflect.DeepEqual(config, expectedConfig) {

@@ -23,6 +23,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/imdario/mergo"
@@ -138,6 +139,16 @@ func (config *DirectClientConfig) ClientConfig() (*restclient.Config, error) {
 			return nil, err
 		}
 		clientConfig.Timeout = timeout
+	}
+
+	if configClusterInfo.ConnectionTimeout != "" {
+		connectionTimeout, err := ParseTimeout(configClusterInfo.ConnectionTimeout)
+		if err != nil {
+			return nil, err
+		}
+		clientConfig.ConnectionTimeout = connectionTimeout
+	} else {
+		clientConfig.ConnectionTimeout = 7 * time.Second
 	}
 
 	if u, err := url.ParseRequestURI(clientConfig.Host); err == nil && u.Opaque == "" && len(u.Path) > 1 {
