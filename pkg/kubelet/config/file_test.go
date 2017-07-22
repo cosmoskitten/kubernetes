@@ -20,20 +20,20 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
-	utiltesting "k8s.io/client-go/util/testing"
 	kubetypes "k8s.io/kubernetes/pkg/kubelet/types"
 )
 
 func TestExtractFromBadDataFile(t *testing.T) {
-	dirName, err := utiltesting.MkTmpdir("file-test")
+	dirName, err := mkTempDir("file-test")
 	if err != nil {
 		t.Fatalf("unable to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(dirName)
+	defer removeAll(dirName, t)
 
 	fileName := filepath.Join(dirName, "test_pod_config")
 	err = ioutil.WriteFile(fileName, []byte{1, 2, 3}, 0555)
@@ -47,15 +47,18 @@ func TestExtractFromBadDataFile(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected error, got nil")
 	}
+	if !strings.Contains(err.Error(), "couldn't parse as pod") {
+		t.Fatalf("unexpected error message: %s", err)
+	}
 	expectEmptyChannel(t, ch)
 }
 
 func TestExtractFromEmptyDir(t *testing.T) {
-	dirName, err := utiltesting.MkTmpdir("file-test")
+	dirName, err := mkTempDir("file-test")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	defer os.RemoveAll(dirName)
+	defer removeAll(dirName, t)
 
 	ch := make(chan interface{}, 1)
 	lw := newSourceFileListerWatcher(dirName, "localhost", time.Millisecond, ch)
@@ -66,10 +69,20 @@ func TestExtractFromEmptyDir(t *testing.T) {
 
 	update, ok := (<-ch).(kubetypes.PodUpdate)
 	if !ok {
-		t.Fatalf("unexpected type")
+		t.Fatalf("unexpected type: %#v", update)
 	}
 	expected := CreatePodUpdate(kubetypes.SET, kubetypes.FileSource)
 	if !apiequality.Semantic.DeepEqual(expected, update) {
 		t.Fatalf("expected %#v, got %#v", expected, update)
+	}
+}
+
+func mkTempDir(prefix string) (string, error) {
+	return ioutil.TempDir(os.TempDir(), prefix)
+}
+
+func removeAll(dir string, t *testing.T) {
+	if err := os.RemoveAll(dir); err != nil {
+		t.Fatalf("unable to remove dir %s: %v", dir, err)
 	}
 }

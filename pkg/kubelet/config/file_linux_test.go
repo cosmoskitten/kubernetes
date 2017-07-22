@@ -21,7 +21,6 @@ package config
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -78,7 +77,7 @@ func TestReadPodsFromFileExistAlready(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unable to create temp dir: %v", err)
 			}
-			defer os.RemoveAll(dirName)
+			defer removeAll(dirName, t)
 			file := testCase.writeToFile(dirName, "test_pod_config", t)
 
 			ch := make(chan interface{})
@@ -106,36 +105,71 @@ func TestReadPodsFromFileExistAlready(t *testing.T) {
 	}
 }
 
+type WatchType int
+type FileType int
+
+const (
+	WATCH_DIR WatchType = iota
+	WATCH_FILE
+
+	FILE FileType = iota
+	SYMLINK
+)
+
+var (
+	watchFileAddedTesters = map[WatchType]map[FileType]func(*testing.T){
+		WATCH_DIR: {
+			FILE:    delegate(watchFileAdded, true, false),
+			SYMLINK: delegate(watchFileAdded, true, true),
+		},
+		WATCH_FILE: {
+			FILE:    delegate(watchFileAdded, false, false),
+			SYMLINK: delegate(watchFileAdded, false, true),
+		},
+	}
+
+	watchFileChangedTesters = map[WatchType]map[FileType]func(*testing.T){
+		WATCH_DIR: {
+			FILE:    delegate(watchFileChanged, true, false),
+			SYMLINK: delegate(watchFileChanged, true, true),
+		},
+		WATCH_FILE: {
+			FILE:    delegate(watchFileChanged, false, false),
+			SYMLINK: delegate(watchFileChanged, false, true),
+		},
+	}
+)
+
 func TestReadPodsFromFileExistLater(t *testing.T) {
-	watchFileAdded(false, false, t)
+	watchFileAddedTesters[WATCH_FILE][FILE](t)
 }
 
 func TestReadPodsFromFileChanged(t *testing.T) {
-	watchFileChanged(false, false, t)
+	watchFileChangedTesters[WATCH_FILE][FILE](t)
 }
 
 func TestReadPodsFromFileInDirAdded(t *testing.T) {
-	watchFileAdded(true, false, t)
+	watchFileAddedTesters[WATCH_DIR][FILE](t)
 }
 
 func TestReadPodsFromFileInDirChanged(t *testing.T) {
-	watchFileChanged(true, false, t)
+	watchFileChangedTesters[WATCH_DIR][FILE](t)
 }
 
 func TestReadPodsFromSymbolicExistLater(t *testing.T) {
-	watchFileAdded(false, true, t)
+	watchFileAddedTesters[WATCH_FILE][SYMLINK](t)
 }
 
 func TestReadPodsFromSymbolicInDirAdded(t *testing.T) {
-	watchFileAdded(true, true, t)
+	watchFileAddedTesters[WATCH_DIR][SYMLINK](t)
 }
 
 func TestReadPodsFromSymbolicChanged(t *testing.T) {
-	watchFileChanged(false, true, t)
+	watchFileChangedTesters[WATCH_FILE][SYMLINK](t)
 }
 
 func TestReadPodsFromSymbolicInDirChanged(t *testing.T) {
-	watchFileChanged(true, true, t)
+	watchFileChangedTesters[WATCH_DIR][SYMLINK](t)
 }
 
 type testCase struct {
@@ -223,9 +257,9 @@ func (tc *testCase) writeToFile(dir, name string, t *testing.T) string {
 	return fileName
 }
 
-func createSymbolicLink(linkingdir, linkedDir, name string, t *testing.T) string {
-	linkName := filepath.Join(linkingdir, name)
-	linkedFile := filepath.Join(linkedDir, name)
+func createSymbolicLink(link, target, name string, t *testing.T) string {
+	linkName := filepath.Join(link, name)
+	linkedFile := filepath.Join(target, name)
 
 	err := os.Symlink(linkedFile, linkName)
 	if err != nil {
@@ -268,11 +302,12 @@ func watchFileAdded(watchDir bool, symlink bool, t *testing.T) {
 
 			addFile := func() {
 				// Add a file
-				if !symlink {
-					testCase.writeToFile(dirName, fileName, t)
-				} else {
+				if symlink {
 					testCase.writeToFile(linkedDirName, fileName, t)
+					return
 				}
+
+				testCase.writeToFile(dirName, fileName, t)
 			}
 
 			go addFile()
@@ -316,11 +351,13 @@ func watchFileChanged(watchDir bool, symlink bool, t *testing.T) {
 			func() {
 				lock.Lock()
 				defer lock.Unlock()
-				if !symlink {
-					file = testCase.writeToFile(dirName, fileName, t)
-				} else {
+
+				if symlink {
 					file = testCase.writeToFile(linkedDirName, fileName, t)
+					return
 				}
+
+				file = testCase.writeToFile(dirName, fileName, t)
 			}()
 
 			if watchDir {
@@ -344,11 +381,12 @@ func watchFileChanged(watchDir bool, symlink bool, t *testing.T) {
 				pod.Spec.Containers[0].Name = "image2"
 
 				testCase.expected.Pods[0].Spec.Containers[0].Name = "image2"
-				if !symlink {
-					file = testCase.writeToFile(dirName, fileName, t)
-				} else {
+				if symlink {
 					file = testCase.writeToFile(linkedDirName, fileName, t)
+					return
 				}
+
+				file = testCase.writeToFile(dirName, fileName, t)
 			}
 
 			go changeFile()
@@ -450,12 +488,8 @@ func changeFileName(dir, from, to string, t *testing.T) {
 	}
 }
 
-func mkTempDir(prefix string) (string, error) {
-	return ioutil.TempDir(os.TempDir(), prefix)
-}
-
-func removeAll(dir string, t *testing.T) {
-	if err := os.RemoveAll(dir); err != nil {
-		t.Fatalf("unable to remove dir %s: %v", dir, err)
+func delegate(f func(bool, bool, *testing.T), watchDir bool, symlink bool) func(*testing.T) {
+	return func(t *testing.T) {
+		f(watchDir, symlink, t)
 	}
 }
