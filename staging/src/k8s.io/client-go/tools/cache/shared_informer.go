@@ -421,7 +421,7 @@ func (p *sharedProcessor) run(stopCh <-chan struct{}) {
 	p.listenersLock.RLock()
 	defer p.listenersLock.RUnlock()
 	for _, listener := range p.listeners {
-		close(listener.addCh) // Tell .pop() to stop
+		close(listener.addCh) // Tell .pop() to stop. .pop() will tell .run() to stop
 	}
 	p.wg.Wait() // Wait for all .pop() and .run() to stop
 }
@@ -501,7 +501,7 @@ func (p *processorListener) pop() {
 	// pendingNotifications is an unbounded slice that holds all notifications not yet distributed
 	// there is one per listener, but a failing/stalled listener will have infinite pendingNotifications
 	// added until we OOM.
-	// TODO This is no worse that before, since reflectors were backed by unbounded DeltaFIFOs, but
+	// TODO This is no worse than before, since reflectors were backed by unbounded DeltaFIFOs, but
 	// we should try to do something better
 	var pendingNotifications []interface{}
 	var nextCh chan<- interface{}
@@ -511,7 +511,7 @@ func (p *processorListener) pop() {
 		case nextCh <- notification:
 			// Notification dispatched
 			if len(pendingNotifications) == 0 { // Nothing to pop
-				nextCh = nil
+				nextCh = nil // Disable this select case
 				notification = nil
 			} else {
 				notification = pendingNotifications[0]
@@ -522,7 +522,7 @@ func (p *processorListener) pop() {
 			if !ok {
 				return
 			}
-			if nextCh == nil { // No notification to pop
+			if notification == nil { // No notification to pop (and pendingNotifications is empty)
 				// Optimize the case - skip adding to pendingNotifications
 				notification = notificationToAdd
 				nextCh = p.nextCh
