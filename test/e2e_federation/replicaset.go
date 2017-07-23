@@ -128,13 +128,13 @@ var _ = framework.KubeDescribe("Federated ReplicaSet [Feature:Federation]", func
 				waitForReplicaSetOrFail(f.FederationClientset, nsName, rs.Name, clusters, expect1)
 				By(fmt.Sprintf("Successfully created and synced replicaset \"%s/%s\" (%v/%v) to clusters", nsName, rs.Name, rs.Status.Replicas, *rs.Spec.Replicas))
 
-				rs = newReplicaSetWithName(nsName, rs.Name, replicas, pref2)
+				rs = NewReplicaSetWithName(nsName, rs.Name, replicas, pref2)
 				updateReplicaSetOrFail(f.FederationClientset, rs)
 				waitForReplicaSetOrFail(f.FederationClientset, nsName, rs.Name, clusters, expect1)
 				By(fmt.Sprintf("Successfully updated and synced replicaset \"%s/%s\" (%v/%v) to clusters", nsName, rs.Name, rs.Status.Replicas, *rs.Spec.Replicas))
 
 				pref2 = updateFedRSPrefsRebalance(pref2, true)
-				rs = newReplicaSetWithName(nsName, rs.Name, replicas, pref2)
+				rs = NewReplicaSetWithName(nsName, rs.Name, replicas, pref2)
 				updateReplicaSetOrFail(f.FederationClientset, rs)
 				waitForReplicaSetOrFail(f.FederationClientset, nsName, rs.Name, clusters, expect2)
 				By(fmt.Sprintf("Successfully updated and synced replicaset \"%s/%s\" (%v/%v) to clusters", nsName, rs.Name, rs.Status.Replicas, *rs.Spec.Replicas))
@@ -171,12 +171,12 @@ func createAndUpdateFedRSWithPref(clientset *fedclientset.Clientset, nsName stri
 	waitForReplicaSetOrFail(clientset, nsName, rs.Name, clusters, expect)
 	By(fmt.Sprintf("Successfully created and synced replicaset \"%s/%s\" (%v/%v) to clusters", nsName, rs.Name, rs.Status.Replicas, *rs.Spec.Replicas))
 
-	rs = newReplicaSetWithName(nsName, rs.Name, 0, pref)
+	rs = NewReplicaSetWithName(nsName, rs.Name, 0, pref)
 	updateReplicaSetOrFail(clientset, rs)
 	waitForReplicaSetOrFail(clientset, nsName, rs.Name, clusters, nil)
 	By(fmt.Sprintf("Successfully updated and synced replicaset \"%s/%s\" (%v/%v) to clusters", nsName, rs.Name, rs.Status.Replicas, *rs.Spec.Replicas))
 
-	rs = newReplicaSetWithName(nsName, rs.Name, replicas, pref)
+	rs = NewReplicaSetWithName(nsName, rs.Name, replicas, pref)
 	updateReplicaSetOrFail(clientset, rs)
 	waitForReplicaSetOrFail(clientset, nsName, rs.Name, clusters, expect)
 	By(fmt.Sprintf("Successfully updated and synced replicaset \"%s/%s\" (%v/%v) to clusters", nsName, rs.Name, rs.Status.Replicas, *rs.Spec.Replicas))
@@ -446,7 +446,7 @@ func newReplicaSet(namespace string, prefix string, replicas int32, pref *federa
 	return rs
 }
 
-func newReplicaSetWithName(namespace string, name string, replicas int32, pref *federation.ReplicaAllocationPreferences) *v1beta1.ReplicaSet {
+func NewReplicaSetWithName(namespace string, name string, replicas int32, pref *federation.ReplicaAllocationPreferences) *v1beta1.ReplicaSet {
 	rs := newReplicaSetObj(namespace, replicas, pref)
 	rs.Name = name
 	return rs

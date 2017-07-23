@@ -863,7 +863,8 @@ func isPristine(hpa *autoscalingv1.HorizontalPodAutoscaler) bool {
 // time since this hpa scaled. Its used to avoid fast thrashing.
 func (a *HpaAdapter) isScaleable(hpa *autoscalingv1.HorizontalPodAutoscaler) bool {
 	if hpa.Status.LastScaleTime == nil {
-		return false
+		// We consider the object to be scaleable if not scaled so far
+		return true
 	}
 	t := hpa.Status.LastScaleTime.Add(a.scaleForbiddenWindow)
 	if t.After(time.Now()) {
