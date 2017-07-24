@@ -332,6 +332,9 @@ type ListOptions struct {
 	// Timeout for the list/watch call.
 	// +optional
 	TimeoutSeconds *int64 `json:"timeoutSeconds,omitempty" protobuf:"varint,5,opt,name=timeoutSeconds"`
+	// Should this value be exported.  Export strips fields that a user can not specify.
+	// +optional
+	Export bool `json:"export,omitempty" protobuf:"varint,1,opt,name=export"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
