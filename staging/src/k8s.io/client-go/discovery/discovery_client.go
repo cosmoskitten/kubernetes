@@ -187,7 +187,7 @@ func (d *DiscoveryClient) ServerResourcesForGroupVersion(groupVersion string) (r
 }
 
 // serverResources returns the supported resources for all groups and versions.
-func (d *DiscoveryClient) serverResources(failEarly bool) ([]*metav1.APIResourceList, error) {
+func (d *DiscoveryClient) serverResources(_ bool) ([]*metav1.APIResourceList, error) {
 	apiGroups, err := d.ServerGroups()
 	if err != nil {
 		return nil, err
@@ -203,9 +203,6 @@ func (d *DiscoveryClient) serverResources(failEarly bool) ([]*metav1.APIResource
 			if err != nil {
 				// TODO: maybe restrict this to NotFound errors
 				failedGroups[gv] = err
-				if failEarly {
-					return nil, &ErrGroupDiscoveryFailed{Groups: failedGroups}
-				}
 				continue
 			}
 
@@ -249,7 +246,7 @@ func IsGroupDiscoveryFailedError(err error) bool {
 }
 
 // serverPreferredResources returns the supported resources with the version preferred by the server.
-func (d *DiscoveryClient) serverPreferredResources(failEarly bool) ([]*metav1.APIResourceList, error) {
+func (d *DiscoveryClient) serverPreferredResources(_ bool) ([]*metav1.APIResourceList, error) {
 	serverGroupList, err := d.ServerGroups()
 	if err != nil {
 		return nil, err
@@ -269,9 +266,6 @@ func (d *DiscoveryClient) serverPreferredResources(failEarly bool) ([]*metav1.AP
 			if err != nil {
 				// TODO: maybe restrict this to NotFound errors
 				failedGroups[groupVersion] = err
-				if failEarly {
-					return nil, &ErrGroupDiscoveryFailed{Groups: failedGroups}
-				}
 				continue
 			}
 
