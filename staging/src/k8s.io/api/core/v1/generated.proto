@@ -163,6 +163,39 @@ message Capabilities {
 
 // Represents a Ceph Filesystem mount that lasts the lifetime of a pod
 // Cephfs volumes do not support ownership management or SELinux relabeling.
+message CephFSPersistentVolumeSource {
+  // Required: Monitors is a collection of Ceph monitors
+  // More info: https://releases.k8s.io/HEAD/examples/volumes/cephfs/README.md#how-to-use-it
+  repeated string monitors = 1;
+
+  // Optional: Used as the mounted root, rather than the full Ceph tree, default is /
+  // +optional
+  optional string path = 2;
+
+  // Optional: User is the rados user name, default is admin
+  // More info: https://releases.k8s.io/HEAD/examples/volumes/cephfs/README.md#how-to-use-it
+  // +optional
+  optional string user = 3;
+
+  // Optional: SecretFile is the path to key ring for User, default is /etc/ceph/user.secret
+  // More info: https://releases.k8s.io/HEAD/examples/volumes/cephfs/README.md#how-to-use-it
+  // +optional
+  optional string secretFile = 4;
+
+  // Optional: SecretRef is reference to the authentication secret for User, default is empty.
+  // More info: https://releases.k8s.io/HEAD/examples/volumes/cephfs/README.md#how-to-use-it
+  // +optional
+  optional ObjectReference secretRef = 5;
+
+  // Optional: Defaults to false (read/write). ReadOnly here will force
+  // the ReadOnly setting in VolumeMounts.
+  // More info: https://releases.k8s.io/HEAD/examples/volumes/cephfs/README.md#how-to-use-it
+  // +optional
+  optional bool readOnly = 6;
+}
+
+// Represents a Ceph Filesystem mount that lasts the lifetime of a pod
+// Cephfs volumes do not support ownership management or SELinux relabeling.
 message CephFSVolumeSource {
   // Required: Monitors is a collection of Ceph monitors
   // More info: https://releases.k8s.io/HEAD/examples/volumes/cephfs/README.md#how-to-use-it
@@ -2176,7 +2209,7 @@ message PersistentVolumeSource {
 
   // CephFS represents a Ceph FS mount on the host that shares a pod's lifetime
   // +optional
-  optional CephFSVolumeSource cephfs = 9;
+  optional CephFSPersistentVolumeSource cephfs = 9;
 
   // FC represents a Fibre Channel resource that is attached to a kubelet's host machine and then exposed to the pod.
   // +optional
