@@ -39,7 +39,7 @@ func VisitPVSecretNames(pv *api.PersistentVolume, visitor func(string, string) b
 		}
 		return true
 	case source.CephFS != nil:
-		if source.CephFS.SecretRef != nil && !visitor(getClaimRefNamespace(pv), source.CephFS.SecretRef.Name) {
+		if source.CephFS.SecretRef != nil && !visitor(source.CephFS.SecretRef.Namespace, source.CephFS.SecretRef.Name) {
 			return false
 		}
 	case source.FlexVolume != nil:

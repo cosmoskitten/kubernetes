@@ -56,12 +56,12 @@ func (plugin *cephfsPlugin) GetPluginName() string {
 }
 
 func (plugin *cephfsPlugin) GetVolumeName(spec *volume.Spec) (string, error) {
-	volumeSource, _, err := getVolumeSource(spec)
+	mon, _, _, _, _, _, _, err := getVolumeSource(spec)
 	if err != nil {
 		return "", err
 	}
 
-	return fmt.Sprintf("%v", volumeSource.Monitors), nil
+	return fmt.Sprintf("%v", mon), nil
 }
 
 func (plugin *cephfsPlugin) CanSupport(spec *volume.Spec) bool {
@@ -89,62 +89,70 @@ func (plugin *cephfsPlugin) GetAccessModes() []v1.PersistentVolumeAccessMode {
 }
 
 func (plugin *cephfsPlugin) NewMounter(spec *volume.Spec, pod *v1.Pod, _ volume.VolumeOptions) (volume.Mounter, error) {
-	cephvs, _, err := getVolumeSource(spec)
+	_, _, _, _, localSecretRef, secretRef, _, err := getVolumeSource(spec)
 	if err != nil {
 		return nil, err
 	}
-	secret := ""
-	if cephvs.SecretRef != nil {
-		kubeClient := plugin.host.GetKubeClient()
-		if kubeClient == nil {
-			return nil, fmt.Errorf("Cannot get kube client")
-		}
 
-		secretName, err := kubeClient.Core().Secrets(pod.Namespace).Get(cephvs.SecretRef.Name, metav1.GetOptions{})
-		if err != nil {
-			err = fmt.Errorf("Couldn't get secret %v/%v err: %v", pod.Namespace, cephvs.SecretRef, err)
-			return nil, err
+	secretNs := pod.Namespace
+	secretName := ""
+	secret := ""
+	if localSecretRef != nil {
+		secretName = localSecretRef.Name
+	} else if secretRef != nil {
+		if len(secretRef.Namespace) != 0 {
+			secretNs = secretRef.Namespace
 		}
-		for name, data := range secretName.Data {
-			secret = string(data)
-			glog.V(4).Infof("found ceph secret info: %s", name)
-		}
+		secretName = secretRef.Name
 	}
+	kubeClient := plugin.host.GetKubeClient()
+	if kubeClient == nil {
+		return nil, fmt.Errorf("Cannot get kube client")
+	}
+
+	secrets, err := kubeClient.Core().Secrets(secretNs).Get(secretName, metav1.GetOptions{})
+	if err != nil {
+		err = fmt.Errorf("Couldn't get secret %v/%v err: %v", secretNs, secretName, err)
+		return nil, err
+	}
+	for name, data := range secrets.Data {
+		secret = string(data)
+		glog.V(4).Infof("found ceph secret info: %s", name)
+	}
+
 	return plugin.newMounterInternal(spec, pod.UID, plugin.host.GetMounter(), secret)
 }
 
 func (plugin *cephfsPlugin) newMounterInternal(spec *volume.Spec, podUID types.UID, mounter mount.Interface, secret string) (volume.Mounter, error) {
-	cephvs, _, err := getVolumeSource(spec)
+	mon, path, id, secretFile, _, _, readOnly, err := getVolumeSource(spec)
 	if err != nil {
 		return nil, err
 	}
 
-	id := cephvs.User
 	if id == "" {
 		id = "admin"
 	}
-	path := cephvs.Path
 	if path == "" {
 		path = "/"
 	}
 	if !strings.HasPrefix(path, "/") {
 		path = "/" + path
 	}
-	secret_file := cephvs.SecretFile
-	if secret_file == "" {
-		secret_file = "/etc/ceph/" + id + ".secret"
+
+	if secretFile == "" {
+		secretFile = "/etc/ceph/" + id + ".secret"
 	}
 
 	return &cephfsMounter{
 		cephfs: &cephfs{
 			podUID:       podUID,
 			volName:      spec.Name(),
-			mon:          cephvs.Monitors,
+			mon:          mon,
 			path:         path,
 			secret:       secret,
 			id:           id,
-			secret_file:  secret_file,
-			readonly:     cephvs.ReadOnly,
+			secret_file:  secretFile,
+			readonly:     readOnly,
 			mounter:      mounter,
 			plugin:       plugin,
 			mountOptions: volume.MountOptionFromSpec(spec),
@@ -301,13 +309,29 @@ func (cephfsVolume *cephfs) execMount(mountpoint string) error {
 	return nil
 }
 
-func getVolumeSource(spec *volume.Spec) (*v1.CephFSVolumeSource, bool, error) {
+func getVolumeSource(spec *volume.Spec) (mon []string, path, user, secretFile string, localSecretRef *v1.LocalObjectReference, secretRef *v1.ObjectReference, readOnly bool, err error) {
 	if spec.Volume != nil && spec.Volume.CephFS != nil {
-		return spec.Volume.CephFS, spec.Volume.CephFS.ReadOnly, nil
+		mon = spec.Volume.CephFS.Monitors
+		path = spec.Volume.CephFS.Path
+		user = spec.Volume.CephFS.User
+		secretFile = spec.Volume.CephFS.SecretFile
+		localSecretRef = spec.Volume.CephFS.SecretRef
+		secretRef = nil
+		readOnly = spec.Volume.CephFS.ReadOnly
+		err = nil
+		return
 	} else if spec.PersistentVolume != nil &&
 		spec.PersistentVolume.Spec.CephFS != nil {
-		return spec.PersistentVolume.Spec.CephFS, spec.ReadOnly, nil
+		mon = spec.PersistentVolume.Spec.CephFS.Monitors
+		path = spec.PersistentVolume.Spec.CephFS.Path
+		user = spec.PersistentVolume.Spec.CephFS.User
+		secretFile = spec.PersistentVolume.Spec.CephFS.SecretFile
+		secretRef = spec.PersistentVolume.Spec.CephFS.SecretRef
+		localSecretRef = nil
+		readOnly = spec.PersistentVolume.Spec.CephFS.ReadOnly
+		err = nil
+		return
 	}
 
-	return nil, false, fmt.Errorf("Spec does not reference a CephFS volume type")
+	return nil, "", "", "", nil, nil, false, fmt.Errorf("Spec does not reference a CephFS volume type")
 }

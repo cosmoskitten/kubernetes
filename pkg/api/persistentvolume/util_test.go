@@ -35,9 +35,10 @@ func TestPVSecrets(t *testing.T) {
 			AzureFile: &api.AzureFileVolumeSource{
 				SecretName: "Spec.PersistentVolumeSource.AzureFile.SecretName"}}}},
 		{Spec: api.PersistentVolumeSpec{PersistentVolumeSource: api.PersistentVolumeSource{
-			CephFS: &api.CephFSVolumeSource{
-				SecretRef: &api.LocalObjectReference{
-					Name: "Spec.PersistentVolumeSource.CephFS.SecretRef"}}}}},
+			CephFS: &api.CephFSPersistentVolumeSource{
+				SecretRef: &api.ObjectReference{
+					Namespace: "Spec.PersistentVolumeSource.CephFS.SecretRef",
+					Name:      "Spec.PersistentVolumeSource.CephFS.SecretRef"}}}}},
 		{Spec: api.PersistentVolumeSpec{PersistentVolumeSource: api.PersistentVolumeSource{
 			FlexVolume: &api.FlexVolumeSource{
 				SecretRef: &api.LocalObjectReference{
