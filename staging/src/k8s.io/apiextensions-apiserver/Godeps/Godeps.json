@@ -279,6 +279,218 @@
 			"Rev": "65c1f6f8f0fc1e2185eb9863a3bc751496404259"
 		},
 		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/api/errors",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/api/meta",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/api/resource",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/api/testing/fuzzer",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/api/testing/roundtrip",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/api/validation",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/apimachinery/announced",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/apimachinery/registered",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/apis/meta/fuzzer",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/apis/meta/v1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/apis/meta/v1/unstructured",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/conversion",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/fields",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/labels",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/runtime",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/runtime/schema",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/runtime/serializer",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/runtime/serializer/json",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/runtime/serializer/versioning",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/types",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/util/errors",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/util/intstr",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/util/runtime",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/util/sets",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/util/validation",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/util/validation/field",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/util/wait",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/version",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/watch",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/admission",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/authorization/authorizerfactory",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/endpoints/discovery",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/endpoints/handlers",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/endpoints/request",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/registry/generic",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/registry/generic/registry",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/registry/rest",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/server",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/server/options",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/storage",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/storage/errors",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/storage/names",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/storage/storagebackend",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/util/logs",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/discovery",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/discovery/fake",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/dynamic",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/rest",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/testing",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/tools/cache",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/tools/clientcmd",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/util/flowcontrol",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/util/workqueue",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
 			"ImportPath": "github.com/spf13/cobra",
 			"Rev": "f62e98d28ab7ad31d707ba837a966378465c7b57"
 		},
@@ -433,6 +645,878 @@
 		{
 			"ImportPath": "gopkg.in/yaml.v2",
 			"Rev": "53feefa2559fb8dfa8d81baad31be332c97d6c77"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/api/equality",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/api/errors",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/api/meta",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/api/resource",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/api/testing",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/api/testing/fuzzer",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/api/validation",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/api/validation/path",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/apimachinery",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/apimachinery/announced",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/apimachinery/registered",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/apis/meta/fuzzer",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/apis/meta/internalversion",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/apis/meta/v1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/apis/meta/v1/unstructured",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/apis/meta/v1/validation",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/apis/meta/v1alpha1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/conversion",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/conversion/queryparams",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/conversion/unstructured",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/fields",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/labels",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/openapi",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/runtime",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/runtime/schema",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/runtime/serializer",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/runtime/serializer/json",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/runtime/serializer/protobuf",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/runtime/serializer/recognizer",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/runtime/serializer/streaming",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/runtime/serializer/versioning",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/selection",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/types",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/util/cache",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/util/clock",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/util/diff",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/util/errors",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/util/framer",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/util/httpstream",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/util/intstr",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/util/json",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/util/mergepatch",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/util/net",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/util/proxy",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/util/rand",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/util/runtime",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/util/sets",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/util/strategicpatch",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/util/uuid",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/util/validation",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/util/validation/field",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/util/wait",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/util/yaml",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/version",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/pkg/watch",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/third_party/forked/golang/json",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/third_party/forked/golang/netutil",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apimachinery/third_party/forked/golang/reflect",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/admission",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/admission/initializer",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/admission/plugin/namespace/lifecycle",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/apis/apiserver",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/apis/apiserver/install",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/apis/apiserver/v1alpha1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/apis/audit",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/apis/audit/install",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/apis/audit/v1alpha1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/apis/audit/validation",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/audit",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/audit/policy",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/authentication/authenticator",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/authentication/authenticatorfactory",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/authentication/group",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/authentication/request/anonymous",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/authentication/request/bearertoken",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/authentication/request/headerrequest",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/authentication/request/union",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/authentication/request/websocket",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/authentication/request/x509",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/authentication/serviceaccount",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/authentication/token/tokenfile",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/authentication/user",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/authorization/authorizer",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/authorization/authorizerfactory",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/authorization/union",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/endpoints",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/endpoints/discovery",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/endpoints/filters",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/endpoints/handlers",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/endpoints/handlers/negotiation",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/endpoints/handlers/responsewriters",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/endpoints/metrics",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/endpoints/openapi",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/endpoints/request",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/features",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/registry/generic",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/registry/generic/registry",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/registry/rest",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/server",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/server/filters",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/server/healthz",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/server/httplog",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/server/mux",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/server/openapi",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/server/routes",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/server/routes/data/swagger",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/server/storage",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/storage",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/storage/errors",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/storage/etcd",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/storage/etcd/metrics",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/storage/etcd/util",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/storage/etcd3",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/storage/names",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/storage/storagebackend",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/storage/storagebackend/factory",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/storage/value",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/util/feature",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/util/flag",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/util/flushwriter",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/util/trace",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/util/trie",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/util/webhook",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/pkg/util/wsstream",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/plugin/pkg/audit/log",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/plugin/pkg/audit/webhook",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/plugin/pkg/authenticator/token/webhook",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/apiserver/plugin/pkg/authorizer/webhook",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/discovery",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/informers",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/informers/admissionregistration",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/informers/admissionregistration/v1alpha1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/informers/apps",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/informers/apps/v1beta1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/informers/autoscaling",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/informers/autoscaling/v1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/informers/autoscaling/v2alpha1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/informers/batch",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/informers/batch/v1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/informers/batch/v2alpha1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/informers/certificates",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/informers/certificates/v1beta1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/informers/core",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/informers/core/v1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/informers/extensions",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/informers/extensions/v1beta1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/informers/internalinterfaces",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/informers/networking",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/informers/networking/v1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/informers/policy",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/informers/policy/v1beta1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/informers/rbac",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/informers/rbac/v1alpha1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/informers/rbac/v1beta1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/informers/scheduling",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/informers/scheduling/v1alpha1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/informers/settings",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/informers/settings/v1alpha1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/informers/storage",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/informers/storage/v1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/informers/storage/v1beta1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/kubernetes",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/kubernetes/scheme",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/kubernetes/typed/admissionregistration/v1alpha1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/kubernetes/typed/apps/v1beta1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/kubernetes/typed/authentication/v1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/kubernetes/typed/authentication/v1beta1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/kubernetes/typed/authorization/v1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/kubernetes/typed/authorization/v1beta1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/kubernetes/typed/autoscaling/v1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/kubernetes/typed/autoscaling/v2alpha1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/kubernetes/typed/batch/v1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/kubernetes/typed/batch/v2alpha1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/kubernetes/typed/certificates/v1beta1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/kubernetes/typed/core/v1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/kubernetes/typed/extensions/v1beta1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/kubernetes/typed/networking/v1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/kubernetes/typed/policy/v1beta1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/kubernetes/typed/rbac/v1alpha1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/kubernetes/typed/rbac/v1beta1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/kubernetes/typed/scheduling/v1alpha1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/kubernetes/typed/settings/v1alpha1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/kubernetes/typed/storage/v1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/kubernetes/typed/storage/v1beta1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/listers/admissionregistration/v1alpha1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/listers/apps/v1beta1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/listers/autoscaling/v1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/listers/autoscaling/v2alpha1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/listers/batch/v1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/listers/batch/v2alpha1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/listers/certificates/v1beta1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/listers/core/v1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/listers/extensions/v1beta1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/listers/networking/v1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/listers/policy/v1beta1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/listers/rbac/v1alpha1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/listers/rbac/v1beta1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/listers/scheduling/v1alpha1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/listers/settings/v1alpha1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/listers/storage/v1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/listers/storage/v1beta1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/pkg/version",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/rest",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/rest/watch",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/testing",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/tools/auth",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/tools/cache",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/tools/clientcmd",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/tools/clientcmd/api",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/tools/clientcmd/api/latest",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/tools/clientcmd/api/v1",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/tools/metrics",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/tools/reference",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/transport",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/util/cert",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/util/flowcontrol",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/util/homedir",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
+		},
+		{
+			"ImportPath": "github.com/rootfs/kubernetes/staging/src/k8s.io/client-go/util/integer",
+			"Rev": "76dfd621730e266cd7fec07e32cbf6b8a167f858"
 		}
 	]
 }
