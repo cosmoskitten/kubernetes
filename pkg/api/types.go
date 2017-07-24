@@ -360,7 +360,7 @@ type PersistentVolumeSource struct {
 	Cinder *CinderVolumeSource
 	// CephFS represents a Ceph FS mount on the host that shares a pod's lifetime
 	// +optional
-	CephFS *CephFSVolumeSource
+	CephFS *CephFSPersistentVolumeSource
 	// FC represents a Fibre Channel resource that is attached to a kubelet's host machine and then exposed to the pod.
 	// +optional
 	FC *FCVolumeSource
@@ -982,6 +982,36 @@ type CephFSVolumeSource struct {
 	// Optional: SecretRef is reference to the authentication secret for User, default is empty.
 	// +optional
 	SecretRef *LocalObjectReference
+	// Optional: Defaults to false (read/write). ReadOnly here will force
+	// the ReadOnly setting in VolumeMounts.
+	// +optional
+	ReadOnly bool
+}
+
+// Represents a Secret Reference. It is different from ObjectReference in that
+// Name is the first and Namespace is second part.
+type SecretReference struct {
+	Name      string
+	Namespace string
+}
+
+// Represents a Ceph Filesystem mount that lasts the lifetime of a pod
+// Cephfs volumes do not support ownership management or SELinux relabeling.
+type CephFSPersistentVolumeSource struct {
+	// Required: Monitors is a collection of Ceph monitors
+	Monitors []string
+	// Optional: Used as the mounted root, rather than the full Ceph tree, default is /
+	// +optional
+	Path string
+	// Optional: User is the rados user name, default is admin
+	// +optional
+	User string
+	// Optional: SecretFile is the path to key ring for User, default is /etc/ceph/user.secret
+	// +optional
+	SecretFile string
+	// Optional: SecretRef is reference to the authentication secret for User, default is empty.
+	// +optional
+	SecretRef *SecretReference
 	// Optional: Defaults to false (read/write). ReadOnly here will force
 	// the ReadOnly setting in VolumeMounts.
 	// +optional

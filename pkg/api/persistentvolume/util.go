@@ -42,7 +42,13 @@ func VisitPVSecretNames(pv *api.PersistentVolume, visitor Visitor) bool {
 		}
 		return true
 	case source.CephFS != nil:
-		if source.CephFS.SecretRef != nil && !visitor(getClaimRefNamespace(pv), source.CephFS.SecretRef.Name) {
+		// previously persisted PV objects use claimRef namespace
+		ns := getClaimRefNamespace(pv)
+		if source.CephFS.SecretRef != nil && len(source.CephFS.SecretRef.Namespace) > 0 {
+			// use the secret namespace if it is set
+			ns = source.CephFS.SecretRef.Namespace
+		}
+		if source.CephFS.SecretRef != nil && !visitor(ns, source.CephFS.SecretRef.Name) {
 			return false
 		}
 	case source.FlexVolume != nil:
