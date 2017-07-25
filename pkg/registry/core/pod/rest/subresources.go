@@ -108,7 +108,12 @@ func (r *AttachREST) Connect(ctx genericapirequest.Context, name string, opts ru
 
 // NewConnectOptions returns the versioned object that represents exec parameters
 func (r *AttachREST) NewConnectOptions() (runtime.Object, bool, string) {
-	return &api.PodAttachOptions{}, false, ""
+	return &api.PodAttachOptions{
+		// to keep the published external contract, we must set these here instead of on defaulting
+		// since false and unset look the same on a runtime.Object
+		Stdout: true,
+		Stderr: true,
+	}, false, ""
 }
 
 // ConnectMethods returns the methods supported by exec
@@ -145,7 +150,12 @@ func (r *ExecREST) Connect(ctx genericapirequest.Context, name string, opts runt
 
 // NewConnectOptions returns the versioned object that represents exec parameters
 func (r *ExecREST) NewConnectOptions() (runtime.Object, bool, string) {
-	return &api.PodExecOptions{}, false, ""
+	return &api.PodExecOptions{
+		// to keep the published external contract, we must set these here instead of on defaulting
+		// since false and unset look the same on a runtime.Object
+		Stdout: true,
+		Stderr: true,
+	}, false, ""
 }
 
 // ConnectMethods returns the methods supported by exec
