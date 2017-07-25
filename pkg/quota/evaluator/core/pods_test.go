@@ -142,6 +142,69 @@ func TestPodEvaluatorUsage(t *testing.T) {
 				api.ResourceMemory:         resource.MustParse("1m"),
 			},
 		},
+		"init container overlay": {
+			pod: &api.Pod{
+				Spec: api.PodSpec{
+					InitContainers: []api.Container{{
+						Resources: api.ResourceRequirements{
+							Requests: api.ResourceList{api.ResourceStorageOverlay: resource.MustParse("32Mi")},
+							Limits:   api.ResourceList{api.ResourceStorageOverlay: resource.MustParse("64Mi")},
+						},
+					}},
+				},
+			},
+			usage: api.ResourceList{
+				api.ResourceStorageOverlay:         resource.MustParse("32Mi"),
+				api.ResourceRequestsStorageOverlay: resource.MustParse("32Mi"),
+				api.ResourceLimitsStorageOverlay:   resource.MustParse("64Mi"),
+				api.ResourcePods:                   resource.MustParse("1"),
+			},
+		},
+		"init container scratch": {
+			pod: &api.Pod{
+				Spec: api.PodSpec{
+					InitContainers: []api.Container{{
+						Resources: api.ResourceRequirements{
+							Requests: api.ResourceList{api.ResourceStorageScratch: resource.MustParse("32Mi")},
+							Limits:   api.ResourceList{api.ResourceStorageScratch: resource.MustParse("64Mi")},
+						},
+					}},
+				},
+			},
+			usage: api.ResourceList{
+				api.ResourceStorageScratch:         resource.MustParse("32Mi"),
+				api.ResourceRequestsStorageScratch: resource.MustParse("32Mi"),
+				api.ResourceLimitsStorageScratch:   resource.MustParse("64Mi"),
+				api.ResourcePods:                   resource.MustParse("1"),
+			},
+		},
+		"init container scratch using volumes": {
+			pod: &api.Pod{
+				Spec: api.PodSpec{
+					InitContainers: []api.Container{{
+						VolumeMounts: []api.VolumeMount{
+							{
+								Name: "data",
+							},
+						},
+					}},
+					Volumes: []api.Volume{{
+						Name: "data",
+						VolumeSource: api.VolumeSource{
+							EmptyDir: &api.EmptyDirVolumeSource{
+								SizeLimit: resource.MustParse("64Mi"),
+							},
+						},
+					}},
+				},
+			},
+			usage: api.ResourceList{
+				api.ResourceStorageScratch:         resource.MustParse("64Mi"),
+				api.ResourceRequestsStorageScratch: resource.MustParse("64Mi"),
+				api.ResourceLimitsStorageScratch:   resource.MustParse("64Mi"),
+				api.ResourcePods:                   resource.MustParse("1"),
+			},
+		},
 		"container CPU": {
 			pod: &api.Pod{
 				Spec: api.PodSpec{
@@ -176,6 +239,69 @@ func TestPodEvaluatorUsage(t *testing.T) {
 				api.ResourceLimitsMemory:   resource.MustParse("2m"),
 				api.ResourcePods:           resource.MustParse("1"),
 				api.ResourceMemory:         resource.MustParse("1m"),
+			},
+		},
+		"container overlay": {
+			pod: &api.Pod{
+				Spec: api.PodSpec{
+					Containers: []api.Container{{
+						Resources: api.ResourceRequirements{
+							Requests: api.ResourceList{api.ResourceStorageOverlay: resource.MustParse("32Mi")},
+							Limits:   api.ResourceList{api.ResourceStorageOverlay: resource.MustParse("64Mi")},
+						},
+					}},
+				},
+			},
+			usage: api.ResourceList{
+				api.ResourceStorageOverlay:         resource.MustParse("32Mi"),
+				api.ResourceRequestsStorageOverlay: resource.MustParse("32Mi"),
+				api.ResourceLimitsStorageOverlay:   resource.MustParse("64Mi"),
+				api.ResourcePods:                   resource.MustParse("1"),
+			},
+		},
+		"container scratch": {
+			pod: &api.Pod{
+				Spec: api.PodSpec{
+					Containers: []api.Container{{
+						Resources: api.ResourceRequirements{
+							Requests: api.ResourceList{api.ResourceStorageScratch: resource.MustParse("32Mi")},
+							Limits:   api.ResourceList{api.ResourceStorageScratch: resource.MustParse("64Mi")},
+						},
+					}},
+				},
+			},
+			usage: api.ResourceList{
+				api.ResourceStorageScratch:         resource.MustParse("32Mi"),
+				api.ResourceRequestsStorageScratch: resource.MustParse("32Mi"),
+				api.ResourceLimitsStorageScratch:   resource.MustParse("64Mi"),
+				api.ResourcePods:                   resource.MustParse("1"),
+			},
+		},
+		"container scratch using volumes": {
+			pod: &api.Pod{
+				Spec: api.PodSpec{
+					Containers: []api.Container{{
+						VolumeMounts: []api.VolumeMount{
+							{
+								Name: "data",
+							},
+						},
+					}},
+					Volumes: []api.Volume{{
+						Name: "data",
+						VolumeSource: api.VolumeSource{
+							EmptyDir: &api.EmptyDirVolumeSource{
+								SizeLimit: resource.MustParse("64Mi"),
+							},
+						},
+					}},
+				},
+			},
+			usage: api.ResourceList{
+				api.ResourceStorageScratch:         resource.MustParse("64Mi"),
+				api.ResourceRequestsStorageScratch: resource.MustParse("64Mi"),
+				api.ResourceLimitsStorageScratch:   resource.MustParse("64Mi"),
+				api.ResourcePods:                   resource.MustParse("1"),
 			},
 		},
 		"init container maximums override sum of containers": {
