@@ -23,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apiserver/pkg/admission"
 	"k8s.io/kubernetes/pkg/api"
+	apihelper "k8s.io/kubernetes/pkg/api/helper"
 	informers "k8s.io/kubernetes/pkg/client/informers/informers_generated/internalversion"
 	pvlister "k8s.io/kubernetes/pkg/client/listers/core/internalversion"
 	kubeapiserveradmission "k8s.io/kubernetes/pkg/kubeapiserver/admission"
@@ -79,7 +80,6 @@ func (pvcr *persistentVolumeClaimResize) Admit(a admission.Attributes) error {
 		return nil
 	}
 
-	//new pvc size > old pvc size
 	pvc, ok := a.GetObject().(*api.PersistentVolumeClaim)
 	// if we can't convert then we don't handle this object so just return
 	if !ok {
@@ -90,6 +90,12 @@ func (pvcr *persistentVolumeClaimResize) Admit(a admission.Attributes) error {
 		return nil
 	}
 
+	// Only dynamically provisioned pvc/pv can be resized
+	if !pvcr.isDynamicallyProvisioned(pvc, oldPvc) {
+		return admission.NewForbidden(a, fmt.Errorf("only dynamically provisioned pvc can be resized"))
+	}
+
+	//new pvc size > old pvc size
 	pvcCapacityClone, err := api.Scheme.DeepCopy(pvc.Spec.Resources.Requests[api.ResourceStorage])
 	if err != nil {
 		fmt.Println("pvc storage resource request copy error")
@@ -128,6 +134,16 @@ func (pvcr *persistentVolumeClaimResize) Admit(a admission.Attributes) error {
 	}
 
 	return nil
+}
+
+// isDynamicallyProvisioned checks whether the pvc is dynamically provisioned or not
+func (pvcr *persistentVolumeClaimResize) isDynamicallyProvisioned(pvc, oldPvc *api.PersistentVolumeClaim) bool {
+	pvcStorageClass := apihelper.GetPersistentVolumeClaimClass(pvc)
+	oldPvcStorageClass := apihelper.GetPersistentVolumeClaimClass(oldPvc)
+	if pvcStorageClass == "" || oldPvcStorageClass == "" || pvcStorageClass != oldPvcStorageClass {
+		return false
+	}
+	return true
 }
 
 // checkVolumePlugin checks whether the volume plugin supports resize

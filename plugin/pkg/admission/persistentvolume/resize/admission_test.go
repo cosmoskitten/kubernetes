@@ -40,8 +40,13 @@ func getResourceList(storage string) api.ResourceList {
 }
 
 func TestPVCResizeAdmission(t *testing.T) {
+	goldClass := "gold"
+	silverClass := "silver"
 	expectNoError := func(err error) bool {
 		return err == nil
+	}
+	expectDynamicallyProvisionedError := func(err error) bool {
+		return strings.Contains(err.Error(), "only dynamically provisioned pvc can be resized")
 	}
 	expectRequestSizeError := func(err error) bool {
 		return strings.Contains(err.Error(), "requested size must be bigger that current size")
@@ -67,6 +72,7 @@ func TestPVCResizeAdmission(t *testing.T) {
 					Resources: api.ResourceRequirements{
 						Requests: getResourceList("1Gi"),
 					},
+					StorageClassName: &goldClass,
 				},
 				Status: api.PersistentVolumeClaimStatus{
 					Capacity: getResourceList("1Gi"),
@@ -78,6 +84,7 @@ func TestPVCResizeAdmission(t *testing.T) {
 					Resources: api.ResourceRequirements{
 						Requests: getResourceList("2Gi"),
 					},
+					StorageClassName: &goldClass,
 				},
 				Status: api.PersistentVolumeClaimStatus{
 					Capacity: getResourceList("2Gi"),
@@ -94,6 +101,7 @@ func TestPVCResizeAdmission(t *testing.T) {
 					Resources: api.ResourceRequirements{
 						Requests: getResourceList("2Gi"),
 					},
+					StorageClassName: &goldClass,
 				},
 				Status: api.PersistentVolumeClaimStatus{
 					Capacity: getResourceList("2Gi"),
@@ -105,6 +113,7 @@ func TestPVCResizeAdmission(t *testing.T) {
 					Resources: api.ResourceRequirements{
 						Requests: getResourceList("1Gi"),
 					},
+					StorageClassName: &goldClass,
 				},
 				Status: api.PersistentVolumeClaimStatus{
 					Capacity: getResourceList("1Gi"),
@@ -121,6 +130,7 @@ func TestPVCResizeAdmission(t *testing.T) {
 					Resources: api.ResourceRequirements{
 						Requests: getResourceList("1Gi"),
 					},
+					StorageClassName: &goldClass,
 				},
 				Status: api.PersistentVolumeClaimStatus{
 					Capacity: getResourceList("1Gi"),
@@ -132,12 +142,69 @@ func TestPVCResizeAdmission(t *testing.T) {
 					Resources: api.ResourceRequirements{
 						Requests: getResourceList("2Gi"),
 					},
+					StorageClassName: &goldClass,
 				},
 				Status: api.PersistentVolumeClaimStatus{
 					Capacity: getResourceList("2Gi"),
 				},
 			},
 			checkError: expectVolumePluginError,
+		},
+		{
+			name:     "pvc-resize, update, dynamically provisioned error",
+			resource: api.SchemeGroupVersion.WithResource("persistentvolumeclaims"),
+			oldObj: &api.PersistentVolumeClaim{
+				Spec: api.PersistentVolumeClaimSpec{
+					VolumeName: "volume4",
+					Resources: api.ResourceRequirements{
+						Requests: getResourceList("1Gi"),
+					},
+				},
+				Status: api.PersistentVolumeClaimStatus{
+					Capacity: getResourceList("1Gi"),
+				},
+			},
+			newObj: &api.PersistentVolumeClaim{
+				Spec: api.PersistentVolumeClaimSpec{
+					VolumeName: "volume4",
+					Resources: api.ResourceRequirements{
+						Requests: getResourceList("2Gi"),
+					},
+				},
+				Status: api.PersistentVolumeClaimStatus{
+					Capacity: getResourceList("2Gi"),
+				},
+			},
+			checkError: expectDynamicallyProvisionedError,
+		},
+		{
+			name:     "pvc-resize, update, dynamically provisioned error",
+			resource: api.SchemeGroupVersion.WithResource("persistentvolumeclaims"),
+			oldObj: &api.PersistentVolumeClaim{
+				Spec: api.PersistentVolumeClaimSpec{
+					VolumeName: "volume5",
+					Resources: api.ResourceRequirements{
+						Requests: getResourceList("1Gi"),
+					},
+					StorageClassName: &goldClass,
+				},
+				Status: api.PersistentVolumeClaimStatus{
+					Capacity: getResourceList("1Gi"),
+				},
+			},
+			newObj: &api.PersistentVolumeClaim{
+				Spec: api.PersistentVolumeClaimSpec{
+					VolumeName: "volume5",
+					Resources: api.ResourceRequirements{
+						Requests: getResourceList("2Gi"),
+					},
+					StorageClassName: &silverClass,
+				},
+				Status: api.PersistentVolumeClaimStatus{
+					Capacity: getResourceList("2Gi"),
+				},
+			},
+			checkError: expectDynamicallyProvisionedError,
 		},
 	}
 
@@ -153,6 +220,7 @@ func TestPVCResizeAdmission(t *testing.T) {
 					VolumeID: "123",
 				},
 			},
+			StorageClassName: goldClass,
 		},
 	}
 	pv2 := &api.PersistentVolume{
@@ -163,6 +231,7 @@ func TestPVCResizeAdmission(t *testing.T) {
 					VolumeID: "456",
 				},
 			},
+			StorageClassName: goldClass,
 		},
 	}
 	pv3 := &api.PersistentVolume{
@@ -171,6 +240,7 @@ func TestPVCResizeAdmission(t *testing.T) {
 			PersistentVolumeSource: api.PersistentVolumeSource{
 				HostPath: &api.HostPathVolumeSource{},
 			},
+			StorageClassName: goldClass,
 		},
 	}
 
