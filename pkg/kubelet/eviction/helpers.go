@@ -768,7 +768,7 @@ func getResourceAllocatable(capacity v1.ResourceList, reservation v1.ResourceLis
 		}
 		return capacity.Copy(), allocate, true
 	}
-	glog.Errorf("Could not find capacity information for resource %v", resourceName)
+	glog.V(4).Infof("Could not find capacity information for resource %v, node capacity may not be initialized yet.", resourceName)
 	return nil, nil, false
 }
 
@@ -779,7 +779,7 @@ func thresholdsMet(thresholds []evictionapi.Threshold, observations signalObserv
 		threshold := thresholds[i]
 		observed, found := observations[threshold.Signal]
 		if !found {
-			glog.Warningf("eviction manager: no observation found for eviction signal %v", threshold.Signal)
+			glog.V(4).Infof("eviction manager: no observation found for eviction signal %v", threshold.Signal)
 			continue
 		}
 		// determine if we have met the specified threshold
@@ -836,7 +836,7 @@ func thresholdsUpdatedStats(thresholds []evictionapi.Threshold, observations, la
 		threshold := thresholds[i]
 		observed, found := observations[threshold.Signal]
 		if !found {
-			glog.Warningf("eviction manager: no observation found for eviction signal %v", threshold.Signal)
+			glog.V(4).Infof("eviction manager: no observation found for eviction signal %v", threshold.Signal)
 			continue
 		}
 		last, found := lastObservations[threshold.Signal]
