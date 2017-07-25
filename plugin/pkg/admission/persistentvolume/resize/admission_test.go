@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apiserver/pkg/admission"
 	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/apis/storage"
 	informers "k8s.io/kubernetes/pkg/client/informers/informers_generated/internalversion"
 	"k8s.io/kubernetes/pkg/controller"
 )
@@ -40,11 +41,34 @@ func getResourceList(storage string) api.ResourceList {
 }
 
 func TestPVCResizeAdmission(t *testing.T) {
+	goldClassName := "gold"
+	goldClass := &storage.StorageClass{
+		TypeMeta: metav1.TypeMeta{
+			Kind: "StorageClass",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: goldClassName,
+		},
+		Provisioner:       "kubernetes.io/aws-ebs",
+		AllowVolumeExpand: true,
+	}
+	silverClassName := "silver"
+	silverClass := &storage.StorageClass{
+		TypeMeta: metav1.TypeMeta{
+			Kind: "StorageClass",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: silverClassName,
+		},
+		Provisioner:       "kubernetes.io/aws-ebs",
+		AllowVolumeExpand: false,
+	}
 	expectNoError := func(err error) bool {
 		return err == nil
 	}
-	expectRequestSizeError := func(err error) bool {
-		return strings.Contains(err.Error(), "requested size must be bigger that current size")
+	expectDynamicallyProvisionedError := func(err error) bool {
+		return strings.Contains(err.Error(), "only dynamically provisioned pvc can be resized and "+
+			"the storageclass that provisions the pvc must support resize")
 	}
 	expectVolumePluginError := func(err error) bool {
 		return strings.Contains(err.Error(), "volume plugin does not support resize")
@@ -67,6 +91,7 @@ func TestPVCResizeAdmission(t *testing.T) {
 					Resources: api.ResourceRequirements{
 						Requests: getResourceList("1Gi"),
 					},
+					StorageClassName: &goldClassName,
 				},
 				Status: api.PersistentVolumeClaimStatus{
 					Capacity: getResourceList("1Gi"),
@@ -78,6 +103,7 @@ func TestPVCResizeAdmission(t *testing.T) {
 					Resources: api.ResourceRequirements{
 						Requests: getResourceList("2Gi"),
 					},
+					StorageClassName: &goldClassName,
 				},
 				Status: api.PersistentVolumeClaimStatus{
 					Capacity: getResourceList("2Gi"),
@@ -86,41 +112,15 @@ func TestPVCResizeAdmission(t *testing.T) {
 			checkError: expectNoError,
 		},
 		{
-			name:     "pvc-resize, update, request size error",
-			resource: api.SchemeGroupVersion.WithResource("persistentvolumeclaims"),
-			oldObj: &api.PersistentVolumeClaim{
-				Spec: api.PersistentVolumeClaimSpec{
-					VolumeName: "volume2",
-					Resources: api.ResourceRequirements{
-						Requests: getResourceList("2Gi"),
-					},
-				},
-				Status: api.PersistentVolumeClaimStatus{
-					Capacity: getResourceList("2Gi"),
-				},
-			},
-			newObj: &api.PersistentVolumeClaim{
-				Spec: api.PersistentVolumeClaimSpec{
-					VolumeName: "volume2",
-					Resources: api.ResourceRequirements{
-						Requests: getResourceList("1Gi"),
-					},
-				},
-				Status: api.PersistentVolumeClaimStatus{
-					Capacity: getResourceList("1Gi"),
-				},
-			},
-			checkError: expectRequestSizeError,
-		},
-		{
 			name:     "pvc-resize, update, volume plugin error",
 			resource: api.SchemeGroupVersion.WithResource("persistentvolumeclaims"),
 			oldObj: &api.PersistentVolumeClaim{
 				Spec: api.PersistentVolumeClaimSpec{
-					VolumeName: "volume3",
+					VolumeName: "volume2",
 					Resources: api.ResourceRequirements{
 						Requests: getResourceList("1Gi"),
 					},
+					StorageClassName: &goldClassName,
 				},
 				Status: api.PersistentVolumeClaimStatus{
 					Capacity: getResourceList("1Gi"),
@@ -128,10 +128,11 @@ func TestPVCResizeAdmission(t *testing.T) {
 			},
 			newObj: &api.PersistentVolumeClaim{
 				Spec: api.PersistentVolumeClaimSpec{
-					VolumeName: "volume3",
+					VolumeName: "volume2",
 					Resources: api.ResourceRequirements{
 						Requests: getResourceList("2Gi"),
 					},
+					StorageClassName: &goldClassName,
 				},
 				Status: api.PersistentVolumeClaimStatus{
 					Capacity: getResourceList("2Gi"),
@@ -139,11 +140,71 @@ func TestPVCResizeAdmission(t *testing.T) {
 			},
 			checkError: expectVolumePluginError,
 		},
+		{
+			name:     "pvc-resize, update, dynamically provisioned error",
+			resource: api.SchemeGroupVersion.WithResource("persistentvolumeclaims"),
+			oldObj: &api.PersistentVolumeClaim{
+				Spec: api.PersistentVolumeClaimSpec{
+					VolumeName: "volume3",
+					Resources: api.ResourceRequirements{
+						Requests: getResourceList("1Gi"),
+					},
+				},
+				Status: api.PersistentVolumeClaimStatus{
+					Capacity: getResourceList("1Gi"),
+				},
+			},
+			newObj: &api.PersistentVolumeClaim{
+				Spec: api.PersistentVolumeClaimSpec{
+					VolumeName: "volume3",
+					Resources: api.ResourceRequirements{
+						Requests: getResourceList("2Gi"),
+					},
+				},
+				Status: api.PersistentVolumeClaimStatus{
+					Capacity: getResourceList("2Gi"),
+				},
+			},
+			checkError: expectDynamicallyProvisionedError,
+		},
+		{
+			name:     "pvc-resize, update, dynamically provisioned error",
+			resource: api.SchemeGroupVersion.WithResource("persistentvolumeclaims"),
+			oldObj: &api.PersistentVolumeClaim{
+				Spec: api.PersistentVolumeClaimSpec{
+					VolumeName: "volume4",
+					Resources: api.ResourceRequirements{
+						Requests: getResourceList("1Gi"),
+					},
+					StorageClassName: &silverClassName,
+				},
+				Status: api.PersistentVolumeClaimStatus{
+					Capacity: getResourceList("1Gi"),
+				},
+			},
+			newObj: &api.PersistentVolumeClaim{
+				Spec: api.PersistentVolumeClaimSpec{
+					VolumeName: "volume4",
+					Resources: api.ResourceRequirements{
+						Requests: getResourceList("2Gi"),
+					},
+					StorageClassName: &silverClassName,
+				},
+				Status: api.PersistentVolumeClaimStatus{
+					Capacity: getResourceList("2Gi"),
+				},
+			},
+			checkError: expectDynamicallyProvisionedError,
+		},
 	}
 
 	ctrl := newPlugin()
 	informerFactory := informers.NewSharedInformerFactory(nil, controller.NoResyncPeriodFunc())
 	ctrl.SetInternalKubeInformerFactory(informerFactory)
+	err := ctrl.Validate()
+	if err != nil {
+		t.Fatalf("neither pv lister nor storageclass lister can be nil")
+	}
 
 	pv1 := &api.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{Name: "volume1"},
@@ -153,34 +214,35 @@ func TestPVCResizeAdmission(t *testing.T) {
 					VolumeID: "123",
 				},
 			},
+			StorageClassName: goldClassName,
 		},
 	}
 	pv2 := &api.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{Name: "volume2"},
 		Spec: api.PersistentVolumeSpec{
 			PersistentVolumeSource: api.PersistentVolumeSource{
-				AWSElasticBlockStore: &api.AWSElasticBlockStoreVolumeSource{
-					VolumeID: "456",
-				},
-			},
-		},
-	}
-	pv3 := &api.PersistentVolume{
-		ObjectMeta: metav1.ObjectMeta{Name: "volume3"},
-		Spec: api.PersistentVolumeSpec{
-			PersistentVolumeSource: api.PersistentVolumeSource{
 				HostPath: &api.HostPathVolumeSource{},
 			},
+			StorageClassName: goldClassName,
 		},
 	}
 
 	pvs := []*api.PersistentVolume{}
-	pvs = append(pvs, pv1, pv2, pv3)
+	pvs = append(pvs, pv1, pv2)
 
 	for _, pv := range pvs {
 		err := informerFactory.Core().InternalVersion().PersistentVolumes().Informer().GetStore().Add(pv)
 		if err != nil {
 			fmt.Println("add pv error: ", err)
+		}
+	}
+
+	scs := []*storage.StorageClass{}
+	scs = append(scs, goldClass, silverClass)
+	for _, sc := range scs {
+		err := informerFactory.Storage().InternalVersion().StorageClasses().Informer().GetStore().Add(sc)
+		if err != nil {
+			fmt.Println("add storageclass error: ", err)
 		}
 	}
 

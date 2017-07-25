@@ -20,11 +20,12 @@ import (
 	"fmt"
 	"io"
 
-	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apiserver/pkg/admission"
 	"k8s.io/kubernetes/pkg/api"
+	apihelper "k8s.io/kubernetes/pkg/api/helper"
 	informers "k8s.io/kubernetes/pkg/client/informers/informers_generated/internalversion"
 	pvlister "k8s.io/kubernetes/pkg/client/listers/core/internalversion"
+	storagelisters "k8s.io/kubernetes/pkg/client/listers/storage/internalversion"
 	kubeapiserveradmission "k8s.io/kubernetes/pkg/kubeapiserver/admission"
 )
 
@@ -48,6 +49,7 @@ type persistentVolumeClaimResize struct {
 	*admission.Handler
 
 	pvLister pvlister.PersistentVolumeLister
+	scLister storagelisters.StorageClassLister
 }
 
 func newPlugin() *persistentVolumeClaimResize {
@@ -57,15 +59,22 @@ func newPlugin() *persistentVolumeClaimResize {
 }
 
 func (pvcr *persistentVolumeClaimResize) SetInternalKubeInformerFactory(f informers.SharedInformerFactory) {
-	informer := f.Core().InternalVersion().PersistentVolumes()
-	pvcr.pvLister = informer.Lister()
-	pvcr.SetReadyFunc(informer.Informer().HasSynced)
+	pvcInformer := f.Core().InternalVersion().PersistentVolumes()
+	pvcr.pvLister = pvcInformer.Lister()
+	scInformer := f.Storage().InternalVersion().StorageClasses()
+	pvcr.scLister = scInformer.Lister()
+	pvcr.SetReadyFunc(func() bool {
+		return pvcInformer.Informer().HasSynced() && scInformer.Informer().HasSynced()
+	})
 }
 
 // Validate ensures lister is set.
 func (pvcr *persistentVolumeClaimResize) Validate() error {
 	if pvcr.pvLister == nil {
-		return fmt.Errorf("missing lister")
+		return fmt.Errorf("missing persistent volume lister")
+	}
+	if pvcr.scLister == nil {
+		return fmt.Errorf("missing storageclass lister")
 	}
 	return nil
 }
@@ -79,7 +88,6 @@ func (pvcr *persistentVolumeClaimResize) Admit(a admission.Attributes) error {
 		return nil
 	}
 
-	//new pvc size > old pvc size
 	pvc, ok := a.GetObject().(*api.PersistentVolumeClaim)
 	// if we can't convert then we don't handle this object so just return
 	if !ok {
@@ -90,30 +98,10 @@ func (pvcr *persistentVolumeClaimResize) Admit(a admission.Attributes) error {
 		return nil
 	}
 
-	pvcCapacityClone, err := api.Scheme.DeepCopy(pvc.Spec.Resources.Requests[api.ResourceStorage])
-	if err != nil {
-		fmt.Println("pvc storage resource request copy error")
-		return nil
-	}
-	pvcStorage, ok := pvcCapacityClone.(resource.Quantity)
-	if !ok {
-		fmt.Println("failed to cast object to Quantity")
-		return nil
-	}
-
-	oldPvcCapacityClone, err := api.Scheme.DeepCopy(oldPvc.Spec.Resources.Requests[api.ResourceStorage])
-	if err != nil {
-		fmt.Println("old pvc storage resource request copy error")
-		return nil
-	}
-	oldPvcStorage, ok := oldPvcCapacityClone.(resource.Quantity)
-	if !ok {
-		fmt.Println("failed to cast object to Quantity")
-		return nil
-	}
-	pvcStorage.Sub(oldPvcStorage)
-	if pvcStorage.Sign() < 0 {
-		return admission.NewForbidden(a, fmt.Errorf("requested size must be bigger that current size"))
+	// Only dynamically provisioned pvc/pv can be resized
+	if !pvcr.isDynamicallyProvisioned(pvc, oldPvc) {
+		return admission.NewForbidden(a, fmt.Errorf("only dynamically provisioned pvc can be resized and "+
+			"the storageclass that provisions the pvc must support resize"))
 	}
 
 	// volume plugin must support resize
@@ -128,6 +116,23 @@ func (pvcr *persistentVolumeClaimResize) Admit(a admission.Attributes) error {
 	}
 
 	return nil
+}
+
+// isDynamicallyProvisioned checks whether the pvc is dynamically provisioned or not
+func (pvcr *persistentVolumeClaimResize) isDynamicallyProvisioned(pvc, oldPvc *api.PersistentVolumeClaim) bool {
+	pvcStorageClass := apihelper.GetPersistentVolumeClaimClass(pvc)
+	oldPvcStorageClass := apihelper.GetPersistentVolumeClaimClass(oldPvc)
+	if pvcStorageClass == "" || oldPvcStorageClass == "" || pvcStorageClass != oldPvcStorageClass {
+		return false
+	}
+	sc, err := pvcr.scLister.Get(pvcStorageClass)
+	if err != nil {
+		return false
+	}
+	if !sc.AllowVolumeExpand {
+		return false
+	}
+	return true
 }
 
 // checkVolumePlugin checks whether the volume plugin supports resize
