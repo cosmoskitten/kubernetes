@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package e2e
+package network
 
 import (
 	"k8s.io/api/core/v1"
@@ -75,9 +75,9 @@ var _ = framework.KubeDescribe("NetworkPolicy", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer cleanupNetworkPolicy(f, policy)
 
-			// Create a pod with name 'client-cannot-connect', which will attempt to comunicate with the server,
+			// Create a pod with name 'client-cannot-connect', which will attempt to communicate with the server,
 			// but should not be able to now that isolation is on.
-			testCanConnect(f, f.Namespace, "client-cannot-connect", service, 80)
+			testCannotConnect(f, f.Namespace, "client-cannot-connect", service, 80)
 		})
 
 		It("should enforce policy based on PodSelector [Feature:NetworkPolicy]", func() {
@@ -308,11 +308,33 @@ func testCanConnect(f *framework.Framework, ns *v1.Namespace, podName string, se
 	framework.Logf("Waiting for %s to complete.", podClient.Name)
 	err = framework.WaitForPodSuccessInNamespace(f.ClientSet, podClient.Name, ns.Name)
 	if err != nil {
+		// Collect pod logs when we see a failure.
 		logs, logErr := framework.GetPodLogs(f.ClientSet, f.Namespace.Name, podName, fmt.Sprintf("%s-container", podName))
 		if logErr != nil {
 			framework.Failf("Error getting container logs: %s", logErr)
 		}
-		framework.Failf("pod logs: %s", logs)
+
+		// Collect current NetworkPolicies applied in the test namespace.
+		policies, err := f.InternalClientset.Networking().NetworkPolicies(f.Namespace.Name).List(metav1.ListOptions{})
+		if err != nil {
+			framework.Logf("error getting current NetworkPolicies for %s namespace: %s", f.Namespace.Name, err)
+		}
+
+		// Collect the list of pods running in the test namespace.
+		podsInNS, err := framework.GetPodsInNamespace(f.ClientSet, f.Namespace.Name, map[string]string{})
+		if err != nil {
+			framework.Logf("error getting pods for %s namespace: %s", f.Namespace.Name, err)
+		}
+
+		pods := []string{}
+		for _, p := range podsInNS {
+			pods = append(pods, fmt.Sprintf("Pod: %s, Status: %s\n", p.Name, p.Status.String()))
+		}
+
+		framework.Failf("Pod %s should be able to connect to service %s, but was not able to connect.\nPod logs:\n%s\n\n Current NetworkPolicies:\n\t%v\n\n Pods:\n\t%v\n\n", podName, service.Name, logs, policies.Items, pods)
+
+		// Dump debug information for the test namespace.
+		framework.DumpDebugInfo(f.ClientSet, f.Namespace.Name)
 	}
 }
 
@@ -328,7 +350,38 @@ func testCannotConnect(f *framework.Framework, ns *v1.Namespace, podName string,
 
 	framework.Logf("Waiting for %s to complete.", podClient.Name)
 	err := framework.WaitForPodSuccessInNamespace(f.ClientSet, podClient.Name, ns.Name)
-	Expect(err).To(HaveOccurred(), fmt.Sprintf("checking %s could not communicate with server.", podName))
+
+	// We expect an error here since it's a cannot connect test.
+	// Dump debug information if the error was nil.
+	if err == nil {
+		// Collect pod logs when we see a failure.
+		logs, logErr := framework.GetPodLogs(f.ClientSet, f.Namespace.Name, podName, fmt.Sprintf("%s-container", podName))
+		if logErr != nil {
+			framework.Failf("Error getting container logs: %s", logErr)
+		}
+
+		// Collect current NetworkPolicies applied in the test namespace.
+		policies, err := f.InternalClientset.Networking().NetworkPolicies(f.Namespace.Name).List(metav1.ListOptions{})
+		if err != nil {
+			framework.Logf("error getting current NetworkPolicies for %s namespace: %s", f.Namespace.Name, err)
+		}
+
+		// Collect the list of pods running in the test namespace.
+		podsInNS, err := framework.GetPodsInNamespace(f.ClientSet, f.Namespace.Name, map[string]string{})
+		if err != nil {
+			framework.Logf("error getting pods for %s namespace: %s", f.Namespace.Name, err)
+		}
+
+		pods := []string{}
+		for _, p := range podsInNS {
+			pods = append(pods, fmt.Sprintf("Pod: %s, Status: %s\n", p.Name, p.Status.String()))
+		}
+
+		framework.Failf("Pod %s should not be able to connect to service %s, but was able to connect.\nPod logs:\n%s\n\n Current NetworkPolicies:\n\t%v\n\n Pods:\n\t %v\n\n", podName, service.Name, logs, policies.Items, pods)
+
+		// Dump debug information for the test namespace.
+		framework.DumpDebugInfo(f.ClientSet, f.Namespace.Name)
+	}
 }
 
 // Create a server pod with a listening container for each port in ports[].
@@ -434,9 +487,11 @@ func createNetworkClientPod(f *framework.Framework, namespace *v1.Namespace, pod
 			Containers: []v1.Container{
 				{
 					Name:  fmt.Sprintf("%s-container", podName),
-					Image: "gcr.io/google_containers/alpine-with-bash:1.0",
+					Image: "gcr.io/google_containers/busybox:1.24",
 					Args: []string{
-						fmt.Sprintf("for i in {1..5}; do wget -T 8 %s.%s:%d -O - && exit 0 || sleep 1; done; exit 1",
+						"/bin/sh",
+						"-c",
+						fmt.Sprintf("for i in $(seq 1 5); do wget -T 8 %s.%s:%d -O - && exit 0 || sleep 1; done; exit 1",
 							targetService.Name, targetService.Namespace, targetPort),
 					},
 				},
