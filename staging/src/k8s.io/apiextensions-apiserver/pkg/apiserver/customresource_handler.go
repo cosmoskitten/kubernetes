@@ -160,6 +160,15 @@ func (r *crdHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	requestScope := crdInfo.requestScope
 	minRequestTimeout := 1 * time.Minute
 
+	/*
+		var temp customresource.REST
+		temp = *crdInfo.storage
+		exporter, isExporter := temp.(rest.Exporter)
+		if !isExporter {
+			exporter = nil
+		}
+	*/
+
 	switch requestInfo.Verb {
 	case "get":
 		handler := handlers.GetResource(storage, storage, requestScope)
@@ -167,12 +176,12 @@ func (r *crdHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	case "list":
 		forceWatch := false
-		handler := handlers.ListResource(storage, storage, requestScope, forceWatch, minRequestTimeout)
+		handler := handlers.ListResource(storage, storage, storage, requestScope, forceWatch, minRequestTimeout)
 		handler(w, req)
 		return
 	case "watch":
 		forceWatch := true
-		handler := handlers.ListResource(storage, storage, requestScope, forceWatch, minRequestTimeout)
+		handler := handlers.ListResource(storage, storage, storage, requestScope, forceWatch, minRequestTimeout)
 		handler(w, req)
 		return
 	case "create":
