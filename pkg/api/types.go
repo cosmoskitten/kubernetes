@@ -3693,10 +3693,14 @@ const (
 	ResourceRequestsMemory ResourceName = "requests.memory"
 	// Storage request, in bytes
 	ResourceRequestsStorage ResourceName = "requests.storage"
+	// Local Storage request for scratch space, in bytes. (500Gi = 500GiB = 500 * 1024 * 1024 * 1024)
+	ResourceRequestsStorageScratch ResourceName = "requests.storage.kubernetes.io/scratch"
 	// CPU limit, in cores. (500m = .5 cores)
 	ResourceLimitsCPU ResourceName = "limits.cpu"
 	// Memory limit, in bytes. (500Gi = 500GiB = 500 * 1024 * 1024 * 1024)
 	ResourceLimitsMemory ResourceName = "limits.memory"
+	// Local Storage limit for scratch space, in bytes. (500Gi = 500GiB = 500 * 1024 * 1024 * 1024)
+	ResourceLimitsStorageScratch ResourceName = "limits.storage.kubernetes.io/scratch"
 )
 
 // A ResourceQuotaScope defines a filter that must match each object tracked by a quota

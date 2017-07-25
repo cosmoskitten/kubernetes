@@ -42,10 +42,13 @@ import (
 var podResources = []api.ResourceName{
 	api.ResourceCPU,
 	api.ResourceMemory,
+	api.ResourceStorageScratch,
 	api.ResourceRequestsCPU,
 	api.ResourceRequestsMemory,
+	api.ResourceRequestsStorageScratch,
 	api.ResourceLimitsCPU,
 	api.ResourceLimitsMemory,
+	api.ResourceLimitsStorageScratch,
 	api.ResourcePods,
 }
 
@@ -190,6 +193,13 @@ func podUsageHelper(requests api.ResourceList, limits api.ResourceList) api.Reso
 	}
 	if limit, found := limits[api.ResourceMemory]; found {
 		result[api.ResourceLimitsMemory] = limit
+	}
+	if request, found := requests[api.ResourceStorageScratch]; found {
+		result[api.ResourceStorageScratch] = request
+		result[api.ResourceRequestsStorageScratch] = request
+	}
+	if limit, found := limits[api.ResourceStorageScratch]; found {
+		result[api.ResourceLimitsStorageScratch] = limit
 	}
 	return result
 }
