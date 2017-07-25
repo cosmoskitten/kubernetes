@@ -148,11 +148,11 @@ type Config struct {
 		ApiEndpoint string `gcfg:"api-endpoint"`
 		// location is the KMS location of the KeyRing to be used for encryption. The default value is "global". // It can be found by checking the available KeyRings in the IAM UI.
 		// This is not the same as the GCP location of the project.
-		Location string `gcfg:"location,omitempty"`
+		Location string `gcfg:"kms-location,omitempty"`
 		// keyRing is the keyRing of the hosted key to be used. The default value is "google-kubernetes".
-		KeyRing string `gcfg:"keyRing"`
+		KeyRing string `gcfg:"kms-keyRing"`
 		// cryptoKey is the name of the key to be used for encryption of Data-Encryption-Keys.
-		CryptoKey string `gcfg:"cryptoKey"`
+		CryptoKey string `gcfg:"kms-cryptoKey"`
 	}
 }
 

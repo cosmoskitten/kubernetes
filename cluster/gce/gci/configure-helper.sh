@@ -402,6 +402,37 @@ EOF
 subnetwork-name = ${NODE_SUBNETWORK}
 EOF
     fi
+
+    # Assign KMS variables
+    if [[ -n "${GKMS_LOCATION}:-" ]]; then
+      cat <<EOF >>/etc/gce.conf
+kms-location = ${GKMS_LOCATION}
+EOF
+    else
+      cat <<EOF >>/etc/gce.conf
+kms-location =
+EOF
+    fi
+
+    if [[ -n "${GKMS_KEYRING}:-" ]]; then
+      cat <<EOF >>/etc/gce.conf
+kms-keyRing = ${GKMS_KEYRING}
+EOF
+    else
+      cat <<EOF >>/etc/gce.conf
+kms-keyRing =
+EOF
+    fi
+
+    if [[ -n "${GKMS_CRYPTOKEY}:-" ]]; then
+      cat <<EOF >>/etc/gce.conf
+kms-cryptoKey = ${GKMS_CRYPTOKEY}
+EOF
+    else
+      cat <<EOF >>/etc/gce.conf
+kms-cryptoKey =
+EOF
+    fi
   fi
   if [[ -n "${NODE_INSTANCE_PREFIX:-}" ]]; then
     use_cloud_config="true"
