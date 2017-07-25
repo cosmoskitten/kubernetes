@@ -3693,10 +3693,22 @@ const (
 	ResourceRequestsMemory ResourceName = "requests.memory"
 	// Storage request, in bytes
 	ResourceRequestsStorage ResourceName = "requests.storage"
+	// Local Storage request for overlay filesystem, in bytes. (500Gi = 500GiB = 500 * 1024 * 1024 * 1024)
+	// The resource name for ResourceStorageOverlay is alpha and it can change across releases.
+	ResourceRequestsStorageOverlay ResourceName = "requests.storage.kubernetes.io/overlay"
+	// Local Storage request for scratch space, in bytes. (500Gi = 500GiB = 500 * 1024 * 1024 * 1024)
+	// The resource name for ResourceStorageScratch is alpha and it can change across releases.
+	ResourceRequestsStorageScratch ResourceName = "requests.storage.kubernetes.io/scratch"
 	// CPU limit, in cores. (500m = .5 cores)
 	ResourceLimitsCPU ResourceName = "limits.cpu"
 	// Memory limit, in bytes. (500Gi = 500GiB = 500 * 1024 * 1024 * 1024)
 	ResourceLimitsMemory ResourceName = "limits.memory"
+	// Local Storage limit for overlay filesystem, in bytes. (500Gi = 500GiB = 500 * 1024 * 1024 * 1024)
+	// The resource name for ResourceStorageOverlay is alpha and it can change across releases.
+	ResourceLimitsStorageOverlay ResourceName = "limits.storage.kubernetes.io/overlay"
+	// Local Storage limit for scratch space, in bytes. (500Gi = 500GiB = 500 * 1024 * 1024 * 1024)
+	// The resource name for ResourceStorageScratch is alpha and it can change across releases.
+	ResourceLimitsStorageScratch ResourceName = "limits.storage.kubernetes.io/scratch"
 )
 
 // A ResourceQuotaScope defines a filter that must match each object tracked by a quota
