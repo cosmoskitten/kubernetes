@@ -42,10 +42,16 @@ import (
 var podResources = []api.ResourceName{
 	api.ResourceCPU,
 	api.ResourceMemory,
+	api.ResourceStorageOverlay,
+	api.ResourceStorageScratch,
 	api.ResourceRequestsCPU,
 	api.ResourceRequestsMemory,
+	api.ResourceRequestsStorageOverlay,
+	api.ResourceRequestsStorageScratch,
 	api.ResourceLimitsCPU,
 	api.ResourceLimitsMemory,
+	api.ResourceLimitsStorageOverlay,
+	api.ResourceLimitsStorageScratch,
 	api.ResourcePods,
 }
 
@@ -115,10 +121,10 @@ func (p *podEvaluator) Constraints(required []api.ResourceName, item runtime.Obj
 	requiredSet := quota.ToSet(required)
 	missingSet := sets.NewString()
 	for i := range pod.Spec.Containers {
-		enforcePodContainerConstraints(&pod.Spec.Containers[i], requiredSet, missingSet)
+		enforcePodContainerConstraints(&pod.Spec.Containers[i], pod, requiredSet, missingSet)
 	}
 	for i := range pod.Spec.InitContainers {
-		enforcePodContainerConstraints(&pod.Spec.InitContainers[i], requiredSet, missingSet)
+		enforcePodContainerConstraints(&pod.Spec.InitContainers[i], pod, requiredSet, missingSet)
 	}
 	if len(missingSet) == 0 {
 		return nil
@@ -162,15 +168,59 @@ var _ quota.Evaluator = &podEvaluator{}
 
 // enforcePodContainerConstraints checks for required resources that are not set on this container and
 // adds them to missingSet.
-func enforcePodContainerConstraints(container *api.Container, requiredSet, missingSet sets.String) {
+func enforcePodContainerConstraints(container *api.Container, pod *api.Pod, requiredSet, missingSet sets.String) {
 	requests := container.Resources.Requests
 	limits := container.Resources.Limits
 	containerUsage := podUsageHelper(requests, limits)
 	containerSet := quota.ToSet(quota.ResourceNames(containerUsage))
 	if !containerSet.Equal(requiredSet) {
 		difference := requiredSet.Difference(containerSet)
-		missingSet.Insert(difference.List()...)
+		scratchLimitedByEmpty := false
+		for _, volumeMount := range container.VolumeMounts {
+			for _, podVolume := range pod.Spec.Volumes {
+				if podVolume.Name == volumeMount.Name {
+					if checkStorageScratchLimitedByEmptyDir(&podVolume, difference) {
+						scratchLimitedByEmpty = true
+						break
+					}
+				}
+			}
+		}
+		if !scratchLimitedByEmpty {
+			missingSet.Insert(difference.List()...)
+		}
 	}
+}
+
+// checkStorageScratchLimitedByEmptyDir checks whether the missing resource is storage scratch and if it is set
+// by emptydir
+func checkStorageScratchLimitedByEmptyDir(podVolume *api.Volume, missingSet sets.String) bool {
+	// missingSet must be subset of {api.ResourceStorageScratch,api.ResourceRequestsStorageScratch,api.ResourceLimitsStorageScratch}
+	if missingSet.Len() == 0 {
+		return true
+	}
+	var missingScratchNum int
+	if missingSet.Has(string(api.ResourceStorageScratch)) {
+		missingScratchNum++
+	}
+	if missingSet.Has(string(api.ResourceRequestsStorageScratch)) {
+		missingScratchNum++
+	}
+	if missingSet.Has(string(api.ResourceLimitsStorageScratch)) {
+		missingScratchNum++
+	}
+	if missingScratchNum != missingSet.Len() {
+		return false
+	}
+
+	// scratch storage can be limited by empty dir
+	if podVolume.EmptyDir == nil {
+		return false
+	}
+	if podVolume.EmptyDir.Medium != api.StorageMediumMemory && !podVolume.EmptyDir.SizeLimit.IsZero() {
+		return true
+	}
+	return false
 }
 
 // podUsageHelper can summarize the pod quota usage based on requests and limits
@@ -190,6 +240,20 @@ func podUsageHelper(requests api.ResourceList, limits api.ResourceList) api.Reso
 	}
 	if limit, found := limits[api.ResourceMemory]; found {
 		result[api.ResourceLimitsMemory] = limit
+	}
+	if request, found := requests[api.ResourceStorageOverlay]; found {
+		result[api.ResourceStorageOverlay] = request
+		result[api.ResourceRequestsStorageOverlay] = request
+	}
+	if limit, found := limits[api.ResourceStorageOverlay]; found {
+		result[api.ResourceLimitsStorageOverlay] = limit
+	}
+	if request, found := requests[api.ResourceStorageScratch]; found {
+		result[api.ResourceStorageScratch] = request
+		result[api.ResourceRequestsStorageScratch] = request
+	}
+	if limit, found := limits[api.ResourceStorageScratch]; found {
+		result[api.ResourceLimitsStorageScratch] = limit
 	}
 	return result
 }
@@ -245,16 +309,48 @@ func PodUsageFunc(obj runtime.Object) (api.ResourceList, error) {
 	for i := range pod.Spec.Containers {
 		requests = quota.Add(requests, pod.Spec.Containers[i].Resources.Requests)
 		limits = quota.Add(limits, pod.Spec.Containers[i].Resources.Limits)
+		emptyDirRequestResource, emptyDirLimitResource := emptyDirUsage(&pod.Spec.Containers[i], pod)
+		requests = quota.Add(requests, emptyDirRequestResource)
+		limits = quota.Add(limits, emptyDirLimitResource)
 	}
 	// InitContainers are run sequentially before other containers start, so the highest
 	// init container resource is compared against the sum of app containers to determine
 	// the effective usage for both requests and limits.
 	for i := range pod.Spec.InitContainers {
-		requests = quota.Max(requests, pod.Spec.InitContainers[i].Resources.Requests)
-		limits = quota.Max(limits, pod.Spec.InitContainers[i].Resources.Limits)
+		// calculate init container resource
+		emptyDirRequestResource, emptyDirLimitResource := emptyDirUsage(&pod.Spec.InitContainers[i], pod)
+		initRequests := quota.Add(pod.Spec.InitContainers[i].Resources.Requests, emptyDirRequestResource)
+		initLimits := quota.Add(pod.Spec.InitContainers[i].Resources.Limits, emptyDirLimitResource)
+		// compare container resource and init container resource
+		requests = quota.Max(requests, initRequests)
+		limits = quota.Max(limits, initLimits)
 	}
 
 	return podUsageHelper(requests, limits), nil
+}
+
+// emptyDirUsage return the resource usage limited by EmptyDir
+func emptyDirUsage(container *api.Container, pod *api.Pod) (api.ResourceList, api.ResourceList) {
+	emptyDirRequestResource := api.ResourceList{}
+	emptyDirLimitResource := api.ResourceList{}
+	for _, volumeMount := range container.VolumeMounts {
+		for _, podVolume := range pod.Spec.Volumes {
+			if podVolume.Name == volumeMount.Name {
+				if podVolume.EmptyDir != nil && podVolume.EmptyDir.Medium != api.StorageMediumMemory &&
+					!podVolume.EmptyDir.SizeLimit.IsZero() {
+					emptyDirRequestResource = api.ResourceList{
+						api.ResourceStorageScratch:         podVolume.EmptyDir.SizeLimit.DeepCopy(),
+						api.ResourceRequestsStorageScratch: podVolume.EmptyDir.SizeLimit.DeepCopy(),
+					}
+					emptyDirLimitResource = api.ResourceList{
+						api.ResourceStorageScratch:       podVolume.EmptyDir.SizeLimit.DeepCopy(),
+						api.ResourceLimitsStorageScratch: podVolume.EmptyDir.SizeLimit.DeepCopy(),
+					}
+				}
+			}
+		}
+	}
+	return emptyDirRequestResource, emptyDirLimitResource
 }
 
 func isBestEffort(pod *api.Pod) bool {
