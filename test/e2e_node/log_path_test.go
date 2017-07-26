@@ -55,7 +55,7 @@ var _ = framework.KubeDescribe("ContainerLogPath", func() {
 						RestartPolicy: v1.RestartPolicyNever,
 						Containers: []v1.Container{
 							{
-								Image:   "gcr.io/google_containers/busybox:1.24",
+								Image:   BusyboxImage,
 								Name:    logContName,
 								Command: []string{"sh", "-c", "echo " + logString},
 							},
@@ -83,7 +83,7 @@ var _ = framework.KubeDescribe("ContainerLogPath", func() {
 						RestartPolicy: v1.RestartPolicyNever,
 						Containers: []v1.Container{
 							{
-								Image: "gcr.io/google_containers/busybox:1.24",
+								Image: BusyboxImage,
 								Name:  checkContName,
 								// If we find expected log file and contains right content, exit 0
 								// else, keep checking until test timeout
