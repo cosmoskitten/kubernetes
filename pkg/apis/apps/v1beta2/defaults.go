@@ -126,3 +126,9 @@ func SetDefaults_ReplicaSet(obj *appsv1beta2.ReplicaSet) {
 		*obj.Spec.Replicas = 1
 	}
 }
+
+func SetDefaults_RollingUpdateDaemonSet(obj *appsv1beta2.RollingUpdateDaemonSet) {
+	if obj.MaxUnavailable == nil {
+		obj.MaxUnavailable = &intstr.IntOrString{}
+	}
+}

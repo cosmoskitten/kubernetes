@@ -118,6 +118,9 @@ func Convert_extensions_RollingUpdateDaemonSet_To_v1beta2_RollingUpdateDaemonSet
 }
 
 func Convert_v1beta2_RollingUpdateDaemonSet_To_extensions_RollingUpdateDaemonSet(in *appsv1beta2.RollingUpdateDaemonSet, out *extensions.RollingUpdateDaemonSet, s conversion.Scope) error {
+	if in.MaxUnavailable == nil {
+		in.MaxUnavailable = &intstr.IntOrString{}
+	}
 	if err := s.Convert(in.MaxUnavailable, &out.MaxUnavailable, 0); err != nil {
 		return err
 	}
