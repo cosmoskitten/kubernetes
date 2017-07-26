@@ -40,6 +40,7 @@ go_library(
         "//test/e2e/manifest:go_default_library",
         "//test/images/net/nat:go_default_library",
         "//test/utils:go_default_library",
+        "//test/utils/image:go_default_library",
         "//vendor/github.com/onsi/ginkgo:go_default_library",
         "//vendor/github.com/onsi/gomega:go_default_library",
         "//vendor/k8s.io/api/core/v1:go_default_library",
