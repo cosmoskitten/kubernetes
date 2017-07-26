@@ -163,9 +163,9 @@ func UnsecuredDependencies(s *options.KubeletServer) (*kubelet.Dependencies, err
 		OOMAdjuster:        oom.NewOOMAdjuster(),
 		OSInterface:        kubecontainer.RealOS{},
 		Writer:             writer,
-		VolumePlugins:      ProbeVolumePlugins(s.VolumePluginDir),
-		TLSOptions:         tlsOptions,
-	}, nil
+	    VolumePlugins:       ProbeVolumePlugins(),
+	    DynamicPluginProber: GetDynamicPluginProber(s.VolumePluginDir),
+		TLSOptions:         tlsOptions,}, nil
 }
 
 // Run runs the specified KubeletServer with the given Dependencies. This should never exit.
