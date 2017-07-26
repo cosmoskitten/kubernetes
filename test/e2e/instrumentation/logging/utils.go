@@ -29,6 +29,7 @@ import (
 	"k8s.io/client-go/util/integer"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/test/e2e/framework"
+	imageutils "k8s.io/kubernetes/test/utils/image"
 )
 
 const (
@@ -116,7 +117,7 @@ func (p *loggingPod) Start(f *framework.Framework) {
 			Containers: []api_v1.Container{
 				{
 					Name:  loggingContainerName,
-					Image: "gcr.io/google_containers/logs-generator:v0.1.0",
+					Image: imageutils.GetE2EImage(imageutils.LogsGenerator),
 					Env: []api_v1.EnvVar{
 						{
 							Name:  "LOGS_GENERATOR_LINES_TOTAL",
