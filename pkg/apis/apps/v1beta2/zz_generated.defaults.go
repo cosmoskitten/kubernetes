@@ -176,6 +176,9 @@ func SetObjectDefaults_DaemonSet(in *v1beta2.DaemonSet) {
 			}
 		}
 	}
+	if in.Spec.UpdateStrategy.RollingUpdate != nil {
+		SetDefaults_RollingUpdateDaemonSet(in.Spec.UpdateStrategy.RollingUpdate)
+	}
 }
 
 func SetObjectDefaults_DaemonSetList(in *v1beta2.DaemonSetList) {
