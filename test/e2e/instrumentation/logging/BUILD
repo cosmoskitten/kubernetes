@@ -25,6 +25,7 @@ go_library(
         "//pkg/api:go_default_library",
         "//test/e2e/framework:go_default_library",
         "//test/e2e/instrumentation:go_default_library",
+        "//test/utils/image:go_default_library",
         "//vendor/github.com/onsi/ginkgo:go_default_library",
         "//vendor/github.com/onsi/gomega:go_default_library",
         "//vendor/golang.org/x/net/context:go_default_library",
