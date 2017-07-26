@@ -497,7 +497,7 @@ func (asw *actualStateOfWorld) updateNodeStatusUpdateNeeded(nodeName types.NodeN
 		// should not happen
 		errMsg := fmt.Sprintf("Failed to set statusUpdateNeeded to needed %t because nodeName=%q  does not exist",
 			needed, nodeName)
-		glog.Errorf(errMsg)
+		glog.Warningf(errMsg)
 		return fmt.Errorf(errMsg)
 	}
 
@@ -511,7 +511,7 @@ func (asw *actualStateOfWorld) SetNodeStatusUpdateNeeded(nodeName types.NodeName
 	asw.Lock()
 	defer asw.Unlock()
 	if err := asw.updateNodeStatusUpdateNeeded(nodeName, true); err != nil {
-		glog.Errorf("Failed to update statusUpdateNeeded field in actual state of world: %v", err)
+		glog.Warningf("Failed to update statusUpdateNeeded field in actual state of world: %v", err)
 	}
 }
 
