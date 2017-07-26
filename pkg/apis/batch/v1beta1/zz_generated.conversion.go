@@ -28,7 +28,6 @@ import (
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	api "k8s.io/kubernetes/pkg/api"
 	batch "k8s.io/kubernetes/pkg/apis/batch"
-	batch_v1 "k8s.io/kubernetes/pkg/apis/batch/v1"
 	unsafe "unsafe"
 )
 
@@ -215,7 +214,8 @@ func Convert_batch_JobTemplate_To_v1beta1_JobTemplate(in *batch.JobTemplate, out
 
 func autoConvert_v1beta1_JobTemplateSpec_To_batch_JobTemplateSpec(in *v1beta1.JobTemplateSpec, out *batch.JobTemplateSpec, s conversion.Scope) error {
 	out.ObjectMeta = in.ObjectMeta
-	if err := batch_v1.Convert_v1_JobSpec_To_batch_JobSpec(&in.Spec, &out.Spec, s); err != nil {
+	// TODO: Inefficient conversion - can we improve it?
+	if err := s.Convert(&in.Spec, &out.Spec, 0); err != nil {
 		return err
 	}
 	return nil
@@ -228,7 +228,8 @@ func Convert_v1beta1_JobTemplateSpec_To_batch_JobTemplateSpec(in *v1beta1.JobTem
 
 func autoConvert_batch_JobTemplateSpec_To_v1beta1_JobTemplateSpec(in *batch.JobTemplateSpec, out *v1beta1.JobTemplateSpec, s conversion.Scope) error {
 	out.ObjectMeta = in.ObjectMeta
-	if err := batch_v1.Convert_batch_JobSpec_To_v1_JobSpec(&in.Spec, &out.Spec, s); err != nil {
+	// TODO: Inefficient conversion - can we improve it?
+	if err := s.Convert(&in.Spec, &out.Spec, 0); err != nil {
 		return err
 	}
 	return nil
