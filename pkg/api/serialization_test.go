@@ -146,7 +146,7 @@ func TestSpecificKind(t *testing.T) {
 	seed := rand.Int63()
 	fuzzer := fuzzer.FuzzerFor(kapitesting.FuzzerFuncs, rand.NewSource(seed), api.Codecs)
 
-	roundtrip.RoundTripSpecificKind(t, internalGVK, api.Scheme, api.Codecs, fuzzer, nil)
+	roundtrip.RoundTripSpecificKind(t, internalGVK, api.Scheme, api.Codecs, fuzzer, nil, nil)
 }
 
 var nonRoundTrippableTypes = sets.NewString(
@@ -213,7 +213,7 @@ func TestRoundTripTypes(t *testing.T) {
 		{Group: "componentconfig", Version: runtime.APIVersionInternal, Kind: "KubeSchedulerConfiguration"}: true,
 	}
 
-	roundtrip.RoundTripTypes(t, api.Scheme, api.Codecs, fuzzer, nonRoundTrippableTypes)
+	roundtrip.RoundTripTypes(t, api.Scheme, api.Codecs, fuzzer, nonRoundTrippableTypes, nil)
 }
 
 // TestEncodePtr tests that a pointer to a golang type can be encoded and
