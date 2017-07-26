@@ -146,7 +146,7 @@ func TestExpandVolumeMounts(t *testing.T) {
 		expectedSubPath string
 	}{
 		{
-			name:      "none",
+			name: "none",
 			container: &v1.Container{
 				VolumeMounts: []v1.VolumeMount{{SubPath: "foo"}},
 			},

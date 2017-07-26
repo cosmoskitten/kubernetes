@@ -158,7 +158,7 @@ func ExpandContainerVolumeMounts(container *v1.Container, envs []EnvVar) (volume
 		}
 	}
 
-	return 
+	return
 }
 
 func ExpandContainerCommandAndArgs(container *v1.Container, envs []EnvVar) (command []string, args []string) {

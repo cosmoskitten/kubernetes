@@ -135,8 +135,8 @@ var _ = framework.KubeDescribe("Variable Expansion", func() {
 		podName := "var-expansion-" + string(uuid.NewUUID())
 		pod := &v1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      podName,
-				Labels:    map[string]string{"name": podName},
+				Name:   podName,
+				Labels: map[string]string{"name": podName},
 			},
 			Spec: v1.PodSpec{
 				Containers: []v1.Container{
