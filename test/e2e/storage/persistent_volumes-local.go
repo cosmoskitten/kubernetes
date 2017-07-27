@@ -34,6 +34,7 @@ import (
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	clientset "k8s.io/client-go/kubernetes"
+	"k8s.io/kubernetes/pkg/util/selinux"
 	"k8s.io/kubernetes/test/e2e/framework"
 )
 
@@ -92,8 +93,8 @@ const (
 	// volumeConfigName is the configmap passed to bootstrapper and provisioner
 	volumeConfigName = "local-volume-config"
 	// bootstrapper and provisioner images used for e2e tests
-	bootstrapperImageName = "quay.io/external_storage/local-volume-provisioner-bootstrap:v1.0.0"
-	provisionerImageName  = "quay.io/external_storage/local-volume-provisioner:v1.0.0"
+	bootstrapperImageName = "quay.io/external_storage/local-volume-provisioner-bootstrap:v1.0.1"
+	provisionerImageName  = "quay.io/external_storage/local-volume-provisioner:v1.0.1"
 	// provisioner daemonSetName name, must match the one defined in bootstrapper
 	daemonSetName = "local-volume-provisioner"
 	// provisioner node/pv cluster role binding, must match the one defined in bootstrapper
@@ -102,6 +103,10 @@ const (
 	// A sample request size
 	testRequestSize = "10Mi"
 )
+
+// Common selinux labels
+var selinuxLabel = &v1.SELinuxOptions{
+	Level: "s0:c0,c1"}
 
 var _ = SIGDescribe("PersistentVolumes-local [Feature:LocalPersistentVolumes] [Serial]", func() {
 	f := framework.NewDefaultFramework("persistent-local-volumes-test")
@@ -273,7 +278,6 @@ var _ = SIGDescribe("PersistentVolumes-local [Feature:LocalPersistentVolumes] [S
 			mkdirCmd := fmt.Sprintf("mkdir %v -m 777", volumePath)
 			err := framework.IssueSSHCommand(mkdirCmd, framework.TestContext.Provider, config.node0)
 			Expect(err).NotTo(HaveOccurred())
-
 			By("Waiting for a PersitentVolume to be created")
 			oldPV, err := waitForLocalPersistentVolume(config.client, volumePath)
 			Expect(err).NotTo(HaveOccurred())
@@ -305,6 +309,37 @@ var _ = SIGDescribe("PersistentVolumes-local [Feature:LocalPersistentVolumes] [S
 			fileDoesntExistCmd := createFileDoesntExistCmd(volumePath, testFile)
 			err = framework.IssueSSHCommand(fileDoesntExistCmd, framework.TestContext.Provider, config.node0)
 			Expect(err).NotTo(HaveOccurred())
+		})
+	})
+
+	Context("when using SELinux labels", func() {
+		It("a second pod using a different label should not be able to read or write to the same volume", func() {
+			if !selinux.SELinuxEnabled() {
+				framework.Skipf("The test doesn't work with SELinux disabled")
+			}
+			for _, testVolType := range LocalVolumeTypes {
+				var testVol *localTestVolume
+				By(fmt.Sprintf("local-volume-type: %s", testVolType))
+				testVol = setupLocalVolumePVCPV(config, testVolType)
+
+				By("Creating podSc1")
+				podSc1, podSc1Err := createSecPod(config, testVol, false, false, &v1.SELinuxOptions{
+					Level: "s0:c0,c1",
+				})
+				Expect(podSc1Err).NotTo(HaveOccurred())
+
+				By("Creating podSc2")
+				_, podSc2Err := createSecPod(config, testVol, false, false, &v1.SELinuxOptions{
+					Level: "s0:c2,c3",
+				})
+				Expect(podSc2Err).NotTo(HaveOccurred())
+				writeCmd, _ := createWriteAndReadCmds(volumeDir, testFile, testVol.hostDir /*writeTestFileContent*/)
+
+				By("Writing in podSc1")
+				_, podSc1WriteErr := podExec(podSc1, writeCmd)
+				Expect(podSc1WriteErr).To(ContainSubstring("Permission denied"))
+				cleanupLocalVolume(config, testVol)
+			}
 		})
 	})
 })
@@ -490,7 +525,6 @@ func makeLocalPVConfig(config *localTestConfig, volume *localTestVolume) framewo
 func createLocalPVCPV(config *localTestConfig, volume *localTestVolume) {
 	pvcConfig := makeLocalPVCConfig(config)
 	pvConfig := makeLocalPVConfig(config, volume)
-
 	var err error
 	volume.pv, volume.pvc, err = framework.CreatePVPVC(config.client, pvConfig, pvcConfig, config.ns, true)
 	framework.ExpectNoError(err)
@@ -498,11 +532,20 @@ func createLocalPVCPV(config *localTestConfig, volume *localTestVolume) {
 }
 
 func makeLocalPod(config *localTestConfig, volume *localTestVolume, cmd string) *v1.Pod {
-	return framework.MakePod(config.ns, []*v1.PersistentVolumeClaim{volume.pvc}, false, cmd)
+	return framework.MakeSecPod(config.ns, []*v1.PersistentVolumeClaim{volume.pvc}, false, cmd, false, false, selinuxLabel)
+}
+
+func createSecPod(config *localTestConfig, volume *localTestVolume, hostIPC bool, hostPID bool, seLinuxLabel *v1.SELinuxOptions) (*v1.Pod, error) {
+	pod, err := framework.CreateSecPod(config.client, config.ns, []*v1.PersistentVolumeClaim{volume.pvc}, false, "", hostIPC, hostPID, seLinuxLabel)
+	podNodeName, podNodeNameErr := podNodeName(config, pod)
+	Expect(podNodeNameErr).NotTo(HaveOccurred())
+	framework.Logf("Security Context POD %q created on Node %q", pod.Name, podNodeName)
+	Expect(podNodeName).To(Equal(config.node0.Name))
+	return pod, err
 }
 
 func createLocalPod(config *localTestConfig, volume *localTestVolume) (*v1.Pod, error) {
-	return framework.CreatePod(config.client, config.ns, []*v1.PersistentVolumeClaim{volume.pvc}, false, "")
+	return framework.CreateSecPod(config.client, config.ns, []*v1.PersistentVolumeClaim{volume.pvc}, false, "", false, false, selinuxLabel)
 }
 
 func createAndMountTmpfsLocalVolume(config *localTestConfig, dir string) {
@@ -735,6 +778,7 @@ func newLocalClaim(config *localTestConfig) *v1.PersistentVolumeClaim {
 // waitForLocalPersistentVolume waits a local persistent volume with 'volumePath' to be available.
 func waitForLocalPersistentVolume(c clientset.Interface, volumePath string) (*v1.PersistentVolume, error) {
 	var pv *v1.PersistentVolume
+
 	for start := time.Now(); time.Since(start) < 10*time.Minute && pv == nil; time.Sleep(5 * time.Second) {
 		pvs, err := c.Core().PersistentVolumes().List(metav1.ListOptions{})
 		if err != nil {
