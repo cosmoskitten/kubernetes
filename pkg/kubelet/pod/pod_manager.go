@@ -19,8 +19,11 @@ package pod
 import (
 	"sync"
 
+	"github.com/golang/glog"
+
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/kubernetes/pkg/kubelet/checkpoint"
 	"k8s.io/kubernetes/pkg/kubelet/configmap"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
 	"k8s.io/kubernetes/pkg/kubelet/secret"
@@ -115,18 +118,20 @@ type basicManager struct {
 	translationByUID map[types.UID]types.UID
 
 	// basicManager is keeping secretManager and configMapManager up-to-date.
-	secretManager    secret.Manager
-	configMapManager configmap.Manager
+	secretManager     secret.Manager
+	configMapManager  configmap.Manager
+	checkpointManager checkpoint.Manager
 
 	// A mirror pod client to create/delete mirror pods.
 	MirrorClient
 }
 
 // NewBasicPodManager returns a functional Manager.
-func NewBasicPodManager(client MirrorClient, secretManager secret.Manager, configMapManager configmap.Manager) Manager {
+func NewBasicPodManager(client MirrorClient, secretManager secret.Manager, configMapManager configmap.Manager, checkpointManager checkpoint.Manager) Manager {
 	pm := &basicManager{}
 	pm.secretManager = secretManager
 	pm.configMapManager = configMapManager
+	pm.checkpointManager = checkpointManager
 	pm.MirrorClient = client
 	pm.SetPods(nil)
 	return pm
@@ -154,6 +159,11 @@ func (pm *basicManager) UpdatePod(pod *v1.Pod) {
 	pm.lock.Lock()
 	defer pm.lock.Unlock()
 	pm.updatePodsInternal(pod)
+	if pm.checkpointManager != nil {
+		if err := pm.checkpointManager.WritePod(pod); err != nil {
+			glog.Errorf("Error writing checkpoint for pod: %v", pod.GetName())
+		}
+	}
 }
 
 // updatePodsInternal replaces the given pods in the current state of the
@@ -205,6 +215,11 @@ func (pm *basicManager) DeletePod(pod *v1.Pod) {
 	} else {
 		delete(pm.podByUID, pod.UID)
 		delete(pm.podByFullName, podFullName)
+	}
+	if pm.checkpointManager != nil {
+		if err := pm.checkpointManager.DeletePod(pod); err != nil {
+			glog.Errorf("Error deleting checkpoint for pod: %v", pod.GetName())
+		}
 	}
 }
 

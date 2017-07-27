@@ -62,6 +62,7 @@ import (
 	internalapi "k8s.io/kubernetes/pkg/kubelet/apis/cri"
 	"k8s.io/kubernetes/pkg/kubelet/cadvisor"
 	"k8s.io/kubernetes/pkg/kubelet/certificate"
+	"k8s.io/kubernetes/pkg/kubelet/checkpoint"
 	"k8s.io/kubernetes/pkg/kubelet/cm"
 	"k8s.io/kubernetes/pkg/kubelet/config"
 	"k8s.io/kubernetes/pkg/kubelet/configmap"
@@ -249,12 +250,13 @@ type Dependencies struct {
 
 // makePodSourceConfig creates a config.PodConfig from the given
 // KubeletConfiguration or returns an error.
-func makePodSourceConfig(kubeCfg *componentconfig.KubeletConfiguration, kubeDeps *Dependencies, nodeName types.NodeName) (*config.PodConfig, error) {
+func makePodSourceConfig(kubeCfg *componentconfig.KubeletConfiguration, kubeDeps *Dependencies, nodeName types.NodeName) (*config.PodConfig, checkpoint.Manager, error) {
+	var cmgr checkpoint.Manager
 	manifestURLHeader := make(http.Header)
 	if kubeCfg.ManifestURLHeader != "" {
 		pieces := strings.Split(kubeCfg.ManifestURLHeader, ":")
 		if len(pieces) != 2 {
-			return nil, fmt.Errorf("manifest-url-header must have a single ':' key-value separator, got %q", kubeCfg.ManifestURLHeader)
+			return nil, nil, fmt.Errorf("manifest-url-header must have a single ':' key-value separator, got %q", kubeCfg.ManifestURLHeader)
 		}
 		manifestURLHeader.Set(pieces[0], pieces[1])
 	}
@@ -264,7 +266,7 @@ func makePodSourceConfig(kubeCfg *componentconfig.KubeletConfiguration, kubeDeps
 
 	// define file config source
 	if kubeCfg.PodManifestPath != "" {
-		glog.Infof("Adding manifest file: %v", kubeCfg.PodManifestPath)
+		glog.Infof("Adding manifest path: %v", kubeCfg.PodManifestPath)
 		config.NewSourceFile(kubeCfg.PodManifestPath, nodeName, kubeCfg.FileCheckFrequency.Duration, cfg.Channel(kubetypes.FileSource))
 	}
 
@@ -273,11 +275,30 @@ func makePodSourceConfig(kubeCfg *componentconfig.KubeletConfiguration, kubeDeps
 		glog.Infof("Adding manifest url %q with HTTP header %v", kubeCfg.ManifestURL, manifestURLHeader)
 		config.NewSourceURL(kubeCfg.ManifestURL, manifestURLHeader, nodeName, kubeCfg.HTTPCheckFrequency.Duration, cfg.Channel(kubetypes.HTTPSource))
 	}
+
+	// This is a one-shot fill the pipeline on startup if checkpoints exist
+	if kubeCfg.CheckpointPath != "" {
+		glog.Infof("Adding checkpoint path: %v", kubeCfg.CheckpointPath)
+		cmgr = checkpoint.NewCheckpointManager(kubeCfg.CheckpointPath)
+		c := cfg.Channel(kubetypes.ApiserverSource)
+		pods, err := cmgr.LoadPods()
+		if err != nil {
+			return nil, nil, err
+		}
+		if len(pods) > 0 {
+			c <- kubetypes.PodUpdate{Pods: pods, Op: kubetypes.SET, Source: kubetypes.ApiserverSource}
+			for _, pod := range pods {
+				glog.Infof("Starting Checkpoint %v - Name (%v)", pod.GetUID(), pod.GetName())
+			}
+		}
+	}
+
 	if kubeDeps.KubeClient != nil {
 		glog.Infof("Watching apiserver")
 		config.NewSourceApiserver(kubeDeps.KubeClient, nodeName, cfg.Channel(kubetypes.ApiserverSource))
 	}
-	return cfg, nil
+
+	return cfg, cmgr, nil
 }
 
 func getRuntimeAndImageServices(config *componentconfig.KubeletConfiguration) (internalapi.RuntimeService, internalapi.ImageManagerService, error) {
@@ -361,9 +382,10 @@ func NewMainKubelet(kubeCfg *componentconfig.KubeletConfiguration,
 
 	}
 
+	var checkpointManager checkpoint.Manager
 	if kubeDeps.PodConfig == nil {
 		var err error
-		kubeDeps.PodConfig, err = makePodSourceConfig(kubeCfg, kubeDeps, nodeName)
+		kubeDeps.PodConfig, checkpointManager, err = makePodSourceConfig(kubeCfg, kubeDeps, nodeName)
 		if err != nil {
 			return nil, err
 		}
@@ -467,20 +489,21 @@ func NewMainKubelet(kubeCfg *componentconfig.KubeletConfiguration,
 		nodeRef:                   nodeRef,
 		nodeLabels:                kubeCfg.NodeLabels,
 		nodeStatusUpdateFrequency: kubeCfg.NodeStatusUpdateFrequency.Duration,
-		os:               kubeDeps.OSInterface,
-		oomWatcher:       oomWatcher,
-		cgroupsPerQOS:    kubeCfg.CgroupsPerQOS,
-		cgroupRoot:       kubeCfg.CgroupRoot,
-		mounter:          kubeDeps.Mounter,
-		writer:           kubeDeps.Writer,
-		maxPods:          int(kubeCfg.MaxPods),
-		podsPerCore:      int(kubeCfg.PodsPerCore),
-		syncLoopMonitor:  atomic.Value{},
-		resolverConfig:   kubeCfg.ResolverConfig,
-		daemonEndpoints:  daemonEndpoints,
-		containerManager: kubeDeps.ContainerManager,
-		nodeIP:           net.ParseIP(nodeIP),
-		clock:            clock.RealClock{},
+		os:                kubeDeps.OSInterface,
+		oomWatcher:        oomWatcher,
+		cgroupsPerQOS:     kubeCfg.CgroupsPerQOS,
+		cgroupRoot:        kubeCfg.CgroupRoot,
+		mounter:           kubeDeps.Mounter,
+		writer:            kubeDeps.Writer,
+		maxPods:           int(kubeCfg.MaxPods),
+		podsPerCore:       int(kubeCfg.PodsPerCore),
+		syncLoopMonitor:   atomic.Value{},
+		resolverConfig:    kubeCfg.ResolverConfig,
+		daemonEndpoints:   daemonEndpoints,
+		containerManager:  kubeDeps.ContainerManager,
+		checkpointManager: checkpointManager,
+		nodeIP:            net.ParseIP(nodeIP),
+		clock:             clock.RealClock{},
 		enableControllerAttachDetach:            kubeCfg.EnableControllerAttachDetach,
 		iptClient:                               utilipt.New(utilexec.New(), utildbus.New(), utilipt.ProtocolIpv4),
 		makeIPTablesUtilChains:                  kubeCfg.MakeIPTablesUtilChains,
@@ -536,7 +559,7 @@ func NewMainKubelet(kubeCfg *componentconfig.KubeletConfiguration,
 
 	klet.podCache = kubecontainer.NewCache()
 	// podManager is also responsible for keeping secretManager and configMapManager contents up-to-date.
-	klet.podManager = kubepod.NewBasicPodManager(kubepod.NewBasicMirrorClient(klet.kubeClient), secretManager, configMapManager)
+	klet.podManager = kubepod.NewBasicPodManager(kubepod.NewBasicMirrorClient(klet.kubeClient), secretManager, configMapManager, checkpointManager)
 
 	if kubeCfg.RemoteRuntimeEndpoint != "" {
 		// kubeCfg.RemoteImageEndpoint is same as kubeCfg.RemoteRuntimeEndpoint if not explicitly specified
@@ -933,6 +956,9 @@ type Kubelet struct {
 
 	// ConfigMap manager.
 	configMapManager configmap.Manager
+
+	// CheckPoint manager.
+	checkpointManager checkpoint.Manager
 
 	// Cached MachineInfo returned by cadvisor.
 	machineInfo *cadvisorapi.MachineInfo

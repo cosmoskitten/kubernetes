@@ -271,6 +271,9 @@ type KubeletConfiguration struct {
 	// podManifestPath is the path to the directory containing pod manifests to
 	// run, or the path to a single manifest file
 	PodManifestPath string `json:"podManifestPath"`
+	// checkpointPath is the path to the directory where the kubelet will checkpoint
+	// annotated pod manifests and configmaps before they are run
+	CheckpointPath string `json:"checkpointPath"`
 	// syncFrequency is the max period between synchronizing running
 	// containers and config
 	SyncFrequency metav1.Duration `json:"syncFrequency"`
