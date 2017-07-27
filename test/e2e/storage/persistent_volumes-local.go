@@ -34,6 +34,7 @@ import (
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	clientset "k8s.io/client-go/kubernetes"
+	"k8s.io/kubernetes/pkg/util/selinux"
 	"k8s.io/kubernetes/test/e2e/framework"
 )
 
@@ -258,6 +259,9 @@ var _ = SIGDescribe("PersistentVolumes-local [Feature:LocalPersistentVolumes] [S
 		AfterEach(func() {
 			cleanupLocalVolume(config, testVol)
 		})
+		if selinux.SELinuxEnabled() {
+			framework.Skipf("SELinux is enabled, this test will fail, skeeping it")
+		}
 
 		It("should be able to mount volume in two pods at the same time, write from pod1, and read from pod2", func() {
 			By("Creating pod1 to write to the PV")
@@ -356,6 +360,97 @@ var _ = SIGDescribe("PersistentVolumes-local [Feature:LocalPersistentVolumes] [S
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
+
+	Context("should support SELinux labeling on local storage volume", func() {
+
+		var testVol *localTestVolume
+
+		BeforeEach(func() {
+			testVol = setupLocalVolumePVCPV(config, node0)
+		})
+
+		AfterEach(func() {
+			cleanupLocalVolume(config, testVol)
+		})
+
+		It("should be able to mount volume in two pods at the same time, write from pod1, and read from pod2 when using the same SELinux label", func() {
+			By("Creating podSc1")
+			podSc1, podSc1Err := createSecPod(config, testVol, false, false, &v1.SELinuxOptions{
+				Level: "s0:c0,c1",
+			})
+			Expect(podSc1Err).NotTo(HaveOccurred())
+
+			framework.ExpectNoError(framework.WaitForPodRunningInNamespace(config.client, podSc1))
+			podSc1NodeName, podSc1NodeNameErr := podNodeName(config, podSc1)
+			Expect(podSc1NodeNameErr).NotTo(HaveOccurred())
+			framework.Logf("Security Context POD %q created on Node %q", podSc1.Name, podSc1NodeName)
+			Expect(podSc1NodeName).To(Equal(node0.Name))
+
+			By("Creating podSc2")
+			podSc2, podSc2Err := createSecPod(config, testVol, false, false, &v1.SELinuxOptions{
+				Level: "s0:c0,c1",
+			})
+			Expect(podSc2Err).NotTo(HaveOccurred())
+
+			framework.ExpectNoError(framework.WaitForPodRunningInNamespace(config.client, podSc1))
+			podSc2NodeName, podSc2NodeNameErr := podNodeName(config, podSc2)
+			Expect(podSc2NodeNameErr).NotTo(HaveOccurred())
+			framework.Logf("Security Context POD %q created on Node %q", podSc2.Name, podSc2NodeName)
+			Expect(podSc2NodeName).To(Equal(node0.Name))
+
+			writeCmd, readCmd := createWriteAndReadCmds(volumeDir, testFile, testVol.hostDir /*writeTestFileContent*/)
+			By("Writing in podSc1")
+			podRWCmdExec(podSc1, writeCmd)
+			By("Reading in podSc2")
+			readOut := podRWCmdExec(podSc2, readCmd)
+			Expect(readOut).To(ContainSubstring(testVol.hostDir)) /*aka writeTestFileContents*/
+
+			By("Deleting podSc1")
+			framework.DeletePodOrFail(config.client, config.ns, podSc1.Name)
+			By("Deleting podSc2")
+			framework.DeletePodOrFail(config.client, config.ns, podSc2.Name)
+		})
+
+		// This block should be run only when SELinux is enabled, otherwise it will fail on a negative test
+		if !selinux.SELinuxEnabled() {
+			framework.Skipf("SELinux must be configured for this test to run")
+		}
+		It("should be able to mount volume in two pods at the same time and NOT write from pod1, as pod2 overwritten SELinux label of a volume", func() {
+			By("Creating podSc1")
+			podSc1, podSc1Err := createSecPod(config, testVol, false, false, &v1.SELinuxOptions{
+				Level: "s0:c0,c1",
+			})
+			Expect(podSc1Err).NotTo(HaveOccurred())
+
+			framework.ExpectNoError(framework.WaitForPodRunningInNamespace(config.client, podSc1))
+			podSc1NodeName, podSc1NodeNameErr := podNodeName(config, podSc1)
+			Expect(podSc1NodeNameErr).NotTo(HaveOccurred())
+			framework.Logf("Security Context POD %q created on Node %q", podSc1.Name, podSc1NodeName)
+			Expect(podSc1NodeName).To(Equal(node0.Name))
+
+			By("Creating podSc2")
+			podSc2, podSc2Err := createSecPod(config, testVol, false, false, &v1.SELinuxOptions{
+				Level: "s0:c2,c3",
+			})
+			Expect(podSc2Err).NotTo(HaveOccurred())
+
+			framework.ExpectNoError(framework.WaitForPodRunningInNamespace(config.client, podSc1))
+			podSc2NodeName, podSc2NodeNameErr := podNodeName(config, podSc2)
+			Expect(podSc2NodeNameErr).NotTo(HaveOccurred())
+			framework.Logf("Security Context POD %q created on Node %q", podSc2.Name, podSc2NodeName)
+			Expect(podSc2NodeName).To(Equal(node0.Name))
+
+			writeCmd, _ := createWriteAndReadCmds(volumeDir, testFile, testVol.hostDir /*writeTestFileContent*/)
+			By("Writing in podSc1")
+			writeOut := podRWCmdExec(podSc1, writeCmd)
+			Expect(writeOut).To(ContainSubstring("Permission denied"))
+
+			By("Deleting podSc1")
+			framework.DeletePodOrFail(config.client, config.ns, podSc1.Name)
+			By("Deleting podSc2")
+			framework.DeletePodOrFail(config.client, config.ns, podSc2.Name)
+		})
+	})
 })
 
 // podNode wraps RunKubectl to get node where pod is running
@@ -446,7 +541,6 @@ func makeLocalPVConfig(config *localTestConfig, volume *localTestVolume) framewo
 func createLocalPVCPV(config *localTestConfig, volume *localTestVolume) {
 	pvcConfig := makeLocalPVCConfig(config)
 	pvConfig := makeLocalPVConfig(config, volume)
-
 	var err error
 	volume.pv, volume.pvc, err = framework.CreatePVPVC(config.client, pvConfig, pvcConfig, config.ns, true)
 	framework.ExpectNoError(err)
@@ -455,6 +549,10 @@ func createLocalPVCPV(config *localTestConfig, volume *localTestVolume) {
 
 func makeLocalPod(config *localTestConfig, volume *localTestVolume, cmd string) *v1.Pod {
 	return framework.MakePod(config.ns, []*v1.PersistentVolumeClaim{volume.pvc}, false, cmd)
+}
+
+func createSecPod(config *localTestConfig, volume *localTestVolume, hostIPC bool, hostPID bool, seLinuxLabel *v1.SELinuxOptions) (*v1.Pod, error) {
+	return framework.CreateSecPod(config.client, config.ns, []*v1.PersistentVolumeClaim{volume.pvc}, false, "", hostIPC, hostPID, seLinuxLabel)
 }
 
 func createLocalPod(config *localTestConfig, volume *localTestVolume) (*v1.Pod, error) {
@@ -466,7 +564,7 @@ func createLocalPod(config *localTestConfig, volume *localTestVolume) (*v1.Pod, 
 func createWriteAndReadCmds(testFileDir string, testFile string, writeTestFileContent string) (writeCmd string, readCmd string) {
 	testFilePath := filepath.Join(testFileDir, testFile)
 	writeCmd = fmt.Sprintf("mkdir -p %s; echo %s > %s", testFileDir, writeTestFileContent, testFilePath)
-	readCmd = fmt.Sprintf("cat %s", testFilePath)
+	readCmd = fmt.Sprintf("id; ls -l %[1]s; cat %[1]s", testFilePath)
 	return writeCmd, readCmd
 }
 
@@ -664,6 +762,7 @@ func newLocalClaim(config *localTestConfig) *v1.PersistentVolumeClaim {
 // waitForLocalPersistentVolume waits a local persistent volume with 'volumePath' to be available.
 func waitForLocalPersistentVolume(c clientset.Interface, volumePath string) (*v1.PersistentVolume, error) {
 	var pv *v1.PersistentVolume
+
 	for start := time.Now(); time.Since(start) < 10*time.Minute && pv == nil; time.Sleep(5 * time.Second) {
 		pvs, err := c.Core().PersistentVolumes().List(metav1.ListOptions{})
 		if err != nil {
