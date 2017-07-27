@@ -22,6 +22,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/imdario/mergo"
 	restclient "k8s.io/client-go/rest"
@@ -379,66 +380,28 @@ func TestInClusterClientConfigPrecedence(t *testing.T) {
 	}{
 		{
 			overrides: &ConfigOverrides{
-				ClusterInfo: clientcmdapi.Cluster{
-					Server: "https://host-from-overrides.com",
-				},
-			},
-		},
-		{
-			overrides: &ConfigOverrides{
-				AuthInfo: clientcmdapi.AuthInfo{
-					Token: "https://host-from-overrides.com",
-				},
-			},
-		},
-		{
-			overrides: &ConfigOverrides{
-				ClusterInfo: clientcmdapi.Cluster{
-					CertificateAuthority: "/path/to/ca-from-overrides.crt",
-				},
-			},
-		},
-		{
-			overrides: &ConfigOverrides{
-				ClusterInfo: clientcmdapi.Cluster{
-					Server: "https://host-from-overrides.com",
-				},
-				AuthInfo: clientcmdapi.AuthInfo{
-					Token: "https://host-from-overrides.com",
-				},
-			},
-		},
-		{
-			overrides: &ConfigOverrides{
-				ClusterInfo: clientcmdapi.Cluster{
-					Server:               "https://host-from-overrides.com",
-					CertificateAuthority: "/path/to/ca-from-overrides.crt",
-				},
-			},
-		},
-		{
-			overrides: &ConfigOverrides{
-				ClusterInfo: clientcmdapi.Cluster{
-					CertificateAuthority: "/path/to/ca-from-overrides.crt",
-				},
-				AuthInfo: clientcmdapi.AuthInfo{
-					Token: "https://host-from-overrides.com",
-				},
-			},
-		},
-		{
-			overrides: &ConfigOverrides{
-				ClusterInfo: clientcmdapi.Cluster{
-					Server:               "https://host-from-overrides.com",
-					CertificateAuthority: "/path/to/ca-from-overrides.crt",
-				},
-				AuthInfo: clientcmdapi.AuthInfo{
-					Token: "https://host-from-overrides.com",
-				},
+				Timeout: "1s",
 			},
 		},
 		{
 			overrides: &ConfigOverrides{},
+		},
+		{
+			overrides: &ConfigOverrides{
+				AuthInfo: clientcmdapi.AuthInfo{
+					Impersonate:       "tom",
+					ImpersonateGroups: []string{"tenant-a", "system:master"},
+				},
+			},
+		},
+		{
+			overrides: &ConfigOverrides{
+				Timeout: "0",
+				AuthInfo: clientcmdapi.AuthInfo{
+					Impersonate:       "tom",
+					ImpersonateGroups: []string{"tenant-a", "system:master"},
+				},
+			},
 		},
 	}
 
@@ -446,6 +409,8 @@ func TestInClusterClientConfigPrecedence(t *testing.T) {
 		expectedServer := "https://host-from-cluster.com"
 		expectedToken := "token-from-cluster"
 		expectedCAFile := "/path/to/ca-from-cluster.crt"
+		var expectedTimeout time.Duration
+		expectedImpersonate := restclient.ImpersonationConfig{}
 
 		icc := &inClusterClientConfig{
 			inClusterConfigProvider: func() (*restclient.Config, error) {
@@ -465,16 +430,23 @@ func TestInClusterClientConfigPrecedence(t *testing.T) {
 			t.Fatalf("Unxpected error: %v", err)
 		}
 
-		if overridenServer := tc.overrides.ClusterInfo.Server; len(overridenServer) > 0 {
-			expectedServer = overridenServer
+		if timeout := tc.overrides.Timeout; len(timeout) > 0 {
+			expectedTimeout, _ = ParseTimeout(timeout)
 		}
-		if overridenToken := tc.overrides.AuthInfo.Token; len(overridenToken) > 0 {
-			expectedToken = overridenToken
-		}
-		if overridenCAFile := tc.overrides.ClusterInfo.CertificateAuthority; len(overridenCAFile) > 0 {
-			expectedCAFile = overridenCAFile
+		if impersonate := tc.overrides.AuthInfo.Impersonate; len(impersonate) > 0 {
+			expectedImpersonate = restclient.ImpersonationConfig{
+				UserName: tc.overrides.AuthInfo.Impersonate,
+				Groups:   tc.overrides.AuthInfo.ImpersonateGroups,
+				Extra:    tc.overrides.AuthInfo.ImpersonateUserExtra,
+			}
 		}
 
+		if clientConfig.Timeout != expectedTimeout {
+			t.Errorf("Expected server %v, got %v", expectedTimeout, clientConfig.Timeout)
+		}
+		if !reflect.DeepEqual(clientConfig.Impersonate, expectedImpersonate) {
+			t.Errorf("Expected server %v, got %v", expectedImpersonate, clientConfig.Impersonate)
+		}
 		if clientConfig.Host != expectedServer {
 			t.Errorf("Expected server %v, got %v", expectedServer, clientConfig.Host)
 		}
