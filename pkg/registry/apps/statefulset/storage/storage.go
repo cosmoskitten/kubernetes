@@ -25,6 +25,9 @@ import (
 	"k8s.io/apiserver/pkg/registry/rest"
 	"k8s.io/kubernetes/pkg/api"
 	appsapi "k8s.io/kubernetes/pkg/apis/apps"
+	"k8s.io/kubernetes/pkg/printers"
+	printersinternal "k8s.io/kubernetes/pkg/printers/internalversion"
+	printerstorage "k8s.io/kubernetes/pkg/printers/storage"
 	"k8s.io/kubernetes/pkg/registry/apps/statefulset"
 	"k8s.io/kubernetes/pkg/registry/cachesize"
 )
@@ -47,6 +50,8 @@ func NewREST(optsGetter generic.RESTOptionsGetter) (*REST, *StatusREST) {
 		CreateStrategy: statefulset.Strategy,
 		UpdateStrategy: statefulset.Strategy,
 		DeleteStrategy: statefulset.Strategy,
+
+		TableConvertor: printerstorage.TableConvertor{TablePrinter: printers.NewTablePrinter().With(printersinternal.AddHandlers)},
 	}
 	options := &generic.StoreOptions{RESTOptions: optsGetter, AttrFunc: statefulset.GetAttrs}
 	if err := store.CompleteWithOptions(options); err != nil {
