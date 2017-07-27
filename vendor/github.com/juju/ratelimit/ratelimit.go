@@ -53,6 +53,11 @@ func (realClock) Sleep(d time.Duration) {
 	time.Sleep(d)
 }
 
+// NewRealClock returns a clock that is implemented in terms of standard time functions
+func NewRealClock() Clock {
+	return realClock{}
+}
+
 // NewBucket returns a new token bucket that fills at the
 // rate of one token every fillInterval, up to the given
 // maximum capacity. Both arguments must be
