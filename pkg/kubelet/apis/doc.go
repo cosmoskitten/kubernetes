@@ -14,6 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package dockershim provides Docker integration using
-//  pkg/kubelet/apis/cri/v1alpha1/runtime/api.pb.go
-package dockershim
+// Package apis provides the API server, including the Container Runtime
+// Interface (CRI) and stats.
+package apis

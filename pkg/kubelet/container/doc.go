@@ -14,6 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package dockershim provides Docker integration using
-//  pkg/kubelet/apis/cri/v1alpha1/runtime/api.pb.go
-package dockershim
+/*
+Package container provides various container related functionality. Provides
+garbage collection of containers. Provides a cache of pods as well as a cache
+of pod status'. Also provides generation and management of container references.
+*/
+package container

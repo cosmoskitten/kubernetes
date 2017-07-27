@@ -14,6 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package dockershim provides Docker integration using
-//  pkg/kubelet/apis/cri/v1alpha1/runtime/api.pb.go
-package dockershim
+/*
+Package cm (Container Manager) provides container creation and management. It
+interfaces, on the [Linux] host, with cgroups via OCI's libcontainer. cm also
+provides stubs for unsupported hosts.
+
+Includes QOS containers and provides pod level container management if QOS
+cgroup is enabled.
+*/
+package cm

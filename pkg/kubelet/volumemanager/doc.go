@@ -14,6 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package dockershim provides Docker integration using
-//  pkg/kubelet/apis/cri/v1alpha1/runtime/api.pb.go
-package dockershim
+// Package volumemanager provides VolumeManager. Volume manager ensures volumes
+// are attached/mounted/unmounted/detached based on the pods scheduled on a node.
+package volumemanager
