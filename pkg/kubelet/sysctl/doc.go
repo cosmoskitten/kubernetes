@@ -14,6 +14,5 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package dockershim provides Docker integration using
-//  pkg/kubelet/apis/cri/v1alpha1/runtime/api.pb.go
-package dockershim
+// Package sysctl provides verification of Linux kernel sysctl support by a container runtime.
+package sysctl
