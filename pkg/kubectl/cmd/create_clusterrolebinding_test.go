@@ -40,7 +40,7 @@ func TestClusterRoleBinding(t *testing.T) {
 	clusterRoleBinding.Name = "my-clusterrole"
 	f, tf, _, ns := cmdtesting.NewAPIFactory()
 
-    tf.Printer = &testPrinter{}
+        tf.Printer = &testPrinter{}
 	info, _ := runtime.SerializerInfoForMediaType(ns.SupportedMediaTypes(), runtime.ContentTypeJSON)
 	encoder := ns.EncoderForVersion(info.Serializer, clusterRoleBindingGroupVersion)
 
@@ -62,7 +62,7 @@ func TestClusterRoleBinding(t *testing.T) {
 	cmd.Flags().Set("clusterrole","cluster-admin")
 	cmd.Run(cmd,[]string{clusterRoleBinding.Name})
 	expectedOutput := "clusterrolebinding/" +  clusterRoleBinding.Name + "\n"
-    if buf.String() != expectedOutput {
+        if buf.String() != expectedOutput {
 		t.Errorf("expected output: %s, but got: %s", expectedOutput, buf.String())
 	}
 }
