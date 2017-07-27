@@ -21,6 +21,7 @@ import (
 
 	apps "k8s.io/api/apps/v1beta1"
 	"k8s.io/api/core/v1"
+	//"k8s.io/api/apps/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
@@ -75,3 +76,39 @@ func (s *statefulSetLister) GetPodStatefulSets(pod *v1.Pod) ([]*apps.StatefulSet
 
 	return psList, nil
 }
+
+/*
+// GetHistoryStatefulSets returns a list of StatefulSets that potentially
+// match a ControllerRevision. Only the one specified in the ControllerRevision's ControllerRef
+// will actually manage it.
+// Returns an error only if no matching StatefulSets are found.
+func (s *statefulSetLister) GetHistoryStatefulSets(history *apps.ControllerRevision) ([]*v1beta1.StatefulSet, error) {
+	if len(history.Labels) == 0 {
+		return nil, fmt.Errorf("no StatefulSet found for ControllerRevision %s because it has no labels", history.Name)
+	}
+
+	list, err := s.StatefulSets(history.Namespace).List(labels.Everything())
+	if err != nil {
+		return nil, err
+	}
+
+	var statefulSets []*v1beta1.StatefulSet
+	for _, ss := range list {
+		selector, err := metav1.LabelSelectorAsSelector(ss.Spec.Selector)
+		if err != nil {
+			return nil, fmt.Errorf("invalid label selector: %v", err)
+		}
+		// If a DaemonSet with a nil or empty selector creeps in, it should match nothing, not everything.
+		if selector.Empty() || !selector.Matches(labels.Set(history.Labels)) {
+			continue
+		}
+		statefulSets = append(statefulSets, ss)
+	}
+
+	if len(statefulSets) == 0 {
+		return nil, fmt.Errorf("could not find StatefulSets for ControllerRevision %s in namespace %s with labels: %v", history.Name, history.Namespace, history.Labels)
+	}
+
+	return statefulSets, nil
+}
+*/

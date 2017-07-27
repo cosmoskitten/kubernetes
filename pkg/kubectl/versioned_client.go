@@ -43,3 +43,12 @@ func versionedClientsetForDaemonSet(internalClient internalclientset.Interface) 
 		ExtensionsV1beta1Client: extensions.New(internalClient.Extensions().RESTClient()),
 	}
 }
+
+func versionedClientsetForStatefulSet(internalClient internalclientset.Interface) externalclientset.Interface {
+	if internalClient == nil {
+		return &externalclientset.Clientset{}
+	}
+	return &externalclientset.Clientset{
+		AppsV1beta1Client: apps.New(internalClient.Apps().RESTClient()),
+	}
+}

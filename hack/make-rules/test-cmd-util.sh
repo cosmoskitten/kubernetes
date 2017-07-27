@@ -3050,6 +3050,63 @@ run_daemonset_history_tests() {
   set +o errexit
 }
 
+run_statefulset_history_tests() {
+  set -o nounset
+  set -o errexit
+
+  create_and_use_new_namespace
+  kube::log::status "Testing kubectl(v1:statefulsets, v1:controllerrevisions)"
+
+  # Pre-condition: no statefulset exists
+  kube::test::get_object_assert statefulset "{{range.items}}{{$id_field}}:{{end}}" ''
+  
+  # Command: create a StatefulSet (revision 1)
+  kubectl create -f hack/testdata/rollingupdate-statefulset.yaml --record "${kube_flags[@]}"
+  kube::test::get_object_assert controllerrevisions "{{range.items}}{{$annotations_field}}:{{end}}" ".*rollingupdate-statefulset.yaml --record.*"
+
+  # Rollback to revision 1 - should be no-op
+  kubectl rollout undo statefulset --to-revision=1 "${kube_flags[@]}"
+  kube::test::get_object_assert statefulset "{{range.items}}{{$statefulset_image_field0}}:{{end}}" "${IMAGE_STATEFULSET_R1}:"
+  kube::test::get_object_assert statefulset "{{range.items}}{{$container_len}}{{end}}" "1"
+  
+  # Update the statefulset (revision 2)
+  kubectl apply -f hack/testdata/rollingupdate-statefulset-rv2.yaml --record "${kube_flags[@]}"
+  kube::test::wait_object_assert statefulset "{{range.items}}{{$statefulset_image_field0}}:{{end}}" "${IMAGE_STATEFULSET_R2}:"
+  kube::test::wait_object_assert statefulset "{{range.items}}{{$statefulset_image_field1}}:{{end}}" "${IMAGE_STATEFULSET_R2_2}:"
+  kube::test::get_object_assert statefulset "{{range.items}}{{$container_len}}{{end}}" "2"
+  kube::test::wait_object_assert controllerrevisions "{{range.items}}{{$annotations_field}}:{{end}}" ".*rollingupdate-statefulset-rv2.yaml --record.*"
+  
+  # Rollback to revision 1 with dry-run - should be no-op
+  kubectl rollout undo statefulset --dry-run=true "${kube_flags[@]}"
+  kube::test::get_object_assert statefulset "{{range.items}}{{$statefulset_image_field0}}:{{end}}" "${IMAGE_STATEFULSET_R2}:"
+  kube::test::get_object_assert statefulset "{{range.items}}{{$statefulset_image_field1}}:{{end}}" "${IMAGE_STATEFULSET_R2_2}:"
+  kube::test::get_object_assert statefulset "{{range.items}}{{$container_len}}{{end}}" "2"
+  
+  # Rollback to revision 1
+  kubectl rollout undo statefulset --to-revision=1 "${kube_flags[@]}"
+  kube::test::wait_object_assert statefulset "{{range.items}}{{$statefulset_image_field0}}:{{end}}" "${IMAGE_STATEFULSET_R1}:"
+  kube::test::get_object_assert statefulset "{{range.items}}{{$container_len}}{{end}}" "1"
+  
+  # Rollback to revision 1000000 - should fail
+  output_message=$(! kubectl rollout undo statefulset --to-revision=1000000 "${kube_flags[@]}" 2>&1)
+  kube::test::if_has_string "${output_message}" "unable to find specified revision"
+  kube::test::get_object_assert statefulset "{{range.items}}{{$statefulset_image_field0}}:{{end}}" "${IMAGE_STATEFULSET_R1}:"
+  kube::test::get_object_assert statefulset "{{range.items}}{{$container_len}}{{end}}" "1"
+  
+  # Rollback to last revision
+  kubectl rollout undo statefulset "${kube_flags[@]}"
+  kube::test::wait_object_assert statefulset "{{range.items}}{{$statefulset_image_field0}}:{{end}}" "${IMAGE_statefulset_R2}:"
+  kube::test::wait_object_assert statefulset "{{range.items}}{{$statefulset_image_field1}}:{{end}}" "${IMAGE_statefulset_R2_2}:"
+  kube::test::get_object_assert statefulset "{{range.items}}{{$container_len}}{{end}}" "2"
+  
+  # Clean up
+  kubectl delete -f hack/testdata/rollingupdate-statefulset.yaml "${kube_flags[@]}"
+  kubectl delete -f hack/testdata/rollingupdate-statefulset-rv2.yaml "${kube_flags[@]}"
+
+  set +o nounset
+  set +o errexit
+}
+
 run_multi_resources_tests() {
   set -o nounset
   set -o errexit
@@ -3627,7 +3684,7 @@ run_stateful_set_tests() {
   # Pre-condition: no statefulset exists
   kube::test::get_object_assert statefulset "{{range.items}}{{$id_field}}:{{end}}" ''
   # Command: create statefulset
-  kubectl create -f hack/testdata/nginx-statefulset.yaml "${kube_flags[@]}"
+  kubectl create -f hack/testdata/rollingupdate-statefulset.yaml "${kube_flags[@]}"
 
   ### Scale statefulset test with current-replicas and replicas
   # Pre-condition: 0 replicas
@@ -3644,7 +3701,7 @@ run_stateful_set_tests() {
   wait-for-pods-with-label "app=nginx-statefulset" "nginx-0"
 
   ### Clean up
-  kubectl delete -f hack/testdata/nginx-statefulset.yaml "${kube_flags[@]}"
+  kubectl delete -f hack/testdata/rollingupdate-statefulset.yaml "${kube_flags[@]}"
   # Post-condition: no pods from statefulset controller
   wait-for-pods-with-label "app=nginx-statefulset" ""
 
@@ -4186,6 +4243,8 @@ runTests() {
   container_len="(len .spec.template.spec.containers)"
   daemonset_image_field0="(index .spec.template.spec.containers 0).image"
   daemonset_image_field1="(index .spec.template.spec.containers 1).image"
+  statefulset_image_field0="(index .spec.template.spec.containers 0).image"
+  statefulset_image_field1="(index .spec.template.spec.containers 1).image"
 
   # Make sure "default" namespace exists.
   if kube::test::if_supports_resource "${namespaces}" ; then
@@ -4204,395 +4263,16 @@ runTests() {
     kubectl get "${kube_flags[@]}" -f hack/testdata/kubernetes-service.yaml
   fi
 
-  #########################
-  # Kubectl version #
-  #########################
-
-  record_command run_kubectl_version_tests
-
-  #######################
-  # kubectl config set #
-  #######################
-
-  record_command run_kubectl_config_set_tests
-
-  #######################
-  # kubectl local proxy #
-  #######################
-
-  record_command run_kubectl_local_proxy_tests
-
-  #########################
-  # RESTMapper evaluation #
-  #########################
-
-  record_command run_RESTMapper_evaluation_tests
-
-  ################
-  # Cluster Role #
-  ################
-
-  if kube::test::if_supports_resource "${clusterroles}" ; then
-    record_command run_clusterroles_tests
-  fi
-
-  ########
-  # Role #
-  ########
-  if kube::test::if_supports_resource "${roles}" ; then
-      record_command run_role_tests
-  fi
-
-  #########################
-  # Assert short name     #
-  #########################
-
-  record_command run_assert_short_name_tests
-
-  #########################
-  # Assert categories     #
-  #########################
-
-  ## test if a category is exported during discovery
-  if kube::test::if_supports_resource "${pods}" ; then
-    record_command run_assert_categories_tests
-  fi
-
-  ###########################
-  # POD creation / deletion #
-  ###########################
-
-  if kube::test::if_supports_resource "${pods}" ; then
-    record_command run_pod_tests
-  fi
-
-  if kube::test::if_supports_resource "${pods}" ; then
-    record_command run_save_config_tests
-  fi
-
-  if kube::test::if_supports_resource "${pods}" ; then
-    record_command run_kubectl_create_error_tests
-  fi
-
-  if kube::test::if_supports_resource "${pods}" ; then
-    # TODO: Move apply tests to run on rs instead of pods so that they can be
-    # run for federation apiserver as well.
-    record_command run_kubectl_apply_tests
-    record_command run_kubectl_run_tests
-    record_command run_kubectl_using_deprecated_commands_test
-    record_command run_kubectl_create_filter_tests
-  fi
-
-  if kube::test::if_supports_resource "${deployments}" ; then
-    record_command run_kubectl_apply_deployments_tests
-  fi
-
-  ###############
-  # Kubectl get #
-  ###############
-
-  if kube::test::if_supports_resource "${pods}" ; then
-    # TODO: Move get tests to run on rs instead of pods so that they can be
-    # run for federation apiserver as well.
-    record_command run_kubectl_get_tests
-  fi
-
-  ##################
-  # Global timeout #
-  ##################
-
-  if kube::test::if_supports_resource "${pods}" ; then
-    # TODO: Move request timeout tests to run on rs instead of pods so that they
-    # can be run for federation apiserver as well.
-    record_command run_kubectl_request_timeout_tests
-  fi
-
-  #####################################
-  # Third Party Resources             #
-  #####################################
-
-  # customresourcedefinitions cleanup after themselves.  Run these first, then TPRs
-  if kube::test::if_supports_resource "${customresourcedefinitions}" ; then
-    record_command run_crd_tests
-  fi
-
-  #################
-  # Run cmd w img #
-  #################
-
-  if kube::test::if_supports_resource "${deployments}" ; then
-    record_command run_cmd_with_img_tests
-  fi
-
-
-  #####################################
-  # Recursive Resources via directory #
-  #####################################
-
-  if kube::test::if_supports_resource "${pods}" ; then
-    record_command run_recursive_resources_tests
-  fi
-
-
-  ##############
-  # Namespaces #
-  ##############
-  if kube::test::if_supports_resource "${namespaces}" ; then
-    record_command run_namespace_tests
-  fi
-
-
-  ###########
-  # Secrets #
-  ###########
-  if kube::test::if_supports_resource "${namespaces}" ; then
-    if kube::test::if_supports_resource "${secrets}" ; then
-      record_command run_secrets_test
-    fi
-  fi
-
-
-  ######################
-  # ConfigMap          #
-  ######################
-
-  if kube::test::if_supports_resource "${namespaces}"; then
-    if kube::test::if_supports_resource "${configmaps}" ; then
-      record_command run_configmap_tests
-    fi
-  fi
-
-  ####################
-  # Client Config    #
-  ####################
-
-  record_command run_client_config_tests
-
-  ####################
-  # Service Accounts #
-  ####################
-
-  if kube::test::if_supports_resource "${namespaces}" && kube::test::if_supports_resource "${serviceaccounts}" ; then
-    record_command run_service_accounts_tests
-  fi
-
-  #################
-  # Pod templates #
-  #################
-
-  if kube::test::if_supports_resource "${podtemplates}" ; then
-    record_command run_pod_templates_tests
-  fi
-
-  ############
-  # Services #
-  ############
-
-  if kube::test::if_supports_resource "${services}" ; then
-    record_command run_service_tests
-  fi
-
-
-  ##################
-  # DaemonSets     #
-  ##################
-
-  if kube::test::if_supports_resource "${daemonsets}" ; then
-    record_command run_daemonset_tests
-    if kube::test::if_supports_resource "${controllerrevisions}"; then
-      record_command run_daemonset_history_tests
-    fi
-  fi
-
-  ###########################
-  # Replication controllers #
-  ###########################
-
-  if kube::test::if_supports_resource "${namespaces}" ; then
-    if kube::test::if_supports_resource "${replicationcontrollers}" ; then
-      record_command run_rc_tests
-    fi
-  fi
-
-  ######################
-  # Deployments       #
-  ######################
-
-  if kube::test::if_supports_resource "${deployments}" ; then
-    record_command run_deployment_tests
-  fi
-
-  ######################
-  # Replica Sets       #
-  ######################
-
-  if kube::test::if_supports_resource "${replicasets}" ; then
-    record_command run_rs_tests
-  fi
-
-
   #################
   # Stateful Sets #
   #################
 
   if kube::test::if_supports_resource "${statefulsets}" ; then
     record_command run_stateful_set_tests
-  fi
-
-
-  ######################
-  # Lists              #
-  ######################
-
-  if kube::test::if_supports_resource "${services}" ; then
-    if kube::test::if_supports_resource "${deployments}" ; then
-      record_command run_lists_tests
+    if kube::test::if_supports_resource "${controllerrevisions}"; then
+      record_command run_statefulset_history_tests
     fi
   fi
-
-
-  ######################
-  # Multiple Resources #
-  ######################
-  if kube::test::if_supports_resource "${services}" ; then
-    if kube::test::if_supports_resource "${replicationcontrollers}" ; then
-      record_command run_multi_resources_tests
-    fi
-  fi
-
-  ######################
-  # Persistent Volumes #
-  ######################
-
-  if kube::test::if_supports_resource "${persistentvolumes}" ; then
-    record_command run_persistent_volumes_tests
-  fi
-
-  ############################
-  # Persistent Volume Claims #
-  ############################
-
-  if kube::test::if_supports_resource "${persistentvolumeclaims}" ; then
-    record_command run_persistent_volume_claims_tests
-  fi
-
-  ############################
-  # Storage Classes #
-  ############################
-
-  if kube::test::if_supports_resource "${storageclass}" ; then
-    record_command run_storage_class_tests
-  fi
-
-  #########
-  # Nodes #
-  #########
-
-  if kube::test::if_supports_resource "${nodes}" ; then
-    record_command run_nodes_tests
-  fi
-
-
-  ########################
-  # authorization.k8s.io #
-  ########################
-
-  if kube::test::if_supports_resource "${subjectaccessreviews}" ; then
-    record_command run_authorization_tests
-  fi
-
-  # kubectl auth can-i
-  # kube-apiserver is started with authorization mode AlwaysAllow, so kubectl can-i always returns yes
-  if kube::test::if_supports_resource "${subjectaccessreviews}" ; then
-    output_message=$(kubectl auth can-i '*' '*' 2>&1 "${kube_flags[@]}")
-    kube::test::if_has_string "${output_message}" "yes"
-
-    output_message=$(kubectl auth can-i get pods --subresource=log 2>&1 "${kube_flags[@]}")
-    kube::test::if_has_string "${output_message}" "yes"
-
-    output_message=$(kubectl auth can-i get invalid_resource 2>&1 "${kube_flags[@]}")
-    kube::test::if_has_string "${output_message}" "the server doesn't have a resource type"
-
-    output_message=$(kubectl auth can-i get /logs/ 2>&1 "${kube_flags[@]}")
-    kube::test::if_has_string "${output_message}" "yes"
-
-    output_message=$(! kubectl auth can-i get /logs/ --subresource=log 2>&1 "${kube_flags[@]}")
-    kube::test::if_has_string "${output_message}" "subresource can not be used with nonResourceURL"
-
-    output_message=$(kubectl auth can-i list jobs.batch/bar -n foo --quiet 2>&1 "${kube_flags[@]}")
-    kube::test::if_empty_string "${output_message}"
-  fi
-
-  #####################
-  # Retrieve multiple #
-  #####################
-
-  if kube::test::if_supports_resource "${nodes}" ; then
-    if kube::test::if_supports_resource "${services}" ; then
-      record_command run_retrieve_multiple_tests
-    fi
-  fi
-
-
-  #####################
-  # Resource aliasing #
-  #####################
-
-  if kube::test::if_supports_resource "${services}" ; then
-    if kube::test::if_supports_resource "${replicationcontrollers}" ; then
-      record_command run_resource_aliasing_tests
-    fi
-  fi
-
-  ###########
-  # Explain #
-  ###########
-
-  if kube::test::if_supports_resource "${pods}" ; then
-    record_command run_kubectl_explain_tests
-  fi
-
-
-  ###########
-  # Swagger #
-  ###########
-
-  record_command run_swagger_tests
-
-  #####################
-  # Kubectl --sort-by #
-  #####################
-
-  if kube::test::if_supports_resource "${pods}" ; then
-    record_command run_kubectl_sort_by_tests
-  fi
-
-  ############################
-  # Kubectl --all-namespaces #
-  ############################
-
-  if kube::test::if_supports_resource "${pods}" ; then
-    record_command run_kubectl_all_namespace_tests
-  fi
-
-  ################
-  # Certificates #
-  ################
-
-  if kube::test::if_supports_resource "${csr}" ; then
-    record_command run_certificates_tests
-  fi
-
-  ###########
-  # Plugins #
-  ###########
-
-  record_command run_plugins_tests
-
-  #################
-  # Impersonation #
-  #################
-  record_command run_impersonation_tests
 
   kube::test::clear_all
 
