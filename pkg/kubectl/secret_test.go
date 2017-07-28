@@ -47,11 +47,39 @@ func TestSecretGenerate(t *testing.T) {
 		{
 			params: map[string]interface{}{
 				"name": "foo",
+				"hash": true,
+			},
+			expected: &api.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "foo-82ab14f2be",
+				},
+				Data: map[string][]byte{},
+			},
+			expectErr: false,
+		},
+		{
+			params: map[string]interface{}{
+				"name": "foo",
 				"type": "my-type",
 			},
 			expected: &api.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "foo",
+				},
+				Data: map[string][]byte{},
+				Type: "my-type",
+			},
+			expectErr: false,
+		},
+		{
+			params: map[string]interface{}{
+				"name": "foo",
+				"type": "my-type",
+				"hash": true,
+			},
+			expected: &api.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "foo-21ff395ca2",
 				},
 				Data: map[string][]byte{},
 				Type: "my-type",
@@ -66,6 +94,23 @@ func TestSecretGenerate(t *testing.T) {
 			expected: &api.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "foo",
+				},
+				Data: map[string][]byte{
+					"key1": []byte("value1"),
+					"key2": []byte("value2"),
+				},
+			},
+			expectErr: false,
+		},
+		{
+			params: map[string]interface{}{
+				"name":         "foo",
+				"from-literal": []string{"key1=value1", "key2=value2"},
+				"hash":         true,
+			},
+			expected: &api.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "foo-960caee2f6",
 				},
 				Data: map[string][]byte{
 					"key1": []byte("value1"),
@@ -111,6 +156,22 @@ func TestSecretGenerate(t *testing.T) {
 			expectErr: false,
 		},
 		{
+			params: map[string]interface{}{
+				"name":         "foo",
+				"from-literal": []string{"key1==value1"},
+				"hash":         true,
+			},
+			expected: &api.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "foo-d3a5ed6d55",
+				},
+				Data: map[string][]byte{
+					"key1": []byte("=value1"),
+				},
+			},
+			expectErr: false,
+		},
+		{
 			setup: setupEnvFile("key1=value1", "#", "", "key2=value2"),
 			params: map[string]interface{}{
 				"name":          "valid_env",
@@ -119,6 +180,24 @@ func TestSecretGenerate(t *testing.T) {
 			expected: &api.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "valid_env",
+				},
+				Data: map[string][]byte{
+					"key1": []byte("value1"),
+					"key2": []byte("value2"),
+				},
+			},
+			expectErr: false,
+		},
+		{
+			setup: setupEnvFile("key1=value1", "#", "", "key2=value2"),
+			params: map[string]interface{}{
+				"name":          "valid_env",
+				"from-env-file": "file.env",
+				"hash":          true,
+			},
+			expected: &api.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "valid_env-960caee2f6",
 				},
 				Data: map[string][]byte{
 					"key1": []byte("value1"),
@@ -140,6 +219,28 @@ func TestSecretGenerate(t *testing.T) {
 			expected: &api.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "getenv",
+				},
+				Data: map[string][]byte{
+					"g_key1": []byte("1"),
+					"g_key2": []byte(""),
+				},
+			},
+			expectErr: false,
+		},
+		{
+			setup: func() func(t *testing.T, params map[string]interface{}) func() {
+				os.Setenv("g_key1", "1")
+				os.Setenv("g_key2", "2")
+				return setupEnvFile("g_key1", "g_key2=")
+			}(),
+			params: map[string]interface{}{
+				"name":          "getenv",
+				"from-env-file": "file.env",
+				"hash":          true,
+			},
+			expected: &api.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "getenv-45ecceef20",
 				},
 				Data: map[string][]byte{
 					"g_key1": []byte("1"),
@@ -180,9 +281,26 @@ func TestSecretGenerate(t *testing.T) {
 			},
 			expectErr: false,
 		},
+		{
+			setup: setupEnvFile("  key1=  value1"),
+			params: map[string]interface{}{
+				"name":          "with_spaces",
+				"from-env-file": "file.env",
+				"hash":          true,
+			},
+			expected: &api.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "with_spaces-4bde1a9434",
+				},
+				Data: map[string][]byte{
+					"key1": []byte("  value1"),
+				},
+			},
+			expectErr: false,
+		},
 	}
 	generator := SecretGeneratorV1{}
-	for _, test := range tests {
+	for i, test := range tests {
 		if test.setup != nil {
 			if teardown := test.setup(t, test.params); teardown != nil {
 				defer teardown()
@@ -190,13 +308,14 @@ func TestSecretGenerate(t *testing.T) {
 		}
 		obj, err := generator.Generate(test.params)
 		if !test.expectErr && err != nil {
-			t.Errorf("unexpected error: %v", err)
+			t.Errorf("case %d, unexpected error: %v", i, err)
+			continue
 		}
 		if test.expectErr && err != nil {
 			continue
 		}
 		if !reflect.DeepEqual(obj.(*api.Secret), test.expected) {
-			t.Errorf("\nexpected:\n%#v\nsaw:\n%#v", test.expected, obj.(*api.Secret))
+			t.Errorf("\ncase %d, expected:\n%#v\nsaw:\n%#v", i, test.expected, obj.(*api.Secret))
 		}
 	}
 }
