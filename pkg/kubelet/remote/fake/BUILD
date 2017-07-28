@@ -1,24 +1,30 @@
 package(default_visibility = ["//visibility:public"])
 
+licenses(["notice"])
+
 load(
     "@io_bazel_rules_go//go:def.bzl",
     "go_library",
-    "go_test",
 )
 
 go_library(
     name = "go_default_library",
     srcs = [
         "doc.go",
-        "remote_image.go",
-        "remote_runtime.go",
-        "utils.go",
-    ],
+        "endpoint.go",
+        "fake_image_service.go",
+        "fake_runtime.go",
+    ] + select({
+        "@io_bazel_rules_go//go/platform:windows_amd64": [
+            "endpoint_windows.go",
+        ],
+        "//conditions:default": [],
+    }),
+    tags = ["automanaged"],
     deps = [
-        "//pkg/kubelet/apis/cri:go_default_library",
+        "//pkg/kubelet/apis/cri/testing:go_default_library",
         "//pkg/kubelet/apis/cri/v1alpha1/runtime:go_default_library",
         "//pkg/kubelet/util:go_default_library",
-        "//vendor/github.com/golang/glog:go_default_library",
         "//vendor/golang.org/x/net/context:go_default_library",
         "//vendor/google.golang.org/grpc:go_default_library",
         "//vendor/k8s.io/utils/exec:go_default_library",
@@ -34,22 +40,6 @@ filegroup(
 
 filegroup(
     name = "all-srcs",
-    srcs = [
-        ":package-srcs",
-        "//pkg/kubelet/remote/fake:all-srcs",
-    ],
+    srcs = [":package-srcs"],
     tags = ["automanaged"],
-)
-
-go_test(
-    name = "go_default_test",
-    srcs = ["remote_runtime_test.go"],
-    library = ":go_default_library",
-    tags = ["automanaged"],
-    deps = [
-        "//pkg/kubelet/apis/cri:go_default_library",
-        "//pkg/kubelet/apis/cri/testing:go_default_library",
-        "//pkg/kubelet/remote/fake:go_default_library",
-        "//vendor/github.com/stretchr/testify/assert:go_default_library",
-    ],
 )
