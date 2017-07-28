@@ -232,13 +232,12 @@ func ensureHostsFile(fileName, hostIP, hostName, hostDomainName string, hostAlia
 	if useHostNetwork {
 		// if Pod is using host network, read hosts file from the node's filesystem.
 		hostsFileContent, err = nodeHostsFileContent()
+		if err != nil {
+			return err
+		}
 	} else {
 		// if Pod is not using host network, create a managed hosts file with Pod IP and other information.
-		hostsFileContent, err = managedHostsFileContent(hostIP, hostName, hostDomainName, hostAliases)
-	}
-
-	if err != nil {
-		return err
+		hostsFileContent = managedHostsFileContent(hostIP, hostName, hostDomainName, hostAliases)
 	}
 
 	return ioutil.WriteFile(fileName, hostsFileContent, 0644)
@@ -253,7 +252,7 @@ func nodeHostsFileContent() ([]byte, error) {
 
 // managedHostsFileContent generates the content of the managed etc hosts based on Pod IP and other
 // information.
-func managedHostsFileContent(hostIP, hostName, hostDomainName string, hostAliases []v1.HostAlias) ([]byte, error) {
+func managedHostsFileContent(hostIP, hostName, hostDomainName string, hostAliases []v1.HostAlias) []byte {
 	var buffer bytes.Buffer
 	buffer.WriteString("# Kubernetes-managed hosts file.\n")
 	buffer.WriteString("127.0.0.1\tlocalhost\n")                      // ipv4 localhost
@@ -273,7 +272,7 @@ func managedHostsFileContent(hostIP, hostName, hostDomainName string, hostAliase
 			buffer.WriteString(fmt.Sprintf("%s\t%s\n", hostAlias.IP, hostname))
 		}
 	}
-	return buffer.Bytes(), nil
+	return buffer.Bytes()
 }
 
 // truncatePodHostnameIfNeeded truncates the pod hostname if it's longer than 63 chars.
