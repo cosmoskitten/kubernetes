@@ -36,7 +36,7 @@ func TestNewDeployment(t *testing.T) {
 	tester.deployment.Spec.MinReadySeconds = 4
 
 	tester.deployment.Annotations = map[string]string{"test": "should-copy-to-replica-set", v1.LastAppliedConfigAnnotation: "should-not-copy-to-replica-set"}
-	deploy, err := c.Extensions().Deployments(ns.Name).Create(tester.deployment)
+	deploy, err := c.ExtensionsV1beta1().Deployments(ns.Name).Create(tester.deployment)
 	if err != nil {
 		t.Fatalf("failed to create deployment %s: %v", deploy.Name, err)
 	}

@@ -191,5 +191,5 @@ func createAppArmorProfileLoader(f *framework.Framework) (*extensions.DaemonSet,
 			},
 		},
 	}
-	return f.ClientSet.Extensions().DaemonSets(f.Namespace.Name).Create(loader)
+	return f.ClientSet.ExtensionsV1beta1().DaemonSets(f.Namespace.Name).Create(loader)
 }

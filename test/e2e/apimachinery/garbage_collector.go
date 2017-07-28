@@ -137,7 +137,7 @@ func verifyRemainingDeploymentsReplicaSetsPods(
 	deploymentNum, rsNum, podNum int,
 ) (bool, error) {
 	var ret = true
-	rs, err := clientSet.Extensions().ReplicaSets(f.Namespace.Name).List(metav1.ListOptions{})
+	rs, err := clientSet.ExtensionsV1beta1().ReplicaSets(f.Namespace.Name).List(metav1.ListOptions{})
 	if err != nil {
 		return false, fmt.Errorf("Failed to list rs: %v", err)
 	}
@@ -145,7 +145,7 @@ func verifyRemainingDeploymentsReplicaSetsPods(
 		ret = false
 		By(fmt.Sprintf("expected %d rs, got %d rs", rsNum, len(rs.Items)))
 	}
-	deployments, err := clientSet.Extensions().Deployments(f.Namespace.Name).List(metav1.ListOptions{})
+	deployments, err := clientSet.ExtensionsV1beta1().Deployments(f.Namespace.Name).List(metav1.ListOptions{})
 	if err != nil {
 		return false, fmt.Errorf("Failed to list deployments: %v", err)
 	}
@@ -474,8 +474,8 @@ var _ = SIGDescribe("Garbage collector", func() {
 
 	It("should delete RS created by deployment when not orphaning", func() {
 		clientSet := f.ClientSet
-		deployClient := clientSet.Extensions().Deployments(f.Namespace.Name)
-		rsClient := clientSet.Extensions().ReplicaSets(f.Namespace.Name)
+		deployClient := clientSet.ExtensionsV1beta1().Deployments(f.Namespace.Name)
+		rsClient := clientSet.ExtensionsV1beta1().ReplicaSets(f.Namespace.Name)
 		deploymentName := "simpletest.deployment"
 		// TODO: find better way to keep this label unique in the test
 		uniqLabels := map[string]string{"gctest": "delete_rs"}
@@ -525,8 +525,8 @@ var _ = SIGDescribe("Garbage collector", func() {
 
 	It("should orphan RS created by deployment when deleteOptions.OrphanDependents is true", func() {
 		clientSet := f.ClientSet
-		deployClient := clientSet.Extensions().Deployments(f.Namespace.Name)
-		rsClient := clientSet.Extensions().ReplicaSets(f.Namespace.Name)
+		deployClient := clientSet.ExtensionsV1beta1().Deployments(f.Namespace.Name)
+		rsClient := clientSet.ExtensionsV1beta1().ReplicaSets(f.Namespace.Name)
 		deploymentName := "simpletest.deployment"
 		// TODO: find better way to keep this label unique in the test
 		uniqLabels := map[string]string{"gctest": "orphan_rs"}
@@ -575,7 +575,7 @@ var _ = SIGDescribe("Garbage collector", func() {
 				framework.Failf("remaining deployment's post mortem: %#v", remainingDSs)
 			}
 		}
-		rs, err := clientSet.Extensions().ReplicaSets(f.Namespace.Name).List(metav1.ListOptions{})
+		rs, err := clientSet.ExtensionsV1beta1().ReplicaSets(f.Namespace.Name).List(metav1.ListOptions{})
 		if err != nil {
 			framework.Failf("Failed to list ReplicaSet %v", err)
 		}

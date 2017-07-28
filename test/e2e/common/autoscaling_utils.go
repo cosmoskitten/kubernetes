@@ -323,14 +323,14 @@ func (rc *ResourceConsumer) GetReplicas() int {
 		}
 		return int(replicationController.Status.ReadyReplicas)
 	case KindDeployment:
-		deployment, err := rc.framework.ClientSet.Extensions().Deployments(rc.framework.Namespace.Name).Get(rc.name, metav1.GetOptions{})
+		deployment, err := rc.framework.ClientSet.ExtensionsV1beta1().Deployments(rc.framework.Namespace.Name).Get(rc.name, metav1.GetOptions{})
 		framework.ExpectNoError(err)
 		if deployment == nil {
 			framework.Failf(deploymentIsNil)
 		}
 		return int(deployment.Status.ReadyReplicas)
 	case KindReplicaSet:
-		rs, err := rc.framework.ClientSet.Extensions().ReplicaSets(rc.framework.Namespace.Name).Get(rc.name, metav1.GetOptions{})
+		rs, err := rc.framework.ClientSet.ExtensionsV1beta1().ReplicaSets(rc.framework.Namespace.Name).Get(rc.name, metav1.GetOptions{})
 		framework.ExpectNoError(err)
 		if rs == nil {
 			framework.Failf(rsIsNil)
@@ -524,11 +524,11 @@ func CreateCPUHorizontalPodAutoscaler(rc *ResourceConsumer, cpu, minReplicas, ma
 			TargetCPUUtilizationPercentage: &cpu,
 		},
 	}
-	hpa, errHPA := rc.framework.ClientSet.Autoscaling().HorizontalPodAutoscalers(rc.framework.Namespace.Name).Create(hpa)
+	hpa, errHPA := rc.framework.ClientSet.AutoscalingV1().HorizontalPodAutoscalers(rc.framework.Namespace.Name).Create(hpa)
 	framework.ExpectNoError(errHPA)
 	return hpa
 }
 
 func DeleteHorizontalPodAutoscaler(rc *ResourceConsumer, autoscalerName string) {
-	rc.framework.ClientSet.Autoscaling().HorizontalPodAutoscalers(rc.framework.Namespace.Name).Delete(autoscalerName, nil)
+	rc.framework.ClientSet.AutoscalingV1().HorizontalPodAutoscalers(rc.framework.Namespace.Name).Delete(autoscalerName, nil)
 }

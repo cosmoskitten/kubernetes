@@ -33,8 +33,8 @@ import (
 // or returns an error.
 func NewKubeletServerCertificateManager(kubeClient clientset.Interface, kubeCfg *kubeletconfig.KubeletConfiguration, nodeName types.NodeName, ips []net.IP, hostnames []string, certDirectory string) (Manager, error) {
 	var certSigningRequestClient clientcertificates.CertificateSigningRequestInterface
-	if kubeClient != nil && kubeClient.Certificates() != nil {
-		certSigningRequestClient = kubeClient.Certificates().CertificateSigningRequests()
+	if kubeClient != nil && kubeClient.CertificatesV1beta1() != nil {
+		certSigningRequestClient = kubeClient.CertificatesV1beta1().CertificateSigningRequests()
 	}
 	certificateStore, err := NewFileStore(
 		"kubelet-server",

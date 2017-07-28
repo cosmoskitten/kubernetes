@@ -76,7 +76,7 @@ func (i *initializer) Validate() error {
 }
 
 func (i *initializer) SetExternalKubeClientSet(client clientset.Interface) {
-	i.config = configuration.NewInitializerConfigurationManager(client.Admissionregistration().InitializerConfigurations())
+	i.config = configuration.NewInitializerConfigurationManager(client.AdmissionregistrationV1alpha1().InitializerConfigurations())
 }
 
 func (i *initializer) SetAuthorizer(a authorizer.Authorizer) {
