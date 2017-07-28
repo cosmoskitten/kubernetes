@@ -228,7 +228,7 @@ func createAppArmorProfileLoader(f *framework.Framework) {
 			},
 		},
 	}
-	_, err := f.ClientSet.Core().ReplicationControllers(f.Namespace.Name).Create(loader)
+	_, err := f.ClientSet.CoreV1().ReplicationControllers(f.Namespace.Name).Create(loader)
 	framework.ExpectNoError(err, "Failed to create apparmor-loader ReplicationController")
 
 	// Wait for loader to be ready.

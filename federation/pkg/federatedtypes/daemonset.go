@@ -112,28 +112,28 @@ func (a *DaemonSetAdapter) FedWatch(namespace string, options metav1.ListOptions
 
 func (a *DaemonSetAdapter) ClusterCreate(client kubeclientset.Interface, obj pkgruntime.Object) (pkgruntime.Object, error) {
 	daemonset := obj.(*extensionsv1.DaemonSet)
-	return client.Extensions().DaemonSets(daemonset.Namespace).Create(daemonset)
+	return client.ExtensionsV1beta1().DaemonSets(daemonset.Namespace).Create(daemonset)
 }
 
 func (a *DaemonSetAdapter) ClusterDelete(client kubeclientset.Interface, qualifiedName QualifiedName, options *metav1.DeleteOptions) error {
-	return client.Extensions().DaemonSets(qualifiedName.Namespace).Delete(qualifiedName.Name, options)
+	return client.ExtensionsV1beta1().DaemonSets(qualifiedName.Namespace).Delete(qualifiedName.Name, options)
 }
 
 func (a *DaemonSetAdapter) ClusterGet(client kubeclientset.Interface, qualifiedName QualifiedName) (pkgruntime.Object, error) {
-	return client.Extensions().DaemonSets(qualifiedName.Namespace).Get(qualifiedName.Name, metav1.GetOptions{})
+	return client.ExtensionsV1beta1().DaemonSets(qualifiedName.Namespace).Get(qualifiedName.Name, metav1.GetOptions{})
 }
 
 func (a *DaemonSetAdapter) ClusterList(client kubeclientset.Interface, namespace string, options metav1.ListOptions) (pkgruntime.Object, error) {
-	return client.Extensions().DaemonSets(namespace).List(options)
+	return client.ExtensionsV1beta1().DaemonSets(namespace).List(options)
 }
 
 func (a *DaemonSetAdapter) ClusterUpdate(client kubeclientset.Interface, obj pkgruntime.Object) (pkgruntime.Object, error) {
 	daemonset := obj.(*extensionsv1.DaemonSet)
-	return client.Extensions().DaemonSets(daemonset.Namespace).Update(daemonset)
+	return client.ExtensionsV1beta1().DaemonSets(daemonset.Namespace).Update(daemonset)
 }
 
 func (a *DaemonSetAdapter) ClusterWatch(client kubeclientset.Interface, namespace string, options metav1.ListOptions) (watch.Interface, error) {
-	return client.Extensions().DaemonSets(namespace).Watch(options)
+	return client.ExtensionsV1beta1().DaemonSets(namespace).Watch(options)
 }
 
 func (a *DaemonSetAdapter) IsSchedulingAdapter() bool {
