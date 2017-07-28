@@ -332,7 +332,9 @@ func (rules *ClientConfigLoadingRules) GetExplicitFile() string {
 	return rules.ExplicitPath
 }
 
-// IsDefaultConfig returns true if the provided configuration matches the default
+// IsDefaultConfig returns true if the provided configuration matches the default, but
+// config.Timeout and config.Impersonate are omitted because user may also use --as,
+// --as-group, --request-timeout inside a pod for InClusterConfig
 func (rules *ClientConfigLoadingRules) IsDefaultConfig(config *restclient.Config) bool {
 	if rules.DefaultClientConfig == nil {
 		return false
@@ -341,6 +343,10 @@ func (rules *ClientConfigLoadingRules) IsDefaultConfig(config *restclient.Config
 	if err != nil {
 		return false
 	}
+
+	defaultConfig.Timeout = config.Timeout
+	defaultConfig.Impersonate = config.Impersonate
+
 	return reflect.DeepEqual(config, defaultConfig)
 }
 

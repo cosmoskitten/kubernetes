@@ -473,8 +473,8 @@ func (config *inClusterClientConfig) ClientConfig() (*restclient.Config, error) 
 		return nil, err
 	}
 
-	// in-cluster configs only takes a host, token, or CA file
-	// if any of them were individually provided, ovewrite anything else
+	// in-cluster configs only takes a host, token, CA file, Impersonate,
+	// Timeout, if any of them were individually provided, ovewrite anything else
 	if config.overrides != nil {
 		if server := config.overrides.ClusterInfo.Server; len(server) > 0 {
 			icc.Host = server
@@ -485,6 +485,21 @@ func (config *inClusterClientConfig) ClientConfig() (*restclient.Config, error) 
 		if certificateAuthorityFile := config.overrides.ClusterInfo.CertificateAuthority; len(certificateAuthorityFile) > 0 {
 			icc.TLSClientConfig.CAFile = certificateAuthorityFile
 		}
+		if len(config.overrides.Timeout) > 0 {
+			timeout, err := ParseTimeout(config.overrides.Timeout)
+			if err != nil {
+				return nil, err
+			}
+			icc.Timeout = timeout
+		}
+		if len(config.overrides.AuthInfo.Impersonate) > 0 {
+			icc.Impersonate = restclient.ImpersonationConfig{
+				UserName: config.overrides.AuthInfo.Impersonate,
+				Groups:   config.overrides.AuthInfo.ImpersonateGroups,
+				Extra:    config.overrides.AuthInfo.ImpersonateUserExtra,
+			}
+		}
+
 	}
 
 	return icc, err

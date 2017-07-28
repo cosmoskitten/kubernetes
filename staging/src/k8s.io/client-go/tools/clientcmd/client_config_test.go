@@ -22,6 +22,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/imdario/mergo"
 	restclient "k8s.io/client-go/rest"
@@ -440,12 +441,36 @@ func TestInClusterClientConfigPrecedence(t *testing.T) {
 		{
 			overrides: &ConfigOverrides{},
 		},
+		{
+			overrides: &ConfigOverrides{
+				Timeout: "1s",
+			},
+		},
+		{
+			overrides: &ConfigOverrides{
+				AuthInfo: clientcmdapi.AuthInfo{
+					Impersonate:       "tom",
+					ImpersonateGroups: []string{"tenant-a", "system:master"},
+				},
+			},
+		},
+		{
+			overrides: &ConfigOverrides{
+				Timeout: "0",
+				AuthInfo: clientcmdapi.AuthInfo{
+					Impersonate:       "tom",
+					ImpersonateGroups: []string{"tenant-a", "system:master"},
+				},
+			},
+		},
 	}
 
 	for _, tc := range tt {
 		expectedServer := "https://host-from-cluster.com"
 		expectedToken := "token-from-cluster"
 		expectedCAFile := "/path/to/ca-from-cluster.crt"
+		var expectedTimeout time.Duration
+		expectedImpersonate := restclient.ImpersonationConfig{}
 
 		icc := &inClusterClientConfig{
 			inClusterConfigProvider: func() (*restclient.Config, error) {
@@ -464,6 +489,16 @@ func TestInClusterClientConfigPrecedence(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Unxpected error: %v", err)
 		}
+		if timeout := tc.overrides.Timeout; len(timeout) > 0 {
+			expectedTimeout, _ = ParseTimeout(timeout)
+		}
+		if impersonate := tc.overrides.AuthInfo.Impersonate; len(impersonate) > 0 {
+			expectedImpersonate = restclient.ImpersonationConfig{
+				UserName: tc.overrides.AuthInfo.Impersonate,
+				Groups:   tc.overrides.AuthInfo.ImpersonateGroups,
+				Extra:    tc.overrides.AuthInfo.ImpersonateUserExtra,
+			}
+		}
 
 		if overridenServer := tc.overrides.ClusterInfo.Server; len(overridenServer) > 0 {
 			expectedServer = overridenServer
@@ -475,6 +510,12 @@ func TestInClusterClientConfigPrecedence(t *testing.T) {
 			expectedCAFile = overridenCAFile
 		}
 
+		if clientConfig.Timeout != expectedTimeout {
+			t.Errorf("Expected server %v, got %v", expectedTimeout, clientConfig.Timeout)
+		}
+		if !reflect.DeepEqual(clientConfig.Impersonate, expectedImpersonate) {
+			t.Errorf("Expected server %v, got %v", expectedImpersonate, clientConfig.Impersonate)
+		}
 		if clientConfig.Host != expectedServer {
 			t.Errorf("Expected server %v, got %v", expectedServer, clientConfig.Host)
 		}
