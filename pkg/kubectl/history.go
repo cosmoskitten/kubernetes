@@ -72,7 +72,7 @@ type DeploymentHistoryViewer struct {
 // TODO: this should be a describer
 func (h *DeploymentHistoryViewer) ViewHistory(namespace, name string, revision int64) (string, error) {
 	versionedClient := versionedClientsetForDeployment(h.c)
-	deployment, err := versionedClient.Extensions().Deployments(namespace).Get(name, metav1.GetOptions{})
+	deployment, err := versionedClient.ExtensionsV1beta1().Deployments(namespace).Get(name, metav1.GetOptions{})
 	if err != nil {
 		return "", fmt.Errorf("failed to retrieve deployment %s: %v", name, err)
 	}

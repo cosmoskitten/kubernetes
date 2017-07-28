@@ -2822,7 +2822,7 @@ type DeploymentDescriber struct {
 }
 
 func (dd *DeploymentDescriber) Describe(namespace, name string, describerSettings printers.DescriberSettings) (string, error) {
-	d, err := dd.versionedClient.Extensions().Deployments(namespace).Get(name, metav1.GetOptions{})
+	d, err := dd.versionedClient.ExtensionsV1beta1().Deployments(namespace).Get(name, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}

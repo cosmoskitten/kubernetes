@@ -70,7 +70,7 @@ func (t *DeploymentUpgradeTest) Setup(f *framework.Framework) {
 
 	By(fmt.Sprintf("Creating a deployment %q in namespace %q", deploymentName, ns))
 	d := framework.NewDeployment(deploymentName, int32(1), map[string]string{"test": "upgrade"}, "nginx", nginxImage, extensions.RollingUpdateDeploymentStrategyType)
-	deployment, err := c.Extensions().Deployments(ns).Create(d)
+	deployment, err := c.ExtensionsV1beta1().Deployments(ns).Create(d)
 	framework.ExpectNoError(err)
 
 	// Wait for it to be updated to revision 1
@@ -120,7 +120,7 @@ func (t *DeploymentUpgradeTest) Setup(f *framework.Framework) {
 
 	// Store new replica set - should be the same after the upgrade.
 	t.newRS = rs
-	deployment, err = c.Extensions().Deployments(ns).Get(deployment.Name, metav1.GetOptions{})
+	deployment, err = c.ExtensionsV1beta1().Deployments(ns).Get(deployment.Name, metav1.GetOptions{})
 	framework.ExpectNoError(err)
 	t.oldD = deployment
 }
@@ -133,7 +133,7 @@ func (t *DeploymentUpgradeTest) Test(f *framework.Framework, done <-chan struct{
 
 	c := f.ClientSet
 
-	deployment, err := c.Extensions().Deployments(t.oldD.Namespace).Get(t.oldD.Name, metav1.GetOptions{})
+	deployment, err := c.ExtensionsV1beta1().Deployments(t.oldD.Namespace).Get(t.oldD.Name, metav1.GetOptions{})
 	framework.ExpectNoError(err)
 	t.updatedD = deployment
 

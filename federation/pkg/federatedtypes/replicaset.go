@@ -129,28 +129,28 @@ func (a *ReplicaSetAdapter) FedWatch(namespace string, options metav1.ListOption
 
 func (a *ReplicaSetAdapter) ClusterCreate(client kubeclientset.Interface, obj pkgruntime.Object) (pkgruntime.Object, error) {
 	replicaset := obj.(*extensionsv1.ReplicaSet)
-	return client.Extensions().ReplicaSets(replicaset.Namespace).Create(replicaset)
+	return client.ExtensionsV1beta1().ReplicaSets(replicaset.Namespace).Create(replicaset)
 }
 
 func (a *ReplicaSetAdapter) ClusterDelete(client kubeclientset.Interface, qualifiedName QualifiedName, options *metav1.DeleteOptions) error {
-	return client.Extensions().ReplicaSets(qualifiedName.Namespace).Delete(qualifiedName.Name, options)
+	return client.ExtensionsV1beta1().ReplicaSets(qualifiedName.Namespace).Delete(qualifiedName.Name, options)
 }
 
 func (a *ReplicaSetAdapter) ClusterGet(client kubeclientset.Interface, qualifiedName QualifiedName) (pkgruntime.Object, error) {
-	return client.Extensions().ReplicaSets(qualifiedName.Namespace).Get(qualifiedName.Name, metav1.GetOptions{})
+	return client.ExtensionsV1beta1().ReplicaSets(qualifiedName.Namespace).Get(qualifiedName.Name, metav1.GetOptions{})
 }
 
 func (a *ReplicaSetAdapter) ClusterList(client kubeclientset.Interface, namespace string, options metav1.ListOptions) (pkgruntime.Object, error) {
-	return client.Extensions().ReplicaSets(namespace).List(options)
+	return client.ExtensionsV1beta1().ReplicaSets(namespace).List(options)
 }
 
 func (a *ReplicaSetAdapter) ClusterUpdate(client kubeclientset.Interface, obj pkgruntime.Object) (pkgruntime.Object, error) {
 	replicaset := obj.(*extensionsv1.ReplicaSet)
-	return client.Extensions().ReplicaSets(replicaset.Namespace).Update(replicaset)
+	return client.ExtensionsV1beta1().ReplicaSets(replicaset.Namespace).Update(replicaset)
 }
 
 func (a *ReplicaSetAdapter) ClusterWatch(client kubeclientset.Interface, namespace string, options metav1.ListOptions) (watch.Interface, error) {
-	return client.Extensions().ReplicaSets(namespace).Watch(options)
+	return client.ExtensionsV1beta1().ReplicaSets(namespace).Watch(options)
 }
 
 func (a *ReplicaSetAdapter) EquivalentIgnoringSchedule(obj1, obj2 pkgruntime.Object) bool {

@@ -536,7 +536,7 @@ func GetNewReplicaSet(deployment *extensions.Deployment, c clientset.Interface) 
 // RsListFromClient returns an rsListFunc that wraps the given client.
 func RsListFromClient(c clientset.Interface) RsListFunc {
 	return func(namespace string, options metav1.ListOptions) ([]*extensions.ReplicaSet, error) {
-		rsList, err := c.Extensions().ReplicaSets(namespace).List(options)
+		rsList, err := c.ExtensionsV1beta1().ReplicaSets(namespace).List(options)
 		if err != nil {
 			return nil, err
 		}

@@ -124,7 +124,7 @@ func (a *GenericAdmissionWebhook) SetClientCert(cert, key []byte) {
 }
 
 func (a *GenericAdmissionWebhook) SetExternalKubeClientSet(client clientset.Interface) {
-	a.hookSource = configuration.NewExternalAdmissionHookConfigurationManager(client.Admissionregistration().ExternalAdmissionHookConfigurations())
+	a.hookSource = configuration.NewExternalAdmissionHookConfigurationManager(client.AdmissionregistrationV1alpha1().ExternalAdmissionHookConfigurations())
 }
 
 func (a *GenericAdmissionWebhook) Validate() error {

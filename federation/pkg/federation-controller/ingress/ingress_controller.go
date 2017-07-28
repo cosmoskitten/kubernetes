@@ -166,10 +166,10 @@ func NewIngressController(client federationclientset.Interface) *IngressControll
 			return cache.NewInformer(
 				&cache.ListWatch{
 					ListFunc: func(options metav1.ListOptions) (pkgruntime.Object, error) {
-						return targetClient.Extensions().Ingresses(metav1.NamespaceAll).List(options)
+						return targetClient.ExtensionsV1beta1().Ingresses(metav1.NamespaceAll).List(options)
 					},
 					WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-						return targetClient.Extensions().Ingresses(metav1.NamespaceAll).Watch(options)
+						return targetClient.ExtensionsV1beta1().Ingresses(metav1.NamespaceAll).Watch(options)
 					},
 				},
 				&extensionsv1beta1.Ingress{},
@@ -234,7 +234,7 @@ func NewIngressController(client federationclientset.Interface) *IngressControll
 		func(client kubeclientset.Interface, obj pkgruntime.Object) error {
 			ingress := obj.(*extensionsv1beta1.Ingress)
 			glog.V(4).Infof("Attempting to create Ingress: %v", ingress)
-			_, err := client.Extensions().Ingresses(ingress.Namespace).Create(ingress)
+			_, err := client.ExtensionsV1beta1().Ingresses(ingress.Namespace).Create(ingress)
 			if err != nil {
 				glog.Errorf("Error creating ingress %q: %v", types.NamespacedName{Name: ingress.Name, Namespace: ingress.Namespace}, err)
 			} else {
@@ -245,7 +245,7 @@ func NewIngressController(client federationclientset.Interface) *IngressControll
 		func(client kubeclientset.Interface, obj pkgruntime.Object) error {
 			ingress := obj.(*extensionsv1beta1.Ingress)
 			glog.V(4).Infof("Attempting to update Ingress: %v", ingress)
-			_, err := client.Extensions().Ingresses(ingress.Namespace).Update(ingress)
+			_, err := client.ExtensionsV1beta1().Ingresses(ingress.Namespace).Update(ingress)
 			if err != nil {
 				glog.V(4).Infof("Failed to update Ingress: %v", err)
 			} else {
@@ -257,7 +257,7 @@ func NewIngressController(client federationclientset.Interface) *IngressControll
 			ingress := obj.(*extensionsv1beta1.Ingress)
 			glog.V(4).Infof("Attempting to delete Ingress: %v", ingress)
 			orphanDependents := false
-			err := client.Extensions().Ingresses(ingress.Namespace).Delete(ingress.Name, &metav1.DeleteOptions{OrphanDependents: &orphanDependents})
+			err := client.ExtensionsV1beta1().Ingresses(ingress.Namespace).Delete(ingress.Name, &metav1.DeleteOptions{OrphanDependents: &orphanDependents})
 			return err
 		})
 

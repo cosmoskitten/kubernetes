@@ -67,8 +67,8 @@ func startHPAControllerWithMetricsClient(ctx ControllerContext, metricsClient me
 	replicaCalc := podautoscaler.NewReplicaCalculator(metricsClient, hpaClient.Core())
 	go podautoscaler.NewHorizontalController(
 		ctx.ClientBuilder.ClientGoClientOrDie("horizontal-pod-autoscaler").Core(),
-		hpaClient.Extensions(),
-		hpaClient.Autoscaling(),
+		hpaClient.ExtensionsV1beta1(),
+		hpaClient.AutoscalingV1(),
 		replicaCalc,
 		ctx.InformerFactory.Autoscaling().V1().HorizontalPodAutoscalers(),
 		ctx.Options.HorizontalPodAutoscalerSyncPeriod.Duration,

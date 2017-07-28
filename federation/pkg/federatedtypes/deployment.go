@@ -129,28 +129,28 @@ func (a *DeploymentAdapter) FedWatch(namespace string, options metav1.ListOption
 
 func (a *DeploymentAdapter) ClusterCreate(client kubeclientset.Interface, obj pkgruntime.Object) (pkgruntime.Object, error) {
 	deployment := obj.(*extensionsv1.Deployment)
-	return client.Extensions().Deployments(deployment.Namespace).Create(deployment)
+	return client.ExtensionsV1beta1().Deployments(deployment.Namespace).Create(deployment)
 }
 
 func (a *DeploymentAdapter) ClusterDelete(client kubeclientset.Interface, qualifiedName QualifiedName, options *metav1.DeleteOptions) error {
-	return client.Extensions().Deployments(qualifiedName.Namespace).Delete(qualifiedName.Name, options)
+	return client.ExtensionsV1beta1().Deployments(qualifiedName.Namespace).Delete(qualifiedName.Name, options)
 }
 
 func (a *DeploymentAdapter) ClusterGet(client kubeclientset.Interface, qualifiedName QualifiedName) (pkgruntime.Object, error) {
-	return client.Extensions().Deployments(qualifiedName.Namespace).Get(qualifiedName.Name, metav1.GetOptions{})
+	return client.ExtensionsV1beta1().Deployments(qualifiedName.Namespace).Get(qualifiedName.Name, metav1.GetOptions{})
 }
 
 func (a *DeploymentAdapter) ClusterList(client kubeclientset.Interface, namespace string, options metav1.ListOptions) (pkgruntime.Object, error) {
-	return client.Extensions().Deployments(namespace).List(options)
+	return client.ExtensionsV1beta1().Deployments(namespace).List(options)
 }
 
 func (a *DeploymentAdapter) ClusterUpdate(client kubeclientset.Interface, obj pkgruntime.Object) (pkgruntime.Object, error) {
 	deployment := obj.(*extensionsv1.Deployment)
-	return client.Extensions().Deployments(deployment.Namespace).Update(deployment)
+	return client.ExtensionsV1beta1().Deployments(deployment.Namespace).Update(deployment)
 }
 
 func (a *DeploymentAdapter) ClusterWatch(client kubeclientset.Interface, namespace string, options metav1.ListOptions) (watch.Interface, error) {
-	return client.Extensions().Deployments(namespace).Watch(options)
+	return client.ExtensionsV1beta1().Deployments(namespace).Watch(options)
 }
 
 func (a *DeploymentAdapter) EquivalentIgnoringSchedule(obj1, obj2 pkgruntime.Object) bool {

@@ -41,12 +41,12 @@ func UpdateReplicaSetWithRetries(c clientset.Interface, namespace, name string, 
 	var updateErr error
 	pollErr := wait.PollImmediate(1*time.Second, 1*time.Minute, func() (bool, error) {
 		var err error
-		if rs, err = c.Extensions().ReplicaSets(namespace).Get(name, metav1.GetOptions{}); err != nil {
+		if rs, err = c.ExtensionsV1beta1().ReplicaSets(namespace).Get(name, metav1.GetOptions{}); err != nil {
 			return false, err
 		}
 		// Apply the update, then attempt to push it to the apiserver.
 		applyUpdate(rs)
-		if rs, err = c.Extensions().ReplicaSets(namespace).Update(rs); err == nil {
+		if rs, err = c.ExtensionsV1beta1().ReplicaSets(namespace).Update(rs); err == nil {
 			Logf("Updating replica set %q", name)
 			return true, nil
 		}
@@ -61,7 +61,7 @@ func UpdateReplicaSetWithRetries(c clientset.Interface, namespace, name string, 
 
 // CheckNewRSAnnotations check if the new RS's annotation is as expected
 func CheckNewRSAnnotations(c clientset.Interface, ns, deploymentName string, expectedAnnotations map[string]string) error {
-	deployment, err := c.Extensions().Deployments(ns).Get(deploymentName, metav1.GetOptions{})
+	deployment, err := c.ExtensionsV1beta1().Deployments(ns).Get(deploymentName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -81,7 +81,7 @@ func CheckNewRSAnnotations(c clientset.Interface, ns, deploymentName string, exp
 // Delete a ReplicaSet and all pods it spawned
 func DeleteReplicaSet(clientset clientset.Interface, internalClientset internalclientset.Interface, ns, name string) error {
 	By(fmt.Sprintf("deleting ReplicaSet %s in namespace %s", name, ns))
-	rc, err := clientset.Extensions().ReplicaSets(ns).Get(name, metav1.GetOptions{})
+	rc, err := clientset.ExtensionsV1beta1().ReplicaSets(ns).Get(name, metav1.GetOptions{})
 	if err != nil {
 		if apierrs.IsNotFound(err) {
 			Logf("ReplicaSet %s was already deleted: %v", name, err)
@@ -130,7 +130,7 @@ func waitForReplicaSetPodsGone(c clientset.Interface, rs *extensions.ReplicaSet)
 // WaitForReadyReplicaSet waits until the replica set has all of its replicas ready.
 func WaitForReadyReplicaSet(c clientset.Interface, ns, name string) error {
 	err := wait.Poll(Poll, pollShortTimeout, func() (bool, error) {
-		rs, err := c.Extensions().ReplicaSets(ns).Get(name, metav1.GetOptions{})
+		rs, err := c.ExtensionsV1beta1().ReplicaSets(ns).Get(name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
