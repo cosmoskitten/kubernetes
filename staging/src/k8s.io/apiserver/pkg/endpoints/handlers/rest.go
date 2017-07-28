@@ -318,6 +318,13 @@ func ListResource(r rest.Lister, rw rest.Watcher, e rest.Exporter, scope Request
 			scope.err(err, w, req)
 			return
 		}
+		if scope.Kind.Kind == "ConfigMap" {
+			glog.V(2).Infoln("#### ListResource on ConfigMap")
+			glog.V(2).Infof("#### Query: %v", req.URL.Query())
+			glog.V(2).Infof("#### Export Options: %v", exportOptions)
+			glog.V(2).Infof("#### Options: %v", opts)
+		}
+
 
 		// transform fields
 		// TODO: DecodeParametersInto should do this.
@@ -363,14 +370,15 @@ func ListResource(r rest.Lister, rw rest.Watcher, e rest.Exporter, scope Request
 			if timeout == 0 && minRequestTimeout > 0 {
 				timeout = time.Duration(float64(minRequestTimeout) * (rand.Float64() + 1.0))
 			}
-			glog.V(2).Infof("Starting watch for %s, rv=%s labels=%s fields=%s timeout=%s", req.URL.Path, opts.ResourceVersion, opts.LabelSelector, opts.FieldSelector, timeout)
+			glog.V(2).Infof("#### Starting watch for %s, rv=%s labels=%s fields=%s timeout=%s", req.URL.Path, opts.ResourceVersion, opts.LabelSelector, opts.FieldSelector, timeout)
+			glog.V(2).Infof("#### Export Options: %v", exportOptions)
 
 			watcher, err := rw.Watch(ctx, &opts)
 			if err != nil {
 				scope.err(err, w, req)
 				return
 			}
-			serveWatch(watcher, scope, req, w, timeout)
+			serveWatch(watcher, e, scope, req, w, timeout, exportOptions)
 			return
 		}
 
