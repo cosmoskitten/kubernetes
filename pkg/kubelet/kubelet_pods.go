@@ -114,7 +114,7 @@ func makeMounts(pod *v1.Pod, podDir string, container *v1.Container, hostName, h
 	// - container is not already mounting on /etc/hosts
 	// - OS is not Windows
 	// Kubernetes will not mount /etc/hosts if:
-	// - when the pause container is being created, its IP is still unknown. Hence, PodIP will not have been set.
+	// - when the Pod sandbox is being created, its IP is still unknown. Hence, PodIP will not have been set.
 	mountEtcHostsFile := len(podIP) > 0 && runtime.GOOS != "windows"
 	glog.V(3).Infof("container: %v/%v/%v podIP: %q creating hosts mount: %v", pod.Namespace, pod.Name, container.Name, podIP, mountEtcHostsFile)
 	mounts := []kubecontainer.Mount{}
