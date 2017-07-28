@@ -179,6 +179,43 @@ func TestMakeMounts(t *testing.T) {
 	}
 }
 
+func TestNodeHostsFileContent(t *testing.T) {
+	testCases := []struct {
+		hostsFilePath   string
+		expectedContent string
+	}{
+		{
+			"hosts_test_file1",
+			`# hosts file for testing.
+127.0.0.1	localhost
+::1	localhost ip6-localhost ip6-loopback
+fe00::0	ip6-localnet
+fe00::0	ip6-mcastprefix
+fe00::1	ip6-allnodes
+fe00::2	ip6-allrouters
+123.45.67.89	some.domain
+`,
+		},
+		{
+			"hosts_test_file2",
+			`# another hosts file for testing.
+127.0.0.1	localhost
+::1	localhost ip6-localhost ip6-loopback
+fe00::0	ip6-localnet
+fe00::0	ip6-mcastprefix
+fe00::1	ip6-allnodes
+fe00::2	ip6-allrouters
+12.34.56.78	another.domain
+`,
+		},
+	}
+
+	for _, testCase := range testCases {
+		actualContent, _ := nodeHostsFileContent(testCase.hostsFilePath)
+		assert.Equal(t, testCase.expectedContent, string(actualContent), "hosts file content not expected")
+	}
+}
+
 func TestManagedHostsFileContent(t *testing.T) {
 	testCases := []struct {
 		hostIP          string
@@ -264,7 +301,7 @@ fe00::2	ip6-allrouters
 	}
 
 	for _, testCase := range testCases {
-		actualContent, _ := managedHostsFileContent(testCase.hostIP, testCase.hostName, testCase.hostDomainName, testCase.hostAliases)
+		actualContent := managedHostsFileContent(testCase.hostIP, testCase.hostName, testCase.hostDomainName, testCase.hostAliases)
 		assert.Equal(t, testCase.expectedContent, string(actualContent), "hosts file content not expected")
 	}
 }
