@@ -49,6 +49,10 @@ type StorageClass struct {
 	// created with this reclaimPolicy. Defaults to Delete.
 	// +optional
 	ReclaimPolicy *v1.PersistentVolumeReclaimPolicy `json:"reclaimPolicy,omitempty" protobuf:"bytes,4,opt,name=reclaimPolicy,casttype=k8s.io/api/core/v1.PersistentVolumeReclaimPolicy"`
+
+	// AllowVolumeExpand shows whether the storage class allow volume expand
+	// +optional
+	AllowVolumeExpand *bool `json:"allowVolumeExpand,omitempty" protobuf:"varint,5,opt,name=allowVolumeExpand"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
