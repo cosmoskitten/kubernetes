@@ -479,6 +479,8 @@ func (adc *attachDetachController) nodeDelete(obj interface{}) {
 	}
 
 	adc.processVolumesInUse(nodeName, node.Status.VolumesInUse, false /* forceUnmount */)
+	// delete the node from nodesToUpdateStatusFor when nodeDelete event is received.
+	adc.actualStateOfWorld.RemoveNodeFromAttachUpdates(nodeName)
 }
 
 // processVolumesInUse processes the list of volumes marked as "in-use"
