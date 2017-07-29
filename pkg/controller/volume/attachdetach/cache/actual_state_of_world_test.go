@@ -1094,6 +1094,46 @@ func Test_OneVolumeTwoNodes_TwoDevicePaths(t *testing.T) {
 	verifyAttachedVolume(t, attachedVolumes, generatedVolumeName2, string(volumeName), node2Name, devicePath2, true /* expectedMountedByNode */, false /* expectNonZeroDetachRequestedTime */)
 }
 
+// Test_AddNodeFromAttachUpdates expects the map nodesToUpdateStatusFor
+// adds a new node if the AddNodeFromAttachUpdates is called on a node that
+// does not exist in the actual state of the world
+func Test_AddNodeFromAttachUpdates(t *testing.T) {
+	// Arrange
+	volumePluginMgr, _ := volumetesting.GetTestVolumePluginMgr(t)
+	asw := NewActualStateOfWorld(volumePluginMgr)
+	nodeName := types.NodeName("new-node")
+
+	// Act
+	asw.AddNodeFromAttachUpdates(nodeName)
+
+	// Assert
+	nodesToUpdateStatusFor := asw.GetNodesToUpdateStatusFor()
+	if len(nodesToUpdateStatusFor) != 1 {
+		t.Fatalf("the new node should be added into nodesToUpdateStatusFor.")
+	}
+}
+
+// Test_AddNodeFromAttachUpdatesError expects the map nodesToUpdateStatusFor
+// does not add the node that already be added into the actual state of the world
+func Test_AddNodeFromAttachUpdatesError(t *testing.T) {
+	// Arrange
+	volumePluginMgr, _ := volumetesting.GetTestVolumePluginMgr(t)
+	asw := NewActualStateOfWorld(volumePluginMgr)
+	nodeName := types.NodeName("node-test")
+
+	// Act
+	asw.AddNodeFromAttachUpdates(nodeName)
+
+	// Act again
+	asw.AddNodeFromAttachUpdates(nodeName)
+
+	// Assert
+	nodesToUpdateStatusFor := asw.GetNodesToUpdateStatusFor()
+	if len(nodesToUpdateStatusFor) != 1 {
+		t.Fatalf("the len of nodesToUpdateStatusFor should be 1 as nodeName exists")
+	}
+}
+
 // Test_SetNodeStatusUpdateNeededError expects the map nodesToUpdateStatusFor
 // to be empty if the SetNodeStatusUpdateNeeded is called on a node that
 // does not exist in the actual state of the world

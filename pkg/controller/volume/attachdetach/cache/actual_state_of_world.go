@@ -127,8 +127,13 @@ type ActualStateOfWorld interface {
 	GetNodesToUpdateStatusFor() map[types.NodeName]nodeToUpdateStatusFor
 
 	// Removes the given node from the record of attach updates. The node's entire
-	// volumesToReportAsAttached list is removed.
+	// nodesToUpdateStatusFor list is removed.
 	RemoveNodeFromAttachUpdates(nodeName types.NodeName) error
+
+	// AddNodeFromAttachUpdates add new node to nodesToUpdateStatusFor.
+	// If the specifed node exists in the nodesToUpdateStatusFor list,
+	// log the error and return
+	AddNodeFromAttachUpdates(nodeName types.NodeName)
 }
 
 // AttachedVolume represents a volume that is attached to a node.
@@ -273,7 +278,7 @@ func (asw *actualStateOfWorld) RemoveNodeFromAttachUpdates(nodeName types.NodeNa
 		delete(asw.nodesToUpdateStatusFor, nodeName)
 		return nil
 	}
-	return fmt.Errorf("node %q does not exist in volumesToReportAsAttached list",
+	return fmt.Errorf("node %q does not exist in nodesToUpdateStatusFor list",
 		nodeName)
 }
 
@@ -485,6 +490,27 @@ func (asw *actualStateOfWorld) addVolumeToReportAsAttached(
 		asw.nodesToUpdateStatusFor[nodeName] = nodeToUpdate
 		glog.V(4).Infof("Report volume %q as attached to node %q", volumeName, nodeName)
 	}
+}
+
+// AddNodeFromAttachUpdates add new node to nodesToUpdateStatusFor
+func (asw *actualStateOfWorld) AddNodeFromAttachUpdates(nodeName types.NodeName) {
+	asw.Lock()
+	defer asw.Unlock()
+	nodeToUpdate, nodeToUpdateExists := asw.nodesToUpdateStatusFor[nodeName]
+	if nodeToUpdateExists {
+		// should not happen
+		errMsg := fmt.Sprintf("Failed to add new node %q to nodesToUpdateStatusFor, "+
+			"because the node exists", nodeName)
+		glog.Errorf(errMsg)
+	}
+
+	nodeToUpdate = nodeToUpdateStatusFor{
+		nodeName:                  nodeName,
+		statusUpdateNeeded:        true,
+		volumesToReportAsAttached: make(map[v1.UniqueVolumeName]v1.UniqueVolumeName),
+	}
+	asw.nodesToUpdateStatusFor[nodeName] = nodeToUpdate
+	glog.V(4).Infof("Add new node %q to nodesToUpdateStatusFor", nodeName)
 }
 
 // Update the flag statusUpdateNeeded to indicate whether node status is already updated or
