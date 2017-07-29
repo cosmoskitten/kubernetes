@@ -37,11 +37,6 @@ const (
 	kubeConfigVolumeName = "kubeconfig"
 )
 
-// caCertsPkiVolumePath specifies the path that can be conditionally mounted into the apiserver and controller-manager containers
-// as /etc/ssl/certs might be a symlink to it. It's a variable since it may be changed in unit testing. This var MUST NOT be changed
-// in normal codepaths during runtime.
-var caCertsPkiVolumePath = "/etc/pki"
-
 // getHostPathVolumesForTheControlPlane gets the required hostPath volumes and mounts for the control plane
 func getHostPathVolumesForTheControlPlane(cfg *kubeadmapi.MasterConfiguration) controlPlaneHostPathMounts {
 	mounts := newControlPlaneHostPathMounts()
@@ -55,7 +50,7 @@ func getHostPathVolumesForTheControlPlane(cfg *kubeadmapi.MasterConfiguration) c
 
 	// If external etcd is specified, mount the directories needed for accessing the CA/serving certs and the private key
 	if len(cfg.Etcd.Endpoints) != 0 {
-		etcdVols, etcdVolMounts := getEtcdCertVolumes(cfg.Etcd)
+		etcdVols, etcdVolMounts := getEtcdCertVolumes(cfg.Etcd, cfg.CACertificatesPkiDir)
 		mounts.AddHostPathMounts(kubeAPIServer, etcdVols, etcdVolMounts)
 	}
 
@@ -76,9 +71,9 @@ func getHostPathVolumesForTheControlPlane(cfg *kubeadmapi.MasterConfiguration) c
 
 	// On some systems were we host-mount /etc/ssl/certs, it is also required to mount /etc/pki. This is needed
 	// due to symlinks pointing from files in /etc/ssl/certs into /etc/pki/
-	if isPkiVolumeMountNeeded() {
-		mounts.NewHostPathMount(kubeAPIServer, caCertsPkiVolumeName, caCertsPkiVolumePath, caCertsPkiVolumePath, true)
-		mounts.NewHostPathMount(kubeControllerManager, caCertsPkiVolumeName, caCertsPkiVolumePath, caCertsPkiVolumePath, true)
+	if isPkiVolumeMountNeeded(cfg.CACertificatesPkiDir) {
+		mounts.NewHostPathMount(kubeAPIServer, caCertsPkiVolumeName, cfg.CACertificatesPkiDir, cfg.CACertificatesPkiDir, true)
+		mounts.NewHostPathMount(kubeControllerManager, caCertsPkiVolumeName, cfg.CACertificatesPkiDir, cfg.CACertificatesPkiDir, true)
 	}
 
 	return mounts
@@ -135,7 +130,7 @@ func newVolumeMount(name, path string, readOnly bool) v1.VolumeMount {
 }
 
 // getEtcdCertVolumes returns the volumes/volumemounts needed for talking to an external etcd cluster
-func getEtcdCertVolumes(etcdCfg kubeadmapi.Etcd) ([]v1.Volume, []v1.VolumeMount) {
+func getEtcdCertVolumes(etcdCfg kubeadmapi.Etcd, caCertsPkiVolumePath string) ([]v1.Volume, []v1.VolumeMount) {
 	certPaths := []string{etcdCfg.CAFile, etcdCfg.CertFile, etcdCfg.KeyFile}
 	certDirs := sets.NewString()
 	for _, certPath := range certPaths {
@@ -175,7 +170,7 @@ func getEtcdCertVolumes(etcdCfg kubeadmapi.Etcd) ([]v1.Volume, []v1.VolumeMount)
 // isPkiVolumeMountNeeded specifies whether /etc/pki should be host-mounted into the containers
 // On some systems were we host-mount /etc/ssl/certs, it is also required to mount /etc/pki. This is needed
 // due to symlinks pointing from files in /etc/ssl/certs into /etc/pki/
-func isPkiVolumeMountNeeded() bool {
+func isPkiVolumeMountNeeded(caCertsPkiVolumePath string) bool {
 	if _, err := os.Stat(caCertsPkiVolumePath); err == nil {
 		return true
 	}

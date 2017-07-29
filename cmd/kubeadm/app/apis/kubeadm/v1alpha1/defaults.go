@@ -25,15 +25,16 @@ import (
 )
 
 const (
-	DefaultServiceDNSDomain   = "cluster.local"
-	DefaultServicesSubnet     = "10.96.0.0/12"
-	DefaultKubernetesVersion  = "stable-1.7"
-	DefaultAPIBindPort        = 6443
-	DefaultAuthorizationModes = "Node,RBAC"
-	DefaultCACertPath         = "/etc/kubernetes/pki/ca.crt"
-	DefaultCertificatesDir    = "/etc/kubernetes/pki"
-	DefaultEtcdDataDir        = "/var/lib/etcd"
-	DefaultImageRepository    = "gcr.io/google_containers"
+	DefaultServiceDNSDomain     = "cluster.local"
+	DefaultServicesSubnet       = "10.96.0.0/12"
+	DefaultKubernetesVersion    = "stable-1.7"
+	DefaultAPIBindPort          = 6443
+	DefaultAuthorizationModes   = "Node,RBAC"
+	DefaultCACertPath           = "/etc/kubernetes/pki/ca.crt"
+	DefaultCertificatesDir      = "/etc/kubernetes/pki"
+	DefaultCACertificatesPkiDir = "/etc/pki"
+	DefaultEtcdDataDir          = "/var/lib/etcd"
+	DefaultImageRepository      = "gcr.io/google_containers"
 )
 
 func addDefaultingFuncs(scheme *runtime.Scheme) error {
@@ -63,6 +64,10 @@ func SetDefaults_MasterConfiguration(obj *MasterConfiguration) {
 
 	if obj.CertificatesDir == "" {
 		obj.CertificatesDir = DefaultCertificatesDir
+	}
+
+	if obj.CACertificatesPkiDir == "" {
+		obj.CACertificatesPkiDir = DefaultCACertificatesPkiDir
 	}
 
 	if obj.TokenTTL == 0 {

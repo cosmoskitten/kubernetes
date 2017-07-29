@@ -51,6 +51,8 @@ type MasterConfiguration struct {
 	APIServerCertSANs []string
 	// CertificatesDir specifies where to store or look for all required certificates
 	CertificatesDir string
+	// CACertificatesPkiDir specifies where to mount host CA certficates
+	CACertificatesPkiDir string
 
 	// ImageRepository what container registry to pull control plane images from
 	ImageRepository string

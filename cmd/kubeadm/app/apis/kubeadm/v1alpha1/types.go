@@ -51,6 +51,8 @@ type MasterConfiguration struct {
 	APIServerCertSANs []string `json:"apiServerCertSANs"`
 	// CertificatesDir specifies where to store or look for all required certificates
 	CertificatesDir string `json:"certificatesDir"`
+	// CACertificatesPkiDir specifies where to mount host CA certficates
+	CACertificatesPkiDir string `json:"caCertificatesPkiDir"`
 
 	// ImageRepository what container registry to pull control plane images from
 	ImageRepository string `json:"imageRepository"`
