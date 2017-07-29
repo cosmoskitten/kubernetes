@@ -54,6 +54,10 @@ type StorageClass struct {
 	// PersistentVolumes of this storage class are created with
 	// +optional
 	ReclaimPolicy *api.PersistentVolumeReclaimPolicy
+
+	// AllowVolumeExpand shows whether the storage class allow volume expand
+	// +optional
+	AllowVolumeExpand *bool
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
