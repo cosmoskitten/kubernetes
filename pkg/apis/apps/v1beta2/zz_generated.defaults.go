@@ -171,6 +171,9 @@ func SetObjectDefaults_DaemonSet(in *v1beta2.DaemonSet) {
 			}
 		}
 	}
+	if in.Spec.Template.Spec.Affinity != nil {
+		v1.SetDefaults_Affinity(in.Spec.Template.Spec.Affinity)
+	}
 }
 
 func SetObjectDefaults_DaemonSetList(in *v1beta2.DaemonSetList) {
@@ -312,6 +315,9 @@ func SetObjectDefaults_Deployment(in *v1beta2.Deployment) {
 			}
 		}
 	}
+	if in.Spec.Template.Spec.Affinity != nil {
+		v1.SetDefaults_Affinity(in.Spec.Template.Spec.Affinity)
+	}
 }
 
 func SetObjectDefaults_DeploymentList(in *v1beta2.DeploymentList) {
@@ -452,6 +458,9 @@ func SetObjectDefaults_StatefulSet(in *v1beta2.StatefulSet) {
 				}
 			}
 		}
+	}
+	if in.Spec.Template.Spec.Affinity != nil {
+		v1.SetDefaults_Affinity(in.Spec.Template.Spec.Affinity)
 	}
 	for i := range in.Spec.VolumeClaimTemplates {
 		a := &in.Spec.VolumeClaimTemplates[i]
