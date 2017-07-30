@@ -36,7 +36,9 @@ import (
 )
 
 const allAvailableInterfaces string = ""
-const stickyMaxAgeMinutes int = 180 // TODO: parameterize this in the API.
+
+// defaultStickyMaxAgeSeconds default value is 180 minutes
+const defaultStickyMaxAgeSeconds int = 180 * 60
 
 type portal struct {
 	ip         string
@@ -368,7 +370,13 @@ func (proxier *Proxier) mergeService(service *api.Service) map[ServicePortPortal
 				},
 				Port: servicePort.Name,
 			}
-			proxier.loadBalancer.NewService(servicePortName, service.Spec.SessionAffinity, stickyMaxAgeMinutes)
+			sessionStickyTimeoutSeconds := 0
+			if service.Spec.ClientIPAffinityConfig != nil && service.Spec.ClientIPAffinityConfig.TimeoutSeconds > 0 {
+				sessionStickyTimeoutSeconds = int(service.Spec.ClientIPAffinityConfig.TimeoutSeconds)
+			} else {
+				sessionStickyTimeoutSeconds = defaultStickyMaxAgeSeconds
+			}
+			proxier.loadBalancer.NewService(servicePortName, service.Spec.SessionAffinity, sessionStickyTimeoutSeconds)
 		}
 	}
 

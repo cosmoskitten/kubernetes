@@ -179,7 +179,7 @@ func TestGetChainLinesMultipleTables(t *testing.T) {
 func newFakeServiceInfo(service proxy.ServicePortName, ip net.IP, port int, protocol api.Protocol, onlyNodeLocalEndpoints bool) *serviceInfo {
 	return &serviceInfo{
 		sessionAffinityType:    api.ServiceAffinityNone, // default
-		stickyMaxAgeMinutes:    180,                     // TODO: paramaterize this in the API.
+		stickyMaxAgeSeconds:    defaultStickyMaxAgeSeconds,
 		clusterIP:              ip,
 		port:                   port,
 		protocol:               protocol,

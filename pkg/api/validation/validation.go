@@ -1787,6 +1787,16 @@ func validateProbe(probe *api.Probe, fldPath *field.Path) field.ErrorList {
 	return allErrs
 }
 
+func validateClientIPAffinityConfig(config *api.ClientIPAffinityConfig, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	if config == nil {
+		return allErrs
+	}
+
+	allErrs = append(allErrs, ValidateNonnegativeField(int64(config.TimeoutSeconds), fldPath.Child("timeoutSeconds"))...)
+	return allErrs
+}
+
 // AccumulateUniqueHostPorts extracts each HostPort of each Container,
 // accumulating the results and returning an error if any ports conflict.
 func AccumulateUniqueHostPorts(containers []api.Container, accumulator *sets.String, fldPath *field.Path) field.ErrorList {
@@ -2843,6 +2853,8 @@ func ValidateService(service *api.Service) field.ErrorList {
 	} else if !supportedSessionAffinityType.Has(string(service.Spec.SessionAffinity)) {
 		allErrs = append(allErrs, field.NotSupported(specPath.Child("sessionAffinity"), service.Spec.SessionAffinity, supportedSessionAffinityType.List()))
 	}
+
+	allErrs = append(allErrs, validateClientIPAffinityConfig(service.Spec.ClientIPAffinityConfig, specPath.Child("clientIPAffinityConfig"))...)
 
 	if helper.IsServiceIPSet(service) {
 		if ip := net.ParseIP(service.Spec.ClusterIP); ip == nil {

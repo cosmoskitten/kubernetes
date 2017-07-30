@@ -10224,3 +10224,43 @@ func TestValidateFlexVolumeSource(t *testing.T) {
 		}
 	}
 }
+
+func TestValidateClientIPAffinityConfig(t *testing.T) {
+	validTimeoutSeconds := []int32{
+		0,
+		1,
+		10800,
+	}
+	// first case: ClientIPAffinityConfig is nil
+	successCases := []*api.ClientIPAffinityConfig{nil}
+	for _, timeout := range validTimeoutSeconds {
+		config := &api.ClientIPAffinityConfig{
+			TimeoutSeconds: timeout,
+		}
+		successCases = append(successCases, config)
+	}
+
+	for _, config := range successCases {
+		if errs := validateClientIPAffinityConfig(config, field.NewPath("field")); len(errs) != 0 {
+			t.Errorf("expected success: %v", errs)
+		}
+	}
+
+	invalidTimeoutSeconds := []int32{
+		-1,
+		-10800,
+	}
+	errorCases := []*api.ClientIPAffinityConfig{}
+	for _, timeout := range invalidTimeoutSeconds {
+		config := &api.ClientIPAffinityConfig{
+			TimeoutSeconds: timeout,
+		}
+		errorCases = append(errorCases, config)
+	}
+
+	for _, config := range errorCases {
+		if errs := validateClientIPAffinityConfig(config, field.NewPath("field")); len(errs) == 0 {
+			t.Errorf("expected failure for %v", config)
+		}
+	}
+}
