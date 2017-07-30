@@ -44,7 +44,7 @@ var _ = SIGDescribe("Opaque resources [Feature:OpaqueResources]", func() {
 			nodes, err := f.ClientSet.Core().Nodes().List(metav1.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())
 			for _, n := range nodes.Items {
-				if !system.IsMasterNode(n.Name) {
+				if !system.IsMasterNode(n) {
 					node = &n
 					break
 				}
