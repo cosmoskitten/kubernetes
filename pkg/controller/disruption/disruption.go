@@ -107,7 +107,7 @@ type controllerAndScale struct {
 
 // podControllerFinder is a function type that maps a pod to a list of
 // controllers and their scale.
-type podControllerFinder func(*v1.Pod) ([]controllerAndScale, error)
+type podControllerFinder func(*v1.Pod) (*controllerAndScale, error)
 
 func NewDisruptionController(
 	podInformer coreinformers.PodInformer,
@@ -182,8 +182,7 @@ var (
 )
 
 // getPodReplicaSets finds replicasets which have no matching deployments.
-func (dc *DisruptionController) getPodReplicaSets(pod *v1.Pod) ([]controllerAndScale, error) {
-	var casSlice []controllerAndScale
+func (dc *DisruptionController) getPodReplicaSets(pod *v1.Pod) (*controllerAndScale, error) {
 	controllerRef := controller.GetControllerOf(pod)
 	if controllerRef == nil {
 		return nil, nil
@@ -204,13 +203,11 @@ func (dc *DisruptionController) getPodReplicaSets(pod *v1.Pod) ([]controllerAndS
 		// Skip RS if it's controlled by a Deployment.
 		return nil, nil
 	}
-	casSlice = append(casSlice, controllerAndScale{rs.UID, *(rs.Spec.Replicas)})
-	return casSlice, nil
+	return &controllerAndScale{rs.UID, *(rs.Spec.Replicas)}, nil
 }
 
 // getPodStatefulSet returns the statefulset managing the given pod.
-func (dc *DisruptionController) getPodStatefulSets(pod *v1.Pod) ([]controllerAndScale, error) {
-	var casSlice []controllerAndScale
+func (dc *DisruptionController) getPodStatefulSets(pod *v1.Pod) (*controllerAndScale, error) {
 	controllerRef := controller.GetControllerOf(pod)
 	if controllerRef == nil {
 		return nil, nil
@@ -227,13 +224,11 @@ func (dc *DisruptionController) getPodStatefulSets(pod *v1.Pod) ([]controllerAnd
 		return nil, nil
 	}
 
-	casSlice = append(casSlice, controllerAndScale{ss.UID, *(ss.Spec.Replicas)})
-	return casSlice, nil
+	return &controllerAndScale{ss.UID, *(ss.Spec.Replicas)}, nil
 }
 
 // getPodDeployments finds deployments for any replicasets which are being managed by deployments.
-func (dc *DisruptionController) getPodDeployments(pod *v1.Pod) ([]controllerAndScale, error) {
-	var casSlice []controllerAndScale
+func (dc *DisruptionController) getPodDeployments(pod *v1.Pod) (*controllerAndScale, error) {
 	controllerRef := controller.GetControllerOf(pod)
 	if controllerRef == nil {
 		return nil, nil
@@ -264,12 +259,10 @@ func (dc *DisruptionController) getPodDeployments(pod *v1.Pod) ([]controllerAndS
 	if deployment.UID != controllerRef.UID {
 		return nil, nil
 	}
-	casSlice = append(casSlice, controllerAndScale{deployment.UID, *(deployment.Spec.Replicas)})
-	return casSlice, nil
+	return &controllerAndScale{deployment.UID, *(deployment.Spec.Replicas)}, nil
 }
 
-func (dc *DisruptionController) getPodReplicationControllers(pod *v1.Pod) ([]controllerAndScale, error) {
-	var casSlice []controllerAndScale
+func (dc *DisruptionController) getPodReplicationControllers(pod *v1.Pod) (*controllerAndScale, error) {
 	controllerRef := controller.GetControllerOf(pod)
 	if controllerRef == nil {
 		return nil, nil
@@ -285,8 +278,7 @@ func (dc *DisruptionController) getPodReplicationControllers(pod *v1.Pod) ([]con
 	if rc.UID != controllerRef.UID {
 		return nil, nil
 	}
-	casSlice = append(casSlice, controllerAndScale{rc.UID, *(rc.Spec.Replicas)})
-	return casSlice, nil
+	return &controllerAndScale{rc.UID, *(rc.Spec.Replicas)}, nil
 }
 
 func (dc *DisruptionController) Run(stopCh <-chan struct{}) {
@@ -596,13 +588,13 @@ func (dc *DisruptionController) getExpectedScale(pdb *policy.PodDisruptionBudget
 	for _, pod := range pods {
 		controllerCount := 0
 		for _, finder := range dc.finders() {
-			var controllers []controllerAndScale
-			controllers, err = finder(pod)
+			var controllerNScale *controllerAndScale
+			controllerNScale, err = finder(pod)
 			if err != nil {
 				return
 			}
-			for _, controller := range controllers {
-				controllerScale[controller.UID] = controller.scale
+			if controllerNScale != nil {
+				controllerScale[controllerNScale.UID] = controllerNScale.scale
 				controllerCount++
 			}
 		}
