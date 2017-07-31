@@ -162,6 +162,10 @@ go_test(
         "reason_cache_test.go",
         "runonce_test.go",
     ],
+    data = [
+        "hosts_test_file1",
+        "hosts_test_file2",
+    ],
     library = ":go_default_library",
     tags = ["automanaged"],
     deps = [
