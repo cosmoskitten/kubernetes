@@ -17,10 +17,13 @@ limitations under the License.
 package kubelet
 
 import (
+	"bufio"
 	"bytes"
 	"errors"
 	"fmt"
 	"net"
+	"os"
+	"path"
 	"sort"
 	"testing"
 
@@ -179,7 +182,60 @@ func TestMakeMounts(t *testing.T) {
 	}
 }
 
-func TestHostsFileContent(t *testing.T) {
+func TestNodeHostsFileContent(t *testing.T) {
+	testCases := []struct {
+		hostsFileName   string
+		expectedContent string
+	}{
+		{
+			"hosts_test_file1",
+			`# hosts file for testing.
+127.0.0.1	localhost
+::1	localhost ip6-localhost ip6-loopback
+fe00::0	ip6-localnet
+fe00::0	ip6-mcastprefix
+fe00::1	ip6-allnodes
+fe00::2	ip6-allrouters
+123.45.67.89	some.domain
+`,
+		},
+		{
+			"hosts_test_file2",
+			`# another hosts file for testing.
+127.0.0.1	localhost
+::1	localhost ip6-localhost ip6-loopback
+fe00::0	ip6-localnet
+fe00::0	ip6-mcastprefix
+fe00::1	ip6-allnodes
+fe00::2	ip6-allrouters
+12.34.56.78	another.domain
+`,
+		},
+	}
+
+	for _, testCase := range testCases {
+		hostsFilePath := path.Join("/", "tmp", testCase.hostsFileName)
+
+		f, err := os.Create(hostsFilePath)
+		if err != nil {
+			t.Fatalf("failed to create test file: %v", err)
+		}
+		defer os.Remove(hostsFilePath)
+		defer f.Close()
+
+		w := bufio.NewWriter(f)
+		_, err = w.WriteString(testCase.expectedContent)
+		if err != nil {
+			t.Fatalf("failed to write test file: %v", err)
+		}
+		w.Flush()
+
+		actualContent, _ := nodeHostsFileContent(hostsFilePath)
+		assert.Equal(t, testCase.expectedContent, string(actualContent), "hosts file content not expected")
+	}
+}
+
+func TestManagedHostsFileContent(t *testing.T) {
 	testCases := []struct {
 		hostIP          string
 		hostName        string
@@ -264,8 +320,8 @@ fe00::2	ip6-allrouters
 	}
 
 	for _, testCase := range testCases {
-		actualContent := string(hostsFileContent(testCase.hostIP, testCase.hostName, testCase.hostDomainName, testCase.hostAliases))
-		assert.Equal(t, testCase.expectedContent, actualContent, "hosts file content not expected")
+		actualContent := managedHostsFileContent(testCase.hostIP, testCase.hostName, testCase.hostDomainName, testCase.hostAliases)
+		assert.Equal(t, testCase.expectedContent, string(actualContent), "hosts file content not expected")
 	}
 }
 
