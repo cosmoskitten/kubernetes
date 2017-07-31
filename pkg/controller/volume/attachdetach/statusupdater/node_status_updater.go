@@ -19,7 +19,6 @@ limitations under the License.
 package statusupdater
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/golang/glog"
@@ -27,10 +26,10 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	clientset "k8s.io/client-go/kubernetes"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/kubernetes/pkg/controller/volume/attachdetach/cache"
+	nodeutil "k8s.io/kubernetes/pkg/util/node"
 )
 
 // NodeStatusUpdater defines a set of operations for updating the
@@ -99,48 +98,12 @@ func (nsu *nodeStatusUpdater) UpdateNodeStatuses() error {
 }
 
 func (nsu *nodeStatusUpdater) updateNodeStatus(nodeName types.NodeName, nodeObj *v1.Node, attachedVolumes []v1.AttachedVolume) error {
-	node := nodeObj.DeepCopy()
-
-	// TODO: Change to pkg/util/node.UpdateNodeStatus.
-	oldData, err := json.Marshal(node)
-	if err != nil {
-		return fmt.Errorf(
-			"failed to Marshal oldData for node %q. %v",
-			nodeName,
-			err)
+	nodeCopy := nodeObj.DeepCopy()
+	nodeCopy.Status.VolumesAttached = attachedVolumes
+	if _, err := nodeutil.PatchNodeStatus(nsu.kubeClient, nodeName, nodeObj, nodeCopy); err != nil {
+		return err
 	}
 
-	node.Status.VolumesAttached = attachedVolumes
-
-	newData, err := json.Marshal(node)
-	if err != nil {
-		return fmt.Errorf(
-			"failed to Marshal newData for node %q. %v",
-			nodeName,
-			err)
-	}
-
-	patchBytes, err :=
-		strategicpatch.CreateTwoWayMergePatch(oldData, newData, node)
-	if err != nil {
-		return fmt.Errorf(
-			"failed to CreateTwoWayMergePatch for node %q. %v",
-			nodeName,
-			err)
-	}
-
-	_, err = nsu.kubeClient.Core().Nodes().PatchStatus(string(nodeName), patchBytes)
-	if err != nil {
-		return fmt.Errorf(
-			"failed to kubeClient.Core().Nodes().Patch for node %q. %v",
-			nodeName,
-			err)
-	}
-	glog.V(4).Infof(
-		"Updating status for node %q succeeded. patchBytes: %q VolumesAttached: %v",
-		nodeName,
-		string(patchBytes),
-		node.Status.VolumesAttached)
-
+	glog.V(4).Infof("Updating status for node %q succeeded. VolumesAttached: %v", nodeName, attachedVolumes)
 	return nil
 }
