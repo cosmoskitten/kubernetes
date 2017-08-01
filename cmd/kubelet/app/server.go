@@ -40,9 +40,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
+	utilvalidation "k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/server/healthz"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
@@ -316,14 +318,70 @@ func initConfigz(kc *componentconfig.KubeletConfiguration) (*configz.Config, err
 	return cz, err
 }
 
-// validateConfig validates configuration of Kubelet and returns an error if the input configuration is invalid.
-func validateConfig(s *options.KubeletServer) error {
+// validateConfig validates configuration of Kubelet and returns a slice of errors if the input configuration is invalid.
+func validateConfig(s *options.KubeletServer) []error {
+	var errors []error
 	if !s.CgroupsPerQOS && len(s.EnforceNodeAllocatable) > 0 {
-		return fmt.Errorf("Node Allocatable enforcement is not supported unless Cgroups Per QOS feature is turned on")
+		errors = append(errors, fmt.Errorf("Node Allocatable enforcement is not supported unless Cgroups Per QOS feature is turned on"))
 	}
 	if s.SystemCgroups != "" && s.CgroupRoot == "" {
-		return fmt.Errorf("invalid configuration: system container was specified and cgroup root was not specified")
+		errors = append(errors, fmt.Errorf("Invalid configuration: system container was specified and cgroup root was not specified"))
 	}
+	if utilvalidation.IsValidPortNum(int(s.CAdvisorPort)) != nil {
+		errors = append(errors, fmt.Errorf("Invalid configuration: --cadvisor-port %v must be between 0 and 65535", s.CAdvisorPort))
+	}
+	if s.EventBurst < 0 {
+		errors = append(errors, fmt.Errorf("Invalid configuration: --event-burst %v should not be a negative number", s.EventBurst))
+	}
+	if s.EventRecordQPS < 0 {
+		errors = append(errors, fmt.Errorf("Invalid configuration: --event-qps %v should not be a negative number", s.EventRecordQPS))
+	}
+	if utilvalidation.IsValidPortNum(int(s.HealthzPort)) != nil {
+		errors = append(errors, fmt.Errorf("Invalid configuration: --healthz-port %v must be between 0 and 65535", s.HealthzPort))
+	}
+	if utilvalidation.IsInRange(int(s.ImageGCHighThresholdPercent), 0, 100) != nil {
+		errors = append(errors, fmt.Errorf("Invalid configuration: --image-gc-high-threshold %v must be between 0 and 100", s.ImageGCHighThresholdPercent))
+	}
+	if utilvalidation.IsInRange(int(s.ImageGCLowThresholdPercent), 0, 100) != nil {
+		errors = append(errors, fmt.Errorf("Invalid configuration: --image-gc-low-threshold %v must be between 0 and 100", s.ImageGCLowThresholdPercent))
+	}
+	if utilvalidation.IsInRange(int(s.IPTablesDropBit), 0, 31) != nil {
+		errors = append(errors, fmt.Errorf("Invalid configuration: --iptables-drop-bit %v must be between 0 and 31", s.IPTablesDropBit))
+	}
+	if utilvalidation.IsInRange(int(s.IPTablesMasqueradeBit), 0, 31) != nil {
+		errors = append(errors, fmt.Errorf("Invalid configuration: --iptables-masquerade-bit %v must be between 0 and 31", s.IPTablesMasqueradeBit))
+	}
+	if s.KubeAPIBurst < 0 {
+		errors = append(errors, fmt.Errorf("Invalid configuration: --kube-api-burst %v should not be a negative number", s.KubeAPIBurst))
+	}
+	if s.KubeAPIQPS < 0 {
+		errors = append(errors, fmt.Errorf("Invalid configuration: --kube-api-qps %v should not be a negative number", s.KubeAPIQPS))
+	}
+	if s.MaxOpenFiles < 0 {
+		errors = append(errors, fmt.Errorf("Invalid configuration: --max-open-files %v should not be a negative number", s.MaxOpenFiles))
+	}
+	if s.MaxPods < 0 {
+		errors = append(errors, fmt.Errorf("Invalid configuration: --max-pods %v should not be a negative number", s.MaxPods))
+	}
+	if utilvalidation.IsInRange(int(s.OOMScoreAdj), -1000, 1000) != nil {
+		errors = append(errors, fmt.Errorf("Invalid configuration: --port %v must be between -1000 and 1000", s.OOMScoreAdj))
+	}
+	if s.PodsPerCore < 0 {
+		errors = append(errors, fmt.Errorf("Invalid configuration: --max-pods %v should not be a negative number", s.PodsPerCore))
+	}
+	if utilvalidation.IsValidPortNum(int(s.Port)) != nil {
+		errors = append(errors, fmt.Errorf("Invalid configuration: --port %v must be between 0 and 65535", s.Port))
+	}
+	if utilvalidation.IsValidPortNum(int(s.ReadOnlyPort)) != nil {
+		errors = append(errors, fmt.Errorf("Invalid configuration: --read-only-port %v must be between 0 and 65535", s.ReadOnlyPort))
+	}
+	if s.RegistryBurst < 0 {
+		errors = append(errors, fmt.Errorf("Invalid configuration: --registry-burst %v should not be a negative number", s.RegistryBurst))
+	}
+	if s.RegistryPullQPS < 0 {
+		errors = append(errors, fmt.Errorf("Invalid configuration: --registry-qps %v should not be a negative number", s.RegistryPullQPS))
+	}
+
 	for _, val := range s.EnforceNodeAllocatable {
 		switch val {
 		case cm.NodeAllocatableEnforcementKey:
@@ -331,10 +389,10 @@ func validateConfig(s *options.KubeletServer) error {
 		case cm.KubeReservedEnforcementKey:
 			continue
 		default:
-			return fmt.Errorf("invalid option %q specified for EnforceNodeAllocatable setting. Valid options are %q, %q or %q", val, cm.NodeAllocatableEnforcementKey, cm.SystemReservedEnforcementKey, cm.KubeReservedEnforcementKey)
+			errors = append(errors, fmt.Errorf("invalid option %q specified for EnforceNodeAllocatable setting. Valid options are %q, %q or %q", val, cm.NodeAllocatableEnforcementKey, cm.SystemReservedEnforcementKey, cm.KubeReservedEnforcementKey))
 		}
 	}
-	return nil
+	return errors
 }
 
 // makeEventRecorder sets up kubeDeps.Recorder if its nil. Its a no-op otherwise.
@@ -418,8 +476,8 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies) (err error) {
 	}
 
 	// Validate configuration.
-	if err := validateConfig(s); err != nil {
-		return err
+	if errs := validateConfig(s); len(errs) != 0 {
+		return utilerrors.NewAggregate(errs)
 	}
 
 	if kubeDeps == nil {

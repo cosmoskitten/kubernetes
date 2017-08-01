@@ -154,6 +154,22 @@ func TestIsValidPortNum(t *testing.T) {
 	}
 }
 
+func TestIsInRange(t *testing.T) {
+	goodValues := [][]int{[]int{1, 0, 10}, []int{5, 5, 20}, []int{25, 10, 25}}
+	for _, val := range goodValues {
+		if msgs := IsInRange(val[0], val[1], val[2]); len(msgs) != 0 {
+			t.Errorf("expected true for %d, got %v", val, msgs)
+		}
+	}
+
+	badValues := [][]int{[]int{1, 2, 10}, []int{5, -4, 2}, []int{25, 100, 120}}
+	for _, val := range badValues {
+		if msgs := IsInRange(val[0], val[1], val[2]); len(msgs) == 0 {
+			t.Errorf("expected false for %d", val)
+		}
+	}
+}
+
 func createGroupIDs(ids ...int64) []int64 {
 	var output []int64
 	for _, id := range ids {
