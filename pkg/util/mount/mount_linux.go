@@ -430,3 +430,40 @@ func (mounter *SafeFormatAndMount) getDiskFormat(disk string) (string, error) {
 	// and MD RAID are reported as FSTYPE and caught above).
 	return "unknown data, probably partitions", nil
 }
+
+// IsSamefsGroup is called only for requests to mount an already mounted
+// volume. It checks if fsGroup of new mount request is the same or not.
+// It return false if it not the same.
+func IsSamefsGroup(dir string, fsGroup *int64) (bool, error) {
+	s := &syscall.Stat_t{}
+	if err := syscall.Stat(dir, s); err != nil {
+		return false, err
+	}
+	gidNew := 0
+	if fsGroup != nil {
+		gidNew = int(*fsGroup)
+	}
+	glog.V(4).Infof("######### Old Gid %d New Gid %d  ###########", int(s.Gid), gidNew)
+	return int(s.Gid) == gidNew, nil
+}
+
+// IsAlreadyMounted is called to check if a requested volume has already been
+// mounted. It returns nil if no previous mount was found, otherwise it returns
+// the path to existing mount.
+func IsAlreadyMounted(dir string) (string, error) {
+	r := ""
+	mp, err := listProcMounts(procMountsPath)
+	if err != nil {
+		return r, err
+	}
+	fullPath := strings.Split(dir, "/")
+	pvc := fullPath[len(fullPath)-1]
+	glog.V(4).Infof("######### Looking for %s ###########", pvc)
+	for _, v := range mp {
+		if strings.Contains(v.Path, pvc) {
+			glog.V(4).Infof("########## Found %s in the path %s #########", pvc, v.Path)
+			return v.Path, nil
+		}
+	}
+	return r, nil
+}

@@ -18,9 +18,8 @@ package local
 
 import (
 	"fmt"
-	"os"
-
 	"github.com/golang/glog"
+	"os"
 
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -206,6 +205,24 @@ func (m *localVolumeMounter) SetUpAt(dir string, fsGroup *int64) error {
 	}
 	if !notMnt {
 		return nil
+	}
+
+	oldMount, err := mount.IsAlreadyMounted(dir)
+	if err != nil {
+		err = fmt.Errorf("failed to check if disk %s has already been mounted(%v)", dir, err)
+		return err
+	}
+
+	if len(oldMount) > 0 {
+		fsGroupSame, err := mount.IsSamefsGroup(oldMount, fsGroup)
+		if err != nil {
+			err = fmt.Errorf("failed to check Gid for %s (%v)", oldMount, err)
+			return err
+		}
+		if !fsGroupSame {
+			err = fmt.Errorf("cannot mount %s as it has already been mounted with different Gid", dir)
+			return err
+		}
 	}
 
 	if err := os.MkdirAll(dir, 0750); err != nil {
