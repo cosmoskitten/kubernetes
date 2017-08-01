@@ -40,6 +40,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -316,13 +317,44 @@ func initConfigz(kc *componentconfig.KubeletConfiguration) (*configz.Config, err
 	return cz, err
 }
 
-// validateConfig validates configuration of Kubelet and returns an error if the input configuration is invalid.
-func validateConfig(s *options.KubeletServer) error {
+// validateConfig validates configuration of Kubelet and returns a slice of errors if the input configuration is invalid.
+func validateConfig(s *options.KubeletServer) []error {
+	var errors []error
 	if !s.CgroupsPerQOS && len(s.EnforceNodeAllocatable) > 0 {
-		return fmt.Errorf("Node Allocatable enforcement is not supported unless Cgroups Per QOS feature is turned on")
+		errors = append(errors, fmt.Errorf("Node Allocatable enforcement is not supported unless Cgroups Per QOS feature is turned on"))
 	}
 	if s.SystemCgroups != "" && s.CgroupRoot == "" {
-		return fmt.Errorf("invalid configuration: system container was specified and cgroup root was not specified")
+		errors = append(errors, fmt.Errorf("Invalid configuration: system container was specified and cgroup root was not specified"))
+	}
+	if s.CAdvisorPort < 0 || s.CAdvisorPort > 65535 {
+		errors = append(errors, fmt.Errorf("Invalid configuration: --cadvisor-port %v must be between 0 and 65535", s.CAdvisorPort))
+	}
+	if s.EventBurst < 0 {
+		errors = append(errors, fmt.Errorf("Invalid configuration: --event-burst %v can not be a negative number", s.EventBurst))
+	}
+	if s.EventRecordQPS < 0 {
+		errors = append(errors, fmt.Errorf("Invalid configuration: --event-qps %v can not be a negative number", s.EventRecordQPS))
+	}
+	if s.HealthzPort < 0 || s.HealthzPort > 65535 {
+		errors = append(errors, fmt.Errorf("Invalid configuration: --healthz-port %v must be between 0 and 65535", s.HealthzPort))
+	}
+	if s.ImageGCHighThresholdPercent < 0 || s.ImageGCHighThresholdPercent > 100 {
+		errors = append(errors, fmt.Errorf("Invalid configuration: --image-gc-high-threshold %v must be between 0 and 100", s.ImageGCHighThresholdPercent))
+	}
+	if s.ImageGCLowThresholdPercent < 0 || s.ImageGCLowThresholdPercent > 100 {
+		errors = append(errors, fmt.Errorf("Invalid configuration: --image-gc-low-threshold %v must be between 0 and 100", s.ImageGCLowThresholdPercent))
+	}
+	if s.IPTablesDropBit < 0 || s.IPTablesDropBit > 31 {
+		errors = append(errors, fmt.Errorf("Invalid configuration: --iptables-drop-bit %v must be between 0 and 31", s.IPTablesDropBit))
+	}
+	if s.IPTablesMasqueradeBit < 0 || s.IPTablesMasqueradeBit > 31 {
+		errors = append(errors, fmt.Errorf("Invalid configuration: --iptables-masquerade-bit %v must be between 0 and 31", s.IPTablesMasqueradeBit))
+	}
+	if s.Port < 0 || s.Port > 65535 {
+		errors = append(errors, fmt.Errorf("Invalid configuration: --port %v must be between 0 and 65535", s.Port))
+	}
+	if s.ReadOnlyPort < 0 || s.ReadOnlyPort > 65535 {
+		errors = append(errors, fmt.Errorf("Invalid configuration: --read-only-port %v must be between 0 and 65535", s.ReadOnlyPort))
 	}
 	for _, val := range s.EnforceNodeAllocatable {
 		switch val {
@@ -331,10 +363,10 @@ func validateConfig(s *options.KubeletServer) error {
 		case cm.KubeReservedEnforcementKey:
 			continue
 		default:
-			return fmt.Errorf("invalid option %q specified for EnforceNodeAllocatable setting. Valid options are %q, %q or %q", val, cm.NodeAllocatableEnforcementKey, cm.SystemReservedEnforcementKey, cm.KubeReservedEnforcementKey)
+			errors = append(errors, fmt.Errorf("invalid option %q specified for EnforceNodeAllocatable setting. Valid options are %q, %q or %q", val, cm.NodeAllocatableEnforcementKey, cm.SystemReservedEnforcementKey, cm.KubeReservedEnforcementKey))
 		}
 	}
-	return nil
+	return errors
 }
 
 // makeEventRecorder sets up kubeDeps.Recorder if its nil. Its a no-op otherwise.
@@ -418,8 +450,8 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies) (err error) {
 	}
 
 	// Validate configuration.
-	if err := validateConfig(s); err != nil {
-		return err
+	if errs := validateConfig(s); len(errs) != 0 {
+		return utilerrors.NewAggregate(errs)
 	}
 
 	if kubeDeps == nil {
