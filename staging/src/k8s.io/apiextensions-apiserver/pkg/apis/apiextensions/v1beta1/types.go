@@ -189,6 +189,8 @@ type JSONSchemaProps struct {
 	Dependencies         JSONSchemaDependencies     `json:"dependencies,omitempty"`
 	AdditionalItems      *JSONSchemaPropsOrBool     `json:"additionalItems,omitempty"`
 	Definitions          JSONSchemaDefinitions      `json:"definitions,omitempty"`
+	ExternalDocs         *ExternalDocumentation     `json:"externalDocs,omitempty"`
+	Example              interface{}                `json:"example,omitempty"`
 }
 
 // JSONSchemaURL represents a schema url. Defaults to JSON Schema Specification Draft 4.
@@ -228,3 +230,9 @@ type JSONSchemaPropsOrStringArray struct {
 
 // JSONSchemaDefinitions contains the models explicitly defined in this spec.
 type JSONSchemaDefinitions map[string]JSONSchemaProps
+
+// ExternalDocumentation allows referencing an external resource for extended documentation.
+type ExternalDocumentation struct {
+	Description string `json:"description,omitempty"`
+	URL         string `json:"url,omitempty"`
+}
