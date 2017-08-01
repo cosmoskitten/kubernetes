@@ -19,11 +19,12 @@ package flexvolume
 import (
 	"io/ioutil"
 
+	"github.com/golang/glog"
 	"k8s.io/kubernetes/pkg/volume"
 )
 
 type flexVolumeProber struct {
-	pluginDir string
+	pluginDir string // Flexvolume driver directory
 }
 
 func NewFlexVolumeProber(pluginDir string) volume.DynamicPluginProber {
@@ -43,6 +44,9 @@ func (prober *flexVolumeProber) Probe() []volume.VolumePlugin {
 		if f.IsDir() {
 			plugin, err := NewFlexVolumePlugin(prober.pluginDir, f.Name())
 			if err != nil {
+				glog.Errorf(
+					"Error creating Flexvolume plugin from directory %s, skipping. Error: %s",
+					f.Name(), err)
 				continue
 			}
 

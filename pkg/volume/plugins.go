@@ -68,10 +68,6 @@ type VolumeOptions struct {
 	Parameters map[string]string
 }
 
-type DynamicPluginProber interface {
-	Probe() []VolumePlugin
-}
-
 // VolumePlugin is an interface to volume plugins that can be used on a
 // kubernetes node (e.g. by kubelet) to instantiate and manage volumes.
 type VolumePlugin interface {
@@ -188,6 +184,13 @@ type AttachableVolumePlugin interface {
 	NewAttacher() (Attacher, error)
 	NewDetacher() (Detacher, error)
 	GetDeviceMountRefs(deviceMountPath string) ([]string, error)
+}
+
+// DynamicPluginProber is an interface of probers that can probe volume plugins
+// while Kubernetes system components (e.g. kubelet, attach/detach controller)
+// are running, rather than only during system initialization.
+type DynamicPluginProber interface {
+	Probe() []VolumePlugin
 }
 
 // VolumeHost is an interface that plugins can use to access the kubelet.
@@ -359,6 +362,7 @@ func (pm *VolumePluginMgr) InitPlugins(plugins []VolumePlugin, prober DynamicPlu
 	pm.Host = host
 
 	if prober == nil {
+		// Use a dummy prober to prevent nil deference.
 		pm.prober = &dummyPluginProber{}
 	} else {
 		pm.prober = prober
@@ -392,6 +396,21 @@ func (pm *VolumePluginMgr) InitPlugins(plugins []VolumePlugin, prober DynamicPlu
 	return utilerrors.NewAggregate(allErrs)
 }
 
+func (pm *VolumePluginMgr) initProbedPlugin(probedPlugin VolumePlugin) error {
+	name := probedPlugin.GetPluginName()
+	if errs := validation.IsQualifiedName(name); len(errs) != 0 {
+		return fmt.Errorf("volume plugin has invalid name: %q: %s", name, strings.Join(errs, ";"))
+	}
+
+	err := probedPlugin.Init(pm.Host)
+	if err != nil {
+		return fmt.Errorf("Failed to load volume plugin %s, error: %s", name, err.Error())
+	}
+
+	glog.V(1).Infof("Loaded volume plugin %q", name)
+	return nil
+}
+
 // FindPluginBySpec looks for a plugin that can support a given volume
 // specification.  If no plugins can support or more than one plugin can
 // support it, return error.
@@ -399,19 +418,32 @@ func (pm *VolumePluginMgr) FindPluginBySpec(spec *Spec) (VolumePlugin, error) {
 	pm.mutex.Lock()
 	defer pm.mutex.Unlock()
 
-	matches := []string{}
+	matchedPluginNames := []string{}
+	matches := []VolumePlugin{}
 	for k, v := range pm.plugins {
 		if v.CanSupport(spec) {
-			matches = append(matches, k)
+			matchedPluginNames = append(matchedPluginNames, k)
+			matches = append(matches, v)
 		}
 	}
+
+	for _, plugin := range pm.prober.Probe() {
+		if err := pm.initProbedPlugin(plugin); err != nil {
+			glog.Errorf("Error initializing dynamically probed plugin %s; error: %s",
+				plugin.GetPluginName(), err)
+		} else if plugin.CanSupport(spec) {
+			matchedPluginNames = append(matchedPluginNames, plugin.GetPluginName())
+			matches = append(matches, plugin)
+		}
+	}
+
 	if len(matches) == 0 {
 		return nil, fmt.Errorf("no volume plugin matched")
 	}
 	if len(matches) > 1 {
-		return nil, fmt.Errorf("multiple volume plugins matched: %s", strings.Join(matches, ","))
+		return nil, fmt.Errorf("multiple volume plugins matched: %s", strings.Join(matchedPluginNames, ","))
 	}
-	return pm.plugins[matches[0]], nil
+	return matches[0], nil
 }
 
 // FindPluginByName fetches a plugin by name or by legacy name.  If no plugin
@@ -421,19 +453,32 @@ func (pm *VolumePluginMgr) FindPluginByName(name string) (VolumePlugin, error) {
 	defer pm.mutex.Unlock()
 
 	// Once we can get rid of legacy names we can reduce this to a map lookup.
-	matches := []string{}
+	matchedPluginNames := []string{}
+	matches := []VolumePlugin{}
 	for k, v := range pm.plugins {
 		if v.GetPluginName() == name {
-			matches = append(matches, k)
+			matchedPluginNames = append(matchedPluginNames, k)
+			matches = append(matches, v)
 		}
 	}
+
+	for _, plugin := range pm.prober.Probe() {
+		if err := pm.initProbedPlugin(plugin); err != nil {
+			glog.Errorf("Error initializing dynamically probed plugin %s; error: %s",
+				plugin.GetPluginName(), err)
+		} else if plugin.GetPluginName() == name {
+			matchedPluginNames = append(matchedPluginNames, plugin.GetPluginName())
+			matches = append(matches, plugin)
+		}
+	}
+
 	if len(matches) == 0 {
 		return nil, fmt.Errorf("no volume plugin matched")
 	}
 	if len(matches) > 1 {
-		return nil, fmt.Errorf("multiple volume plugins matched: %s", strings.Join(matches, ","))
+		return nil, fmt.Errorf("multiple volume plugins matched: %s", strings.Join(matchedPluginNames, ","))
 	}
-	return pm.plugins[matches[0]], nil
+	return matches[0], nil
 }
 
 // FindPersistentPluginBySpec looks for a persistent volume plugin that can
