@@ -19,6 +19,7 @@ package validation
 import (
 	"fmt"
 
+	utilvalidation "k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/kubernetes/pkg/kubelet/apis/kubeletconfig"
 	containermanager "k8s.io/kubernetes/pkg/kubelet/cm"
 )
@@ -40,6 +41,60 @@ func ValidateKubeletConfiguration(kc *kubeletconfig.KubeletConfiguration) error 
 	}
 	if kc.SystemCgroups != "" && kc.CgroupRoot == "" {
 		return fmt.Errorf("invalid configuration: system container was specified and cgroup root was not specified")
+	}
+	if utilvalidation.IsValidPortNum(int(kc.CAdvisorPort)) != nil {
+		return fmt.Errorf("Invalid configuration: --cadvisor-port %v must be between 1 and 65535", kc.CAdvisorPort)
+	}
+	if kc.EventBurst < 0 {
+		return fmt.Errorf("Invalid configuration: --event-burst %v should not be a negative number", kc.EventBurst)
+	}
+	if kc.EventRecordQPS < 0 {
+		return fmt.Errorf("Invalid configuration: --event-qps %v should not be a negative number", kc.EventRecordQPS)
+	}
+	if utilvalidation.IsValidPortNum(int(kc.HealthzPort)) != nil {
+		return fmt.Errorf("Invalid configuration: --healthz-port %v must be between 1 and 65535", kc.HealthzPort)
+	}
+	if utilvalidation.IsInRange(int(kc.ImageGCHighThresholdPercent), 0, 100) != nil {
+		return fmt.Errorf("Invalid configuration: --image-gc-high-threshold %v must be between 0 and 100", kc.ImageGCHighThresholdPercent)
+	}
+	if utilvalidation.IsInRange(int(kc.ImageGCLowThresholdPercent), 0, 100) != nil {
+		return fmt.Errorf("Invalid configuration: --image-gc-low-threshold %v must be between 0 and 100", kc.ImageGCLowThresholdPercent)
+	}
+	if utilvalidation.IsInRange(int(kc.IPTablesDropBit), 0, 31) != nil {
+		return fmt.Errorf("Invalid configuration: --iptables-drop-bit %v must be between 0 and 31", kc.IPTablesDropBit)
+	}
+	if utilvalidation.IsInRange(int(kc.IPTablesMasqueradeBit), 0, 31) != nil {
+		return fmt.Errorf("Invalid configuration: --iptables-masquerade-bit %v must be between 0 and 31", kc.IPTablesMasqueradeBit)
+	}
+	if kc.KubeAPIBurst < 0 {
+		return fmt.Errorf("Invalid configuration: --kube-api-burst %v should not be a negative number", kc.KubeAPIBurst)
+	}
+	if kc.KubeAPIQPS < 0 {
+		return fmt.Errorf("Invalid configuration: --kube-api-qps %v should not be a negative number", kc.KubeAPIQPS)
+	}
+	if kc.MaxOpenFiles < 0 {
+		return fmt.Errorf("Invalid configuration: --max-open-files %v should not be a negative number", kc.MaxOpenFiles)
+	}
+	if kc.MaxPods < 0 {
+		return fmt.Errorf("Invalid configuration: --max-pods %v should not be a negative number", kc.MaxPods)
+	}
+	if utilvalidation.IsInRange(int(kc.OOMScoreAdj), -1000, 1000) != nil {
+		return fmt.Errorf("Invalid configuration: --port %v must be between -1000 and 1000", kc.OOMScoreAdj)
+	}
+	if kc.PodsPerCore < 0 {
+		return fmt.Errorf("Invalid configuration: --max-pods %v should not be a negative number", kc.PodsPerCore)
+	}
+	if utilvalidation.IsValidPortNum(int(kc.Port)) != nil {
+		return fmt.Errorf("Invalid configuration: --port %v must be between 1 and 65535", kc.Port)
+	}
+	if utilvalidation.IsValidPortNum(int(kc.ReadOnlyPort)) != nil {
+		return fmt.Errorf("Invalid configuration: --read-only-port %v must be between 1 and 65535", kc.ReadOnlyPort)
+	}
+	if kc.RegistryBurst < 0 {
+		return fmt.Errorf("Invalid configuration: --registry-burst %v should not be a negative number", kc.RegistryBurst)
+	}
+	if kc.RegistryPullQPS < 0 {
+		return fmt.Errorf("Invalid configuration: --registry-qps %v should not be a negative number", kc.RegistryPullQPS)
 	}
 	for _, val := range kc.EnforceNodeAllocatable {
 		switch val {
