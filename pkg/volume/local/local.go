@@ -18,13 +18,14 @@ package local
 
 import (
 	"fmt"
-	"os"
-
 	"github.com/golang/glog"
+	"os"
+	"syscall"
 
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/kubernetes/pkg/util/keymutex"
 	"k8s.io/kubernetes/pkg/util/mount"
 	"k8s.io/kubernetes/pkg/util/strings"
 	"k8s.io/kubernetes/pkg/volume"
@@ -38,7 +39,8 @@ func ProbeVolumePlugins() []volume.VolumePlugin {
 }
 
 type localVolumePlugin struct {
-	host volume.VolumeHost
+	host        volume.VolumeHost
+	volumeLocks keymutex.KeyMutex
 }
 
 var _ volume.VolumePlugin = &localVolumePlugin{}
@@ -50,6 +52,7 @@ const (
 
 func (plugin *localVolumePlugin) Init(host volume.VolumeHost) error {
 	plugin.host = host
+	plugin.volumeLocks = keymutex.NewKeyMutex()
 	return nil
 }
 
@@ -188,6 +191,9 @@ func (m *localVolumeMounter) SetUp(fsGroup *int64) error {
 
 // SetUpAt bind mounts the directory to the volume path and sets up volume ownership
 func (m *localVolumeMounter) SetUpAt(dir string, fsGroup *int64) error {
+	m.plugin.volumeLocks.LockKey(m.globalPath)
+	defer m.plugin.volumeLocks.UnlockKey(m.globalPath)
+
 	if m.globalPath == "" {
 		err := fmt.Errorf("LocalVolume volume %q path is empty", m.volName)
 		return err
@@ -204,8 +210,25 @@ func (m *localVolumeMounter) SetUpAt(dir string, fsGroup *int64) error {
 		glog.Errorf("cannot validate mount point: %s %v", dir, err)
 		return err
 	}
-	if !notMnt {
-		return nil
+
+	mountRefs, err := mount.GetMountRefs(m.mounter, m.globalPath)
+	if err != nil {
+		return fmt.Errorf("unable to check if %s has already been mounted (%#v)", m.globalPath, err)
+	}
+
+	if len(mountRefs) != 0 {
+		if fsGroup != nil {
+			fsGroupNew := int64(*fsGroup)
+			fsGroupSame, fsGroupOld, err := isSameFSGroup(m.globalPath, fsGroupNew)
+			if err != nil {
+				err = fmt.Errorf("failed to check fsGroup for %s (%v)", m.globalPath, err)
+				return err
+			}
+			if !fsGroupSame {
+				err = fmt.Errorf("cannot mount %s as it has already been mounted with fsGroup %d, but the pod is requesting fsGroup %d", m.globalPath, fsGroupOld, fsGroupNew)
+				return err
+			}
+		}
 	}
 
 	if err := os.MkdirAll(dir, 0750); err != nil {
@@ -253,6 +276,20 @@ func (m *localVolumeMounter) SetUpAt(dir string, fsGroup *int64) error {
 		return volume.SetVolumeOwnership(m, fsGroup)
 	}
 	return nil
+}
+
+// IsSameFSGroup is called only for requests to mount an already mounted
+// volume. It checks if fsGroup of new mount request is the same or not.
+// It returns false if it not the same. It also returns current Gid of a path
+// provided for dir variable.
+func isSameFSGroup(dir string, fsGroup int64) (bool, int, error) {
+	info, err := os.Stat(dir)
+	if err != nil {
+		glog.Errorf("Error getting stats for %s (%v)", dir, err)
+		return false, 0, err
+	}
+	s := info.Sys().(*syscall.Stat_t)
+	return int(s.Gid) == int(fsGroup), int(s.Gid), nil
 }
 
 type localVolumeUnmounter struct {
