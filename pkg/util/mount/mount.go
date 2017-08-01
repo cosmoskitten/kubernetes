@@ -123,7 +123,6 @@ func GetMountRefs(mounter Interface, mountPath string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	// Find the device name.
 	deviceName := ""
 	// If mountPath is symlink, need get its target path.
@@ -147,6 +146,32 @@ func GetMountRefs(mounter Interface, mountPath string) ([]string, error) {
 			if mps[i].Device == deviceName && mps[i].Path != slTarget {
 				refs = append(refs, mps[i].Path)
 			}
+		}
+	}
+	return refs, nil
+}
+
+// GetMountRefsByDev finds all references to the device provided
+// by devPath; returns a list of paths.
+func GetMountRefsByDev(mounter Interface, globalPath string) ([]string, error) {
+	mps, err := mounter.List()
+	if err != nil {
+		return nil, err
+	}
+	diskDev := ""
+	// Finding the device mounted to globalPath
+	for i := range mps {
+		if globalPath == mps[i].Path {
+			diskDev = mps[i].Device
+			break
+		}
+	}
+
+	// Find all references to the device.
+	var refs []string
+	for i := range mps {
+		if mps[i].Device == diskDev || mps[i].Device == globalPath {
+			refs = append(refs, mps[i].Path)
 		}
 	}
 	return refs, nil
