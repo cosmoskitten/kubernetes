@@ -27,7 +27,6 @@ import (
 	conversion "k8s.io/apimachinery/pkg/conversion"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	api "k8s.io/kubernetes/pkg/api"
-	api_v1 "k8s.io/kubernetes/pkg/api/v1"
 	apps "k8s.io/kubernetes/pkg/apis/apps"
 	unsafe "unsafe"
 )
@@ -158,7 +157,8 @@ func autoConvert_v1beta2_StatefulSetSpec_To_apps_StatefulSetSpec(in *v1beta2.Sta
 		return err
 	}
 	out.Selector = (*v1.LabelSelector)(unsafe.Pointer(in.Selector))
-	if err := api_v1.Convert_v1_PodTemplateSpec_To_api_PodTemplateSpec(&in.Template, &out.Template, s); err != nil {
+	// TODO: Inefficient conversion - can we improve it?
+	if err := s.Convert(&in.Template, &out.Template, 0); err != nil {
 		return err
 	}
 	out.VolumeClaimTemplates = *(*[]api.PersistentVolumeClaim)(unsafe.Pointer(&in.VolumeClaimTemplates))
@@ -176,7 +176,8 @@ func autoConvert_apps_StatefulSetSpec_To_v1beta2_StatefulSetSpec(in *apps.Statef
 		return err
 	}
 	out.Selector = (*v1.LabelSelector)(unsafe.Pointer(in.Selector))
-	if err := api_v1.Convert_api_PodTemplateSpec_To_v1_PodTemplateSpec(&in.Template, &out.Template, s); err != nil {
+	// TODO: Inefficient conversion - can we improve it?
+	if err := s.Convert(&in.Template, &out.Template, 0); err != nil {
 		return err
 	}
 	out.VolumeClaimTemplates = *(*[]core_v1.PersistentVolumeClaim)(unsafe.Pointer(&in.VolumeClaimTemplates))
@@ -197,6 +198,7 @@ func autoConvert_v1beta2_StatefulSetStatus_To_apps_StatefulSetStatus(in *v1beta2
 	out.UpdatedReplicas = in.UpdatedReplicas
 	out.CurrentRevision = in.CurrentRevision
 	out.UpdateRevision = in.UpdateRevision
+	out.CollisionCount = (*int64)(unsafe.Pointer(in.CollisionCount))
 	return nil
 }
 
@@ -213,6 +215,7 @@ func autoConvert_apps_StatefulSetStatus_To_v1beta2_StatefulSetStatus(in *apps.St
 	out.UpdatedReplicas = in.UpdatedReplicas
 	out.CurrentRevision = in.CurrentRevision
 	out.UpdateRevision = in.UpdateRevision
+	out.CollisionCount = (*int64)(unsafe.Pointer(in.CollisionCount))
 	return nil
 }
 
