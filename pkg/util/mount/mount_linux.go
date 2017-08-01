@@ -430,3 +430,21 @@ func (mounter *SafeFormatAndMount) getDiskFormat(disk string) (string, error) {
 	// and MD RAID are reported as FSTYPE and caught above).
 	return "unknown data, probably partitions", nil
 }
+
+// IsSamefsGroup is called only for requests to mount an already mounted
+// volume. It checks if fsGroup of new mount request is the same or not.
+// It returns false if it not the same. It also returns current Gid of a path
+// provided for dir variable.
+func IsSamefsGroup(dir string, fsGroup *int64) (bool, int, error) {
+	s := &syscall.Stat_t{}
+	glog.Errorf("Global path: %s", dir)
+	if err := syscall.Stat(dir, s); err != nil {
+		glog.Errorf("Error getting stats for %s (%v)", dir, err)
+		return false, 0, err
+	}
+	gidNew := 0
+	if fsGroup != nil {
+		gidNew = int(*fsGroup)
+	}
+	return int(s.Gid) == gidNew, int(s.Gid), nil
+}
