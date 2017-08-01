@@ -170,6 +170,30 @@ func ValidateCustomResourceDefinitionSchema(JSONSchema *apiextensions.JSONSchema
 		return allErrs
 	}
 
+	if JSONSchema.Default != nil {
+		allErrs = append(allErrs, field.Forbidden(fldPath.Child("Default"), "Default is not supported."))
+	}
+
+	if JSONSchema.ID != "" {
+		allErrs = append(allErrs, field.Forbidden(fldPath.Child("ID"), "ID is not supported."))
+	}
+
+	if JSONSchema.AdditionalItems != nil {
+		allErrs = append(allErrs, field.Forbidden(fldPath.Child("AdditionalItems"), "AdditionalItems is not supported."))
+	}
+
+	if len(JSONSchema.PatternProperties) != 0 {
+		allErrs = append(allErrs, field.Forbidden(fldPath.Child("PatternProperties"), "PatternProperties is not supported."))
+	}
+
+	if len(JSONSchema.Definitions) != 0 {
+		allErrs = append(allErrs, field.Forbidden(fldPath.Child("Definitions"), "Definitions is not supported."))
+	}
+
+	if JSONSchema.Dependencies != nil {
+		allErrs = append(allErrs, field.Forbidden(fldPath.Child("Dependencies"), "Dependencies is not supported."))
+	}
+
 	if JSONSchema.UniqueItems == true {
 		allErrs = append(allErrs, field.Forbidden(fldPath.Child("UniqueItems"), "uniqueItems cannot be set to true since the runtime complexity becomes quadratic"))
 	}
@@ -181,18 +205,28 @@ func ValidateCustomResourceDefinitionSchema(JSONSchema *apiextensions.JSONSchema
 		allErrs = append(allErrs, ValidateCustomResourceDefinitionSchema(JSONSchema.AdditionalProperties.Schema, fldPath.Child("AdditionalProperties"))...)
 	}
 
-	if JSONSchema.Ref != "" {
-		openapiRef, err := spec.NewRef(JSONSchema.Ref)
-		if err != nil {
-			allErrs = append(allErrs, field.Invalid(fldPath.Child("Ref"), JSONSchema.Ref, err.Error()))
+	if len(JSONSchema.Type) != 0 {
+		if len(JSONSchema.Type) > 1 {
+			allErrs = append(allErrs, field.Forbidden(fldPath.Child("Type"), "Multiple values via an array for Type is not supported."))
 		}
-		if !openapiRef.IsValidURI() {
-			allErrs = append(allErrs, field.Invalid(fldPath.Child("Ref"), JSONSchema.Ref, "Ref does not point to a valid URI."))
+		if JSONSchema.Type[0] == "null" {
+			allErrs = append(allErrs, field.Forbidden(fldPath.Child("Type"), "Type cannot be set to null."))
 		}
 	}
 
-	if JSONSchema.AdditionalItems != nil {
-		allErrs = append(allErrs, ValidateCustomResourceDefinitionSchema(JSONSchema.AdditionalItems.Schema, fldPath.Child("AdditionalItems"))...)
+	if JSONSchema.Ref != nil {
+		openapiRef, err := spec.NewRef(*JSONSchema.Ref)
+		if err != nil {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("Ref"), *JSONSchema.Ref, err.Error()))
+		}
+
+		if !openapiRef.IsValidURI() {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("Ref"), *JSONSchema.Ref, "Ref does not point to a valid URI."))
+		}
+
+		if openapiRef.IsRoot() {
+			JSONSchema.Schema = apiextensions.JSONSchemaDraft4URL
+		}
 	}
 
 	allErrs = append(allErrs, ValidateCustomResourceDefinitionSchema(JSONSchema.Not, fldPath.Child("Not"))...)
@@ -221,30 +255,10 @@ func ValidateCustomResourceDefinitionSchema(JSONSchema *apiextensions.JSONSchema
 		}
 	}
 
-	if len(JSONSchema.PatternProperties) != 0 {
-		for property, jsonSchema := range JSONSchema.PatternProperties {
-			allErrs = append(allErrs, ValidateCustomResourceDefinitionSchema(&jsonSchema, fldPath.Child("PatternProperties."+property))...)
-		}
-	}
-
-	if len(JSONSchema.Definitions) != 0 {
-		for definition, jsonSchema := range JSONSchema.Definitions {
-			allErrs = append(allErrs, ValidateCustomResourceDefinitionSchema(&jsonSchema, fldPath.Child("Definitions."+definition))...)
-		}
-	}
-
 	if JSONSchema.Items != nil {
 		allErrs = append(allErrs, ValidateCustomResourceDefinitionSchema(JSONSchema.Items.Schema, fldPath.Child("Items"))...)
 		if len(JSONSchema.Items.JSONSchemas) != 0 {
-			for _, jsonSchema := range JSONSchema.Items.JSONSchemas {
-				allErrs = append(allErrs, ValidateCustomResourceDefinitionSchema(&jsonSchema, fldPath.Child("Items"))...)
-			}
-		}
-	}
-
-	if JSONSchema.Dependencies != nil {
-		for dependency, jsonSchemaPropsOrStringArray := range JSONSchema.Dependencies {
-			allErrs = append(allErrs, ValidateCustomResourceDefinitionSchema(jsonSchemaPropsOrStringArray.Schema, fldPath.Child("Dependencies.."+dependency))...)
+			allErrs = append(allErrs, field.Forbidden(fldPath.Child("Items"), "Items must be a schema object and not an array"))
 		}
 	}
 

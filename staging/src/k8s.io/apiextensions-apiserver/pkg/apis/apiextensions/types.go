@@ -184,6 +184,8 @@ type JSONSchemaProps struct {
 	Dependencies         JSONSchemaDependencies
 	AdditionalItems      *JSONSchemaPropsOrBool
 	Definitions          JSONSchemaDefinitions
+	ExternalDocs         ExternalDocumentation
+	Example              interface{}
 }
 
 // JSONSchemaURL represents a schema url. Defaults to JSON Schema Specification Draft 4.
@@ -223,3 +225,9 @@ type JSONSchemaPropsOrStringArray struct {
 
 // JSONSchemaDefinitions contains the models explicitly defined in this spec.
 type JSONSchemaDefinitions map[string]JSONSchemaProps
+
+// ExternalDocumentation allows referencing an external resource for extended documentation.
+type ExternalDocumentation struct {
+	Description string
+	URL         string
+}

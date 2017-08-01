@@ -46,13 +46,11 @@ func convertJSONSchemaProps(in *apiextensions.JSONSchemaProps, out *spec.Schema)
 		return nil
 	}
 
-	out.ID = in.ID
 	out.Schema = spec.SchemaURL(in.Schema)
 	out.Description = in.Description
 	out.Type = spec.StringOrArray(in.Type)
 	out.Format = in.Format
 	out.Title = in.Title
-	out.Default = in.Default
 	out.ExclusiveMaximum = in.ExclusiveMaximum
 	out.Minimum = in.Minimum
 	out.ExclusiveMinimum = in.ExclusiveMinimum
@@ -134,9 +132,6 @@ func convertJSONSchemaPropsOrArray(in *apiextensions.JSONSchemaPropsOrArray, out
 		if err := convertJSONSchemaProps(in.Schema, out.Schema); err != nil {
 			return err
 		}
-		if err := convertSliceOfJSONSchemaProps(&in.JSONSchemas, &out.Schemas); err != nil {
-			return err
-		}
 	}
 	return nil
 }
@@ -148,19 +143,6 @@ func convertJSONSchemaPropsorBool(in *apiextensions.JSONSchemaPropsOrBool, out *
 		out.Schema = &spec.Schema{}
 		if err := convertJSONSchemaProps(in.Schema, out.Schema); err != nil {
 			return err
-		}
-	}
-	return nil
-}
-
-func convertJSONSchemaDependencies(in apiextensions.JSONSchemaDependencies, out spec.Dependencies) error {
-	if in != nil {
-		for k, v := range in {
-			schemaOrArray := spec.SchemaOrStringArray{}
-			if err := convertJSONSchemaPropsOrStringArray(&v, &schemaOrArray); err != nil {
-				return err
-			}
-			out[k] = schemaOrArray
 		}
 	}
 	return nil

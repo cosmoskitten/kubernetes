@@ -29,6 +29,10 @@ func (in *JSONSchemaProps) DeepCopy() *JSONSchemaProps {
 		out.Default = deepCopyJSON(in.Default)
 	}
 
+	if in.Example != nil {
+		in.Example = deepCopyJSON(in.Example)
+	}
+
 	if in.Type != nil {
 		in, out := &in.Type, &out.Type
 		*out = make(StringOrArray, len(*in))
