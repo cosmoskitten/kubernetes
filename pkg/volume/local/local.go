@@ -18,13 +18,14 @@ package local
 
 import (
 	"fmt"
-	"os"
-
 	"github.com/golang/glog"
+	"os"
+	"syscall"
 
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/kubernetes/pkg/util/keymutex"
 	"k8s.io/kubernetes/pkg/util/mount"
 	"k8s.io/kubernetes/pkg/util/strings"
 	"k8s.io/kubernetes/pkg/volume"
@@ -38,7 +39,8 @@ func ProbeVolumePlugins() []volume.VolumePlugin {
 }
 
 type localVolumePlugin struct {
-	host volume.VolumeHost
+	host        volume.VolumeHost
+	volumeLocks keymutex.KeyMutex
 }
 
 var _ volume.VolumePlugin = &localVolumePlugin{}
@@ -50,6 +52,11 @@ const (
 
 func (plugin *localVolumePlugin) Init(host volume.VolumeHost) error {
 	plugin.host = host
+	plugin.volumeLocks = keymutex.NewKeyMutex()
+	mntTracker = localVolumeMounts{
+		mountRefs:   map[string]int{},
+		mntRefsLock: keymutex.NewKeyMutex(),
+	}
 	return nil
 }
 
@@ -188,6 +195,9 @@ func (m *localVolumeMounter) SetUp(fsGroup *int64) error {
 
 // SetUpAt bind mounts the directory to the volume path and sets up volume ownership
 func (m *localVolumeMounter) SetUpAt(dir string, fsGroup *int64) error {
+	m.plugin.volumeLocks.LockKey(m.globalPath)
+	defer m.plugin.volumeLocks.UnlockKey(m.globalPath)
+
 	if m.globalPath == "" {
 		err := fmt.Errorf("LocalVolume volume %q path is empty", m.volName)
 		return err
@@ -204,8 +214,32 @@ func (m *localVolumeMounter) SetUpAt(dir string, fsGroup *int64) error {
 		glog.Errorf("cannot validate mount point: %s %v", dir, err)
 		return err
 	}
-	if !notMnt {
-		return nil
+	// Check if globalPath is already in Mounts Tracker
+	if _, ok := mntTracker.mountRefs[m.globalPath]; !ok {
+		fmt.Printf(" ><><><><><><> %s is not in Mounts Tracker, adding it\n", m.globalPath)
+		mntTracker.mntRefsLock.LockKey(m.globalPath)
+		mntTracker.mountRefs[m.globalPath] = 0
+		mntTracker.mntRefsLock.UnlockKey(m.globalPath)
+	} else {
+		fmt.Printf(" ><><><><><><> %s is in Mounts Tracker, number of references %d \n", m.globalPath, mntTracker.mountRefs[m.globalPath])
+	}
+	if fsGroup != nil {
+		fmt.Printf(" ><><><><><><> fsGroup is not nil: %d \n", *fsGroup)
+		if mntTracker.mountRefs[m.globalPath] > 0 {
+			fmt.Printf(" ><><><><><><> Since it has already been mounted, checking fsGroups\n")
+			fsGroupNew := int64(*fsGroup)
+			fsGroupSame, fsGroupOld, err := isSameFSGroup(m.globalPath, fsGroupNew)
+			if err != nil {
+				err = fmt.Errorf("failed to check fsGroup for %s (%v)", m.globalPath, err)
+				return err
+			}
+			fmt.Printf(" ><><><><><><> fsGroups old: %d new: %d the same: %t \n", fsGroupOld, fsGroupNew, fsGroupSame)
+			if !fsGroupSame {
+				err = fmt.Errorf("cannot mount %s as it has already been mounted with fsGroup %d, but the pod is requesting fsGroup %d", m.globalPath, fsGroupOld, fsGroupNew)
+				return err
+			}
+		}
+
 	}
 
 	if err := os.MkdirAll(dir, 0750); err != nil {
@@ -247,12 +281,35 @@ func (m *localVolumeMounter) SetUpAt(dir string, fsGroup *int64) error {
 		os.Remove(dir)
 		return err
 	}
-
+	// Mount was succesfull, need to increment reference count.
+	mntTracker.mntRefsLock.LockKey(m.globalPath)
+	mntTracker.mountRefs[m.globalPath]++
+	mntTracker.mntRefsLock.UnlockKey(m.globalPath)
 	if !m.readOnly {
-		// TODO: how to prevent multiple mounts with conflicting fsGroup?
 		return volume.SetVolumeOwnership(m, fsGroup)
 	}
 	return nil
+}
+
+type localVolumeMounts struct {
+	mountRefs   map[string]int
+	mntRefsLock keymutex.KeyMutex
+}
+
+var mntTracker localVolumeMounts
+
+// IsSameFSGroup is called only for requests to mount an already mounted
+// volume. It checks if fsGroup of new mount request is the same or not.
+// It returns false if it not the same. It also returns current Gid of a path
+// provided for dir variable.
+func isSameFSGroup(dir string, fsGroup int64) (bool, int, error) {
+	info, err := os.Stat(dir)
+	if err != nil {
+		glog.Errorf("Error getting stats for %s (%v)", dir, err)
+		return false, 0, err
+	}
+	s := info.Sys().(*syscall.Stat_t)
+	return int(s.Gid) == int(fsGroup), int(s.Gid), nil
 }
 
 type localVolumeUnmounter struct {
@@ -268,6 +325,12 @@ func (u *localVolumeUnmounter) TearDown() error {
 
 // TearDownAt unmounts the bind mount
 func (u *localVolumeUnmounter) TearDownAt(dir string) error {
+	mntTracker.mntRefsLock.LockKey(u.globalPath)
+	mntTracker.mountRefs[u.globalPath]--
+	mntTracker.mntRefsLock.UnlockKey(u.globalPath)
+	if mntTracker.mountRefs[u.globalPath] == 0 {
+		delete(mntTracker.mountRefs, u.globalPath)
+	}
 	glog.V(4).Infof("Unmounting volume %q at path %q\n", u.volName, dir)
 	return util.UnmountMountPoint(dir, u.mounter, true) /* extensiveMountPointCheck = true */
 }
