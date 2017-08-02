@@ -28,7 +28,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	clientset "k8s.io/client-go/kubernetes"
-	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"k8s.io/kubernetes/test/e2e/common"
 	"k8s.io/kubernetes/test/e2e/framework"
 	testutils "k8s.io/kubernetes/test/utils"
@@ -221,6 +220,117 @@ var _ = SIGDescribe("SchedulerPredicates [Serial]", func() {
 		}
 		WaitForSchedulerAfterAction(f, createPausePodAction(f, conf), podName, false)
 		verifyResult(cs, podsNeededForSaturation, 1, ns)
+	})
+
+	// This test verifies we don't allow scheduling of pods in a way that sum of local storage limits of pods is greater than machines capacity.
+	// It assumes that cluster add-on pods stay stable and cannot be run in parallel with any other test that touches Nodes or Pods.
+	// It is so because we need to have precise control on what's running in the cluster.
+	It("validates local storage resource limits of pods that are allowed to run [Conformance]", func() {
+		nodeScratchMaxAllocatable := int64(0)
+		nodeOverlayMaxAllocatable := int64(0)
+
+		nodeToScratchAllocatableMap := make(map[string]int64)
+		nodeToOverlayAllocatableMap := make(map[string]int64)
+		for _, node := range nodeList.Items {
+			scratchAllocatable, found := node.Status.Allocatable["storage.kubernetes.io/scratch"]
+			Expect(found).To(Equal(true))
+			if nodeScratchMaxAllocatable < scratchAllocatable.MilliValue() {
+				nodeScratchMaxAllocatable = scratchAllocatable.MilliValue()
+			}
+			nodeToScratchAllocatableMap[node.Name] = scratchAllocatable.MilliValue()
+
+			overlayAllocatable, found := node.Status.Allocatable["storage.kubernetes.io/overlay"]
+			if found {
+				if nodeOverlayMaxAllocatable < overlayAllocatable.MilliValue() {
+					nodeOverlayMaxAllocatable = overlayAllocatable.MilliValue()
+				}
+				nodeToOverlayAllocatableMap[node.Name] = overlayAllocatable.MilliValue()
+			} else {
+				nodeToOverlayAllocatableMap[node.Name] = 0
+			}
+		}
+		framework.WaitForStableCluster(cs, masterNodes)
+
+		pods, err := cs.Core().Pods(metav1.NamespaceAll).List(metav1.ListOptions{})
+		framework.ExpectNoError(err)
+		for _, pod := range pods.Items {
+			_, found := nodeToScratchAllocatableMap[pod.Spec.NodeName]
+			if found && pod.Status.Phase != v1.PodSucceeded && pod.Status.Phase != v1.PodFailed {
+				scratchRequested := getRequestedStorageScratch(pod)
+				overlayRequested := getRequestedStorageOverlay(pod)
+				framework.Logf("Pod %v requesting resource scratch=%v , overlay=%v on Node %v", pod.Name, scratchRequested, overlayRequested, pod.Spec.NodeName)
+				if nodeToOverlayAllocatableMap[pod.Spec.NodeName]/overlayRequested == 0 {
+					nodeToScratchAllocatableMap[pod.Spec.NodeName] = nodeToScratchAllocatableMap[pod.Spec.NodeName] - scratchRequested - overlayRequested
+				} else {
+					nodeToScratchAllocatableMap[pod.Spec.NodeName] -= scratchRequested
+					nodeToOverlayAllocatableMap[pod.Spec.NodeName] -= overlayRequested
+				}
+
+			}
+		}
+
+		var podsNeededForSaturation int
+		if nodeOverlayMaxAllocatable == 0 {
+			// No node has overlay fs storage resource, we extract this condition because although we do not have overlay fs resource,
+			// pods can also request overlay resource, they will be satisfied by nodes' scratch space
+			milliPerPod := nodeScratchMaxAllocatable / maxNumberOfPods
+			framework.Logf("Using pod local storage capacity: %v", milliPerPod)
+			for _, leftScratchAllocatable := range nodeToScratchAllocatableMap {
+				podsNeededForSaturation += (int)(leftScratchAllocatable / milliPerPod)
+			}
+			By(fmt.Sprintf("Starting additional %v Pods to fully saturate the cluster local storage and trying to start another one", podsNeededForSaturation))
+
+			// As the pods are distributed randomly among nodes,
+			// it can easily happen that all nodes are saturated
+			// and there is no need to create additional pods.
+			// StartPods requires at least one pod to replicate.
+			scratchPerPod := milliPerPod / 2
+			overlayPerPod := milliPerPod - scratchPerPod
+			if podsNeededForSaturation > 0 {
+				framework.ExpectNoError(testutils.StartPods(cs, podsNeededForSaturation, ns, "overcommit",
+					*buildEmptyDirPausePod(f, "", map[string]string{"name": ""}, scratchPerPod, overlayPerPod), true, framework.Logf))
+			}
+			podName := "additional-pod"
+			emptyDirPausePod := buildEmptyDirPausePod(f, podName, map[string]string{"name": "additional"}, scratchPerPod, overlayPerPod)
+
+			WaitForSchedulerAfterAction(f, createPodAction(f, emptyDirPausePod), podName, false)
+			verifyResult(cs, podsNeededForSaturation, 1, ns)
+
+		} else {
+			milliOverlayPerPod := nodeOverlayMaxAllocatable / maxNumberOfPods
+			milliScratchPerPod := nodeScratchMaxAllocatable / maxNumberOfPods
+			framework.Logf("Using pod local storage capacity: overlay fs: %v, scratch: %v", milliOverlayPerPod, milliScratchPerPod)
+			for name, leftScratchAllocatable := range nodeToScratchAllocatableMap {
+				scratchNum := (int)(leftScratchAllocatable / milliScratchPerPod)
+				overlayNum := (int)(nodeToOverlayAllocatableMap[name] / milliOverlayPerPod)
+				if scratchNum <= overlayNum {
+					podsNeededForSaturation += scratchNum
+				} else {
+					//scratch space may satisfy some overlay requests
+					scratchSpaceLeftForBoth := leftScratchAllocatable - (int64)(overlayNum)*milliScratchPerPod
+					scrathSatisfyBothNum := (int)(scratchSpaceLeftForBoth / (milliOverlayPerPod + milliScratchPerPod))
+
+					podsNeededForSaturation = podsNeededForSaturation + overlayNum + scrathSatisfyBothNum
+				}
+			}
+
+			By(fmt.Sprintf("Starting additional %v Pods to fully saturate the cluster local storage and trying to start another one", podsNeededForSaturation))
+
+			// As the pods are distributed randomly among nodes,
+			// it can easily happen that all nodes are saturated
+			// and there is no need to create additional pods.
+			// StartPods requires at least one pod to replicate.
+			if podsNeededForSaturation > 0 {
+				framework.ExpectNoError(testutils.StartPods(cs, podsNeededForSaturation, ns, "overcommit",
+					*buildEmptyDirPausePod(f, "", map[string]string{"name": ""}, milliScratchPerPod, milliOverlayPerPod), true, framework.Logf))
+			}
+			podName := "additional-pod"
+			emptyDirPausePod := buildEmptyDirPausePod(f, podName, map[string]string{"name": "additional"}, milliScratchPerPod, milliOverlayPerPod)
+
+			WaitForSchedulerAfterAction(f, createPodAction(f, emptyDirPausePod), podName, false)
+			verifyResult(cs, podsNeededForSaturation, 1, ns)
+		}
+
 	})
 
 	// Test Nodes does not have any label, hence it should be impossible to schedule Pod with
@@ -522,101 +632,28 @@ func runPodAndGetNodeName(f *framework.Framework, conf pausePodConfig) string {
 	return pod.Spec.NodeName
 }
 
-func createPodWithNodeAffinity(f *framework.Framework) *v1.Pod {
-	return createPausePod(f, pausePodConfig{
-		Name: "with-nodeaffinity-" + string(uuid.NewUUID()),
-		Affinity: &v1.Affinity{
-			NodeAffinity: &v1.NodeAffinity{
-				RequiredDuringSchedulingIgnoredDuringExecution: &v1.NodeSelector{
-					NodeSelectorTerms: []v1.NodeSelectorTerm{
-						{
-							MatchExpressions: []v1.NodeSelectorRequirement{
-								{
-									Key:      "kubernetes.io/e2e-az-name",
-									Operator: v1.NodeSelectorOpIn,
-									Values:   []string{"e2e-az1", "e2e-az2"},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	})
-}
-
-func createPodWithPodAffinity(f *framework.Framework, topologyKey string) *v1.Pod {
-	return createPausePod(f, pausePodConfig{
-		Name: "with-podantiaffinity-" + string(uuid.NewUUID()),
-		Affinity: &v1.Affinity{
-			PodAffinity: &v1.PodAffinity{
-				RequiredDuringSchedulingIgnoredDuringExecution: []v1.PodAffinityTerm{
-					{
-						LabelSelector: &metav1.LabelSelector{
-							MatchExpressions: []metav1.LabelSelectorRequirement{
-								{
-									Key:      "security",
-									Operator: metav1.LabelSelectorOpIn,
-									Values:   []string{"S1"},
-								},
-							},
-						},
-						TopologyKey: topologyKey,
-					},
-				},
-			},
-			PodAntiAffinity: &v1.PodAntiAffinity{
-				RequiredDuringSchedulingIgnoredDuringExecution: []v1.PodAffinityTerm{
-					{
-						LabelSelector: &metav1.LabelSelector{
-							MatchExpressions: []metav1.LabelSelectorRequirement{
-								{
-									Key:      "security",
-									Operator: metav1.LabelSelectorOpIn,
-									Values:   []string{"S2"},
-								},
-							},
-						},
-						TopologyKey: topologyKey,
-					},
-				},
-			},
-		},
-	})
-}
-
-// Returns a number of currently scheduled and not scheduled Pods.
-func getPodsScheduled(pods *v1.PodList) (scheduledPods, notScheduledPods []v1.Pod) {
-	for _, pod := range pods.Items {
-		if !masterNodes.Has(pod.Spec.NodeName) {
-			if pod.Spec.NodeName != "" {
-				_, scheduledCondition := podutil.GetPodCondition(&pod.Status, v1.PodScheduled)
-				// We can't assume that the scheduledCondition is always set if Pod is assigned to Node,
-				// as e.g. DaemonController doesn't set it when assigning Pod to a Node. Currently
-				// Kubelet sets this condition when it gets a Pod without it, but if we were expecting
-				// that it would always be not nil, this would cause a rare race condition.
-				if scheduledCondition != nil {
-					Expect(scheduledCondition.Status).To(Equal(v1.ConditionTrue))
-				}
-				scheduledPods = append(scheduledPods, pod)
-			} else {
-				_, scheduledCondition := podutil.GetPodCondition(&pod.Status, v1.PodScheduled)
-				if scheduledCondition != nil {
-					Expect(scheduledCondition.Status).To(Equal(v1.ConditionFalse))
-				}
-				if scheduledCondition.Reason == "Unschedulable" {
-					notScheduledPods = append(notScheduledPods, pod)
-				}
-			}
-		}
-	}
-	return
-}
-
 func getRequestedCPU(pod v1.Pod) int64 {
 	var result int64
 	for _, container := range pod.Spec.Containers {
 		result += container.Resources.Requests.Cpu().MilliValue()
+	}
+	return result
+}
+
+func getRequestedStorageOverlay(pod v1.Pod) int64 {
+	var result int64
+	for _, container := range pod.Spec.Containers {
+		result += container.Resources.Requests.StorageOverlay().MilliValue()
+	}
+	return result
+}
+
+func getRequestedStorageScratch(pod v1.Pod) int64 {
+	var result int64
+	for _, vol := range pod.Spec.Volumes {
+		if vol.EmptyDir != nil && vol.EmptyDir.Medium != v1.StorageMediumMemory {
+			result += vol.EmptyDir.SizeLimit.Value() * 1000
+		}
 	}
 	return result
 }
@@ -734,5 +771,55 @@ func CreateHostPortPods(f *framework.Framework, id string, replicas int, expectR
 	err := framework.RunRC(*config)
 	if expectRunning {
 		framework.ExpectNoError(err)
+	}
+}
+
+func buildEmptyDirPausePod(f *framework.Framework, name string, label map[string]string, milliOverlayPerPod, milliScratchPerPod int64) *v1.Pod {
+	pod := &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   name,
+			Labels: label,
+		},
+		Spec: v1.PodSpec{
+			Containers: []v1.Container{
+				{
+					Name:  name,
+					Image: framework.GetPauseImageName(f.ClientSet),
+					Resources: v1.ResourceRequirements{
+						Limits: v1.ResourceList{
+							"storage.kubernetes.io/overlay": *resource.NewMilliQuantity(milliOverlayPerPod, "DecimalSI"),
+						},
+						Requests: v1.ResourceList{
+							"storage.kubernetes.io/overlay": *resource.NewMilliQuantity(milliOverlayPerPod, "DecimalSI"),
+						},
+					},
+					VolumeMounts: []v1.VolumeMount{
+						{
+							Name: "scratch-test",
+						},
+					},
+				},
+			},
+			Volumes: []v1.Volume{
+				{
+					Name: "scratch-test",
+					VolumeSource: v1.VolumeSource{
+						EmptyDir: &v1.EmptyDirVolumeSource{
+							Medium:    v1.StorageMediumDefault,
+							SizeLimit: *resource.NewMilliQuantity(milliScratchPerPod, "DecimalSI"),
+						},
+					},
+				},
+			},
+		},
+	}
+	return pod
+}
+
+// createPodAction returns a closure that creates a pause pod upon invocation.
+func createPodAction(f *framework.Framework, pod *v1.Pod) common.Action {
+	return func() error {
+		_, err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).Create(pod)
+		return err
 	}
 }
