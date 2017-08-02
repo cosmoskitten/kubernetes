@@ -2587,7 +2587,7 @@ type ClientIPAffinityConfig struct {
 	// TimeoutSeconds specifies the seconds of ClientIP type session sticky time.
 	// The value must be >0 && <=86400(for 1 day) if ServiceAffinity == "ClientIP".
 	// Required
-	TimeoutSeconds int32 `json:"timeoutSeconds,omitempty" protobuf:"varint,1,opt,name=timeoutSeconds"`
+	TimeoutSeconds int32
 }
 
 // Service Type string describes ingress methods for a service
