@@ -28,6 +28,7 @@ import (
 func Funcs(codecs runtimeserializer.CodecFactory) []interface{} {
 	return []interface{}{
 		func(e *audit.Event, c fuzz.Continue) {
+			c.FuzzNoCustom(e)
 			switch c.RandBool() {
 			case true:
 				e.RequestObject = nil
@@ -47,6 +48,21 @@ func Funcs(codecs runtimeserializer.CodecFactory) []interface{} {
 					Raw:         []byte(`{"apiVersion":"","kind":"Pod","someKey":"someValue"}`),
 					ContentType: runtime.ContentTypeJSON,
 				}
+			}
+		},
+		func(o *audit.ObjectReference, c fuzz.Continue) {
+			c.FuzzNoCustom(o)
+			switch c.Intn(3) {
+			case 0:
+				// core api group
+				o.APIGroup = ""
+				o.APIVersion = "v1"
+			case 1:
+				// other group
+				o.APIGroup = "rbac.authorization.k8s.io"
+				o.APIVersion = "v1beta1"
+			default:
+				// use random value.
 			}
 		},
 	}
