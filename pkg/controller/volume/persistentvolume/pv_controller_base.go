@@ -42,6 +42,7 @@ import (
 	"k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/util/goroutinemap"
 	vol "k8s.io/kubernetes/pkg/volume"
+	"k8s.io/kubernetes/pkg/volume/util"
 
 	"github.com/golang/glog"
 )
@@ -73,6 +74,8 @@ func NewController(p ControllerParameters) (*PersistentVolumeController, error) 
 		broadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: v1core.New(p.KubeClient.Core().RESTClient()).Events("")})
 		eventRecorder = broadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "persistentvolume-controller"})
 	}
+
+	util.RegisterMetrics()
 
 	controller := &PersistentVolumeController{
 		volumes:           newPersistentVolumeOrderedIndex(),
