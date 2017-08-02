@@ -14,6 +14,7 @@ go_library(
         "doc.go",
         "host_path.go",
         "host_path_unix.go",
+        "nsenter.go",
     ],
     tags = ["automanaged"],
     deps = [
@@ -24,6 +25,7 @@ go_library(
         "//vendor/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/types:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/util/uuid:go_default_library",
+        "//vendor/k8s.io/utils/exec:go_default_library",
     ],
 )
 
