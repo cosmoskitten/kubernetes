@@ -29,8 +29,8 @@ import (
 )
 
 // NsenterMounter is part of experimental support for running the kubelet
-// in a container.  Currently, all docker containers receive their own mount
-// namespaces.  NsenterMounter works by executing nsenter to run commands in
+// in a container. Currently, all docker containers receive their own mount
+// namespaces. NsenterMounter works by executing nsenter to run commands in
 // the host's mount namespace.
 //
 // NsenterMounter requires:
@@ -40,7 +40,7 @@ import (
 //     Docker 1.5 used a private propagation mode for bind-mounts, so mounts
 //     performed in the host's mount namespace do not propagate out to the
 //     bind-mount in this docker version.
-// 2.  The host's root filesystem must be available at /rootfs
+// 2.  The host's root filesystem must be available at /rootfs.
 // 3.  The nsenter binary must be on the Kubelet process' PATH in the container's
 //     filesystem.
 // 4.  The Kubelet process must have CAP_SYS_ADMIN (required by nsenter); at
@@ -50,7 +50,7 @@ import (
 //     the container and be writable by the container (to initialize volume)
 //     contents. TODO: remove this requirement.
 // 6.  The host image must have mount, findmnt, and umount binaries in /bin,
-//     /usr/sbin, or /usr/bin
+//     /usr/sbin, or /usr/bin.
 //
 // For more information about mount propagation modes, see:
 //   https://www.kernel.org/doc/Documentation/filesystems/sharedsubtree.txt
@@ -88,12 +88,13 @@ func NewNsenterMounter() *NsenterMounter {
 var _ = Interface(&NsenterMounter{})
 
 const (
-	hostRootFsPath     = "/rootfs"
-	hostProcMountsPath = "/rootfs/proc/1/mounts"
-	nsenterPath        = "nsenter"
+	hostRootFsPath          = "/rootfs"
+	hostProcMountsPath      = "/rootfs/proc/1/mounts"
+	nsenterPath             = "nsenter"
+	hostProcMountsNamespace = "/rootfs/proc/1/ns/mnt"
 )
 
-// Mount runs mount(8) in the host's root mount namespace.  Aside from this
+// Mount runs mount(8) in the host's root mount namespace. Aside from this
 // aspect, Mount has the same semantics as the mounter returned by mount.New()
 func (n *NsenterMounter) Mount(source string, target string, fstype string, options []string) error {
 	bind, bindRemountOpts := isBind(options)
@@ -129,7 +130,7 @@ func (n *NsenterMounter) doNsenterMount(source, target, fstype string, options [
 // requested mount.
 func (n *NsenterMounter) makeNsenterArgs(source, target, fstype string, options []string) []string {
 	nsenterArgs := []string{
-		"--mount=/rootfs/proc/1/ns/mnt",
+		fmt.Sprintf("--mount=%s", hostProcMountsNamespace),
 		"--",
 		n.absHostPath("mount"),
 	}
@@ -142,7 +143,7 @@ func (n *NsenterMounter) makeNsenterArgs(source, target, fstype string, options 
 // Unmount runs umount(8) in the host's mount namespace.
 func (n *NsenterMounter) Unmount(target string) error {
 	args := []string{
-		"--mount=/rootfs/proc/1/ns/mnt",
+		fmt.Sprintf("--mount=%s", hostProcMountsNamespace),
 		"--",
 		n.absHostPath("umount"),
 		target,
@@ -189,7 +190,14 @@ func (n *NsenterMounter) IsLikelyNotMountPoint(file string) (bool, error) {
 	// the first of multiple possible mountpoints using --first-only.
 	// Also add fstype output to make sure that the output of target file will give the full path
 	// TODO: Need more refactoring for this function. Track the solution with issue #26996
-	args := []string{"--mount=/rootfs/proc/1/ns/mnt", "--", n.absHostPath("findmnt"), "-o", "target,fstype", "--noheadings", "--first-only", "--target", file}
+	args := []string{
+		fmt.Sprintf("--mount=%s", hostProcMountsNamespace),
+		"--",
+		n.absHostPath("findmnt"),
+		"-o", "target,fstype",
+		"--noheadings",
+		"--first-only",
+		"--target", file}
 	glog.V(5).Infof("findmnt command: %v %v", nsenterPath, args)
 
 	exec := exec.New()
