@@ -32,7 +32,7 @@ type DisabledClientForMapping struct {
 }
 
 func (f DisabledClientForMapping) ClientForMapping(mapping *meta.RESTMapping) (RESTClient, error) {
-	return nil, nil
+	return nil, fmt.Errorf("attempt to make api call using a disabled client")
 }
 
 // Mapper is a convenience struct for holding references to the three interfaces
