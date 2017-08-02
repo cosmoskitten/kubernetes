@@ -124,7 +124,7 @@ func (saConfig *serviceAccountConfig) Complete(f cmdutil.Factory, cmd *cobra.Com
 	}
 	saConfig.serviceAccountName = args[len(args)-1]
 	resources := args[:len(args)-1]
-	builder := f.NewBuilder(!saConfig.local).ContinueOnError().
+	builder := f.NewBuilder().ContinueOnError().
 		NamespaceParam(cmdNamespace).DefaultNamespace().
 		FilenameParam(enforceNamespace, &saConfig.fileNameOptions).
 		Flatten()

@@ -121,7 +121,7 @@ func (o *SelectorOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args [
 		return err
 	}
 
-	o.builder = f.NewBuilder(!o.local).
+	o.builder = f.NewBuilder().
 		ContinueOnError().
 		NamespaceParam(cmdNamespace).DefaultNamespace().
 		FilenameParam(enforceNamespace, &o.fileOptions).
@@ -138,6 +138,8 @@ func (o *SelectorOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args [
 		if len(o.resources) > 0 {
 			return resource.LocalResourceError
 		}
+
+		o.builder = o.builder.Local(f.ClientForMapping)
 	}
 
 	o.PrintObject = func(obj runtime.Object) error {

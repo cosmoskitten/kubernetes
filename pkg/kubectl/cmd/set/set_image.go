@@ -137,11 +137,12 @@ func (o *ImageOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args []st
 		return err
 	}
 
-	builder := f.NewBuilder(!o.Local).
+	builder := f.NewBuilder().
 		ContinueOnError().
 		NamespaceParam(cmdNamespace).DefaultNamespace().
 		FilenameParam(enforceNamespace, &o.FilenameOptions).
 		Flatten()
+
 	if !o.Local {
 		builder = builder.
 			SelectorParam(o.Selector).
@@ -154,6 +155,8 @@ func (o *ImageOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args []st
 		if len(o.Resources) > 0 {
 			return resource.LocalResourceError
 		}
+
+		builder = builder.Local(f.ClientForMapping)
 	}
 
 	o.Infos, err = builder.Do().Infos()
