@@ -165,13 +165,15 @@ func RunGet(f cmdutil.Factory, out, errOut io.Writer, cmd *cobra.Command, args [
 		return nil
 	}
 
-	selector := cmdutil.GetFlagString(cmd, "selector")
-	allNamespaces := cmdutil.GetFlagBool(cmd, "all-namespaces")
-	showKind := cmdutil.GetFlagBool(cmd, "show-kind")
-	builder, err := f.NewUnstructuredBuilder(true)
+	mapper, typer, err := f.UnstructuredObject()
 	if err != nil {
 		return err
 	}
+
+	selector := cmdutil.GetFlagString(cmd, "selector")
+	allNamespaces := cmdutil.GetFlagBool(cmd, "all-namespaces")
+	showKind := cmdutil.GetFlagBool(cmd, "show-kind")
+	builder := f.NewBuilder().Unstructured(f.UnstructuredClientForMapping, mapper, typer)
 
 	cmdNamespace, enforceNamespace, err := f.DefaultNamespace()
 	if err != nil {
@@ -202,12 +204,8 @@ func RunGet(f cmdutil.Factory, out, errOut io.Writer, cmd *cobra.Command, args [
 	// handle watch separately since we cannot watch multiple resource types
 	isWatch, isWatchOnly := cmdutil.GetFlagBool(cmd, "watch"), cmdutil.GetFlagBool(cmd, "watch-only")
 	if isWatch || isWatchOnly {
-		builder, err := f.NewUnstructuredBuilder(true)
-		if err != nil {
-			return err
-		}
-
-		r := builder.
+		r := f.NewBuilder().
+			Unstructured(f.UnstructuredClientForMapping, mapper, typer).
 			NamespaceParam(cmdNamespace).DefaultNamespace().AllNamespaces(allNamespaces).
 			FilenameParam(enforceNamespace, &options.FilenameOptions).
 			SelectorParam(selector).

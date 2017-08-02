@@ -180,12 +180,12 @@ func (o *LabelOptions) RunLabel(f cmdutil.Factory, cmd *cobra.Command) error {
 
 	changeCause := f.Command(cmd, false)
 
-	builder, err := f.NewUnstructuredBuilder(!o.local)
+	mapper, typer, err := f.UnstructuredObject()
 	if err != nil {
 		return err
 	}
 
-	b := builder.
+	b := f.NewBuilder().
 		ContinueOnError().
 		NamespaceParam(cmdNamespace).DefaultNamespace().
 		FilenameParam(enforceNamespace, &o.FilenameOptions).
@@ -193,9 +193,13 @@ func (o *LabelOptions) RunLabel(f cmdutil.Factory, cmd *cobra.Command) error {
 
 	if !o.local {
 		b = b.SelectorParam(o.selector).
+			Unstructured(f.UnstructuredClientForMapping, mapper, typer).
 			ResourceTypeOrNameArgs(o.all, o.resources...).
 			Latest()
+	} else {
+		b = b.Local(f.ClientForMapping)
 	}
+
 	one := false
 	r := b.Do().IntoSingleItemImplied(&one)
 	if err := r.Err(); err != nil {
