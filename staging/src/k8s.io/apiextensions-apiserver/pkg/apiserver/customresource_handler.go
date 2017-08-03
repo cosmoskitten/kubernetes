@@ -387,9 +387,17 @@ func (c *crdHandler) updateCustomResourceDefinition(oldObj, _ interface{}) {
 	glog.V(4).Infof("Updating customresourcedefinition %s", oldCRD.Name)
 
 	c.customStorageLock.Lock()
+	defer c.customStorageLock.Unlock()
+
 	storageMap := c.customStorage.Load().(crdStorageMap)
-	delete(storageMap, oldCRD.UID)
-	c.customStorageLock.Unlock()
+	storageMap2 := make(crdStorageMap)
+
+	for k, v := range storageMap {
+		storageMap2[k] = v
+	}
+
+	delete(storageMap2, oldCRD.UID)
+	c.customStorage.Store(storageMap2)
 }
 
 type unstructuredNegotiatedSerializer struct {
