@@ -24,18 +24,31 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/golang/glog"
 
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/kubernetes/pkg/api"
 	kubetypes "k8s.io/kubernetes/pkg/kubelet/types"
 )
+
+type podEventType int
+
+const (
+	podAdd podEventType = iota
+	podModify
+	podDelete
+
+	eventBuffer = 10
+)
+
+type watchEvent struct {
+	fileName  string
+	eventType podEventType
+}
 
 type sourceFileListerWatcher struct {
 	path           string
@@ -44,7 +57,7 @@ type sourceFileListerWatcher struct {
 	store          cache.Store
 	fileKeyMapping map[string]string
 	updates        chan<- interface{}
-	locker         sync.Locker
+	watchEvents    chan *watchEvent
 }
 
 func NewSourceFile(path string, nodeName types.NodeName, period time.Duration, updates chan<- interface{}) {
@@ -72,18 +85,29 @@ func newSourceFileListerWatcher(path string, nodeName types.NodeName, period tim
 		store:          store,
 		fileKeyMapping: map[string]string{},
 		updates:        updates,
-		locker:         &sync.Mutex{},
+		watchEvents:    make(chan *watchEvent, eventBuffer),
 	}
 }
 
 func (s *sourceFileListerWatcher) run() {
-	go wait.Forever(func() {
-		if err := s.listConfig(); err != nil {
-			glog.Errorf("unable to read config path %q: %v", s.path, err)
-		}
-	}, s.period)
+	listTicker := time.NewTicker(s.period)
 
-	s.watch()
+	go func() {
+		for {
+			select {
+			case <-listTicker.C:
+				if err := s.listConfig(); err != nil {
+					glog.Errorf("unable to read config path %q: %v", s.path, err)
+				}
+			case e := <-s.watchEvents:
+				if err := s.consumeWatchEvent(e); err != nil {
+					glog.Errorf("unable to process watch event: %v", err)
+				}
+			}
+		}
+	}()
+
+	s.startWatch()
 }
 
 func (s *sourceFileListerWatcher) applyDefaults(pod *api.Pod, source string) error {
@@ -175,8 +199,6 @@ func (s *sourceFileListerWatcher) extractFromFile(filename string) (pod *v1.Pod,
 				err = keyErr
 				return
 			}
-			s.locker.Lock()
-			defer s.locker.Unlock()
 			s.fileKeyMapping[filename] = objKey
 		}
 	}()
