@@ -124,7 +124,7 @@ func (rs *REST) Create(ctx genericapirequest.Context, obj runtime.Object, includ
 	// Handle ExternalTraiffc related fields during service creation.
 	if utilfeature.DefaultFeatureGate.Enabled(features.ExternalTrafficLocalOnly) {
 		if apiservice.NeedsHealthCheck(service) {
-			if err := rs.allocateHealthCheckNodePort(service); err != nil {
+			if err := rs.allocateHealthCheckNodePort(service, nodePortOp); err != nil {
 				return nil, errors.NewInternalError(err)
 			}
 		}
@@ -244,7 +244,7 @@ func externalTrafficPolicyUpdate(oldService, service *api.Service) {
 
 // healthCheckNodePortUpdate handles HealthCheckNodePort allocation/release
 // and adjusts HealthCheckNodePort during service update if needed.
-func (rs *REST) healthCheckNodePortUpdate(oldService, service *api.Service) (bool, error) {
+func (rs *REST) healthCheckNodePortUpdate(oldService, service *api.Service, nodePortOp *portallocator.PortAllocationOperation) (bool, error) {
 	neededHealthCheckNodePort := apiservice.NeedsHealthCheck(oldService)
 	oldHealthCheckNodePort := apiservice.GetServiceHealthCheckNodePort(oldService)
 
@@ -257,7 +257,7 @@ func (rs *REST) healthCheckNodePortUpdate(oldService, service *api.Service) (boo
 	// Insert health check node port into the service's HealthCheckNodePort field if needed.
 	case !neededHealthCheckNodePort && needsHealthCheckNodePort:
 		glog.Infof("Transition to LoadBalancer type service with ExternalTrafficPolicy=Local")
-		if err := rs.allocateHealthCheckNodePort(service); err != nil {
+		if err := rs.allocateHealthCheckNodePort(service, nodePortOp); err != nil {
 			return false, errors.NewInternalError(err)
 		}
 
@@ -265,11 +265,7 @@ func (rs *REST) healthCheckNodePortUpdate(oldService, service *api.Service) (boo
 	// Free the existing healthCheckNodePort and clear the HealthCheckNodePort field.
 	case neededHealthCheckNodePort && !needsHealthCheckNodePort:
 		glog.Infof("Transition to non LoadBalancer type service or LoadBalancer type service with ExternalTrafficPolicy=Global")
-		err := rs.serviceNodePorts.Release(int(oldHealthCheckNodePort))
-		if err != nil {
-			glog.Warningf("error releasing service health check %s node port %d: %v", service.Name, oldHealthCheckNodePort, err)
-			return false, errors.NewInternalError(fmt.Errorf("failed to free health check nodePort: %v", err))
-		}
+		nodePortOp.ReleaseDeferred(int(oldHealthCheckNodePort))
 		glog.Infof("Freed health check nodePort: %d", oldHealthCheckNodePort)
 		// Clear the HealthCheckNodePort field.
 		apiservice.SetServiceHealthCheckNodePort(service, 0)
@@ -359,7 +355,7 @@ func (rs *REST) Update(ctx genericapirequest.Context, name string, objInfo rest.
 
 	// Handle ExternalTraiffc related updates.
 	if utilfeature.DefaultFeatureGate.Enabled(features.ExternalTrafficLocalOnly) {
-		success, err := rs.healthCheckNodePortUpdate(oldService, service)
+		success, err := rs.healthCheckNodePortUpdate(oldService, service, nodePortOp)
 		if !success || err != nil {
 			return nil, false, err
 		}
@@ -479,11 +475,11 @@ func findRequestedNodePort(port int, servicePorts []api.ServicePort) int {
 }
 
 // allocateHealthCheckNodePort allocates health check node port to service.
-func (rs *REST) allocateHealthCheckNodePort(service *api.Service) error {
+func (rs *REST) allocateHealthCheckNodePort(service *api.Service, nodePortOp *portallocator.PortAllocationOperation) error {
 	healthCheckNodePort := apiservice.GetServiceHealthCheckNodePort(service)
 	if healthCheckNodePort != 0 {
 		// If the request has a health check nodePort in mind, attempt to reserve it.
-		err := rs.serviceNodePorts.Allocate(int(healthCheckNodePort))
+		err := nodePortOp.Allocate(int(healthCheckNodePort))
 		if err != nil {
 			return fmt.Errorf("failed to allocate requested HealthCheck NodePort %v: %v",
 				healthCheckNodePort, err)
@@ -491,7 +487,7 @@ func (rs *REST) allocateHealthCheckNodePort(service *api.Service) error {
 		glog.Infof("Reserved user requested nodePort: %d", healthCheckNodePort)
 	} else {
 		// If the request has no health check nodePort specified, allocate any.
-		healthCheckNodePort, err := rs.serviceNodePorts.AllocateNext()
+		healthCheckNodePort, err := nodePortOp.AllocateNext()
 		if err != nil {
 			return fmt.Errorf("failed to allocate a HealthCheck NodePort %v: %v", healthCheckNodePort, err)
 		}
