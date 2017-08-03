@@ -12,6 +12,7 @@ go_test(
     name = "go_default_test",
     srcs = [
         "cluster_test.go",
+        "clusterrolebinding_test.go",
         "configmap_test.go",
         "delete_test.go",
         "deployment_test.go",
