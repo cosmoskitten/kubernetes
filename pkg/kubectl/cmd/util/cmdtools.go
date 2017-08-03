@@ -95,24 +95,20 @@ func defaultEnv(cmdName CmdName, envs []string) ([]string, bool) {
 			break
 		}
 	}
-	if len(cmd) == 0 {
-		switch cmdName {
-		case EditorCmd:
-			cmd = platformize(defaultEditor, windowsEditor)
-		case DiffCmd:
-			cmd = checkGitDiffInstalled(gitDiff, normalDiff)
-		}
+
+	if len(cmd) > 0 {
+		// rather than parse the shell arguments ourselves, punt to the shell
+		shell := defaultEnvShell()
+		return append(shell, cmd), true
 	}
 
-	if !strings.Contains(cmd, " ") {
-		return []string{cmd}, false
+	switch cmdName {
+	case EditorCmd:
+		cmd = platformize(defaultEditor, windowsEditor)
+	case DiffCmd:
+		cmd = checkGitDiffInstalled(gitDiff, normalDiff)
 	}
-	if !strings.ContainsAny(cmd, `"'\`) {
-		return strings.Split(cmd, " "), false
-	}
-	// rather than parse the shell arguments ourselves, punt to the shell
-	shell := defaultEnvShell()
-	return append(shell, cmd), true
+	return []string{cmd}, false
 }
 
 func (t CmdTool) args(path string) []string {
