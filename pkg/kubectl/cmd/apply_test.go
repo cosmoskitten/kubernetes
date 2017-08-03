@@ -79,8 +79,8 @@ const (
 	filenameWidgetClientside = "../../../test/fixtures/pkg/kubectl/cmd/apply/widget-clientside.yaml"
 	filenameWidgetServerside = "../../../test/fixtures/pkg/kubectl/cmd/apply/widget-serverside.yaml"
 
-	fileNameGitDiffResult    = "/tmp/git-diff.result"
-	fileNameNormalDiffResutl = "/tmp/diff.result"
+	fileNameGitDiffResult    = "./git-diff.result"
+	fileNameNormalDiffResutl = "./diff.result"
 )
 
 func readBytesFromFile(t *testing.T, filename string) []byte {

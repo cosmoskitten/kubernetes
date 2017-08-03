@@ -20,9 +20,9 @@ set -o pipefail
 
 
 if command -v git &>/dev/null; then
-    git diff --no-index "${1}" "${2}" |grep containerPort -A 1 > "/tmp/git-diff.result"
+    git diff --no-index "${1}" "${2}" |grep containerPort -A 1 > "./git-diff.result"
 elif command -v diff &>/dev/null; then
-    diff "${1}" "${2}" |grep containerPort > "/tmp/diff.result"
+    diff "${1}" "${2}" |grep containerPort > "./diff.result"
 else
     echo "git and diff are unavailable" >&2
     exit 1

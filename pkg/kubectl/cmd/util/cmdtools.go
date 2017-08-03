@@ -54,9 +54,9 @@ const (
 // CmdTools include
 // editor and diff tools
 type CmdTool struct {
-	Name  CmdName
-	Args  []string
-	Shell bool
+	Name    CmdName
+	Args    []string
+	IsShell bool
 }
 
 // NewDefaultCmdTool creates a struct CmdTool that uses the OS environment to
@@ -67,9 +67,9 @@ type CmdTool struct {
 func NewDefaultCmdTool(name CmdName, envs []string) CmdTool {
 	exec, shell := defaultEnv(name, envs)
 	return CmdTool{
-		Name:  name,
-		Args:  exec,
-		Shell: shell,
+		Name:    name,
+		Args:    exec,
+		IsShell: shell,
 	}
 }
 
@@ -95,34 +95,35 @@ func defaultEnv(cmdName CmdName, envs []string) ([]string, bool) {
 			break
 		}
 	}
-	if len(cmd) == 0 {
-		switch cmdName {
-		case EditorCmd:
-			cmd = platformize(defaultEditor, windowsEditor)
-		case DiffCmd:
-			cmd = checkGitDiffInstalled(gitDiff, normalDiff)
-		}
+
+	if len(cmd) > 0 {
+		// rather than parse the shell arguments ourselves, punt to the shell
+		shell := defaultEnvShell()
+		return append(shell, cmd), true
 	}
 
-	if !strings.Contains(cmd, " ") {
-		return []string{cmd}, false
+	switch cmdName {
+	case EditorCmd:
+		cmd = platformize(defaultEditor, windowsEditor)
+	case DiffCmd:
+		cmd = checkGitDiffInstalled(gitDiff, normalDiff)
 	}
-	if !strings.ContainsAny(cmd, `"'\`) {
-		return strings.Split(cmd, " "), false
-	}
-	// rather than parse the shell arguments ourselves, punt to the shell
-	shell := defaultEnvShell()
-	return append(shell, cmd), true
+	return []string{cmd}, false
 }
 
 func (t CmdTool) args(path string) []string {
-	if t.Shell {
-		last := t.Args[len(t.Args)-1]
-		t.Args[len(t.Args)-1] = fmt.Sprintf("%s %q", last, path)
+	// there is a slice operation in this function could change
+	// t.Args permanently, so we need to do a deep copy here first.
+	args := make([]string, len(t.Args))
+	copy(args, t.Args)
+
+	if t.IsShell {
+		last := args[len(args)-1]
+		args[len(args)-1] = fmt.Sprintf("%s %q", last, path)
 	} else {
-		t.Args = append(t.Args, path)
+		args = append(t.Args, path)
 	}
-	return t.Args
+	return args
 }
 
 // Launch opens the described or returns an error. The TTY will be protected, and
