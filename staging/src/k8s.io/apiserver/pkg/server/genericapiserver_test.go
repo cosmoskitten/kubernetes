@@ -38,6 +38,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/apiserver/pkg/apis/example"
 	examplev1 "k8s.io/apiserver/pkg/apis/example/v1"
@@ -114,7 +115,7 @@ func setUp(t *testing.T) (*etcdtesting.EtcdTestServer, Config, *assert.Assertion
 func newMaster(t *testing.T) (*GenericAPIServer, *etcdtesting.EtcdTestServer, Config, *assert.Assertions) {
 	etcdserver, config, assert := setUp(t)
 
-	s, err := config.Complete().New("test", EmptyDelegate)
+	s, err := config.Complete().New("test", EmptyDelegate, wait.NeverStop)
 	if err != nil {
 		t.Fatalf("Error in bringing up the server: %v", err)
 	}
@@ -146,7 +147,7 @@ func TestInstallAPIGroups(t *testing.T) {
 	config.LegacyAPIGroupPrefixes = sets.NewString("/apiPrefix")
 	config.DiscoveryAddresses = discovery.DefaultAddresses{DefaultAddress: "ExternalAddress"}
 
-	s, err := config.SkipComplete().New("test", EmptyDelegate)
+	s, err := config.SkipComplete().New("test", EmptyDelegate, wait.NeverStop)
 	if err != nil {
 		t.Fatalf("Error in bringing up the server: %v", err)
 	}
@@ -350,7 +351,7 @@ func TestCustomHandlerChain(t *testing.T) {
 		called = true
 	})
 
-	s, err := config.SkipComplete().New("test", EmptyDelegate)
+	s, err := config.SkipComplete().New("test", EmptyDelegate, wait.NeverStop)
 	if err != nil {
 		t.Fatalf("Error in bringing up the server: %v", err)
 	}
@@ -405,7 +406,7 @@ func TestNotRestRoutesHaveAuth(t *testing.T) {
 	kubeVersion := fakeVersion()
 	config.Version = &kubeVersion
 
-	s, err := config.SkipComplete().New("test", EmptyDelegate)
+	s, err := config.SkipComplete().New("test", EmptyDelegate, wait.NeverStop)
 	if err != nil {
 		t.Fatalf("Error in bringing up the server: %v", err)
 	}
@@ -478,6 +479,8 @@ func (p *testGetterStorage) New() runtime.Object {
 	}
 }
 
+func (p *testGetterStorage) Destroy() {}
+
 func (p *testGetterStorage) Get(ctx genericapirequest.Context, name string, options *metav1.GetOptions) (runtime.Object, error) {
 	return nil, nil
 }
@@ -494,6 +497,8 @@ func (p *testNoVerbsStorage) New() runtime.Object {
 		},
 	}
 }
+
+func (p *testNoVerbsStorage) Destroy() {}
 
 func fakeVersion() version.Info {
 	return version.Info{
