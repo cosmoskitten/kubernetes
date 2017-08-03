@@ -54,7 +54,7 @@ spec:
     - --kubelet-client-certificate=/etc/kubernetes/pki/apiserver-kubelet-client.crt
     - --secure-port=6443
     - --insecure-port=0
-    - --admission-control=Initializers,NamespaceLifecycle,LimitRanger,ServiceAccount,PersistentVolumeLabel,DefaultStorageClass,DefaultTolerationSeconds,NodeRestriction,ResourceQuota
+    - --admission-control=Initializers,NamespaceLifecycle,LimitRanger,ServiceAccount,PersistentVolumeLabel,DefaultStorageClass,DefaultTolerationSeconds,LimitPodHardAntiAffinityTopology,NodeRestriction,ResourceQuota
     - --requestheader-extra-headers-prefix=X-Remote-Extra-
     - --proxy-client-cert-file=/etc/kubernetes/pki/front-proxy-client.crt
     - --experimental-bootstrap-token-auth=true
@@ -169,7 +169,7 @@ spec:
         - --kubelet-client-certificate=/etc/kubernetes/pki/apiserver-kubelet-client.crt
         - --secure-port=6443
         - --insecure-port=0
-        - --admission-control=Initializers,NamespaceLifecycle,LimitRanger,ServiceAccount,PersistentVolumeLabel,DefaultStorageClass,DefaultTolerationSeconds,NodeRestriction,ResourceQuota
+        - --admission-control=Initializers,NamespaceLifecycle,LimitRanger,ServiceAccount,PersistentVolumeLabel,DefaultStorageClass,DefaultTolerationSeconds,LimitPodHardAntiAffinityTopology,NodeRestriction,ResourceQuota
         - --requestheader-extra-headers-prefix=X-Remote-Extra-
         - --proxy-client-cert-file=/etc/kubernetes/pki/front-proxy-client.crt
         - --experimental-bootstrap-token-auth=true
