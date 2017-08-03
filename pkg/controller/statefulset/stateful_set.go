@@ -72,13 +72,6 @@ type StatefulSetController struct {
 	setListerSynced cache.InformerSynced
 	// pvcListerSynced returns true if the pvc shared informer has synced at least once
 	pvcListerSynced cache.InformerSynced
-	/*
-		// historyLister get list/get history from the shared informers's store
-		historyLister appslisters.ControllerRevisionLister
-		// historyStoreSynced returns true if the history store has been synced at least once.
-		// Added as a member to the struct to allow injection for testing.
-		historyStoreSynced cache.InformerSynced
-	*/
 	// StatefulSets that need to be synced.
 	queue workqueue.RateLimitingInterface
 }
@@ -141,16 +134,7 @@ func NewStatefulSetController(
 	)
 	ssc.setLister = setInformer.Lister()
 	ssc.setListerSynced = setInformer.Informer().HasSynced
-	/*
-		historyInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-			AddFunc:    ssc.addHistory,
-			UpdateFunc: ssc.updateHistory,
-			DeleteFunc: ssc.deleteHistory,
-		})
 
-		ssc.historyLister = historyInformer.Lister()
-		ssc.historyStoreSynced = historyInformer.Informer().HasSynced
-	*/
 	// TODO: Watch volumes
 	return ssc
 }
@@ -477,137 +461,3 @@ func (ssc *StatefulSetController) syncStatefulSet(set *apps.StatefulSet, pods []
 	glog.V(4).Infof("Successfully synced StatefulSet %s/%s successful", set.Namespace, set.Name)
 	return nil
 }
-
-/*
-// addHistory enqueues the StatefulSet that manages a ControllerRevision when the ControllerRevision is created
-// or when the controller manager is restarted.
-func (ssc *StatefulSetController) addHistory(obj interface{}) {
-	history := obj.(*apps.ControllerRevision)
-	if history.DeletionTimestamp != nil {
-		// On a restart of the controller manager, it's possible for an object to
-		// show up in a state that is already pending deletion.
-		ssc.deleteHistory(history)
-		return
-	}
-
-	// If it has a ControllerRef, that's all that matters.
-	if controllerRef := controller.GetControllerOf(history); controllerRef != nil {
-		ds := ssc.resolveControllerRef(history.Namespace, controllerRef)
-		if ds == nil {
-			return
-		}
-		glog.V(4).Infof("ControllerRevision %s added.", history.Name)
-		return
-	}
-
-	// Otherwise, it's an orphan. Get a list of all matching StatefulSets and sync
-	// them to see if anyone wants to adopt it.
-	statefulSets := ssc.getStatefulSetsForHistory(history)
-	if len(statefulSets) == 0 {
-		return
-	}
-	glog.V(4).Infof("Orphan ControllerRevision %s added.", history.Name)
-	for _, ds := range statefulSets {
-		ssc.enqueueStatefulSet(ds)
-	}
-}
-
-// updateHistory figures out what StatefulSet(s) manage a ControllerRevision when the ControllerRevision
-// is updated and wake them up. If the anything of the ControllerRevision have changed, we need to
-// awaken both the old and new StatefulSets.
-func (ssc *StatefulSetController) updateHistory(old, cur interface{}) {
-	curHistory := cur.(*apps.ControllerRevision)
-	oldHistory := old.(*apps.ControllerRevision)
-	if curHistory.ResourceVersion == oldHistory.ResourceVersion {
-		// Periodic resync will send update events for all known ControllerRevisions.
-		return
-	}
-
-	curControllerRef := controller.GetControllerOf(curHistory)
-	oldControllerRef := controller.GetControllerOf(oldHistory)
-	controllerRefChanged := !reflect.DeepEqual(curControllerRef, oldControllerRef)
-	if controllerRefChanged && oldControllerRef != nil {
-		// The ControllerRef was changed. Sync the old controller, if any.
-		if ds := ssc.resolveControllerRef(oldHistory.Namespace, oldControllerRef); ds != nil {
-			ssc.enqueueStatefulSet(ds)
-		}
-	}
-
-	// If it has a ControllerRef, that's all that matters.
-	if curControllerRef != nil {
-		ds := ssc.resolveControllerRef(curHistory.Namespace, curControllerRef)
-		if ds == nil {
-			return
-		}
-		glog.V(4).Infof("ControllerRevision %s updated.", curHistory.Name)
-		ssc.enqueueStatefulSet(ds)
-		return
-	}
-
-	// Otherwise, it's an orphan. If anything changed, sync matching controllers
-	// to see if anyone wants to adopt it now.
-	labelChanged := !reflect.DeepEqual(curHistory.Labels, oldHistory.Labels)
-	if labelChanged || controllerRefChanged {
-		StatefulSets := ssc.getStatefulSetsForHistory(curHistory)
-		if len(StatefulSets) == 0 {
-			return
-		}
-		glog.V(4).Infof("Orphan ControllerRevision %s updated.", curHistory.Name)
-		for _, ds := range StatefulSets {
-			ssc.enqueueStatefulSet(ds)
-		}
-	}
-}
-
-// deleteHistory enqueues the StatefulSet that manages a ControllerRevision when
-// the ControllerRevision is deleted. obj could be an *app.ControllerRevision, or
-// a DeletionFinalStateUnknown marker item.
-func (ssc *StatefulSetController) deleteHistory(obj interface{}) {
-	history, ok := obj.(*apps.ControllerRevision)
-
-	// When a delete is dropped, the relist will notice a ControllerRevision in the store not
-	// in the list, leading to the insertion of a tombstone object which contains
-	// the deleted key/value. Note that this value might be stale. If the ControllerRevision
-	// changed labels the new StatefulSet will not be woken up till the periodic resync.
-	if !ok {
-		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-		if !ok {
-			utilruntime.HandleError(fmt.Errorf("Couldn't get object from tombstone %#v", obj))
-			return
-		}
-		history, ok = tombstone.Obj.(*apps.ControllerRevision)
-		if !ok {
-			utilruntime.HandleError(fmt.Errorf("Tombstone contained object that is not a ControllerRevision %#v", obj))
-			return
-		}
-	}
-
-	controllerRef := controller.GetControllerOf(history)
-	if controllerRef == nil {
-		// No controller should care about orphans being deleted.
-		return
-	}
-	ds := ssc.resolveControllerRef(history.Namespace, controllerRef)
-	if ds == nil {
-		return
-	}
-	glog.V(4).Infof("ControllerRevision %s deleted.", history.Name)
-	ssc.enqueueStatefulSet(ds)
-}
-
-// getStatefulSetsForHistory returns a list of StatefulSets that potentially
-// match a ControllerRevision.
-func (ssc *StatefulSetController) getStatefulSetsForHistory(history *apps.ControllerRevision) []*apps.StatefulSet {
-	statefulSets, err := ssc.dsLister.GetHistoryStatefulSets(history)
-	if err != nil || len(statefulSets) == 0 {
-		return nil
-	}
-	if len(statefulSets) > 1 {
-		// ControllerRef will ensure we don't do anything crazy, but more than one
-		// item in this list nevertheless constitutes user error.
-		glog.V(4).Infof("User error! more than one StatefulSets is selecting ControllerRevision %s/%s with labels: %#v",
-			history.Namespace, history.Name, history.Labels)
-	}
-	return statefulSets
-}
-*/

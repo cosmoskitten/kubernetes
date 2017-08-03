@@ -28,10 +28,10 @@ spec:
       labels:
         app: nginx-statefulset
     spec:
-      terminationGracePeriodSeconds: 0
+      terminationGracePeriodSeconds: 5
       containers:
       - name: nginx
-        image: gcr.io/google_containers/nginx-slim:0.7
+        image: gcr.io/google-containers/pause:latest
         ports:
         - containerPort: 80
           name: web

@@ -28,22 +28,13 @@ spec:
       labels:
         app: nginx-statefulset
     spec:
-      terminationGracePeriodSeconds: 0
+      terminationGracePeriodSeconds: 5
       containers:
       - name: nginx
-        image: gcr.io/google_containers/nginx-slim:0.7
+        image: gcr.io/google-containers/nginx:test-cmd
         ports:
         - containerPort: 80
           name: web
-        command:
-        - sh
-        - -c
-        - 'while true; do sleep 1; done'
-      - name: nginx-rv2
-        image: gcr.io/google_containers/nginx-slim:0.8
-        ports:
-        - containerPort: 81
-          name: web-rv2
         command:
         - sh
         - -c
