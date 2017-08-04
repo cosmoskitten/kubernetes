@@ -496,7 +496,7 @@ func TestCertsTLS(t *testing.T) {
 
 	for i, tc := range testCases {
 		// Make a copy of the client config before modifying it.
-		// We can't do a regular pointer deref shallow copy because
+		// We can't do a regular pointer dereference shallow copy because
 		// tls.Config contains an unexported sync.Once field which
 		// must not be copied. This was pointed out by go vet.
 		cCfg := copyTLSConfig(tc.cCfg)
@@ -579,7 +579,7 @@ func TestCertsHTTPS(t *testing.T) {
 
 	for i, tc := range testCases {
 		// Make a copy of the client config before modifying it.
-		// We can't do a regular pointer deref shallow copy because
+		// We can't do a regular pointer dereference shallow copy because
 		// tls.Config contains an unexported sync.Once field which
 		// must not be copied. This was pointed out by go vet.
 		cCfg := copyTLSConfig(tc.cCfg)

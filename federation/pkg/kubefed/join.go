@@ -244,7 +244,7 @@ func (j *joinFederation) Run(f cmdutil.Factory, cmdOut io.Writer, config util.Ad
 			// 1. We want to create the secret in a specific namespace, which
 			//    is neither the "default" namespace nor the one specified
 			//    via the `--namespace` flag.
-			// 2. `SecretGeneratorV1` requires LiteralSources in a string-ified
+			// 2. `SecretGeneratorV1` requires LiteralSources in a string-field
 			//    form that it parses to generate the secret data key-value
 			//    pairs. We, however, have the key-value pairs ready without a
 			//    need for parsing.
