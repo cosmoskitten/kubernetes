@@ -100,8 +100,6 @@ spec:
           path: /run/xtables.lock
 `
 
-	KubeDNSVersion = "1.14.4"
-
 	KubeDNSDeployment = `
 apiVersion: extensions/v1beta1
 kind: Deployment

@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"time"
 
 	"k8s.io/api/core/v1"
@@ -36,11 +35,7 @@ import (
 )
 
 const (
-	kubeAPIServer         = "kube-apiserver"
-	kubeControllerManager = "kube-controller-manager"
-	kubeScheduler         = "kube-scheduler"
-
-	selfHostingPrefix = "self-hosted-"
+	selfHostedWaitTimeout = 1 * time.Minute
 )
 
 // CreateSelfHostedControlPlane is responsible for turning a Static Pod-hosted control plane to a self-hosted one
@@ -54,7 +49,7 @@ const (
 // 7. The self-hosted containers should now step up and take over.
 // 8. In order to avoid race conditions, we're still making sure the API /healthz endpoint is healthy
 // 9. Do that for the kube-apiserver, kube-controller-manager and kube-scheduler in a loop
-func CreateSelfHostedControlPlane(cfg *kubeadmapi.MasterConfiguration, client *clientset.Clientset) error {
+func CreateSelfHostedControlPlane(cfg *kubeadmapi.MasterConfiguration, client clientset.Interface) error {
 
 	if err := createTLSSecrets(cfg, client); err != nil {
 		return err
@@ -64,12 +59,9 @@ func CreateSelfHostedControlPlane(cfg *kubeadmapi.MasterConfiguration, client *c
 		return err
 	}
 
-	// The sequence here isn't set in stone, but seems to work well to start with the API server
-	components := []string{kubeAPIServer, kubeControllerManager, kubeScheduler}
-
-	for _, componentName := range components {
+	for _, componentName := range kubeadmconstants.MasterComponents {
 		start := time.Now()
-		manifestPath := buildStaticManifestFilepath(componentName)
+		manifestPath := kubeadmconstants.GetStaticPodFilepath(componentName, kubeadmconstants.GetStaticPodDirectory())
 
 		// Load the Static Pod file in order to be able to create a self-hosted variant of that file
 		podSpec, err := loadPodSpecFromFile(manifestPath)
@@ -92,16 +84,23 @@ func CreateSelfHostedControlPlane(cfg *kubeadmapi.MasterConfiguration, client *c
 			}
 		}
 
-		// Wait for the self-hosted component to come up
-		kubeadmutil.WaitForPodsWithLabel(client, buildSelfHostedWorkloadLabelQuery(componentName))
+		// Wait for the self-hosted component to get into the Running state
+		if err := kubeadmutil.WaitForPodsWithLabel(client, selfHostedWaitTimeout, os.Stdout, buildSelfHostedWorkloadLabelQuery(componentName)); err != nil {
+			return err
+		}
 
 		// Remove the old Static Pod manifest
 		if err := os.RemoveAll(manifestPath); err != nil {
 			return fmt.Errorf("unable to delete static pod manifest for %s [%v]", componentName, err)
 		}
 
-		// Make sure the API is responsive at /healthz
-		kubeadmutil.WaitForAPI(client)
+		// Wait for the mirror Pod hash to be removed; otherwise we'll run into race conditions here when the kubelet hasn't had time to
+		// remove the Static Pod (or the mirror Pod respectively). This implicitely also tests that the API server endpoint is healthy,
+		// because this blocks until the API server returns a 404 Not Found when getting the Static Pod
+		staticPodName := fmt.Sprintf("%s-%s", componentName, cfg.NodeName)
+		if err := kubeadmutil.WaitForPodToDisappear(client, selfHostedWaitTimeout, staticPodName); err != nil {
+			return err
+		}
 
 		fmt.Printf("[self-hosted] self-hosted %s ready after %f seconds\n", componentName, time.Since(start).Seconds())
 	}
@@ -116,17 +115,17 @@ func buildDaemonSet(cfg *kubeadmapi.MasterConfiguration, name string, podSpec *v
 	// Return a DaemonSet based on that Spec
 	return &extensions.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      addSelfHostedPrefix(name),
+			Name:      kubeadmconstants.AddSelfHostedPrefix(name),
 			Namespace: metav1.NamespaceSystem,
 			Labels: map[string]string{
-				"k8s-app": addSelfHostedPrefix(name),
+				"k8s-app": kubeadmconstants.AddSelfHostedPrefix(name),
 			},
 		},
 		Spec: extensions.DaemonSetSpec{
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						"k8s-app": addSelfHostedPrefix(name),
+						"k8s-app": kubeadmconstants.AddSelfHostedPrefix(name),
 					},
 				},
 				Spec: *podSpec,
@@ -151,17 +150,7 @@ func loadPodSpecFromFile(manifestPath string) (*v1.PodSpec, error) {
 	return &staticPod.Spec, nil
 }
 
-// buildStaticManifestFilepath returns the location on the disk where the Static Pod should be present
-func buildStaticManifestFilepath(componentName string) string {
-	return filepath.Join(kubeadmconstants.KubernetesDir, kubeadmconstants.ManifestsSubDirName, componentName+".yaml")
-}
-
 // buildSelfHostedWorkloadLabelQuery creates the right query for matching a self-hosted Pod
 func buildSelfHostedWorkloadLabelQuery(componentName string) string {
-	return fmt.Sprintf("k8s-app=%s", addSelfHostedPrefix(componentName))
-}
-
-// addSelfHostedPrefix adds the self-hosted- prefix to the component name
-func addSelfHostedPrefix(componentName string) string {
-	return fmt.Sprintf("%s%s", selfHostingPrefix, componentName)
+	return fmt.Sprintf("k8s-app=%s", kubeadmconstants.AddSelfHostedPrefix(componentName))
 }

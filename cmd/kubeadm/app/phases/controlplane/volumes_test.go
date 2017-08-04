@@ -304,7 +304,7 @@ func TestGetHostPathVolumesForTheControlPlane(t *testing.T) {
 				Etcd:            kubeadmapi.Etcd{},
 			},
 			vol: map[string][]v1.Volume{
-				kubeAPIServer: {
+				kubeadmconstants.KubeAPIServer: {
 					{
 						Name: "k8s-certs",
 						VolumeSource: v1.VolumeSource{
@@ -318,7 +318,7 @@ func TestGetHostPathVolumesForTheControlPlane(t *testing.T) {
 						},
 					},
 				},
-				kubeControllerManager: {
+				kubeadmconstants.KubeControllerManager: {
 					{
 						Name: "k8s-certs",
 						VolumeSource: v1.VolumeSource{
@@ -338,7 +338,7 @@ func TestGetHostPathVolumesForTheControlPlane(t *testing.T) {
 						},
 					},
 				},
-				kubeScheduler: {
+				kubeadmconstants.KubeScheduler: {
 					{
 						Name: "kubeconfig",
 						VolumeSource: v1.VolumeSource{
@@ -348,7 +348,7 @@ func TestGetHostPathVolumesForTheControlPlane(t *testing.T) {
 				},
 			},
 			volMount: map[string][]v1.VolumeMount{
-				kubeAPIServer: {
+				kubeadmconstants.KubeAPIServer: {
 					{
 						Name:      "k8s-certs",
 						MountPath: testCertsDir,
@@ -360,7 +360,7 @@ func TestGetHostPathVolumesForTheControlPlane(t *testing.T) {
 						ReadOnly:  true,
 					},
 				},
-				kubeControllerManager: {
+				kubeadmconstants.KubeControllerManager: {
 					{
 						Name:      "k8s-certs",
 						MountPath: testCertsDir,
@@ -377,7 +377,7 @@ func TestGetHostPathVolumesForTheControlPlane(t *testing.T) {
 						ReadOnly:  true,
 					},
 				},
-				kubeScheduler: {
+				kubeadmconstants.KubeScheduler: {
 					{
 						Name:      "kubeconfig",
 						MountPath: "/etc/kubernetes/scheduler.conf",
@@ -398,7 +398,7 @@ func TestGetHostPathVolumesForTheControlPlane(t *testing.T) {
 				},
 			},
 			vol: map[string][]v1.Volume{
-				kubeAPIServer: {
+				kubeadmconstants.KubeAPIServer: {
 					{
 						Name: "k8s-certs",
 						VolumeSource: v1.VolumeSource{
@@ -424,7 +424,7 @@ func TestGetHostPathVolumesForTheControlPlane(t *testing.T) {
 						},
 					},
 				},
-				kubeControllerManager: {
+				kubeadmconstants.KubeControllerManager: {
 					{
 						Name: "k8s-certs",
 						VolumeSource: v1.VolumeSource{
@@ -444,7 +444,7 @@ func TestGetHostPathVolumesForTheControlPlane(t *testing.T) {
 						},
 					},
 				},
-				kubeScheduler: {
+				kubeadmconstants.KubeScheduler: {
 					{
 						Name: "kubeconfig",
 						VolumeSource: v1.VolumeSource{
@@ -454,7 +454,7 @@ func TestGetHostPathVolumesForTheControlPlane(t *testing.T) {
 				},
 			},
 			volMount: map[string][]v1.VolumeMount{
-				kubeAPIServer: {
+				kubeadmconstants.KubeAPIServer: {
 					{
 						Name:      "k8s-certs",
 						MountPath: testCertsDir,
@@ -476,7 +476,7 @@ func TestGetHostPathVolumesForTheControlPlane(t *testing.T) {
 						ReadOnly:  true,
 					},
 				},
-				kubeControllerManager: {
+				kubeadmconstants.KubeControllerManager: {
 					{
 						Name:      "k8s-certs",
 						MountPath: testCertsDir,
@@ -493,7 +493,7 @@ func TestGetHostPathVolumesForTheControlPlane(t *testing.T) {
 						ReadOnly:  true,
 					},
 				},
-				kubeScheduler: {
+				kubeadmconstants.KubeScheduler: {
 					{
 						Name:      "kubeconfig",
 						MountPath: "/etc/kubernetes/scheduler.conf",
