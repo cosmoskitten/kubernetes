@@ -29,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -450,8 +451,9 @@ type pruner struct {
 	clientFunc    resource.ClientMapperFunc
 	clientsetFunc func() (internalclientset.Interface, error)
 
-	visitedUids sets.String
-	selector    labels.Selector
+	visitedUids   sets.String
+	selector      labels.Selector
+	fieldSelector fields.Selector
 
 	cascade     bool
 	dryRun      bool
@@ -466,7 +468,7 @@ func (p *pruner) prune(namespace string, mapping *meta.RESTMapping, shortOutput 
 		return err
 	}
 
-	objList, err := resource.NewHelper(c, mapping).List(namespace, mapping.GroupVersionKind.Version, p.selector, false)
+	objList, err := resource.NewHelper(c, mapping).List(namespace, mapping.GroupVersionKind.Version, p.selector, p.fieldSelector, false)
 	if err != nil {
 		return err
 	}
