@@ -27,6 +27,7 @@ import (
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest/fake"
@@ -358,7 +359,7 @@ func TestHelperList(t *testing.T) {
 			RESTClient:      client,
 			NamespaceScoped: true,
 		}
-		obj, err := modifier.List("bar", api.Registry.GroupOrDie(api.GroupName).GroupVersion.String(), labels.SelectorFromSet(labels.Set{"foo": "baz"}), false, false)
+		obj, err := modifier.List("bar", api.Registry.GroupOrDie(api.GroupName).GroupVersion.String(), labels.SelectorFromSet(labels.Set{"foo": "baz"}), fields.SelectorFromSet(fields.Set{}), false, false)
 		if (err != nil) != test.Err {
 			t.Errorf("unexpected error: %t %v", test.Err, err)
 		}

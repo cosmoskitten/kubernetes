@@ -32,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -692,6 +693,22 @@ func (v FilteredVisitor) Visit(fn VisitorFunc) error {
 }
 
 func FilterBySelector(s labels.Selector) FilterFunc {
+	return func(info *Info, err error) (bool, error) {
+		if err != nil {
+			return false, err
+		}
+		a, err := meta.Accessor(info.Object)
+		if err != nil {
+			return false, err
+		}
+		if !s.Matches(labels.Set(a.GetLabels())) {
+			return false, nil
+		}
+		return true, nil
+	}
+}
+
+func FilterByFieldSelector(s fields.Selector) FilterFunc {
 	return func(info *Info, err error) (bool, error) {
 		if err != nil {
 			return false, err

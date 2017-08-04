@@ -130,6 +130,7 @@ func NewCmdGet(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comman
 	cmd.Flags().StringP("selector", "l", "", "Selector (label query) to filter on, supports '=', '==', and '!='.(e.g. -l key1=value1,key2=value2)")
 	cmdutil.AddIncludeUninitializedFlag(cmd)
 	cmd.Flags().BoolP("watch", "w", false, "After listing/getting the requested object, watch for changes. Uninitialized objects are excluded if no object name is provided.")
+	cmd.Flags().String("field-selector", "", "Selector (field query) to filter on, supports '=', '==', and '!='.(e.g. --field-selector key1=value1,key2=value2)")
 	cmd.Flags().Bool("watch-only", false, "Watch for changes to the requested object(s), without listing/getting first.")
 	cmd.Flags().Bool("show-kind", false, "If present, list the resource type for the requested object(s).")
 	cmd.Flags().Bool("all-namespaces", false, "If present, list the requested object(s) across all namespaces. Namespace in current context is ignored even if specified with --namespace.")
@@ -166,7 +167,8 @@ func RunGet(f cmdutil.Factory, out, errOut io.Writer, cmd *cobra.Command, args [
 		return nil
 	}
 
-	selector := cmdutil.GetFlagString(cmd, "selector")
+	labelSelector := cmdutil.GetFlagString(cmd, "selector")
+	fieldSelector := cmdutil.GetFlagString(cmd, "field-selector")
 	allNamespaces := cmdutil.GetFlagBool(cmd, "all-namespaces")
 	showKind := cmdutil.GetFlagBool(cmd, "show-kind")
 	builder, err := f.NewUnstructuredBuilder(true)
@@ -220,7 +222,8 @@ func RunGet(f cmdutil.Factory, out, errOut io.Writer, cmd *cobra.Command, args [
 		r := builder.
 			NamespaceParam(cmdNamespace).DefaultNamespace().AllNamespaces(allNamespaces).
 			FilenameParam(enforceNamespace, &options.FilenameOptions).
-			LabelSelectorParam(selector).
+			LabelSelectorParam(labelSelector).
+			FieldSelectorParam(fieldSelector).
 			ExportParam(export).
 			IncludeUninitialized(includeUninitialized).
 			ResourceTypeOrNameArgs(true, args...).
@@ -310,7 +313,8 @@ func RunGet(f cmdutil.Factory, out, errOut io.Writer, cmd *cobra.Command, args [
 	r := builder.
 		NamespaceParam(cmdNamespace).DefaultNamespace().AllNamespaces(allNamespaces).
 		FilenameParam(enforceNamespace, &options.FilenameOptions).
-		LabelSelectorParam(selector).
+		LabelSelectorParam(labelSelector).
+		FieldSelectorParam(fieldSelector).
 		ExportParam(export).
 		IncludeUninitialized(includeUninitialized).
 		ResourceTypeOrNameArgs(true, args...).
