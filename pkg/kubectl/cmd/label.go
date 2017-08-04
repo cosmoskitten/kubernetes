@@ -195,7 +195,7 @@ func (o *LabelOptions) RunLabel(f cmdutil.Factory, cmd *cobra.Command) error {
 		Flatten()
 
 	if !o.local {
-		b = b.SelectorParam(o.selector).
+		b = b.LabelSelectorParam(o.selector).
 			ResourceTypeOrNameArgs(o.all, o.resources...).
 			Latest()
 	}

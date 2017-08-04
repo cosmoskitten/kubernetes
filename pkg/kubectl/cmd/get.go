@@ -220,7 +220,7 @@ func RunGet(f cmdutil.Factory, out, errOut io.Writer, cmd *cobra.Command, args [
 		r := builder.
 			NamespaceParam(cmdNamespace).DefaultNamespace().AllNamespaces(allNamespaces).
 			FilenameParam(enforceNamespace, &options.FilenameOptions).
-			SelectorParam(selector).
+			LabelSelectorParam(selector).
 			ExportParam(export).
 			IncludeUninitialized(includeUninitialized).
 			ResourceTypeOrNameArgs(true, args...).
@@ -310,7 +310,7 @@ func RunGet(f cmdutil.Factory, out, errOut io.Writer, cmd *cobra.Command, args [
 	r := builder.
 		NamespaceParam(cmdNamespace).DefaultNamespace().AllNamespaces(allNamespaces).
 		FilenameParam(enforceNamespace, &options.FilenameOptions).
-		SelectorParam(selector).
+		LabelSelectorParam(selector).
 		ExportParam(export).
 		IncludeUninitialized(includeUninitialized).
 		ResourceTypeOrNameArgs(true, args...).

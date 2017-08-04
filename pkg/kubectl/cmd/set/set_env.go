@@ -239,7 +239,7 @@ func (o *EnvOptions) RunEnv(f cmdutil.Factory) error {
 
 		if !o.Local {
 			b = b.
-				SelectorParam(o.Selector).
+				LabelSelectorParam(o.Selector).
 				ResourceTypeOrNameArgs(o.All, o.From).
 				Latest()
 		}
@@ -301,7 +301,7 @@ func (o *EnvOptions) RunEnv(f cmdutil.Factory) error {
 
 	if !o.Local {
 		b = b.
-			SelectorParam(o.Selector).
+			LabelSelectorParam(o.Selector).
 			ResourceTypeOrNameArgs(o.All, o.Resources...).
 			Latest()
 	}

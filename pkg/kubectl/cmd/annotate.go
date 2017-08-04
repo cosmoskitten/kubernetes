@@ -200,7 +200,7 @@ func (o AnnotateOptions) RunAnnotate(f cmdutil.Factory, cmd *cobra.Command) erro
 		Flatten()
 
 	if !o.local {
-		b = b.SelectorParam(o.selector).
+		b = b.LabelSelectorParam(o.selector).
 			ResourceTypeOrNameArgs(o.all, o.resources...).
 			Latest()
 	}

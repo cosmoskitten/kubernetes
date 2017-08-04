@@ -97,7 +97,7 @@ func (o *ViewLastAppliedOptions) Complete(f cmdutil.Factory, args []string) erro
 		FilenameParam(enforceNamespace, &o.FilenameOptions).
 		ResourceTypeOrNameArgs(enforceNamespace, args...).
 		SelectAllParam(o.All).
-		SelectorParam(o.Selector).
+		LabelSelectorParam(o.Selector).
 		Latest().
 		Flatten().
 		Do()
