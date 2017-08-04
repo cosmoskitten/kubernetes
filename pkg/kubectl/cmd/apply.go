@@ -360,8 +360,8 @@ func RunApply(f cmdutil.Factory, cmd *cobra.Command, out, errOut io.Writer, opti
 		clientFunc:    f.UnstructuredClientForMapping,
 		clientsetFunc: f.ClientSet,
 
-		selector:    options.Selector,
-		visitedUids: visitedUids,
+		labelSelector: options.Selector,
+		visitedUids:   visitedUids,
 
 		cascade:     options.Cascade,
 		dryRun:      dryRun,
@@ -446,8 +446,9 @@ type pruner struct {
 	clientFunc    resource.ClientMapperFunc
 	clientsetFunc func() (internalclientset.Interface, error)
 
-	visitedUids sets.String
-	selector    string
+	visitedUids   sets.String
+	labelSelector string
+	fieldSelector string
 
 	cascade     bool
 	dryRun      bool
@@ -462,7 +463,7 @@ func (p *pruner) prune(namespace string, mapping *meta.RESTMapping, shortOutput,
 		return err
 	}
 
-	objList, err := resource.NewHelper(c, mapping).List(namespace, mapping.GroupVersionKind.Version, p.selector, false, includeUninitialized)
+	objList, err := resource.NewHelper(c, mapping).List(namespace, mapping.GroupVersionKind.Version, p.labelSelector, p.fieldSelector, false, includeUninitialized)
 	if err != nil {
 		return err
 	}
