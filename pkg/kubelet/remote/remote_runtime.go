@@ -291,10 +291,11 @@ func (r *RemoteRuntimeService) ContainerStatus(containerID string) (*runtimeapi.
 // ExecSync executes a command in the container, and returns the stdout output.
 // If command exits with a non-zero exit code, an error is returned.
 func (r *RemoteRuntimeService) ExecSync(containerID string, cmd []string, timeout time.Duration) (stdout []byte, stderr []byte, err error) {
-	ctx, cancel := getContextWithTimeout(timeout)
-	if timeout == 0 {
-		// Do not set timeout when timeout is 0.
-		ctx, cancel = getContextWithCancel()
+	// Do not set timeout when timeout is 0.
+	ctx, cancel := getContextWithCancel()
+	if timeout != 0 {
+		// Use timeout + default timeout (2 minutes) as timeout.
+		ctx, cancel = getContextWithTimeout(r.timeout + time.Duration(timeout)*time.Second)
 	}
 	defer cancel()
 
