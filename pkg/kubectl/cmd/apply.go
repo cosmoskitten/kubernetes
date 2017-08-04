@@ -451,8 +451,9 @@ type pruner struct {
 	clientFunc    resource.ClientMapperFunc
 	clientsetFunc func() (internalclientset.Interface, error)
 
-	visitedUids sets.String
-	selector    labels.Selector
+	visitedUids   sets.String
+	selector      labels.Selector
+	fieldSelector string
 
 	cascade     bool
 	dryRun      bool
@@ -467,7 +468,7 @@ func (p *pruner) prune(namespace string, mapping *meta.RESTMapping, shortOutput,
 		return err
 	}
 
-	objList, err := resource.NewHelper(c, mapping).List(namespace, mapping.GroupVersionKind.Version, p.selector, false, includeUninitialized)
+	objList, err := resource.NewHelper(c, mapping).List(namespace, mapping.GroupVersionKind.Version, p.selector, p.fieldSelector, false, includeUninitialized)
 	if err != nil {
 		return err
 	}
