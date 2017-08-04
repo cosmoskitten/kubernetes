@@ -43,6 +43,11 @@ func TestValidatePolicy(t *testing.T) {
 				"/metrics",
 				"*",
 			},
+		}, { // Omit RequestReceived stage
+			Level: audit.LevelMetadata,
+			OmitStages: []audit.Stage{
+				audit.Stage("RequestReceived"),
+			},
 		},
 	}
 	successCases := []audit.Policy{}
@@ -100,6 +105,11 @@ func TestValidatePolicy(t *testing.T) {
 			NonResourceURLs: []string{
 				"/logs/*.log",
 				"/metrics",
+			},
+		}, { // invalid omitStages
+			Level: audit.LevelMetadata,
+			OmitStages: []audit.Stage{
+				audit.Stage("foo"),
 			},
 		},
 	}
