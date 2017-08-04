@@ -290,10 +290,10 @@ func (b *Builder) ResourceNames(resource string, names ...string) *Builder {
 	return b
 }
 
-// SelectorParam defines a selector that should be applied to the object types to load.
+// LabelSelectorParam defines a selector that should be applied to the object types to load.
 // This will not affect files loaded from disk or URL. If the parameter is empty it is
 // a no-op - to select all resources invoke `b.Selector(labels.Everything.String)`.
-func (b *Builder) SelectorParam(s string) *Builder {
+func (b *Builder) LabelSelectorParam(s string) *Builder {
 	selector := strings.TrimSpace(s)
 	if len(selector) == 0 {
 		return b

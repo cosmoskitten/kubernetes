@@ -247,7 +247,7 @@ func (o *DrainOptions) SetupDrain(cmd *cobra.Command, args []string) error {
 
 	r := o.Factory.NewBuilder().
 		NamespaceParam(cmdNamespace).DefaultNamespace().
-		SelectorParam(o.Selector).
+		LabelSelectorParam(o.Selector).
 		ResourceTypeOrNameArgs(true, nameArgs...).
 		Flatten().
 		Do()
