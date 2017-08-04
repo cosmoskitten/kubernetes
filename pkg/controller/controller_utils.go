@@ -703,7 +703,7 @@ func (s ByLogging) Less(i, j int) bool {
 	// TODO: take availability into account when we push minReadySeconds information from deployment into pods,
 	//       see https://github.com/kubernetes/kubernetes/issues/22065
 	// 4. Been ready for more time < less time < empty time
-	if podutil.IsPodReady(s[i]) && podutil.IsPodReady(s[j]) && !podReadyTime(s[i]).Equal(podReadyTime(s[j])) {
+	if podutil.IsPodReady(s[i]) && podutil.IsPodReady(s[j]) && !podReadyTime(s[i]).Equal(*podReadyTime(s[j])) {
 		return afterOrZero(podReadyTime(s[j]), podReadyTime(s[i]))
 	}
 	// 5. Pods with containers with higher restart counts < lower restart counts
@@ -712,7 +712,7 @@ func (s ByLogging) Less(i, j int) bool {
 	}
 	// 6. older pods < newer pods < empty timestamp pods
 	if !s[i].CreationTimestamp.Equal(s[j].CreationTimestamp) {
-		return afterOrZero(s[j].CreationTimestamp, s[i].CreationTimestamp)
+		return afterOrZero(&s[j].CreationTimestamp, &s[i].CreationTimestamp)
 	}
 	return false
 }
@@ -743,7 +743,7 @@ func (s ActivePods) Less(i, j int) bool {
 	//       see https://github.com/kubernetes/kubernetes/issues/22065
 	// 4. Been ready for empty time < less time < more time
 	// If both pods are ready, the latest ready one is smaller
-	if podutil.IsPodReady(s[i]) && podutil.IsPodReady(s[j]) && !podReadyTime(s[i]).Equal(podReadyTime(s[j])) {
+	if podutil.IsPodReady(s[i]) && podutil.IsPodReady(s[j]) && !podReadyTime(s[i]).Equal(*podReadyTime(s[j])) {
 		return afterOrZero(podReadyTime(s[i]), podReadyTime(s[j]))
 	}
 	// 5. Pods with containers with higher restart counts < lower restart counts
@@ -752,30 +752,30 @@ func (s ActivePods) Less(i, j int) bool {
 	}
 	// 6. Empty creation time pods < newer pods < older pods
 	if !s[i].CreationTimestamp.Equal(s[j].CreationTimestamp) {
-		return afterOrZero(s[i].CreationTimestamp, s[j].CreationTimestamp)
+		return afterOrZero(&s[i].CreationTimestamp, &s[j].CreationTimestamp)
 	}
 	return false
 }
 
 // afterOrZero checks if time t1 is after time t2; if one of them
 // is zero, the zero time is seen as after non-zero time.
-func afterOrZero(t1, t2 metav1.Time) bool {
+func afterOrZero(t1, t2 *metav1.Time) bool {
 	if t1.Time.IsZero() || t2.Time.IsZero() {
 		return t1.Time.IsZero()
 	}
 	return t1.After(t2.Time)
 }
 
-func podReadyTime(pod *v1.Pod) metav1.Time {
+func podReadyTime(pod *v1.Pod) *metav1.Time {
 	if podutil.IsPodReady(pod) {
 		for _, c := range pod.Status.Conditions {
 			// we only care about pod ready conditions
 			if c.Type == v1.PodReady && c.Status == v1.ConditionTrue {
-				return c.LastTransitionTime
+				return &c.LastTransitionTime
 			}
 		}
 	}
-	return metav1.Time{}
+	return &metav1.Time{}
 }
 
 func maxContainerRestarts(pod *v1.Pod) int {
