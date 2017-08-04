@@ -25,6 +25,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -52,6 +53,7 @@ type Builder struct {
 	dir    bool
 
 	labelSelector labels.Selector
+	fieldSelector fields.Selector
 	selectAll     bool
 
 	resources []string
@@ -273,6 +275,31 @@ func (b *Builder) LabelSelector(selector labels.Selector) *Builder {
 	return b
 }
 
+// FieldSelectorParam defines a selector that should be applied to the object types to load.
+// This will not affect files loaded from disk or URL. If the parameter is empty it is
+// a no-op - to select all resources invoke `b.Selector(fields.Everything)`.
+func (b *Builder) FieldSelectorParam(s string) *Builder {
+	selector, err := fields.ParseSelector(s)
+	if err != nil {
+		b.errs = append(b.errs, fmt.Errorf("the provided fieldSelector %q is not valid: %v", s, err))
+		return b
+	}
+	if selector.Empty() {
+		return b
+	}
+	if b.selectAll {
+		b.errs = append(b.errs, fmt.Errorf("found non empty fieldSelector %q with previously set 'all' parameter. ", s))
+		return b
+	}
+	return b.FieldSelector(selector)
+}
+
+// FieldSelector accepts a fieldSelector directly, and if non nil will trigger a list action.
+func (b *Builder) FieldSelector(selector fields.Selector) *Builder {
+	b.fieldSelector = selector
+	return b
+}
+
 // ExportParam accepts the export boolean for these resources
 func (b *Builder) ExportParam(export bool) *Builder {
 	b.export = export
@@ -313,7 +340,7 @@ func (b *Builder) RequireNamespace() *Builder {
 
 // SelectEverythingParam
 func (b *Builder) SelectAllParam(selectAll bool) *Builder {
-	if selectAll && b.labelSelector != nil {
+	if selectAll && (b.labelSelector != nil || b.fieldSelector != nil) {
 		b.errs = append(b.errs, fmt.Errorf("setting 'all' parameter but found a non empty selector. "))
 		return b
 	}
@@ -555,8 +582,13 @@ func (b *Builder) visitorResult() *Result {
 		return b.visitByPaths()
 	}
 
+	// cannot combine label selector and field selector together
+	if b.labelSelector != nil && !b.labelSelector.Empty() && b.fieldSelector != nil && !b.fieldSelector.Empty() {
+		return &Result{err: fmt.Errorf("cannot combine label selector and field selector together")}
+	}
+
 	// visit selectors
-	if b.labelSelector != nil {
+	if b.labelSelector != nil || b.fieldSelector != nil {
 		return b.visitBySelector()
 	}
 
@@ -607,7 +639,7 @@ func (b *Builder) visitBySelector() *Result {
 		if mapping.Scope.Name() != meta.RESTScopeNameNamespace {
 			selectorNamespace = ""
 		}
-		visitors = append(visitors, NewSelector(client, mapping, selectorNamespace, b.labelSelector, b.export))
+		visitors = append(visitors, NewSelector(client, mapping, selectorNamespace, b.labelSelector, b.fieldSelector, b.export))
 	}
 	if b.continueOnError {
 		result.visitor = EagerVisitorList(visitors)
@@ -784,6 +816,9 @@ func (b *Builder) visitByPaths() *Result {
 	}
 	if b.labelSelector != nil {
 		visitors = NewFilteredVisitor(visitors, FilterBySelector(b.labelSelector))
+	}
+	if b.fieldSelector != nil {
+		visitors = NewFilteredVisitor(visitors, FilterByFieldSelector(b.fieldSelector))
 	}
 	result.visitor = visitors
 	result.sources = b.paths

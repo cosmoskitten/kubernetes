@@ -17,6 +17,7 @@ limitations under the License.
 package resource
 
 import (
+	"fmt"
 	"strconv"
 
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -64,14 +65,23 @@ func (m *Helper) Get(namespace, name string, export bool) (runtime.Object, error
 	return req.Do().Get()
 }
 
-// TODO: add field selector
-func (m *Helper) List(namespace, apiVersion string, selector labels.Selector, export bool) (runtime.Object, error) {
+func (m *Helper) List(namespace, apiVersion string, labelSelector labels.Selector, fieldSelector fields.Selector, export bool) (runtime.Object, error) {
+	if labelSelector != nil && !labelSelector.Empty() && fieldSelector != nil && !fieldSelector.Empty() {
+		return nil, fmt.Errorf("cannot combine label selector and field selector together")
+	}
+
+	listOptions := &metav1.ListOptions{}
+	if labelSelector != nil {
+		listOptions.LabelSelector = labelSelector.String()
+	}
+	if fieldSelector != nil {
+		listOptions.FieldSelector = fieldSelector.String()
+	}
+
 	req := m.RESTClient.Get().
 		NamespaceIfScoped(namespace, m.NamespaceScoped).
 		Resource(m.Resource).
-		VersionedParams(&metav1.ListOptions{
-			LabelSelector: selector.String(),
-		}, metav1.ParameterCodec)
+		VersionedParams(listOptions, metav1.ParameterCodec)
 	if export {
 		// TODO: I should be part of ListOptions
 		req.Param("export", strconv.FormatBool(export))
@@ -79,15 +89,26 @@ func (m *Helper) List(namespace, apiVersion string, selector labels.Selector, ex
 	return req.Do().Get()
 }
 
-func (m *Helper) Watch(namespace, resourceVersion, apiVersion string, labelSelector labels.Selector) (watch.Interface, error) {
+func (m *Helper) Watch(namespace, resourceVersion, apiVersion string, labelSelector labels.Selector, fieldSelector fields.Selector) (watch.Interface, error) {
+	if labelSelector != nil && !labelSelector.Empty() && fieldSelector != nil && !fieldSelector.Empty() {
+		return nil, fmt.Errorf("cannot combine label selector and field selector together")
+	}
+
+	listOptions := &metav1.ListOptions{
+		ResourceVersion: resourceVersion,
+		Watch:           true,
+	}
+	if labelSelector != nil {
+		listOptions.LabelSelector = labelSelector.String()
+	}
+	if fieldSelector != nil {
+		listOptions.FieldSelector = fieldSelector.String()
+	}
+
 	return m.RESTClient.Get().
 		NamespaceIfScoped(namespace, m.NamespaceScoped).
 		Resource(m.Resource).
-		VersionedParams(&metav1.ListOptions{
-			ResourceVersion: resourceVersion,
-			Watch:           true,
-			LabelSelector:   labelSelector.String(),
-		}, metav1.ParameterCodec).
+		VersionedParams(listOptions, metav1.ParameterCodec).
 		Watch()
 }
 
