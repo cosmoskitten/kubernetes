@@ -690,7 +690,7 @@ func TestResourceByNameAndEmptySelector(t *testing.T) {
 		"/namespaces/test/pods/foo": runtime.EncodeOrDie(testapi.Default.Codec(), &pods.Items[0]),
 	}), testapi.Default.Codec()).
 		NamespaceParam("test").
-		SelectorParam("").
+		LabelSelectorParam("").
 		ResourceTypeOrNameArgs(true, "pods", "foo")
 
 	singleItemImplied := false
@@ -718,7 +718,7 @@ func TestSelector(t *testing.T) {
 		"/namespaces/test/pods?" + labelKey + "=a%3Db":     runtime.EncodeOrDie(testapi.Default.Codec(), pods),
 		"/namespaces/test/services?" + labelKey + "=a%3Db": runtime.EncodeOrDie(testapi.Default.Codec(), svc),
 	}), testapi.Default.Codec()).
-		SelectorParam("a=b").
+		LabelSelectorParam("a=b").
 		NamespaceParam("test").
 		Flatten()
 
@@ -746,7 +746,7 @@ func TestSelector(t *testing.T) {
 
 func TestSelectorRequiresKnownTypes(t *testing.T) {
 	b := NewBuilder(testapi.Default.RESTMapper(), LegacyCategoryExpander, api.Scheme, fakeClient(), testapi.Default.Codec()).
-		SelectorParam("a=b").
+		LabelSelectorParam("a=b").
 		NamespaceParam("test").
 		ResourceTypes("unknown")
 
@@ -757,7 +757,7 @@ func TestSelectorRequiresKnownTypes(t *testing.T) {
 
 func TestSingleResourceType(t *testing.T) {
 	b := NewBuilder(testapi.Default.RESTMapper(), LegacyCategoryExpander, api.Scheme, fakeClient(), testapi.Default.Codec()).
-		SelectorParam("a=b").
+		LabelSelectorParam("a=b").
 		SingleResourceType().
 		ResourceTypeOrNameArgs(true, "pods,services")
 
@@ -1012,7 +1012,7 @@ func TestListObject(t *testing.T) {
 	b := NewBuilder(testapi.Default.RESTMapper(), LegacyCategoryExpander, api.Scheme, fakeClientWith("", t, map[string]string{
 		"/namespaces/test/pods?" + labelKey + "=a%3Db": runtime.EncodeOrDie(testapi.Default.Codec(), pods),
 	}), testapi.Default.Codec()).
-		SelectorParam("a=b").
+		LabelSelectorParam("a=b").
 		NamespaceParam("test").
 		ResourceTypeOrNameArgs(true, "pods").
 		Flatten()
@@ -1046,7 +1046,7 @@ func TestListObjectWithDifferentVersions(t *testing.T) {
 		"/namespaces/test/pods?" + labelKey + "=a%3Db":     runtime.EncodeOrDie(testapi.Default.Codec(), pods),
 		"/namespaces/test/services?" + labelKey + "=a%3Db": runtime.EncodeOrDie(testapi.Default.Codec(), svc),
 	}), testapi.Default.Codec()).
-		SelectorParam("a=b").
+		LabelSelectorParam("a=b").
 		NamespaceParam("test").
 		ResourceTypeOrNameArgs(true, "pods,services").
 		Flatten().
