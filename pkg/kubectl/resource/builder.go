@@ -299,14 +299,15 @@ func (b *Builder) LabelSelectorParam(s string) *Builder {
 		return b
 	}
 	if b.selectAll {
-		b.errs = append(b.errs, fmt.Errorf("found non empty labelSelector %q with previously set 'all' parameter. ", s))
+		b.errs = append(b.errs, fmt.Errorf("found non-empty label selector %q with previously set 'all' parameter. ", s))
 		return b
 	}
-	return b.Selector(selector)
+	return b.LabelSelector(selector)
 }
 
-// Selector accepts a labelSelector directly, and if non nil will trigger a list action.
-func (b *Builder) Selector(selector string) *Builder {
+// LabelSelector accepts a labelSelector directly, and if non nil will trigger a list action.
+func (b *Builder) LabelSelector(selector string) *Builder {
+	b.labelSelector = &selector
 	return b
 }
 
