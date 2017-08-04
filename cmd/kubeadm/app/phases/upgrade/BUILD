@@ -8,20 +8,47 @@ load(
     "go_test",
 )
 
+go_test(
+    name = "go_default_test",
+    srcs = [
+        "compute_test.go",
+        "policy_test.go",
+        "prepull_test.go",
+    ],
+    library = ":go_default_library",
+    tags = ["automanaged"],
+    deps = ["//pkg/util/version:go_default_library"],
+)
+
 go_library(
     name = "go_default_library",
     srcs = [
-        "addons.go",
-        "manifests.go",
+        "compute.go",
+        "configuration.go",
+        "controlplane.go",
+        "health.go",
+        "policy.go",
+        "postupgrade.go",
+        "prepull.go",
+        "staticpods.go",
+        "versiongetter.go",
     ],
     tags = ["automanaged"],
     deps = [
         "//cmd/kubeadm/app/apis/kubeadm:go_default_library",
+        "//cmd/kubeadm/app/apis/kubeadm/v1alpha1:go_default_library",
+        "//cmd/kubeadm/app/apis/kubeadm/validation:go_default_library",
         "//cmd/kubeadm/app/constants:go_default_library",
+        "//cmd/kubeadm/app/images:go_default_library",
+        "//cmd/kubeadm/app/phases/addons:go_default_library",
+        "//cmd/kubeadm/app/phases/apiconfig:go_default_library",
+        "//cmd/kubeadm/app/phases/controlplane:go_default_library",
+        "//cmd/kubeadm/app/phases/saveconfig:go_default_library",
         "//cmd/kubeadm/app/util:go_default_library",
+        "//cmd/kubeadm/app/util/config:go_default_library",
         "//pkg/api:go_default_library",
         "//pkg/util/version:go_default_library",
-        "//plugin/pkg/scheduler/algorithm:go_default_library",
+        "//pkg/version:go_default_library",
         "//vendor/k8s.io/api/core/v1:go_default_library",
         "//vendor/k8s.io/api/extensions/v1beta1:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/api/errors:go_default_library",
@@ -42,12 +69,4 @@ filegroup(
     name = "all-srcs",
     srcs = [":package-srcs"],
     tags = ["automanaged"],
-)
-
-go_test(
-    name = "go_default_test",
-    srcs = ["addons_test.go"],
-    library = ":go_default_library",
-    tags = ["automanaged"],
-    deps = ["//cmd/kubeadm/app/util:go_default_library"],
 )
