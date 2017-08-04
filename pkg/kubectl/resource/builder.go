@@ -53,7 +53,7 @@ type Builder struct {
 	stream bool
 	dir    bool
 
-	selector             *string
+	labelSelector        *string
 	selectAll            bool
 	includeUninitialized bool
 
@@ -299,15 +299,14 @@ func (b *Builder) SelectorParam(s string) *Builder {
 		return b
 	}
 	if b.selectAll {
-		b.errs = append(b.errs, fmt.Errorf("found non empty selector %q with previously set 'all' parameter. ", s))
+		b.errs = append(b.errs, fmt.Errorf("found non empty labelSelector %q with previously set 'all' parameter. ", s))
 		return b
 	}
 	return b.Selector(selector)
 }
 
-// Selector accepts a selector directly, and if non nil will trigger a list action.
+// Selector accepts a labelSelector directly, and if non nil will trigger a list action.
 func (b *Builder) Selector(selector string) *Builder {
-	b.selector = &selector
 	return b
 }
 
@@ -357,7 +356,7 @@ func (b *Builder) RequireNamespace() *Builder {
 
 // SelectEverythingParam
 func (b *Builder) SelectAllParam(selectAll bool) *Builder {
-	if selectAll && b.selector != nil {
+	if selectAll && b.labelSelector != nil {
 		b.errs = append(b.errs, fmt.Errorf("setting 'all' parameter but found a non empty selector. "))
 		return b
 	}
@@ -402,9 +401,9 @@ func (b *Builder) ResourceTypeOrNameArgs(allowEmptySelector bool, args ...string
 		b.ResourceTypes(SplitResourceArgument(args[0])...)
 	case len(args) == 1:
 		b.ResourceTypes(SplitResourceArgument(args[0])...)
-		if b.selector == nil && allowEmptySelector {
+		if b.labelSelector == nil && allowEmptySelector {
 			selector := labels.Everything().String()
-			b.selector = &selector
+			b.labelSelector = &selector
 		}
 	case len(args) == 0:
 	default:
@@ -593,7 +592,7 @@ func (b *Builder) visitorResult() *Result {
 
 	if b.selectAll {
 		selector := labels.Everything().String()
-		b.selector = &selector
+		b.labelSelector = &selector
 	}
 
 	// visit items specified by paths
@@ -602,7 +601,7 @@ func (b *Builder) visitorResult() *Result {
 	}
 
 	// visit selectors
-	if b.selector != nil {
+	if b.labelSelector != nil {
 		return b.visitBySelector()
 	}
 
@@ -653,7 +652,7 @@ func (b *Builder) visitBySelector() *Result {
 		if mapping.Scope.Name() != meta.RESTScopeNameNamespace {
 			selectorNamespace = ""
 		}
-		visitors = append(visitors, NewSelector(client, mapping, selectorNamespace, *b.selector, b.export, b.includeUninitialized))
+		visitors = append(visitors, NewSelector(client, mapping, selectorNamespace, *b.labelSelector, b.export, b.includeUninitialized))
 	}
 	if b.continueOnError {
 		result.visitor = EagerVisitorList(visitors)
@@ -828,10 +827,10 @@ func (b *Builder) visitByPaths() *Result {
 		}
 		visitors = NewDecoratedVisitor(visitors, RetrieveLatest)
 	}
-	if b.selector != nil {
-		selector, err := labels.Parse(*b.selector)
+	if b.labelSelector != nil {
+		selector, err := labels.Parse(*b.labelSelector)
 		if err != nil {
-			return result.withError(fmt.Errorf("the provided selector %q is not valid: %v", b.selector, err))
+			return result.withError(fmt.Errorf("the provided selector %q is not valid: %v", b.labelSelector, err))
 		}
 		visitors = NewFilteredVisitor(visitors, FilterBySelector(selector))
 	}
