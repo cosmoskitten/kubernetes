@@ -30,17 +30,19 @@ type Selector struct {
 	Mapping              *meta.RESTMapping
 	Namespace            string
 	LabelSelector        string
+	FieldSelector        string
 	Export               bool
 	IncludeUninitialized bool
 }
 
 // NewSelector creates a resource selector which hides details of getting items by their label selector.
-func NewSelector(client RESTClient, mapping *meta.RESTMapping, namespace string, selector string, export, includeUninitialized bool) *Selector {
+func NewSelector(client RESTClient, mapping *meta.RESTMapping, namespace, labelSelector, fieldSelector string, export, includeUninitialized bool) *Selector {
 	return &Selector{
 		Client:               client,
 		Mapping:              mapping,
 		Namespace:            namespace,
-		LabelSelector:        selector,
+		LabelSelector:        labelSelector,
+		FieldSelector:        fieldSelector,
 		Export:               export,
 		IncludeUninitialized: includeUninitialized,
 	}
@@ -48,22 +50,22 @@ func NewSelector(client RESTClient, mapping *meta.RESTMapping, namespace string,
 
 // Visit implements Visitor
 func (r *Selector) Visit(fn VisitorFunc) error {
-	list, err := NewHelper(r.Client, r.Mapping).List(r.Namespace, r.ResourceMapping().GroupVersionKind.GroupVersion().String(), r.LabelSelector, r.Export, r.IncludeUninitialized)
+	list, err := NewHelper(r.Client, r.Mapping).List(r.Namespace, r.ResourceMapping().GroupVersionKind.GroupVersion().String(), r.LabelSelector, r.FieldSelector, r.Export, r.IncludeUninitialized)
 	if err != nil {
 		if errors.IsBadRequest(err) || errors.IsNotFound(err) {
 			if se, ok := err.(*errors.StatusError); ok {
 				// modify the message without hiding this is an API error
-				if len(r.LabelSelector) == 0 {
+				if len(r.LabelSelector) == 0 && len(r.FieldSelector) == 0 {
 					se.ErrStatus.Message = fmt.Sprintf("Unable to list %q: %v", r.Mapping.Resource, se.ErrStatus.Message)
 				} else {
-					se.ErrStatus.Message = fmt.Sprintf("Unable to find %q that match the selector %q: %v", r.Mapping.Resource, r.LabelSelector, se.ErrStatus.Message)
+					se.ErrStatus.Message = fmt.Sprintf("Unable to find %q that match the selector %q, %q: %v", r.Mapping.Resource, r.LabelSelector, r.FieldSelector, se.ErrStatus.Message)
 				}
 				return se
 			}
-			if len(r.LabelSelector) == 0 {
+			if len(r.LabelSelector) == 0 && len(r.FieldSelector) == 0 {
 				return fmt.Errorf("Unable to list %q: %v", r.Mapping.Resource, err)
 			} else {
-				return fmt.Errorf("Unable to find %q that match the selector %q: %v", r.Mapping.Resource, r.LabelSelector, err)
+				return fmt.Errorf("Unable to find %q that match the selector %q, %q: %v", r.Mapping.Resource, r.LabelSelector, r.FieldSelector, err)
 			}
 		}
 		return err
@@ -82,7 +84,7 @@ func (r *Selector) Visit(fn VisitorFunc) error {
 }
 
 func (r *Selector) Watch(resourceVersion string) (watch.Interface, error) {
-	return NewHelper(r.Client, r.Mapping).Watch(r.Namespace, resourceVersion, r.ResourceMapping().GroupVersionKind.GroupVersion().String(), r.LabelSelector)
+	return NewHelper(r.Client, r.Mapping).Watch(r.Namespace, resourceVersion, r.ResourceMapping().GroupVersionKind.GroupVersion().String(), r.LabelSelector, r.FieldSelector)
 }
 
 // ResourceMapping returns the mapping for this resource and implements ResourceMapping

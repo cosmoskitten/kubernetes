@@ -63,14 +63,19 @@ func (m *Helper) Get(namespace, name string, export bool) (runtime.Object, error
 	return req.Do().Get()
 }
 
-// TODO: add field selector
-func (m *Helper) List(namespace, apiVersion string, selector string, export, includeUninitialized bool) (runtime.Object, error) {
+func (m *Helper) List(namespace, apiVersion, labelSelector, fieldSelector string, export, includeUninitialized bool) (runtime.Object, error) {
+	listOptions := &metav1.ListOptions{}
+	if len(labelSelector) > 0 {
+		listOptions.LabelSelector = labelSelector
+	}
+	if len(fieldSelector) > 0 {
+		listOptions.FieldSelector = fieldSelector
+	}
+
 	req := m.RESTClient.Get().
 		NamespaceIfScoped(namespace, m.NamespaceScoped).
 		Resource(m.Resource).
-		VersionedParams(&metav1.ListOptions{
-			LabelSelector: selector,
-		}, metav1.ParameterCodec)
+		VersionedParams(listOptions, metav1.ParameterCodec)
 	if export {
 		// TODO: I should be part of ListOptions
 		req.Param("export", strconv.FormatBool(export))
@@ -81,15 +86,22 @@ func (m *Helper) List(namespace, apiVersion string, selector string, export, inc
 	return req.Do().Get()
 }
 
-func (m *Helper) Watch(namespace, resourceVersion, apiVersion string, labelSelector string) (watch.Interface, error) {
+func (m *Helper) Watch(namespace, resourceVersion, apiVersion, labelSelector, fieldSelector string) (watch.Interface, error) {
+	listOptions := &metav1.ListOptions{
+		ResourceVersion: resourceVersion,
+		Watch:           true,
+	}
+	if len(labelSelector) > 0 {
+		listOptions.LabelSelector = labelSelector
+	}
+	if len(fieldSelector) > 0 {
+		listOptions.FieldSelector = fieldSelector
+	}
+
 	return m.RESTClient.Get().
 		NamespaceIfScoped(namespace, m.NamespaceScoped).
 		Resource(m.Resource).
-		VersionedParams(&metav1.ListOptions{
-			ResourceVersion: resourceVersion,
-			Watch:           true,
-			LabelSelector:   labelSelector,
-		}, metav1.ParameterCodec).
+		VersionedParams(listOptions, metav1.ParameterCodec).
 		Watch()
 }
 
