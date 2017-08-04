@@ -593,15 +593,25 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 			}
 			kind = fqParentKind.Kind
 		}
+
+		verbOverrider, needOverride := storage.(StorageMetricsOverride)
+		
 		switch action.Verb {
 		case "GET": // Get a resource.
-			var handler restful.RouteFunction
+		    var handler restful.RouteFunction
 			if isGetterWithOptions {
 				handler = restfulGetResourceWithOptions(getterWithOptions, reqScope, hasSubresource)
 			} else {
 				handler = restfulGetResource(getter, exporter, reqScope)
 			}
-			handler = metrics.InstrumentRouteFunc(action.Verb, resource, subresource, namespaceScope, handler)
+
+			if needOverride {
+				// need change the reported verb
+			    handler = metrics.InstrumentRouteFunc(verbOverrider.OverrideMetricsVerb(action.Verb), resource, subresource, namespaceScope, handler)
+			} else {
+				handler = metrics.InstrumentRouteFunc(action.Verb, resource, subresource, namespaceScope, handler)
+			}
+
 			if a.enableAPIResponseCompression {
 				handler = genericfilters.RestfulWithCompression(handler, a.group.Context)
 			}
@@ -633,7 +643,7 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 			if hasSubresource {
 				doc = "list " + subresource + " of objects of kind " + kind
 			}
-			handler := metrics.InstrumentRouteFunc(action.Verb, resource, subresource, namespaceScope, restfulListResource(lister, watcher, reqScope, false, a.minRequestTimeout))
+			handler = metrics.InstrumentRouteFunc(action.Verb, resource, subresource, namespaceScope, restfulListResource(lister, watcher, reqScope, false, a.minRequestTimeout))	
 			if a.enableAPIResponseCompression {
 				handler = genericfilters.RestfulWithCompression(handler, a.group.Context)
 			}
@@ -668,7 +678,7 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 			if hasSubresource {
 				doc = "replace " + subresource + " of the specified " + kind
 			}
-			handler := metrics.InstrumentRouteFunc(action.Verb, resource, subresource, namespaceScope, restfulUpdateResource(updater, reqScope, a.group.Typer, admit))
+			handler = metrics.InstrumentRouteFunc(action.Verb, resource, subresource, namespaceScope, restfulUpdateResource(updater, reqScope, a.group.Typer, admit))
 			route := ws.PUT(action.Path).To(handler).
 				Doc(doc).
 				Param(ws.QueryParameter("pretty", "If 'true', then the output is pretty printed.")).
@@ -684,7 +694,7 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 			if hasSubresource {
 				doc = "partially update " + subresource + " of the specified " + kind
 			}
-			handler := metrics.InstrumentRouteFunc(action.Verb, resource, subresource, namespaceScope, restfulPatchResource(patcher, reqScope, admit, mapping.ObjectConvertor))
+			handler = metrics.InstrumentRouteFunc(action.Verb, resource, subresource, namespaceScope, restfulPatchResource(patcher, reqScope, admit, mapping.ObjectConvertor))	
 			route := ws.PATCH(action.Path).To(handler).
 				Doc(doc).
 				Param(ws.QueryParameter("pretty", "If 'true', then the output is pretty printed.")).
@@ -697,7 +707,6 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 			addParams(route, action.Params)
 			routes = append(routes, route)
 		case "POST": // Create a resource.
-			var handler restful.RouteFunction
 			if isNamedCreater {
 				handler = restfulCreateNamedResource(namedCreater, reqScope, a.group.Typer, admit)
 			} else {
@@ -708,7 +717,6 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 			doc := "create" + article + kind
 			if hasSubresource {
 				doc = "create " + subresource + " of" + article + kind
-			}
 			route := ws.POST(action.Path).To(handler).
 				Doc(doc).
 				Param(ws.QueryParameter("pretty", "If 'true', then the output is pretty printed.")).
