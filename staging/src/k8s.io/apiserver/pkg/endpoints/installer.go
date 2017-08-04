@@ -593,6 +593,7 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 			}
 			kind = fqParentKind.Kind
 		}
+
 		switch action.Verb {
 		case "GET": // Get a resource.
 			var handler restful.RouteFunction
@@ -601,7 +602,7 @@ func (a *APIInstaller) registerResourceHandlers(path string, storage rest.Storag
 			} else {
 				handler = restfulGetResource(getter, exporter, reqScope)
 			}
-			handler = metrics.InstrumentRouteFunc(action.Verb, resource, subresource, namespaceScope, handler)
+
 			if a.enableAPIResponseCompression {
 				handler = genericfilters.RestfulWithCompression(handler, a.group.Context)
 			}
