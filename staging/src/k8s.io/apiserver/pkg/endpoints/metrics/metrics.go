@@ -106,6 +106,15 @@ func MonitorRequest(request *http.Request, verb, resource, subresource, scope, c
 			}
 		}
 	}
+    
+	// make get pod log with follow option api request reported as watch
+	if verb == "GET" && resource == "pods" && subresource == "log"{
+		if values := request.URL.Query()["follow"]; len(values) > 0 {
+			if values[0] == "true" {
+				reportedVerb = "WATCH"
+			}
+		}
+	}
 
 	client := cleanUserAgent(utilnet.GetHTTPClient(request))
 	Monitor(reportedVerb, resource, subresource, scope, client, contentType, httpCode, respSize, reqStart)
