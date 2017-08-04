@@ -54,6 +54,7 @@ type Builder struct {
 	dir    bool
 
 	labelSelector        *string
+	fieldSelector        string
 	selectAll            bool
 	includeUninitialized bool
 
@@ -311,6 +312,21 @@ func (b *Builder) LabelSelector(selector string) *Builder {
 	return b
 }
 
+// FieldSelectorParam defines a selector that should be applied to the object types to load.
+// This will not affect files loaded from disk or URL. If the parameter is empty it is
+// a no-op - to select all resources invoke `b.Selector(fields.Everything)`.
+func (b *Builder) FieldSelectorParam(s string) *Builder {
+	if len(s) == 0 {
+		return b
+	}
+	if b.selectAll {
+		b.errs = append(b.errs, fmt.Errorf("found non empty fieldSelector %q with previously set 'all' parameter. ", s))
+		return b
+	}
+	b.fieldSelector = strings.TrimSpace(s)
+	return b
+}
+
 // ExportParam accepts the export boolean for these resources
 func (b *Builder) ExportParam(export bool) *Builder {
 	b.export = export
@@ -357,7 +373,7 @@ func (b *Builder) RequireNamespace() *Builder {
 
 // SelectEverythingParam
 func (b *Builder) SelectAllParam(selectAll bool) *Builder {
-	if selectAll && b.labelSelector != nil {
+	if selectAll && (b.labelSelector != nil || len(b.fieldSelector) > 0) {
 		b.errs = append(b.errs, fmt.Errorf("setting 'all' parameter but found a non empty selector. "))
 		return b
 	}
@@ -602,7 +618,7 @@ func (b *Builder) visitorResult() *Result {
 	}
 
 	// visit selectors
-	if b.labelSelector != nil {
+	if b.labelSelector != nil || len(b.fieldSelector) > 0 {
 		return b.visitBySelector()
 	}
 
@@ -653,7 +669,7 @@ func (b *Builder) visitBySelector() *Result {
 		if mapping.Scope.Name() != meta.RESTScopeNameNamespace {
 			selectorNamespace = ""
 		}
-		visitors = append(visitors, NewSelector(client, mapping, selectorNamespace, *b.labelSelector, b.export, b.includeUninitialized))
+		visitors = append(visitors, NewSelector(client, mapping, selectorNamespace, *b.labelSelector, b.fieldSelector, b.export, b.includeUninitialized))
 	}
 	if b.continueOnError {
 		result.visitor = EagerVisitorList(visitors)
