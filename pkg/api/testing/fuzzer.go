@@ -28,7 +28,6 @@ import (
 	apitesting "k8s.io/apimachinery/pkg/api/testing"
 	"k8s.io/apimachinery/pkg/api/testing/fuzzer"
 	genericfuzzer "k8s.io/apimachinery/pkg/apis/meta/fuzzer"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -38,15 +37,16 @@ import (
 	kubeadmfuzzer "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/fuzzer"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/testapi"
-	"k8s.io/kubernetes/pkg/apis/admissionregistration"
-	"k8s.io/kubernetes/pkg/apis/apps"
-	"k8s.io/kubernetes/pkg/apis/autoscaling"
-	"k8s.io/kubernetes/pkg/apis/batch"
-	"k8s.io/kubernetes/pkg/apis/certificates"
+	admissionregistrationfuzzer "k8s.io/kubernetes/pkg/apis/admissionregistration/fuzzer"
+	appsfuzzer "k8s.io/kubernetes/pkg/apis/apps/fuzzer"
+	autoscalingfuzzer "k8s.io/kubernetes/pkg/apis/autoscaling/fuzzer"
+	batchfuzzer "k8s.io/kubernetes/pkg/apis/batch/fuzzer"
+	certificatesfuzzer "k8s.io/kubernetes/pkg/apis/certificates/fuzzer"
 	"k8s.io/kubernetes/pkg/apis/extensions"
+	extensionsfuzzer "k8s.io/kubernetes/pkg/apis/extensions/fuzzer"
 	extensionsv1beta1 "k8s.io/kubernetes/pkg/apis/extensions/v1beta1"
-	"k8s.io/kubernetes/pkg/apis/policy"
-	"k8s.io/kubernetes/pkg/apis/rbac"
+	policyfuzzer "k8s.io/kubernetes/pkg/apis/policy/fuzzer"
+	rbacfuzzer "k8s.io/kubernetes/pkg/apis/rbac/fuzzer"
 )
 
 // overrideGenericFuncs override some generic fuzzer funcs from k8s.io/apiserver in order to have more realistic
@@ -501,292 +501,17 @@ func coreFuncs(codecs runtimeserializer.CodecFactory) []interface{} {
 	}
 }
 
-func extensionFuncs(codecs runtimeserializer.CodecFactory) []interface{} {
-	return []interface{}{
-		func(j *extensions.DeploymentSpec, c fuzz.Continue) {
-			c.FuzzNoCustom(j) // fuzz self without calling this function again
-			rhl := int32(c.Rand.Int31())
-			pds := int32(c.Rand.Int31())
-			j.RevisionHistoryLimit = &rhl
-			j.ProgressDeadlineSeconds = &pds
-		},
-		func(j *extensions.DeploymentStrategy, c fuzz.Continue) {
-			c.FuzzNoCustom(j) // fuzz self without calling this function again
-			// Ensure that strategyType is one of valid values.
-			strategyTypes := []extensions.DeploymentStrategyType{extensions.RecreateDeploymentStrategyType, extensions.RollingUpdateDeploymentStrategyType}
-			j.Type = strategyTypes[c.Rand.Intn(len(strategyTypes))]
-			if j.Type != extensions.RollingUpdateDeploymentStrategyType {
-				j.RollingUpdate = nil
-			} else {
-				rollingUpdate := extensions.RollingUpdateDeployment{}
-				if c.RandBool() {
-					rollingUpdate.MaxUnavailable = intstr.FromInt(int(c.Rand.Int31()))
-					rollingUpdate.MaxSurge = intstr.FromInt(int(c.Rand.Int31()))
-				} else {
-					rollingUpdate.MaxSurge = intstr.FromString(fmt.Sprintf("%d%%", c.Rand.Int31()))
-				}
-				j.RollingUpdate = &rollingUpdate
-			}
-		},
-		func(psp *extensions.PodSecurityPolicySpec, c fuzz.Continue) {
-			c.FuzzNoCustom(psp) // fuzz self without calling this function again
-			runAsUserRules := []extensions.RunAsUserStrategy{extensions.RunAsUserStrategyMustRunAsNonRoot, extensions.RunAsUserStrategyMustRunAs, extensions.RunAsUserStrategyRunAsAny}
-			psp.RunAsUser.Rule = runAsUserRules[c.Rand.Intn(len(runAsUserRules))]
-			seLinuxRules := []extensions.SELinuxStrategy{extensions.SELinuxStrategyRunAsAny, extensions.SELinuxStrategyMustRunAs}
-			psp.SELinux.Rule = seLinuxRules[c.Rand.Intn(len(seLinuxRules))]
-		},
-		func(s *extensions.Scale, c fuzz.Continue) {
-			c.FuzzNoCustom(s) // fuzz self without calling this function again
-			// TODO: Implement a fuzzer to generate valid keys, values and operators for
-			// selector requirements.
-			if s.Status.Selector != nil {
-				s.Status.Selector = &metav1.LabelSelector{
-					MatchLabels: map[string]string{
-						"testlabelkey": "testlabelval",
-					},
-					MatchExpressions: []metav1.LabelSelectorRequirement{
-						{
-							Key:      "testkey",
-							Operator: metav1.LabelSelectorOpIn,
-							Values:   []string{"val1", "val2", "val3"},
-						},
-					},
-				}
-			}
-		},
-		func(j *extensions.DaemonSetSpec, c fuzz.Continue) {
-			c.FuzzNoCustom(j) // fuzz self without calling this function again
-			rhl := int32(c.Rand.Int31())
-			j.RevisionHistoryLimit = &rhl
-		},
-		func(j *extensions.DaemonSetUpdateStrategy, c fuzz.Continue) {
-			c.FuzzNoCustom(j) // fuzz self without calling this function again
-			// Ensure that strategyType is one of valid values.
-			strategyTypes := []extensions.DaemonSetUpdateStrategyType{extensions.RollingUpdateDaemonSetStrategyType, extensions.OnDeleteDaemonSetStrategyType}
-			j.Type = strategyTypes[c.Rand.Intn(len(strategyTypes))]
-			if j.Type != extensions.RollingUpdateDaemonSetStrategyType {
-				j.RollingUpdate = nil
-			} else {
-				rollingUpdate := extensions.RollingUpdateDaemonSet{}
-				if c.RandBool() {
-					if c.RandBool() {
-						rollingUpdate.MaxUnavailable = intstr.FromInt(1 + int(c.Rand.Int31()))
-					} else {
-						rollingUpdate.MaxUnavailable = intstr.FromString(fmt.Sprintf("%d%%", 1+c.Rand.Int31()))
-					}
-				}
-				j.RollingUpdate = &rollingUpdate
-			}
-		},
-	}
-}
-
-func batchFuncs(codecs runtimeserializer.CodecFactory) []interface{} {
-	return []interface{}{
-		func(j *batch.JobSpec, c fuzz.Continue) {
-			c.FuzzNoCustom(j) // fuzz self without calling this function again
-			completions := int32(c.Rand.Int31())
-			parallelism := int32(c.Rand.Int31())
-			j.Completions = &completions
-			j.Parallelism = &parallelism
-			if c.Rand.Int31()%2 == 0 {
-				j.ManualSelector = newBool(true)
-			} else {
-				j.ManualSelector = nil
-			}
-		},
-		func(sj *batch.CronJobSpec, c fuzz.Continue) {
-			c.FuzzNoCustom(sj)
-			suspend := c.RandBool()
-			sj.Suspend = &suspend
-			sds := int64(c.RandUint64())
-			sj.StartingDeadlineSeconds = &sds
-			sj.Schedule = c.RandString()
-			if hasSuccessLimit := c.RandBool(); hasSuccessLimit {
-				successfulJobsHistoryLimit := int32(c.Rand.Int31())
-				sj.SuccessfulJobsHistoryLimit = &successfulJobsHistoryLimit
-			}
-			if hasFailedLimit := c.RandBool(); hasFailedLimit {
-				failedJobsHistoryLimit := int32(c.Rand.Int31())
-				sj.FailedJobsHistoryLimit = &failedJobsHistoryLimit
-			}
-		},
-		func(cp *batch.ConcurrencyPolicy, c fuzz.Continue) {
-			policies := []batch.ConcurrencyPolicy{batch.AllowConcurrent, batch.ForbidConcurrent, batch.ReplaceConcurrent}
-			*cp = policies[c.Rand.Intn(len(policies))]
-		},
-	}
-}
-
-func autoscalingFuncs(codecs runtimeserializer.CodecFactory) []interface{} {
-	return []interface{}{
-		func(s *autoscaling.HorizontalPodAutoscalerSpec, c fuzz.Continue) {
-			c.FuzzNoCustom(s) // fuzz self without calling this function again
-			minReplicas := int32(c.Rand.Int31())
-			s.MinReplicas = &minReplicas
-
-			randomQuantity := func() resource.Quantity {
-				var q resource.Quantity
-				c.Fuzz(&q)
-				// precalc the string for benchmarking purposes
-				_ = q.String()
-				return q
-			}
-
-			targetUtilization := int32(c.RandUint64())
-			s.Metrics = []autoscaling.MetricSpec{
-				{
-					Type: autoscaling.PodsMetricSourceType,
-					Pods: &autoscaling.PodsMetricSource{
-						MetricName:         c.RandString(),
-						TargetAverageValue: randomQuantity(),
-					},
-				},
-				{
-					Type: autoscaling.ResourceMetricSourceType,
-					Resource: &autoscaling.ResourceMetricSource{
-						Name: api.ResourceCPU,
-						TargetAverageUtilization: &targetUtilization,
-					},
-				},
-			}
-		},
-		func(s *autoscaling.HorizontalPodAutoscalerStatus, c fuzz.Continue) {
-			c.FuzzNoCustom(s) // fuzz self without calling this function again
-			randomQuantity := func() resource.Quantity {
-				var q resource.Quantity
-				c.Fuzz(&q)
-				// precalc the string for benchmarking purposes
-				_ = q.String()
-				return q
-			}
-			currentUtilization := int32(c.RandUint64())
-			s.CurrentMetrics = []autoscaling.MetricStatus{
-				{
-					Type: autoscaling.PodsMetricSourceType,
-					Pods: &autoscaling.PodsMetricStatus{
-						MetricName:          c.RandString(),
-						CurrentAverageValue: randomQuantity(),
-					},
-				},
-				{
-					Type: autoscaling.ResourceMetricSourceType,
-					Resource: &autoscaling.ResourceMetricStatus{
-						Name: api.ResourceCPU,
-						CurrentAverageUtilization: &currentUtilization,
-					},
-				},
-			}
-		},
-	}
-}
-
-func rbacFuncs(codecs runtimeserializer.CodecFactory) []interface{} {
-	return []interface{}{
-		func(r *rbac.RoleRef, c fuzz.Continue) {
-			c.FuzzNoCustom(r) // fuzz self without calling this function again
-
-			// match defaulter
-			if len(r.APIGroup) == 0 {
-				r.APIGroup = rbac.GroupName
-			}
-		},
-		func(r *rbac.Subject, c fuzz.Continue) {
-			switch c.Int31n(3) {
-			case 0:
-				r.Kind = rbac.ServiceAccountKind
-				r.APIGroup = ""
-				c.FuzzNoCustom(&r.Name)
-				c.FuzzNoCustom(&r.Namespace)
-			case 1:
-				r.Kind = rbac.UserKind
-				r.APIGroup = rbac.GroupName
-				c.FuzzNoCustom(&r.Name)
-				// user "*" won't round trip because we convert it to the system:authenticated group. try again.
-				for r.Name == "*" {
-					c.FuzzNoCustom(&r.Name)
-				}
-			case 2:
-				r.Kind = rbac.GroupKind
-				r.APIGroup = rbac.GroupName
-				c.FuzzNoCustom(&r.Name)
-			}
-		},
-	}
-}
-
-func appsFuncs(codecs runtimeserializer.CodecFactory) []interface{} {
-	return []interface{}{
-		func(s *apps.StatefulSet, c fuzz.Continue) {
-			c.FuzzNoCustom(s) // fuzz self without calling this function again
-
-			// match defaulter
-			if len(s.Spec.PodManagementPolicy) == 0 {
-				s.Spec.PodManagementPolicy = apps.OrderedReadyPodManagement
-			}
-			if len(s.Spec.UpdateStrategy.Type) == 0 {
-				s.Spec.UpdateStrategy.Type = apps.RollingUpdateStatefulSetStrategyType
-			}
-			if s.Spec.RevisionHistoryLimit == nil {
-				s.Spec.RevisionHistoryLimit = new(int32)
-				*s.Spec.RevisionHistoryLimit = 10
-			}
-			if s.Status.ObservedGeneration == nil {
-				s.Status.ObservedGeneration = new(int64)
-			}
-		},
-	}
-}
-func policyFuncs(codecs runtimeserializer.CodecFactory) []interface{} {
-	return []interface{}{
-		func(s *policy.PodDisruptionBudgetStatus, c fuzz.Continue) {
-			c.FuzzNoCustom(s) // fuzz self without calling this function again
-			s.PodDisruptionsAllowed = int32(c.Rand.Intn(2))
-		},
-	}
-}
-
-func certificateFuncs(codecs runtimeserializer.CodecFactory) []interface{} {
-	return []interface{}{
-		func(obj *certificates.CertificateSigningRequestSpec, c fuzz.Continue) {
-			c.FuzzNoCustom(obj) // fuzz self without calling this function again
-			obj.Usages = []certificates.KeyUsage{certificates.UsageKeyEncipherment}
-		},
-	}
-}
-
-func admissionregistrationFuncs(codecs runtimeserializer.CodecFactory) []interface{} {
-	return []interface{}{
-		func(obj *admissionregistration.ExternalAdmissionHook, c fuzz.Continue) {
-			c.FuzzNoCustom(obj) // fuzz self without calling this function again
-			p := admissionregistration.FailurePolicyType("Fail")
-			obj.FailurePolicy = &p
-		},
-		func(obj *admissionregistration.Initializer, c fuzz.Continue) {
-			c.FuzzNoCustom(obj) // fuzz self without calling this function again
-			p := admissionregistration.FailurePolicyType("Fail")
-			obj.FailurePolicy = &p
-		},
-	}
-}
-
 var FuzzerFuncs = fuzzer.MergeFuzzerFuncs(
 	genericfuzzer.Funcs,
 	overrideGenericFuncs,
 	coreFuncs,
-	extensionFuncs,
-	appsFuncs,
-	batchFuncs,
-	autoscalingFuncs,
-	rbacFuncs,
+	extensionsfuzzer.Funcs,
+	appsfuzzer.Funcs,
+	batchfuzzer.Funcs,
+	autoscalingfuzzer.Funcs,
+	rbacfuzzer.Funcs,
 	kubeadmfuzzer.Funcs,
-	policyFuncs,
-	certificateFuncs,
-	admissionregistrationFuncs,
+	policyfuzzer.Funcs,
+	certificatesfuzzer.Funcs,
+	admissionregistrationfuzzer.Funcs,
 )
-
-func newBool(val bool) *bool {
-	p := new(bool)
-	*p = val
-	return p
-}
