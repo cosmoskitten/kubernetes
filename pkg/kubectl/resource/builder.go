@@ -849,7 +849,7 @@ func (b *Builder) visitByPaths() *Result {
 		if err != nil {
 			return result.withError(fmt.Errorf("the provided selector %q is not valid: %v", b.labelSelector, err))
 		}
-		visitors = NewFilteredVisitor(visitors, FilterBySelector(selector))
+		visitors = NewFilteredVisitor(visitors, FilterByLabelSelector(selector))
 	}
 	result.visitor = visitors
 	result.sources = b.paths
