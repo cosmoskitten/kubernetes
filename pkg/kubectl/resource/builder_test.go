@@ -711,7 +711,7 @@ func TestResourceByNameAndEmptySelector(t *testing.T) {
 	}
 }
 
-func TestSelector(t *testing.T) {
+func TestLabelSelector(t *testing.T) {
 	pods, svc := testData()
 	labelKey := metav1.LabelSelectorQueryParam(api.Registry.GroupOrDie(api.GroupName).GroupVersion.String())
 	b := NewBuilder(testapi.Default.RESTMapper(), LegacyCategoryExpander, api.Scheme, fakeClientWith("", t, map[string]string{
@@ -744,7 +744,7 @@ func TestSelector(t *testing.T) {
 	}
 }
 
-func TestSelectorRequiresKnownTypes(t *testing.T) {
+func TestLabelSelectorRequiresKnownTypes(t *testing.T) {
 	b := NewBuilder(testapi.Default.RESTMapper(), LegacyCategoryExpander, api.Scheme, fakeClient(), testapi.Default.Codec()).
 		LabelSelectorParam("a=b").
 		NamespaceParam("test").
