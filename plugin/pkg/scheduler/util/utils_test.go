@@ -25,33 +25,37 @@ import (
 
 // TestGetPodPriority tests GetPodPriority function.
 func TestGetPodPriority(t *testing.T) {
-	pod := &v1.Pod{
-		Spec: v1.PodSpec{
-			Containers: []v1.Container{
-				{
-					Name:  "container",
-					Image: "image",
-				},
-			},
-		},
-	}
-	if GetPodPriority(pod) != scheduling.DefaultPriorityWhenNoDefaultClassExists {
-		t.Errorf("unexpected pod priority: %v", GetPodPriority(pod))
-	}
 	p := int32(20)
-	pod = &v1.Pod{
-		Spec: v1.PodSpec{
-			Containers: []v1.Container{
-				{
-					Name:  "container",
-					Image: "image",
+	tests := []struct {
+		name             string
+		pod              *v1.Pod
+		expectedPriority int32
+	}{
+		{
+			name: "no priority pod resolves to static default priority",
+			pod: &v1.Pod{
+				Spec: v1.PodSpec{Containers: []v1.Container{
+					{Name: "container", Image: "image"}},
 				},
 			},
-			Priority: &p,
+			expectedPriority: scheduling.DefaultPriorityWhenNoDefaultClassExists,
+		},
+		{
+			name: "pod with priority resolves correctly",
+			pod: &v1.Pod{
+				Spec: v1.PodSpec{Containers: []v1.Container{
+					{Name: "container", Image: "image"}},
+					Priority: &p,
+				},
+			},
+			expectedPriority: p,
 		},
 	}
-	if GetPodPriority(pod) != p {
-		t.Errorf("unexpected pod priority: %v", GetPodPriority(pod))
+	for _, test := range tests {
+		if GetPodPriority(test.pod) != test.expectedPriority {
+			t.Errorf("expected pod priority: %v, got %v", test.expectedPriority, GetPodPriority(test.pod))
+		}
+
 	}
 }
 

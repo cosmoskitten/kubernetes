@@ -497,7 +497,7 @@ func selectVictimsOnNode(pod *v1.Pod, meta interface{}, nodeInfo *schedulercache
 	// If the new pod does not fit after removing all the lower priority pods,
 	// we are done and this node is not suitable for preemption.
 	if fits, _, _ := podFitsOnNode(pod, meta, nodeInfoCopy, predicates, nil); !fits {
-		return victims, false
+		return nil, false
 	}
 	// If the new pod fits after the removal of all the lower priority pods, try to
 	// reprieve as may pods as possible starting from the highest priority one.

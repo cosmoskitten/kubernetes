@@ -47,12 +47,11 @@ func GetUsedPorts(pods ...*v1.Pod) map[int]bool {
 func GetPodPriority(pod *v1.Pod) int32 {
 	if pod.Spec.Priority != nil {
 		return *pod.Spec.Priority
-	} else {
-		// When priority of a running pod is nil, it means it was created at a time
-		// that there was no global default priority class and the priority class
-		// name of the pod was empty. So, we resolve to the static default priority.
-		return scheduling.DefaultPriorityWhenNoDefaultClassExists
 	}
+	// When priority of a running pod is nil, it means it was created at a time
+	// that there was no global default priority class and the priority class
+	// name of the pod was empty. So, we resolve to the static default priority.
+	return scheduling.DefaultPriorityWhenNoDefaultClassExists
 }
 
 // SortableList is a list that implements sort.Interface.
