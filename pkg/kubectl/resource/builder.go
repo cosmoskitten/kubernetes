@@ -822,7 +822,7 @@ func (b *Builder) visitByPaths() *Result {
 		visitors = NewDecoratedVisitor(visitors, RetrieveLatest)
 	}
 	if b.labelSelector != nil {
-		visitors = NewFilteredVisitor(visitors, FilterBySelector(b.labelSelector))
+		visitors = NewFilteredVisitor(visitors, FilterByLabelSelector(b.labelSelector))
 	}
 	if b.fieldSelector != nil {
 		visitors = NewFilteredVisitor(visitors, FilterByFieldSelector(b.fieldSelector))
