@@ -27,7 +27,6 @@ import (
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest/fake"
@@ -359,7 +358,7 @@ func TestHelperList(t *testing.T) {
 			RESTClient:      client,
 			NamespaceScoped: true,
 		}
-		obj, err := modifier.List("bar", api.Registry.GroupOrDie(api.GroupName).GroupVersion.String(), labels.SelectorFromSet(labels.Set{"foo": "baz"}), fields.SelectorFromSet(fields.Set{}), false, false)
+		obj, err := modifier.List("bar", api.Registry.GroupOrDie(api.GroupName).GroupVersion.String(), labels.SelectorFromSet(labels.Set{"foo": "baz"}), "", false, false)
 		if (err != nil) != test.Err {
 			t.Errorf("unexpected error: %t %v", test.Err, err)
 		}
@@ -371,6 +370,71 @@ func TestHelperList(t *testing.T) {
 		}
 		if test.Req != nil && !test.Req(client.Req) {
 			t.Errorf("unexpected request: %#v", client.Req)
+		}
+	}
+}
+
+func TestHelperListSelectorCombination(t *testing.T) {
+	tests := []struct {
+		Name          string
+		Err           bool
+		ErrMsg        string
+		FieldSelector string
+		LabelSelector labels.Selector
+	}{
+		{
+			Name: "No selector",
+			Err:  false,
+		},
+		{
+			Name:          "Only Label Selector",
+			Err:           false,
+			LabelSelector: labels.SelectorFromSet(labels.Set{"foo": "baz"}),
+		},
+		{
+			Name:          "Only Field Selector",
+			Err:           false,
+			FieldSelector: "xyz=zyx",
+		},
+		{
+			Name:          "Both Label and Field Selector",
+			Err:           true,
+			ErrMsg:        "cannot combine label selector and field selector together",
+			LabelSelector: labels.SelectorFromSet(labels.Set{"foo": "baz"}),
+			FieldSelector: "xyz=zyx",
+		},
+	}
+
+	resp := &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     header(),
+		Body: objBody(&api.PodList{
+			Items: []api.Pod{{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+			},
+			},
+		}),
+	}
+	client := &fake.RESTClient{
+		APIRegistry:          api.Registry,
+		NegotiatedSerializer: testapi.Default.NegotiatedSerializer(),
+		Resp:                 resp,
+		Err:                  nil,
+	}
+	modifier := &Helper{
+		RESTClient:      client,
+		NamespaceScoped: true,
+	}
+
+	for _, test := range tests {
+		_, err := modifier.List("bar", api.Registry.GroupOrDie(api.GroupName).GroupVersion.String(), test.LabelSelector, test.FieldSelector, false, false)
+		if test.Err {
+			if err == nil {
+				t.Errorf("%q expected error: %q", test.Name, test.ErrMsg)
+			}
+			if err != nil && err.Error() != test.ErrMsg {
+				t.Errorf("%q expected error: %q", test.Name, test.ErrMsg)
+			}
 		}
 	}
 }
