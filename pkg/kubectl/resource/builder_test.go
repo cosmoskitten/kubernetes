@@ -755,6 +755,50 @@ func TestLabelSelectorRequiresKnownTypes(t *testing.T) {
 	}
 }
 
+func TestFieldSelector(t *testing.T) {
+	pods, svc := testData()
+	fieldKey := metav1.FieldSelectorQueryParam(api.Registry.GroupOrDie(api.GroupName).GroupVersion.String())
+	b := NewBuilder(testapi.Default.RESTMapper(), LegacyCategoryExpander, api.Scheme, fakeClientWith("", t, map[string]string{
+		"/namespaces/test/pods?" + fieldKey + "=a%3Db":     runtime.EncodeOrDie(testapi.Default.Codec(), pods),
+		"/namespaces/test/services?" + fieldKey + "=a%3Db": runtime.EncodeOrDie(testapi.Default.Codec(), svc),
+	}), testapi.Default.Codec()).
+		FieldSelectorParam("a=b").
+		NamespaceParam("test").
+		Flatten()
+
+	test := &testVisitor{}
+	singleItemImplied := false
+
+	if b.Do().Err() == nil {
+		t.Errorf("unexpected non-error")
+	}
+
+	b.ResourceTypeOrNameArgs(true, "pods,service")
+
+	err := b.Do().IntoSingleItemImplied(&singleItemImplied).Visit(test.Handle)
+	if err != nil || singleItemImplied || len(test.Infos) != 3 {
+		t.Fatalf("unexpected response: %v %t %#v", err, singleItemImplied, test.Infos)
+	}
+	if !apiequality.Semantic.DeepDerivative([]runtime.Object{&pods.Items[0], &pods.Items[1], &svc.Items[0]}, test.Objects()) {
+		t.Errorf("unexpected visited objects: %#v", test.Objects())
+	}
+
+	if _, err := b.Do().ResourceMapping(); err == nil {
+		t.Errorf("unexpected non-error")
+	}
+}
+
+func TestFieldSelectorRequiresKnownTypes(t *testing.T) {
+	b := NewBuilder(testapi.Default.RESTMapper(), LegacyCategoryExpander, api.Scheme, fakeClient(), testapi.Default.Codec()).
+		FieldSelectorParam("a=b").
+		NamespaceParam("test").
+		ResourceTypes("unknown")
+
+	if b.Do().Err() == nil {
+		t.Errorf("unexpected non-error")
+	}
+}
+
 func TestSingleResourceType(t *testing.T) {
 	b := NewBuilder(testapi.Default.RESTMapper(), LegacyCategoryExpander, api.Scheme, fakeClient(), testapi.Default.Codec()).
 		LabelSelectorParam("a=b").
