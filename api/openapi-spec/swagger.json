@@ -58111,6 +58111,15 @@
      }
     }
    },
+   "io.k8s.api.extensions.v1beta1.AllowedHostPath": {
+    "description": "AllowedHostPath defines the host volume conditions that will be enabled by a policy for pods to use. It requires the path to be defined.",
+    "properties": {
+     "path": {
+      "description": "Path is the path prefix that the host volume must match",
+      "type": "string"
+     }
+    }
+   },
    "io.k8s.api.extensions.v1beta1.DaemonSet": {
     "description": "DaemonSet represents the configuration of a daemon set.",
     "properties": {
@@ -58959,6 +58968,13 @@
       "type": "array",
       "items": {
        "type": "string"
+      }
+     },
+     "allowedHostPaths": {
+      "description": "AllowedHostPaths is a white list of allowed host paths. Empty indicates that all host paths may be used.",
+      "type": "array",
+      "items": {
+       "$ref": "#/definitions/io.k8s.api.extensions.v1beta1.AllowedHostPath"
       }
      },
      "defaultAddCapabilities": {
