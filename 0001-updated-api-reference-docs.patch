@@ -1,0 +1,27 @@
+From 9396113817222ffc306183d81c7b5c34eb25117f Mon Sep 17 00:00:00 2001
+From: Josh Horwitz <horwitzja@gmail.com>
+Date: Fri, 11 Aug 2017 15:13:17 -0400
+Subject: [PATCH 1/1] updated api reference docs
+
+---
+ .../extensions/v1beta1/definitions.html            | Bin 481046 -> 482905 bytes
+ 1 file changed, 0 insertions(+), 0 deletions(-)
+
+diff --git a/docs/api-reference/extensions/v1beta1/definitions.html b/docs/api-reference/extensions/v1beta1/definitions.html
+index f3cd2f322aebb8cb62908399d24c59102d7d7a22..f1fb4bd09c2c03cbb3cf3a6e52b9205e8477d0ed 100755
+GIT binary patch
+delta 431
+zcmbQXPWI*=*$uzSG!k=i^2<|GGV+T{3KB~)l<dk3lTu3(4fPx$5*|Q_0HDO=h1-=3
+zP=ypyQqwZ?Qi~NzGEx;l1}K!}=alBADkSIUrDT?5=I2en(8FdT?OCEwlv-GtSp-!I
+zvPYqy2&lPYyLvBM2h()^Ox7@q0I-NcCd51>ML_ctOE4_SEd^Sbn^=-OeIg&D|MUs*
+zO!KB6kYci*zK)lbb9%TGlhX96kF4_3_bq4UZVo7K4=85@VkRJF24WT<X5Ai8&Q@DL
+zz2Fm@2R}3%VBVeXsLbeZjur;RAjc&tlxJj?q$=cO0`1RFQ-ErO1OUj@#d_1@@3Kj8
+mf<pu(FundR+aaO@diunC#@^{`d0Dw8-)hs?Zu_0>W;_6dzoTIQ
+
+delta 64
+zcmcb)M|Rpe*$uzSrq>HHaW(VRwDZ+40x=U1GXpUT5VLOQt6@7?KYhU}7K`Z%uClO!
+M)ozdY$Htfd02i7UK>z>%
+
+-- 
+2.8.3
+
