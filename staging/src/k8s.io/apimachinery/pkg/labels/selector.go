@@ -37,6 +37,10 @@ type Selector interface {
 	// Matches returns true if this selector matches the given set of labels.
 	Matches(Labels) bool
 
+	// Supported returns nil if this selector supports the given set of labels.
+	// Otherwise returns an error.
+	Supported(Labels) error
+
 	// Empty returns true if this selector does not restrict the selection space.
 	Empty() bool
 
@@ -64,6 +68,7 @@ func Everything() Selector {
 type nothingSelector struct{}
 
 func (n nothingSelector) Matches(_ Labels) bool              { return false }
+func (n nothingSelector) Supported(_ Labels) error           { return nil }
 func (n nothingSelector) Empty() bool                        { return false }
 func (n nothingSelector) String() string                     { return "" }
 func (n nothingSelector) Add(_ ...Requirement) Selector      { return n }
@@ -236,6 +241,10 @@ func (r *Requirement) Matches(ls Labels) bool {
 	}
 }
 
+func (r *Requirement) Supported(_ Labels) error {
+	return nil
+}
+
 // Key returns requirement key
 func (r *Requirement) Key() string {
 	return r.key
@@ -332,6 +341,10 @@ func (lsel internalSelector) Matches(l Labels) bool {
 		}
 	}
 	return true
+}
+
+func (lsel internalSelector) Supported(_ Labels) error {
+	return nil
 }
 
 func (lsel internalSelector) Requirements() (Requirements, bool) { return Requirements(lsel), true }
