@@ -95,6 +95,70 @@ func TestMatchPod(t *testing.T) {
 	}
 }
 
+func TestFieldSelectorSupported(t *testing.T) {
+	testCases := []struct {
+		name          string
+		in            *api.Pod
+		fieldSelector fields.Selector
+		expectErr     bool
+	}{
+		{
+			name: "fieldSelector status.qosClass",
+			in: &api.Pod{
+				Status: api.PodStatus{},
+			},
+			fieldSelector: fields.ParseSelectorOrDie("status.qosClass=foo"),
+			expectErr:     true,
+		},
+		{
+			name: "fieldSelector status.qosClass,status.startTime",
+			in: &api.Pod{
+				Status: api.PodStatus{},
+			},
+			fieldSelector: fields.ParseSelectorOrDie("status.qosClass!=foo,status.startTime=bar"),
+			expectErr:     true,
+		},
+		{
+			name: "fieldSelector status.phase",
+			in: &api.Pod{
+				Status: api.PodStatus{},
+			},
+			fieldSelector: fields.ParseSelectorOrDie("status.phase=foo"),
+			expectErr:     false,
+		},
+		{
+			name: "fieldSelector spec.restartPolicy",
+			in: &api.Pod{
+				Spec: api.PodSpec{RestartPolicy: api.RestartPolicyAlways},
+			},
+			fieldSelector: fields.ParseSelectorOrDie("spec.restartPolicy=foo"),
+			expectErr:     false,
+		},
+		{
+			name: "fieldSelector metadata.name=,metadata.namespace=,spec.nodeName=,",
+			in: &api.Pod{
+				Spec: api.PodSpec{},
+			},
+			fieldSelector: fields.ParseSelectorOrDie("metadata.name=foo,metadata.namespace=bar,spec.nodeName=baz"),
+			expectErr:     false,
+		},
+	}
+
+	for _, testCase := range testCases {
+		m := MatchPod(labels.Everything(), testCase.fieldSelector)
+		_, err := m.Matches(testCase.in)
+		if testCase.expectErr {
+			if err == nil {
+				t.Errorf("%q: Expected error, but got nil", testCase.name)
+			}
+		} else {
+			if err != nil {
+				t.Errorf("%q: Unexpected error %v", testCase.name, err)
+			}
+		}
+	}
+}
+
 func getResourceList(cpu, memory string) api.ResourceList {
 	res := api.ResourceList{}
 	if cpu != "" {

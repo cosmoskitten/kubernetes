@@ -94,7 +94,11 @@ func (s *SelectionPredicate) Matches(obj runtime.Object) (bool, error) {
 	}
 	matched := s.Label.Matches(labels)
 	if matched && s.Field != nil {
-		matched = (matched && s.Field.Matches(fields))
+		if err := s.Field.Supported(fields); err == nil {
+			matched = s.Field.Matches(fields)
+		} else {
+			return false, err
+		}
 	}
 	return matched, nil
 }

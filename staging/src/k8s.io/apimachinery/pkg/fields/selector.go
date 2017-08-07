@@ -33,6 +33,10 @@ type Selector interface {
 	// Empty returns true if this selector does not restrict the selection space.
 	Empty() bool
 
+	// Supported returns nil if this selector supports the given set of fields.
+	// Otherwise returns an error.
+	Supported(Fields) error
+
 	// RequiresExactMatch allows a caller to introspect whether a given selector
 	// requires a single specific field to be set, and if so returns the value it
 	// requires.
@@ -66,6 +70,13 @@ type hasTerm struct {
 
 func (t *hasTerm) Matches(ls Fields) bool {
 	return ls.Get(t.field) == t.value
+}
+
+func (t *hasTerm) Supported(ls Fields) error {
+	if !ls.Has(t.field) {
+		return fmt.Errorf("not supported fieldSelector [%q]", t.String())
+	}
+	return nil
 }
 
 func (t *hasTerm) Empty() bool {
@@ -119,6 +130,13 @@ func (t *notHasTerm) Matches(ls Fields) bool {
 	return ls.Get(t.field) != t.value
 }
 
+func (t *notHasTerm) Supported(ls Fields) error {
+	if !ls.Has(t.field) {
+		return fmt.Errorf("not supported fieldSelector %q", t.String())
+	}
+	return nil
+}
+
 func (t *notHasTerm) Empty() bool {
 	return false
 }
@@ -168,6 +186,20 @@ func (t andTerm) Matches(ls Fields) bool {
 		}
 	}
 	return true
+}
+
+func (t andTerm) Supported(ls Fields) error {
+	unSupported := []string{}
+	for _, q := range t {
+		if err := q.Supported(ls); err != nil {
+			unSupported = append(unSupported, q.String())
+		}
+	}
+
+	if len(unSupported) > 0 {
+		return fmt.Errorf("not supported fieldSelector %q", unSupported)
+	}
+	return nil
 }
 
 func (t andTerm) Empty() bool {
