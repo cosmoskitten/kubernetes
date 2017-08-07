@@ -26,6 +26,7 @@ import (
 	"github.com/golang/glog"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/kubernetes/pkg/cloudprovider"
 	"k8s.io/kubernetes/pkg/util/mount"
 	"k8s.io/kubernetes/pkg/volume"
 	volumeutil "k8s.io/kubernetes/pkg/volume/util"
@@ -185,6 +186,14 @@ func (attacher *cinderDiskAttacher) VolumesAreAttached(specs []*volume.Spec, nod
 	}
 
 	instanceID, err := attacher.nodeInstanceID(nodeName)
+	// If node does not exist, node's volumes will be detached automatically and become available.
+	// So mark them detached.
+	if err == cloudprovider.InstanceNotFound {
+		for _, spec := range specs {
+			volumesAttachedCheck[spec] = false
+		}
+		return volumesAttachedCheck, nil
+	}
 	if err != nil {
 		return volumesAttachedCheck, err
 	}
