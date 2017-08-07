@@ -494,20 +494,34 @@ func (EnvVarSource) SwaggerDoc() map[string]string {
 }
 
 var map_Event = map[string]string{
-	"":               "Event is a report of an event somewhere in the cluster.",
-	"metadata":       "Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#metadata",
-	"involvedObject": "The object that this event is about.",
-	"reason":         "This should be a short, machine understandable string that gives the reason for the transition into the object's current status.",
-	"message":        "A human-readable description of the status of this operation.",
-	"source":         "The component reporting this event. Should be a short machine understandable string.",
-	"firstTimestamp": "The time at which the event was first recorded. (Time of server receipt is in TypeMeta.)",
-	"lastTimestamp":  "The time at which the most recent occurrence of this event was recorded.",
-	"count":          "The number of times this event has occurred.",
-	"type":           "Type of this event (Normal, Warning), new types could be added in the future",
+	"":                "Event is a report of an event somewhere in the cluster.",
+	"metadata":        "Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#metadata",
+	"involvedObject":  "The object that this event is about.",
+	"reason":          "This should be a short, machine understandable string that gives the reason for the transition into the object's current status.",
+	"message":         "A human-readable description of the status of this operation.",
+	"source":          "The component reporting this event. Should be a short machine understandable string.",
+	"firstTimestamp":  "The time at which the event was first recorded. (Time of server receipt is in TypeMeta.)",
+	"lastTimestamp":   "The time at which the most recent occurrence of this event was recorded.",
+	"count":           "The number of times this event has occurred.",
+	"type":            "Type of this event (Normal, Warning), new types could be added in the future",
+	"eventTime":       "Time when this Event was first observed.",
+	"series":          "Data about the Event series this event represents or nil if it's a singleton Event.",
+	"origin":          "Component that generated the Event.",
+	"action":          "What Origin did/failed to do.",
+	"object":          "On what Origin acted upon.",
+	"secondaryObject": "Optional secondary Object for more complex actions.",
 }
 
 func (Event) SwaggerDoc() map[string]string {
 	return map_Event
+}
+
+var map_EventAction = map[string]string{
+	"": "Information about action that was taken",
+}
+
+func (EventAction) SwaggerDoc() map[string]string {
+	return map_EventAction
 }
 
 var map_EventList = map[string]string{
@@ -520,10 +534,23 @@ func (EventList) SwaggerDoc() map[string]string {
 	return map_EventList
 }
 
+var map_EventSeries = map[string]string{
+	"uid":              "Unique identifier of the Event series.",
+	"count":            "Number of Events in this series until last heartbeat.",
+	"lastObservedTime": "Time when last Event from the series was seen before last heartbeat.",
+	"lastHeartbeat":    "Last time when seried data was updated.",
+	"state":            "Information whether this series is ongoing or finished.",
+}
+
+func (EventSeries) SwaggerDoc() map[string]string {
+	return map_EventSeries
+}
+
 var map_EventSource = map[string]string{
 	"":          "EventSource contains information for an event.",
 	"component": "Component from which the event is generated.",
 	"host":      "Node name on which the event is generated.",
+	"id":        "Identifies the component emitting the Event",
 }
 
 func (EventSource) SwaggerDoc() map[string]string {

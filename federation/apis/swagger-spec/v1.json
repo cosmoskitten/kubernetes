@@ -4823,6 +4823,33 @@
      "type": {
       "type": "string",
       "description": "Type of this event (Normal, Warning), new types could be added in the future"
+     },
+     "eventTime": {
+      "type": "string",
+      "description": "Time when this Event was first observed."
+     },
+     "series": {
+      "$ref": "v1.EventSeries",
+      "description": "Data about the Event series this event represents or nil if it's a singleton Event."
+     },
+     "origin": {
+      "$ref": "v1.EventSource",
+      "description": "Component that generated the Event."
+     },
+     "action": {
+      "$ref": "v1.EventAction",
+      "description": "What Origin did/failed to do."
+     },
+     "object": {
+      "$ref": "v1.ObjectReference",
+      "description": "On what Origin acted upon."
+     },
+     "secondaryObject": {
+      "$ref": "v1.ObjectReference",
+      "description": "Optional secondary Object for more complex actions."
+     },
+     "severity": {
+      "type": "string"
      }
     }
    },
@@ -4871,6 +4898,59 @@
      "host": {
       "type": "string",
       "description": "Node name on which the event is generated."
+     },
+     "id": {
+      "type": "string",
+      "description": "Identifies the component emitting the Event"
+     }
+    }
+   },
+   "v1.EventSeries": {
+    "id": "v1.EventSeries",
+    "required": [
+     "uid",
+     "count",
+     "lastObservedTime",
+     "lastHeartbeat",
+     "state"
+    ],
+    "properties": {
+     "uid": {
+      "type": "string",
+      "description": "Unique identifier of the Event series."
+     },
+     "count": {
+      "type": "integer",
+      "format": "int32",
+      "description": "Number of Events in this series until last heartbeat."
+     },
+     "lastObservedTime": {
+      "type": "string",
+      "description": "Time when last Event from the series was seen before last heartbeat."
+     },
+     "lastHeartbeat": {
+      "type": "string",
+      "description": "Last time when seried data was updated."
+     },
+     "state": {
+      "type": "string",
+      "description": "Information whether this series is ongoing or finished."
+     }
+    }
+   },
+   "v1.EventAction": {
+    "id": "v1.EventAction",
+    "description": "Information about action that was taken",
+    "required": [
+     "action",
+     "reason"
+    ],
+    "properties": {
+     "action": {
+      "type": "string"
+     },
+     "reason": {
+      "type": "string"
      }
     }
    },

@@ -25,6 +25,7 @@ filegroup(
         "//pkg/apis/batch:all-srcs",
         "//pkg/apis/certificates:all-srcs",
         "//pkg/apis/componentconfig:all-srcs",
+        "//pkg/apis/events:all-srcs",
         "//pkg/apis/extensions:all-srcs",
         "//pkg/apis/imagepolicy:all-srcs",
         "//pkg/apis/meta/v1:all-srcs",
