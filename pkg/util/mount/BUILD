@@ -15,7 +15,6 @@ go_library(
         "fake.go",
         "mount.go",
         "mount_linux.go",
-        "mount_linux_windows.go",       
         "nsenter_mount.go",
     ],
     tags = ["automanaged"],
