@@ -286,7 +286,7 @@ func TestCreateApplyRevision(t *testing.T) {
 	key := "foo"
 	expectedValue := "bar"
 	set.Annotations[key] = expectedValue
-	restoredSet, err := applyRevision(set, revision)
+	restoredSet, err := ApplyRevision(set, revision)
 	if err != nil {
 		t.Fatal(err)
 	}
