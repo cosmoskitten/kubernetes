@@ -17,6 +17,13 @@ limitations under the License.
 package e2e_node
 
 import (
+	"bytes"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"strconv"
+	"time"
+
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kubernetes/test/e2e/framework"
@@ -70,4 +77,174 @@ var _ = framework.KubeDescribe("Docker features [Feature:Docker]", func() {
 			}
 		})
 	})
+
+	Context("when live-restore is enabled", func() {
+		It("containers should not be disrupted when the daemon is down [ygg]", func() {
+			const (
+				startTimeFilename   = "start-timestamp"
+				currentTimeFilename = "current-timestamp"
+			)
+			isSupported, err := isDockerLiveRestoreSupported()
+			framework.ExpectNoError(err)
+			if !isSupported {
+				framework.Skipf("Docker live-restore is not supported.")
+			}
+
+			By("Check whether live-restore is enabled.")
+			isEnabled, err := isDockerLiveRestoreEnabled()
+			framework.ExpectNoError(err)
+			framework.Logf("Docker live-restore enabled: %t", isEnabled)
+			if !isEnabled {
+				// Enables Docker live-restore if it's supported but disabled.
+				By("Enable Docker live-restore.")
+				framework.ExpectNoError(setDockerLiveRestore(true))
+
+				b, err := isDockerLiveRestoreEnabled()
+				framework.ExpectNoError(err)
+				if !b {
+					framework.Logf("Failed to enable Docker live-restore: %v", err)
+				}
+
+				defer func() {
+					By("Disable Docker live-restore.")
+					time.Sleep(2 * time.Second)
+					framework.ExpectNoError(setDockerLiveRestore(false))
+				}()
+			}
+
+			// Creates a temporary directory that will be mounted into the
+			// container, serving as the communication channel between the host
+			// and the container.
+			By("Create temporary directory for mount.")
+			tempDir, err := ioutil.TempDir("", "")
+			framework.ExpectNoError(err)
+			defer func() {
+				By("Remove temporary directory.")
+				defer os.RemoveAll(tempDir)
+			}()
+
+			// Creates a container that
+			//   - writes the current timestamp every second to the
+			//     current-timestamp file, and
+			//   - writes the start timestamp to the start-timestamp file
+			// in the directory that's mounted from the host machine.
+			//
+			// We will be able to tell
+			//   - whether the container is running by checking if the
+			//     current-timestamp increases, and
+			//   - whether the container has been restarted by checking if the
+			//     start-timestamp has changed.
+			cmd := "" +
+				// Writes the start time on start.
+				"date +%s > /test-dir/" + startTimeFilename + "; " +
+				// Writes the current timestamp every second.
+				"while true; do " +
+				"    date +%s > /test-dir/" + currentTimeFilename + "; " +
+				"    sleep 1; " +
+				"done"
+			By("Create the test pod.")
+			f.PodClient().CreateSync(&v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "live-restore-test-pod"},
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{{
+						Name:    "live-restore-test-container",
+						Image:   "gcr.io/google_containers/busybox:1.24",
+						Command: []string{"/bin/sh"},
+						Args:    []string{"-c", cmd},
+						VolumeMounts: []v1.VolumeMount{
+							{
+								Name:      "live-restore-test-volume",
+								MountPath: "/test-dir",
+							},
+						},
+					}},
+					Volumes: []v1.Volume{{
+						Name: "live-restore-test-volume",
+						VolumeSource: v1.VolumeSource{
+							HostPath: &v1.HostPathVolumeSource{Path: tempDir},
+						},
+					}},
+				},
+			})
+
+			startTime1, err := getTimestamp(filepath.Join(tempDir, startTimeFilename))
+			framework.ExpectNoError(err)
+
+			By("Stop Docker daemon.")
+			framework.ExpectNoError(stopDockerDaemon())
+			defer func() {
+				By("Restart Docker daemon.")
+				framework.ExpectNoError(startDockerDaemon())
+			}()
+
+			By("Ensure that the test container is running when Docker daemon is down.")
+			isRunning, err := isContainerRunning(filepath.Join(tempDir, currentTimeFilename))
+			framework.ExpectNoError(err)
+			if !isRunning {
+				framework.Failf("The container should be running but it's not.")
+			}
+
+			By("Ensure that the test pod is still running when Docker daemon is down.")
+			framework.ExpectNoError(f.WaitForPodRunning("live-restore-test-pod"))
+
+			By("Start Docker daemon.")
+			framework.ExpectNoError(startDockerDaemon())
+
+			By("Ensure that the test container is running after Docker daemon is restarted.")
+			isRunning, err = isContainerRunning(filepath.Join(tempDir, currentTimeFilename))
+			framework.ExpectNoError(err)
+			if !isRunning {
+				framework.Failf("The container should be running but it's not.")
+			}
+
+			By("Ensure that the test container has not been restarted after Docker daemon is restarted.")
+			startTime2, err := getTimestamp(filepath.Join(tempDir, startTimeFilename))
+			framework.ExpectNoError(err)
+			if startTime1 != startTime2 {
+				framework.Failf("The container should have not been restarted.")
+			}
+		})
+	})
 })
+
+// isContainerRunning returns true if the container is running (by checking
+// whether the timestamp is being updated), and false otherwise. Returns an
+// error if the timestamp cannot be read.
+func isContainerRunning(filename string) (bool, error) {
+	const (
+		// The sample interval (3s), which must be greater than the interval at
+		// which the container writes the timestamp (every second).
+		sampleInterval = 3 * time.Second
+		retryInterval  = 3 * time.Second
+		retryTimeout   = 30 * time.Second
+	)
+	for start := time.Now(); time.Since(start) < retryTimeout; time.Sleep(retryInterval) {
+		c1, err := getTimestamp(filename)
+		if err != nil {
+			return false, err
+		}
+		time.Sleep(sampleInterval)
+		c2, err := getTimestamp(filename)
+		if err != nil {
+			return false, err
+		}
+		if c1 != c2 {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// getTimestamp returns the timestamp in the file with the specified filename,
+// and false if the timestamp cannot be read.
+func getTimestamp(filename string) (int, error) {
+	data, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return 0, err
+	}
+	c, err := strconv.Atoi(string(bytes.Trim(data, "\n")))
+	if err != nil {
+		return 0, err
+	}
+	return c, nil
+}
