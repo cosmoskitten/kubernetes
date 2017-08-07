@@ -167,7 +167,7 @@ var _ = framework.KubeDescribe("Federated Hpa [Feature:Federation]", func() {
 
 				maxHpaReplicas := int32(6)
 				hpa := createHpaOrFail(f.FederationClientset, newHpa(nsName, testHpaPrefix, dep.Name, NewInt32(1), NewInt32(30), maxHpaReplicas))
-				expected, _ := getExpectedForHpaWithMaxReplicas(clusters, int32(2), int32(2), int32(1))
+				expected, _ := getExpectedForHpaWithMaxReplicas(clusters, int32(2), int32(2), int32(2))
 				waitForHpaOrFail(f.FederationClientset, nsName, hpa.Name, clusters, expected)
 
 				// we target the svc ip rather then the svc name to avoid dns resolution delay

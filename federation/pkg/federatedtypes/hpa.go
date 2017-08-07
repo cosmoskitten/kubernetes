@@ -924,8 +924,11 @@ func (a *HpaAdapter) maxReplicasNeeded(obj pkgruntime.Object) bool {
 		return false
 	}
 
-	if (hpa.Status.CurrentReplicas == hpa.Status.DesiredReplicas) &&
-		(hpa.Status.CurrentReplicas == hpa.Spec.MaxReplicas) {
+	// We don't compare CurrentReplicas to MaxReplicas as behaviour observed on
+	// local hpa is that current can go beyond max/desired, but desired replicas
+	// is capped by max.
+	if (hpa.Status.CurrentReplicas >= hpa.Status.DesiredReplicas) &&
+		(hpa.Status.DesiredReplicas == hpa.Spec.MaxReplicas) {
 		return true
 	}
 	return false
