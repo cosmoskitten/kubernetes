@@ -305,6 +305,32 @@ func applyHistory(ds *extensionsv1beta1.DaemonSet, history *appsv1beta1.Controll
 	return clone, nil
 }
 
+// controlledSSHistories returns all ControllerRevisions controlled by the given StatefulSet
+func controlledSSHistories(apps clientappsv1beta1.AppsV1beta1Interface, namespace, name string) (*appsv1beta1.StatefulSet, []*appsv1beta1.ControllerRevision, error) {
+	ss, err := apps.StatefulSets(namespace).Get(name, metav1.GetOptions{})
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to retrieve StatefulSet %s: %v", name, err)
+	}
+	var result []*appsv1beta1.ControllerRevision
+	selector, err := metav1.LabelSelectorAsSelector(ss.Spec.Selector)
+	if err != nil {
+		return nil, nil, err
+	}
+	historyList, err := apps.ControllerRevisions(ss.Namespace).List(metav1.ListOptions{LabelSelector: selector.String()})
+	if err != nil {
+		return nil, nil, err
+	}
+	for i := range historyList.Items {
+		history := historyList.Items[i]
+		// Skip history that doesn't belong to the StatefulSet
+		if controllerRef := controller.GetControllerOf(&history); controllerRef == nil || controllerRef.UID != ss.UID {
+			continue
+		}
+		result = append(result, &history)
+	}
+	return ss, result, nil
+}
+
 // TODO: copied here until this becomes a describer
 func tabbedString(f func(io.Writer) error) (string, error) {
 	out := new(tabwriter.Writer)

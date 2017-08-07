@@ -280,7 +280,7 @@ func TestCreateApplyRevision(t *testing.T) {
 		t.Fatal(err)
 	}
 	set.Spec.Template.Spec.Containers[0].Name = "foo"
-	restoredSet, err := applyRevision(set, revision)
+	restoredSet, err := ApplyRevision(set, revision)
 	if err != nil {
 		t.Fatal(err)
 	}
