@@ -62,7 +62,11 @@ func LoadClientCert(kubeconfigPath string, bootstrapPath string, certDir string,
 	if err != nil {
 		return fmt.Errorf("unable to load bootstrap kubeconfig: %v", err)
 	}
-	_, err = kubernetes.NewForConfig(bootstrapClientConfig)
+	client, err := kubernetes.NewForConfig(bootstrapClientConfig)
+	if err != nil {
+		return err
+	}
+	_, err = client.ServerVersion()
 	if err != nil {
 		return fmt.Errorf("unable to create kubernetes rest client: %v", err)
 	}
