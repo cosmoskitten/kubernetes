@@ -28,8 +28,6 @@ import (
 	"k8s.io/kubernetes/pkg/kubectl"
 	"k8s.io/kubernetes/test/e2e/framework"
 
-	batch "k8s.io/api/batch/v1"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -90,12 +88,12 @@ var _ = SIGDescribe("Job", func() {
 
 	It("should exceed active deadline", func() {
 		By("Creating a job")
-		var activeDeadlineSeconds int64 = 10
+		var activeDeadlineSeconds int64 = 1
 		job := framework.NewTestJob("notTerminate", "exceed-active-deadline", v1.RestartPolicyNever, parallelism, completions, &activeDeadlineSeconds)
 		job, err := framework.CreateJob(f.ClientSet, f.Namespace.Name, job)
 		Expect(err).NotTo(HaveOccurred())
 		By("Ensuring job past active deadline")
-		err = framework.WaitForJobFailure(f.ClientSet, f.Namespace.Name, job.Name, time.Duration(activeDeadlineSeconds+10)*time.Second, batch.JobDeadLineExceed)
+		err = framework.WaitForJobFailure(f.ClientSet, f.Namespace.Name, job.Name, time.Duration(activeDeadlineSeconds+10)*time.Second, "DeadlineExceeded")
 		Expect(err).NotTo(HaveOccurred())
 	})
 

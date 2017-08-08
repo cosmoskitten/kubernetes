@@ -307,20 +307,23 @@ func (jm *JobController) updateJob(old, cur interface{}) {
 	curJob := cur.(*batch.Job)
 
 	// never return error
-	key, _ := controller.KeyFunc(curJob)
+	key, err := controller.KeyFunc(curJob)
+	if err != nil {
+		return
+	}
 	jm.queue.Add(key)
 	// check if need to add a new rsync for ActiveDeadlineSeconds
 	if curJob.Status.StartTime != nil {
-		curSeconds := curJob.Spec.ActiveDeadlineSeconds
-		if curSeconds == nil {
+		curADS := curJob.Spec.ActiveDeadlineSeconds
+		if curADS == nil {
 			return
 		}
-		oldSeconds := oldJob.Spec.ActiveDeadlineSeconds
-		if oldSeconds == nil || *oldSeconds != *curSeconds {
+		oldADS := oldJob.Spec.ActiveDeadlineSeconds
+		if oldADS == nil || *oldADS != *curADS {
 			now := metav1.Now()
 			start := curJob.Status.StartTime.Time
 			passed := now.Time.Sub(start)
-			total := time.Duration(*curSeconds) * time.Second
+			total := time.Duration(*curADS) * time.Second
 			// AddAfter will handle total < passed
 			jm.queue.AddAfter(key, total-passed)
 			glog.V(4).Infof("job ActiveDeadlineSeconds updated, will rsync after %d seconds", total-passed)
@@ -492,7 +495,7 @@ func (jm *JobController) syncJob(key string) error {
 		// update status values accordingly
 		failed += active
 		active = 0
-		job.Status.Conditions = append(job.Status.Conditions, newCondition(batch.JobFailed, batch.JobDeadLineExceed, "Job was active longer than specified deadline"))
+		job.Status.Conditions = append(job.Status.Conditions, newCondition(batch.JobFailed, "DeadlineExceeded", "Job was active longer than specified deadline"))
 		jm.recorder.Event(&job, v1.EventTypeNormal, "DeadlineExceeded", "Job was active longer than specified deadline")
 	} else {
 		if jobNeedsSync && job.DeletionTimestamp == nil {
