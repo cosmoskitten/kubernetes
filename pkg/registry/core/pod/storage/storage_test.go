@@ -699,6 +699,47 @@ func TestEtcdCreateBinding(t *testing.T) {
 	}
 }
 
+func TestEtcdUpdateUninitialized(t *testing.T) {
+	storage, _, _, server := newStorage(t)
+	defer server.Terminate(t)
+	defer storage.Store.DestroyFunc()
+	ctx := genericapirequest.NewDefaultContext()
+
+	pod := validNewPod()
+	// add pending initializers to the pod
+	pod.ObjectMeta.Initializers = &metav1.Initializers{Pending: []metav1.Initializer{{Name: "init"}}}
+	if _, err := storage.Create(ctx, pod, true); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	podIn := *pod
+	// only uninitialized pod is allowed to add containers via update
+	podIn.Spec.Containers = append(podIn.Spec.Containers, api.Container{
+		Name:                     "foo2",
+		Image:                    "test",
+		ImagePullPolicy:          api.PullAlways,
+		TerminationMessagePath:   api.TerminationMessagePathDefault,
+		TerminationMessagePolicy: api.TerminationMessageReadFile,
+		SecurityContext:          securitycontext.ValidInternalSecurityContextWithContainerDefaults(),
+	})
+	podIn.ObjectMeta.Initializers = nil
+
+	_, _, err := storage.Update(ctx, podIn.Name, rest.DefaultUpdatedObjectInfo(&podIn, api.Scheme))
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+	obj, err := storage.Get(ctx, podIn.ObjectMeta.Name, &metav1.GetOptions{})
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	podOut := obj.(*api.Pod)
+	if podOut.GetInitializers() != nil {
+		t.Errorf("expect nil initializers, got %v", podOut.ObjectMeta.Initializers)
+	}
+	if !apiequality.Semantic.DeepEqual(podIn.Spec.Containers, podOut.Spec.Containers) {
+		t.Errorf("objects differ: %v", diff.ObjectDiff(podOut, &podIn))
+	}
+}
+
 func TestEtcdUpdateNotScheduled(t *testing.T) {
 	storage, _, _, server := newStorage(t)
 	defer server.Terminate(t)

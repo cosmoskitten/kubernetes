@@ -588,7 +588,7 @@ func (e *Store) Update(ctx genericapirequest.Context, name string, objInfo rest.
 				return nil, nil, kubeerr.NewConflict(qualifiedResource, name, fmt.Errorf(OptimisticLockErrorMsg))
 			}
 		}
-		if err := rest.BeforeUpdate(e.UpdateStrategy, ctx, obj, existing); err != nil {
+		if err := rest.BeforeUpdate(e.UpdateStrategy, e.CreateStrategy, ctx, obj, existing); err != nil {
 			return nil, nil, err
 		}
 		if e.shouldDeleteDuringUpdate(ctx, key, obj, existing) {
