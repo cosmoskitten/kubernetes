@@ -18,6 +18,7 @@ package e2e_node
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -29,6 +30,7 @@ import (
 	"k8s.io/kubernetes/test/e2e/framework"
 
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
 var _ = framework.KubeDescribe("Docker features [Feature:Docker]", func() {
@@ -78,12 +80,15 @@ var _ = framework.KubeDescribe("Docker features [Feature:Docker]", func() {
 		})
 	})
 
-	Context("when live-restore is enabled", func() {
-		It("containers should not be disrupted when the daemon is down [ygg]", func() {
+	Context("when live-restore is enabled [Serial] [Slow] [Disruptive]", func() {
+		It("containers should not be disrupted when the daemon is down", func() {
 			const (
-				startTimeFilename   = "start-timestamp"
-				currentTimeFilename = "current-timestamp"
+				podName           = "live-restore-test-pod"
+				containerName     = "live-restore-test-container"
+				volumeName        = "live-restore-test-volume"
+				timestampFilename = "timestamp"
 			)
+
 			isSupported, err := isDockerLiveRestoreSupported()
 			framework.ExpectNoError(err)
 			if !isSupported {
@@ -101,9 +106,7 @@ var _ = framework.KubeDescribe("Docker features [Feature:Docker]", func() {
 
 				b, err := isDockerLiveRestoreEnabled()
 				framework.ExpectNoError(err)
-				if !b {
-					framework.Logf("Failed to enable Docker live-restore: %v", err)
-				}
+				Expect(b).To(BeTrue(), "should be able to enable Docker live-restore")
 
 				defer func() {
 					By("Disable Docker live-restore.")
@@ -120,46 +123,35 @@ var _ = framework.KubeDescribe("Docker features [Feature:Docker]", func() {
 			framework.ExpectNoError(err)
 			defer func() {
 				By("Remove temporary directory.")
-				defer os.RemoveAll(tempDir)
+				os.RemoveAll(tempDir)
 			}()
 
-			// Creates a container that
-			//   - writes the current timestamp every second to the
-			//     current-timestamp file, and
-			//   - writes the start timestamp to the start-timestamp file
-			// in the directory that's mounted from the host machine.
-			//
-			// We will be able to tell
-			//   - whether the container is running by checking if the
-			//     current-timestamp increases, and
-			//   - whether the container has been restarted by checking if the
-			//     start-timestamp has changed.
+			// Creates a container that writes the current timestamp every
+			// second to the timestamp file. We will be able to tell whether
+			// the container is running by checking if the timestamp increases.
 			cmd := "" +
-				// Writes the start time on start.
-				"date +%s > /test-dir/" + startTimeFilename + "; " +
-				// Writes the current timestamp every second.
 				"while true; do " +
-				"    date +%s > /test-dir/" + currentTimeFilename + "; " +
+				"    date +%s > /test-dir/" + timestampFilename + "; " +
 				"    sleep 1; " +
 				"done"
 			By("Create the test pod.")
 			f.PodClient().CreateSync(&v1.Pod{
-				ObjectMeta: metav1.ObjectMeta{Name: "live-restore-test-pod"},
+				ObjectMeta: metav1.ObjectMeta{Name: podName},
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{{
-						Name:    "live-restore-test-container",
+						Name:    containerName,
 						Image:   "gcr.io/google_containers/busybox:1.24",
 						Command: []string{"/bin/sh"},
 						Args:    []string{"-c", cmd},
 						VolumeMounts: []v1.VolumeMount{
 							{
-								Name:      "live-restore-test-volume",
+								Name:      volumeName,
 								MountPath: "/test-dir",
 							},
 						},
 					}},
 					Volumes: []v1.Volume{{
-						Name: "live-restore-test-volume",
+						Name: volumeName,
 						VolumeSource: v1.VolumeSource{
 							HostPath: &v1.HostPathVolumeSource{Path: tempDir},
 						},
@@ -167,7 +159,7 @@ var _ = framework.KubeDescribe("Docker features [Feature:Docker]", func() {
 				},
 			})
 
-			startTime1, err := getTimestamp(filepath.Join(tempDir, startTimeFilename))
+			startTime1, err := getContainerStartTime(f, podName, containerName)
 			framework.ExpectNoError(err)
 
 			By("Stop Docker daemon.")
@@ -178,27 +170,27 @@ var _ = framework.KubeDescribe("Docker features [Feature:Docker]", func() {
 			}()
 
 			By("Ensure that the test container is running when Docker daemon is down.")
-			isRunning, err := isContainerRunning(filepath.Join(tempDir, currentTimeFilename))
+			isRunning, err := isContainerRunning(filepath.Join(tempDir, timestampFilename))
 			framework.ExpectNoError(err)
 			if !isRunning {
 				framework.Failf("The container should be running but it's not.")
 			}
 
 			By("Ensure that the test pod is still running when Docker daemon is down.")
-			framework.ExpectNoError(f.WaitForPodRunning("live-restore-test-pod"))
+			framework.ExpectNoError(f.WaitForPodRunning(podName))
 
 			By("Start Docker daemon.")
 			framework.ExpectNoError(startDockerDaemon())
 
 			By("Ensure that the test container is running after Docker daemon is restarted.")
-			isRunning, err = isContainerRunning(filepath.Join(tempDir, currentTimeFilename))
+			isRunning, err = isContainerRunning(filepath.Join(tempDir, timestampFilename))
 			framework.ExpectNoError(err)
 			if !isRunning {
 				framework.Failf("The container should be running but it's not.")
 			}
 
 			By("Ensure that the test container has not been restarted after Docker daemon is restarted.")
-			startTime2, err := getTimestamp(filepath.Join(tempDir, startTimeFilename))
+			startTime2, err := getContainerStartTime(f, podName, containerName)
 			framework.ExpectNoError(err)
 			if startTime1 != startTime2 {
 				framework.Failf("The container should have not been restarted.")
@@ -247,4 +239,23 @@ func getTimestamp(filename string) (int, error) {
 		return 0, err
 	}
 	return c, nil
+}
+
+// getContainerStartTime returns the start time of the container with the
+// containerName of the pod having the podName.
+func getContainerStartTime(f *framework.Framework, podName, containerName string) (time.Time, error) {
+	pod, err := f.PodClient().Get(podName, metav1.GetOptions{})
+	if err != nil {
+		return time.Time{}, fmt.Errorf("failed to get pod %q", podName)
+	}
+	for _, status := range pod.Status.ContainerStatuses {
+		if status.Name != containerName {
+			continue
+		}
+		if status.State.Running == nil {
+			return time.Time{}, fmt.Errorf("%v/%v is not running", podName, containerName)
+		}
+		return status.State.Running.StartedAt.Time, nil
+	}
+	return time.Time{}, fmt.Errorf("failed to find %v/%v", podName, containerName)
 }

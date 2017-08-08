@@ -24,6 +24,7 @@ import (
 	"os"
 
 	"github.com/blang/semver"
+	systemdutil "github.com/coreos/go-systemd/util"
 	"github.com/docker/docker/client"
 )
 
@@ -106,7 +107,7 @@ func setDockerLiveRestore(value bool) error {
 // stopDockerDaemon starts the Docker daemon.
 func startDockerDaemon() error {
 	switch {
-	case isSystemd():
+	case systemdutil.IsRunningSystemd():
 		_, err := runCommand("systemctl", "start", "docker")
 		return err
 	default:
@@ -118,7 +119,7 @@ func startDockerDaemon() error {
 // stopDockerDaemon stops the Docker daemon.
 func stopDockerDaemon() error {
 	switch {
-	case isSystemd():
+	case systemdutil.IsRunningSystemd():
 		_, err := runCommand("systemctl", "stop", "docker")
 		return err
 	default:
@@ -130,7 +131,7 @@ func stopDockerDaemon() error {
 // restartDockerDaemon restarts the Docker daemon.
 func restartDockerDaemon() error {
 	switch {
-	case isSystemd():
+	case systemdutil.IsRunningSystemd():
 		_, err := runCommand("systemctl", "restart", "docker")
 		return err
 	default:

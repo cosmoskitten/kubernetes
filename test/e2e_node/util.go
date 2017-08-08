@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"os/exec"
 	"reflect"
 	"strings"
@@ -310,14 +309,6 @@ func logKubeletMetrics(metricKeys ...string) {
 	} else {
 		framework.Logf("Kubelet Metrics: %+v", framework.GetKubeletMetrics(metric, metricSet))
 	}
-}
-
-// isSystemd returns true if the init system is systemd, and false otherwise.
-func isSystemd() bool {
-	if _, err := os.Stat("/run/systemd/system"); err != nil {
-		return os.IsExist(err)
-	}
-	return true
 }
 
 // runCommand runs the cmd and returns the combined stdout and stderr, or an
