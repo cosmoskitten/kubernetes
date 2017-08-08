@@ -64,7 +64,7 @@ func newPluginMgr(t *testing.T) (*volume.VolumePluginMgr, string) {
 	fakeClient := fakeclient.NewSimpleClientset(config)
 	host := volumetest.NewFakeVolumeHost(tmpDir, fakeClient, nil)
 	plugMgr := &volume.VolumePluginMgr{}
-	plugMgr.InitPlugins(ProbeVolumePlugins(), host)
+	plugMgr.InitPlugins(ProbeVolumePlugins(), nil, host)
 
 	return plugMgr, tmpDir
 }
