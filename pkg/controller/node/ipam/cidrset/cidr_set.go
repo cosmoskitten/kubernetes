@@ -102,7 +102,8 @@ func (s *CidrSet) indexToCIDRBlock(index int) *net.IPNet {
 	}
 }
 
-// AllocateNext allocates the next free CIDR range.
+// AllocateNext allocates the next free CIDR range. This will set the range
+// as occupied and return the allocated range.
 func (s *CidrSet) AllocateNext() (*net.IPNet, error) {
 	s.Lock()
 	defer s.Unlock()
@@ -186,7 +187,8 @@ func (s *CidrSet) Release(cidr *net.IPNet) error {
 	return nil
 }
 
-// Occupy marks the given CIDR range as used.
+// Occupy marks the given CIDR range as used. Occupy does not check if the CIDR
+// range was previously used.
 func (s *CidrSet) Occupy(cidr *net.IPNet) (err error) {
 	begin, end, err := s.getBeginingAndEndIndices(cidr)
 	if err != nil {
