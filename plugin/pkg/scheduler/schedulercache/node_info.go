@@ -454,6 +454,37 @@ func (n *NodeInfo) RemoveNode(node *v1.Node) error {
 	return nil
 }
 
+// FilterOutPods receives a list of pods and filters out those whose node names
+// are equal to the node of this NodeInfo, but are not found in the pods of this NodeInfo.
+//
+// Preemption logic simulates removal of pods on a node by removing them from the
+// corresponding NodeInfo. In order for the simulation to work, we call this method
+// on the pods returned from SchedulerCache, so that predicate functions see
+// only the pods that are not removed from the NodeInfo.
+func (n *NodeInfo) FilterOutPods(pods []*v1.Pod) []*v1.Pod {
+	node := n.Node()
+	if node == nil {
+		return pods
+	}
+	filtered := make([]*v1.Pod, 0, len(pods))
+	for _, p := range pods {
+		if p.Spec.NodeName == node.Name {
+			// If pod is on the given node, add it to 'filtered' only if it is present in nodeInfo.
+			podKey, _ := getPodKey(p)
+			for _, np := range n.Pods() {
+				npodkey, _ := getPodKey(np)
+				if npodkey == podKey {
+					filtered = append(filtered, p)
+					break
+				}
+			}
+		} else {
+			filtered = append(filtered, p)
+		}
+	}
+	return filtered
+}
+
 // getPodKey returns the string key of a pod.
 func getPodKey(pod *v1.Pod) (string, error) {
 	return clientcache.MetaNamespaceKeyFunc(pod)
