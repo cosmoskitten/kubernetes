@@ -89,6 +89,13 @@ func (podStrategy) AllowCreateOnUpdate() bool {
 	return false
 }
 
+// ValidateUpdateUninitialized is the default update validation if the old Pod
+// is uninitialized.
+func (podStrategy) ValidateUpdateUninitialized(ctx genericapirequest.Context, obj, old runtime.Object) field.ErrorList {
+	errorList := validation.ValidatePod(obj.(*api.Pod))
+	return append(errorList, validation.ValidatePodUpdateUninitialized(obj.(*api.Pod), old.(*api.Pod))...)
+}
+
 // ValidateUpdate is the default update validation for an end user.
 func (podStrategy) ValidateUpdate(ctx genericapirequest.Context, obj, old runtime.Object) field.ErrorList {
 	errorList := validation.ValidatePod(obj.(*api.Pod))

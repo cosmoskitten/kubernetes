@@ -2656,6 +2656,15 @@ func ValidateContainerUpdates(newContainers, oldContainers []api.Container, fldP
 	return allErrs, false
 }
 
+// ValidatePodUpdateUninitialized tests to see if the update is legal for an
+// uninitialized pod.
+func ValidatePodUpdateUninitialized(newPod, oldPod *api.Pod) field.ErrorList {
+	fldPath := field.NewPath("metadata")
+	allErrs := ValidateObjectMetaUpdate(&newPod.ObjectMeta, &oldPod.ObjectMeta, fldPath)
+	allErrs = append(allErrs, ValidatePodSpecificAnnotationUpdates(newPod, oldPod, fldPath.Child("annotations"))...)
+	return allErrs
+}
+
 // ValidatePodUpdate tests to see if the update is legal for an end user to make. newPod is updated with fields
 // that cannot be changed.
 func ValidatePodUpdate(newPod, oldPod *api.Pod) field.ErrorList {

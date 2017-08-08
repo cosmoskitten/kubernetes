@@ -5244,6 +5244,141 @@ func TestValidatePod(t *testing.T) {
 	}
 }
 
+func TestValidatePodUpdateUninitialized(t *testing.T) {
+	tests := []struct {
+		new  api.Pod
+		old  api.Pod
+		err  string
+		test string
+	}{
+		{
+			api.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+			},
+			api.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "bar"},
+			},
+			"metadata.name",
+			"cannot change name",
+		},
+		{
+			api.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "foo",
+				},
+				Spec: api.PodSpec{
+					Containers: []api.Container{
+						{
+							Image: "foo:V1",
+						},
+					},
+				},
+			},
+			api.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+				Spec: api.PodSpec{
+					Containers: []api.Container{
+						{
+							Image: "foo:V2",
+						},
+						{
+							Image: "bar:V2",
+						},
+					},
+				},
+			},
+			"",
+			"can remove containers",
+		},
+		{
+			api.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+				Spec: api.PodSpec{
+					Containers: []api.Container{
+						{},
+					},
+				},
+			},
+			api.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+				Spec: api.PodSpec{
+					Containers: []api.Container{
+						{
+							Image: "foo:V2",
+						},
+					},
+				},
+			},
+			"",
+			"image change to empty",
+		},
+		{
+			api.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+				Spec: api.PodSpec{
+					Containers: []api.Container{
+						{
+							Image: "foo:V1",
+							Resources: api.ResourceRequirements{
+								Limits: getResourceLimits("100m", "0"),
+							},
+						},
+					},
+				},
+			},
+			api.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+				Spec: api.PodSpec{
+					Containers: []api.Container{
+						{
+							Image: "foo:V2",
+							Resources: api.ResourceRequirements{
+								Limits: getResourceLimits("1000m", "0"),
+							},
+						},
+					},
+				},
+			},
+			"",
+			"can change resource requirements",
+		},
+		{
+			api.Pod{ObjectMeta: metav1.ObjectMeta{Name: "foo", Annotations: map[string]string{api.MirrorPodAnnotationKey: ""}}, Spec: api.PodSpec{NodeName: "foo"}},
+			api.Pod{ObjectMeta: metav1.ObjectMeta{Name: "foo"}, Spec: api.PodSpec{NodeName: "foo"}},
+			"metadata.annotations[kubernetes.io/config.mirror]",
+			"added mirror pod annotation",
+		},
+		{
+			api.Pod{ObjectMeta: metav1.ObjectMeta{Name: "foo"}, Spec: api.PodSpec{NodeName: "foo"}},
+			api.Pod{ObjectMeta: metav1.ObjectMeta{Name: "foo", Annotations: map[string]string{api.MirrorPodAnnotationKey: ""}}, Spec: api.PodSpec{NodeName: "foo"}},
+			"metadata.annotations[kubernetes.io/config.mirror]",
+			"removed mirror pod annotation",
+		},
+		{
+			api.Pod{ObjectMeta: metav1.ObjectMeta{Name: "foo", Annotations: map[string]string{api.MirrorPodAnnotationKey: "foo"}}, Spec: api.PodSpec{NodeName: "foo"}},
+			api.Pod{ObjectMeta: metav1.ObjectMeta{Name: "foo", Annotations: map[string]string{api.MirrorPodAnnotationKey: "bar"}}, Spec: api.PodSpec{NodeName: "foo"}},
+			"metadata.annotations[kubernetes.io/config.mirror]",
+			"changed mirror pod annotation",
+		},
+	}
+	for _, test := range tests {
+		test.new.ObjectMeta.ResourceVersion = "1"
+		test.old.ObjectMeta.ResourceVersion = "1"
+		errs := ValidatePodUpdateUninitialized(&test.new, &test.old)
+		if test.err == "" {
+			if len(errs) != 0 {
+				t.Errorf("unexpected invalid: %s (%+v)\nA: %+v\nB: %+v", test.test, errs, test.new, test.old)
+			}
+		} else {
+			if len(errs) == 0 {
+				t.Errorf("unexpected valid: %s\nA: %+v\nB: %+v", test.test, test.new, test.old)
+			} else if actualErr := errs.ToAggregate().Error(); !strings.Contains(actualErr, test.err) {
+				t.Errorf("unexpected error message: %s\nExpected error: %s\nActual error: %s", test.test, test.err, actualErr)
+			}
+		}
+	}
+}
+
 func TestValidatePodUpdate(t *testing.T) {
 	var (
 		activeDeadlineSecondsZero     = int64(0)
@@ -5257,8 +5392,8 @@ func TestValidatePodUpdate(t *testing.T) {
 	)
 
 	tests := []struct {
-		a    api.Pod
-		b    api.Pod
+		new  api.Pod
+		old  api.Pod
 		err  string
 		test string
 	}{
@@ -5340,7 +5475,7 @@ func TestValidatePodUpdate(t *testing.T) {
 				},
 			},
 			"may not add or remove containers",
-			"more containers",
+			"less containers",
 		},
 		{
 			api.Pod{
@@ -5381,7 +5516,19 @@ func TestValidatePodUpdate(t *testing.T) {
 				Spec:       api.PodSpec{Containers: []api.Container{{Image: "foo:V1"}}},
 			},
 			"",
-			"deletion timestamp filled out",
+			"deletion timestamp removed",
+		},
+		{
+			api.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo", DeletionTimestamp: &now},
+				Spec:       api.PodSpec{Containers: []api.Container{{Image: "foo:V1"}}},
+			},
+			api.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+				Spec:       api.PodSpec{Containers: []api.Container{{Image: "foo:V1"}}},
+			},
+			"metadata.deletionTimestamp",
+			"deletion timestamp added",
 		},
 		{
 			api.Pod{
@@ -5393,7 +5540,7 @@ func TestValidatePodUpdate(t *testing.T) {
 				Spec:       api.PodSpec{Containers: []api.Container{{Image: "foo:V1"}}},
 			},
 			"metadata.deletionGracePeriodSeconds",
-			"deletion grace period seconds cleared",
+			"deletion grace period seconds changed",
 		},
 		{
 			api.Pod{
@@ -5849,13 +5996,13 @@ func TestValidatePodUpdate(t *testing.T) {
 			api.Pod{ObjectMeta: metav1.ObjectMeta{Name: "foo", Annotations: map[string]string{api.MirrorPodAnnotationKey: ""}}, Spec: api.PodSpec{NodeName: "foo"}},
 			api.Pod{ObjectMeta: metav1.ObjectMeta{Name: "foo"}, Spec: api.PodSpec{NodeName: "foo"}},
 			"metadata.annotations[kubernetes.io/config.mirror]",
-			"removed mirror pod annotation",
+			"added mirror pod annotation",
 		},
 		{
 			api.Pod{ObjectMeta: metav1.ObjectMeta{Name: "foo"}, Spec: api.PodSpec{NodeName: "foo"}},
 			api.Pod{ObjectMeta: metav1.ObjectMeta{Name: "foo", Annotations: map[string]string{api.MirrorPodAnnotationKey: ""}}, Spec: api.PodSpec{NodeName: "foo"}},
 			"metadata.annotations[kubernetes.io/config.mirror]",
-			"added mirror pod annotation",
+			"removed mirror pod annotation",
 		},
 		{
 			api.Pod{ObjectMeta: metav1.ObjectMeta{Name: "foo", Annotations: map[string]string{api.MirrorPodAnnotationKey: "foo"}}, Spec: api.PodSpec{NodeName: "foo"}},
@@ -5910,16 +6057,16 @@ func TestValidatePodUpdate(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		test.a.ObjectMeta.ResourceVersion = "1"
-		test.b.ObjectMeta.ResourceVersion = "1"
-		errs := ValidatePodUpdate(&test.a, &test.b)
+		test.new.ObjectMeta.ResourceVersion = "1"
+		test.old.ObjectMeta.ResourceVersion = "1"
+		errs := ValidatePodUpdate(&test.new, &test.old)
 		if test.err == "" {
 			if len(errs) != 0 {
-				t.Errorf("unexpected invalid: %s (%+v)\nA: %+v\nB: %+v", test.test, errs, test.a, test.b)
+				t.Errorf("unexpected invalid: %s (%+v)\nA: %+v\nB: %+v", test.test, errs, test.new, test.old)
 			}
 		} else {
 			if len(errs) == 0 {
-				t.Errorf("unexpected valid: %s\nA: %+v\nB: %+v", test.test, test.a, test.b)
+				t.Errorf("unexpected valid: %s\nA: %+v\nB: %+v", test.test, test.new, test.old)
 			} else if actualErr := errs.ToAggregate().Error(); !strings.Contains(actualErr, test.err) {
 				t.Errorf("unexpected error message: %s\nExpected error: %s\nActual error: %s", test.test, test.err, actualErr)
 			}
