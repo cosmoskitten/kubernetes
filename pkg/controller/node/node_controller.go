@@ -27,7 +27,6 @@ import (
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -83,6 +82,16 @@ const (
 	apiserverStartupGracePeriod = 10 * time.Minute
 	// The amount of time the nodecontroller should sleep between retrying NodeStatus updates
 	retrySleepTime = 20 * time.Millisecond
+
+	// ipamResyncInterval is the amount of time between when the cloud and node
+	// CIDR range assignments are synchronized.
+	ipamResyncInterval = 30 * time.Second
+	// ipamMaxBackoff is the maximum backoff for retrying synchronization of a
+	// given in the error state.
+	ipamMaxBackoff = 10 * time.Second
+	// ipamInitialRetry is the initial retry interval for retrying synchronization of a
+	// given in the error state.
+	ipamInitialBackoff = 250 * time.Millisecond
 )
 
 type zoneState string
@@ -156,10 +165,8 @@ type NodeController struct {
 	daemonSetInformerSynced cache.InformerSynced
 
 	podInformerSynced cache.InformerSynced
-
-	cidrAllocator ipam.CIDRAllocator
-
-	taintManager *scheduler.NoExecuteTaintManager
+	cidrAllocator     ipam.CIDRAllocator
+	taintManager      *scheduler.NoExecuteTaintManager
 
 	forcefullyDeletePod        func(*v1.Pod) error
 	nodeExistsInCloudProvider  func(types.NodeName) (bool, error)
@@ -207,15 +214,20 @@ func NewNodeController(
 	allocatorType ipam.CIDRAllocatorType,
 	runTaintManager bool,
 	useTaintBasedEvictions bool) (*NodeController, error) {
+
+	if kubeClient == nil {
+		glog.Fatalf("kubeClient is nil when starting NodeController")
+	}
+
 	eventBroadcaster := record.NewBroadcaster()
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "controllermanager"})
 	eventBroadcaster.StartLogging(glog.Infof)
-	if kubeClient != nil {
-		glog.V(0).Infof("Sending events to api server.")
-		eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: v1core.New(kubeClient.Core().RESTClient()).Events("")})
-	} else {
-		glog.Fatalf("kubeClient is nil when starting NodeController")
-	}
+
+	glog.V(0).Infof("Sending events to api server.")
+	eventBroadcaster.StartRecordingToSink(
+		&v1core.EventSinkImpl{
+			Interface: v1core.New(kubeClient.Core().RESTClient()).Events(""),
+		})
 
 	if kubeClient != nil && kubeClient.Core().RESTClient().GetRateLimiter() != nil {
 		metrics.RegisterMetricAndTrackRateLimiterUsage("node_controller", kubeClient.Core().RESTClient().GetRateLimiter())
@@ -232,26 +244,30 @@ func NewNodeController(
 	}
 
 	nc := &NodeController{
-		cloud:                       cloud,
-		knownNodeSet:                make(map[string]*v1.Node),
-		kubeClient:                  kubeClient,
-		recorder:                    recorder,
-		podEvictionTimeout:          podEvictionTimeout,
-		maximumGracePeriod:          5 * time.Minute,
-		zonePodEvictor:              make(map[string]*scheduler.RateLimitedTimedQueue),
-		zoneNoExecuteTainer:         make(map[string]*scheduler.RateLimitedTimedQueue),
-		nodeStatusMap:               make(map[string]nodeStatusData),
-		nodeMonitorGracePeriod:      nodeMonitorGracePeriod,
-		nodeMonitorPeriod:           nodeMonitorPeriod,
-		nodeStartupGracePeriod:      nodeStartupGracePeriod,
-		lookupIP:                    net.LookupIP,
-		now:                         metav1.Now,
-		clusterCIDR:                 clusterCIDR,
-		serviceCIDR:                 serviceCIDR,
-		allocateNodeCIDRs:           allocateNodeCIDRs,
-		allocatorType:               allocatorType,
-		forcefullyDeletePod:         func(p *v1.Pod) error { return util.ForcefullyDeletePod(kubeClient, p) },
-		nodeExistsInCloudProvider:   func(nodeName types.NodeName) (bool, error) { return util.NodeExistsInCloudProvider(cloud, nodeName) },
+		cloud:                  cloud,
+		knownNodeSet:           make(map[string]*v1.Node),
+		kubeClient:             kubeClient,
+		recorder:               recorder,
+		podEvictionTimeout:     podEvictionTimeout,
+		maximumGracePeriod:     5 * time.Minute,
+		zonePodEvictor:         make(map[string]*scheduler.RateLimitedTimedQueue),
+		zoneNoExecuteTainer:    make(map[string]*scheduler.RateLimitedTimedQueue),
+		nodeStatusMap:          make(map[string]nodeStatusData),
+		nodeMonitorGracePeriod: nodeMonitorGracePeriod,
+		nodeMonitorPeriod:      nodeMonitorPeriod,
+		nodeStartupGracePeriod: nodeStartupGracePeriod,
+		lookupIP:               net.LookupIP,
+		now:                    metav1.Now,
+		clusterCIDR:            clusterCIDR,
+		serviceCIDR:            serviceCIDR,
+		allocateNodeCIDRs:      allocateNodeCIDRs,
+		allocatorType:          allocatorType,
+		forcefullyDeletePod: func(p *v1.Pod) error {
+			return util.ForcefullyDeletePod(kubeClient, p)
+		},
+		nodeExistsInCloudProvider: func(nodeName types.NodeName) (bool, error) {
+			return util.NodeExistsInCloudProvider(cloud, nodeName)
+		},
 		evictionLimiterQPS:          evictionLimiterQPS,
 		secondaryEvictionLimiterQPS: secondaryEvictionLimiterQPS,
 		largeClusterThreshold:       largeClusterThreshold,
@@ -306,67 +322,28 @@ func NewNodeController(
 	nc.podInformerSynced = podInformer.Informer().HasSynced
 
 	if nc.allocateNodeCIDRs {
-		var nodeList *v1.NodeList
-		var err error
-		// We must poll because apiserver might not be up. This error causes
-		// controller manager to restart.
-		if pollErr := wait.Poll(10*time.Second, apiserverStartupGracePeriod, func() (bool, error) {
-			nodeList, err = kubeClient.Core().Nodes().List(metav1.ListOptions{
-				FieldSelector: fields.Everything().String(),
-				LabelSelector: labels.Everything().String(),
-			})
-			if err != nil {
-				glog.Errorf("Failed to list all nodes: %v", err)
-				return false, nil
+		if nc.allocatorType == ipam.IPAMFromClusterAllocatorType || nc.allocatorType == ipam.IPAMFromCloudAllocatorType {
+			cfg := &ipam.Config{
+				Resync:       ipamResyncInterval,
+				MaxBackoff:   ipamMaxBackoff,
+				InitialRetry: ipamInitialBackoff,
 			}
-			return true, nil
-		}); pollErr != nil {
-			return nil, fmt.Errorf("Failed to list all nodes in %v, cannot proceed without updating CIDR map", apiserverStartupGracePeriod)
+			ipamc, err := ipam.NewController(cfg, kubeClient, cloud, clusterCIDR, serviceCIDR, nodeCIDRMaskSize)
+			if err != nil {
+				glog.Fatalf("Error creating ipam controller: %v", err)
+			}
+			if err := ipamc.Init(nodeInformer); err != nil {
+				glog.Fatalf("Error trying to Init(): %v", err)
+			}
+		} else {
+			var err error
+			nc.cidrAllocator, err = ipam.New(
+				kubeClient, cloud, nc.allocatorType, nc.clusterCIDR, nc.serviceCIDR, nodeCIDRMaskSize)
+			if err != nil {
+				return nil, err
+			}
+			nc.cidrAllocator.Register(nodeInformer)
 		}
-
-		switch nc.allocatorType {
-		case ipam.RangeAllocatorType:
-			nc.cidrAllocator, err = ipam.NewCIDRRangeAllocator(
-				kubeClient, clusterCIDR, serviceCIDR, nodeCIDRMaskSize, nodeList)
-		case ipam.CloudAllocatorType:
-			nc.cidrAllocator, err = ipam.NewCloudCIDRAllocator(kubeClient, cloud)
-		default:
-			return nil, fmt.Errorf("Invalid CIDR allocator type: %v", nc.allocatorType)
-		}
-
-		if err != nil {
-			return nil, err
-		}
-
-		nodeInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-			AddFunc: util.CreateAddNodeHandler(nc.cidrAllocator.AllocateOrOccupyCIDR),
-			UpdateFunc: util.CreateUpdateNodeHandler(func(_, newNode *v1.Node) error {
-				// If the PodCIDR is not empty we either:
-				// - already processed a Node that already had a CIDR after NC restarted
-				//   (cidr is marked as used),
-				// - already processed a Node successfully and allocated a CIDR for it
-				//   (cidr is marked as used),
-				// - already processed a Node but we did saw a "timeout" response and
-				//   request eventually got through in this case we haven't released
-				//   the allocated CIDR (cidr is still marked as used).
-				// There's a possible error here:
-				// - NC sees a new Node and assigns a CIDR X to it,
-				// - Update Node call fails with a timeout,
-				// - Node is updated by some other component, NC sees an update and
-				//   assigns CIDR Y to the Node,
-				// - Both CIDR X and CIDR Y are marked as used in the local cache,
-				//   even though Node sees only CIDR Y
-				// The problem here is that in in-memory cache we see CIDR X as marked,
-				// which prevents it from being assigned to any new node. The cluster
-				// state is correct.
-				// Restart of NC fixes the issue.
-				if newNode.Spec.PodCIDR == "" {
-					return nc.cidrAllocator.AllocateOrOccupyCIDR(newNode)
-				}
-				return nil
-			}),
-			DeleteFunc: util.CreateDeleteNodeHandler(nc.cidrAllocator.ReleaseCIDR),
-		})
 	}
 
 	if nc.runTaintManager {
@@ -409,7 +386,7 @@ func (nc *NodeController) doEvictionPass() {
 				glog.Warningf("Failed to get Node %v from the nodeLister: %v", value.Value, err)
 			} else {
 				zone := utilnode.GetZoneKey(node)
-				EvictionsNumber.WithLabelValues(zone).Inc()
+				evictionsNumber.WithLabelValues(zone).Inc()
 			}
 			nodeUid, _ := value.UID.(string)
 			remaining, err := util.DeletePods(nc.kubeClient, nc.recorder, value.Value, nodeUid, nc.daemonSetStore)
@@ -441,7 +418,7 @@ func (nc *NodeController) doNoExecuteTaintingPass() {
 				return false, 50 * time.Millisecond
 			} else {
 				zone := utilnode.GetZoneKey(node)
-				EvictionsNumber.WithLabelValues(zone).Inc()
+				evictionsNumber.WithLabelValues(zone).Inc()
 			}
 			_, condition := v1node.GetNodeCondition(&node.Status, v1.NodeReady)
 			// Because we want to mimic NodeStatus.Condition["Ready"] we make "unreachable" and "not ready" taints mutually exclusive.
@@ -516,7 +493,7 @@ func (nc *NodeController) addPodEvictorForNewZone(node *v1.Node) {
 		}
 		// Init the metric for the new zone.
 		glog.Infof("Initializing eviction metric for zone: %v", zone)
-		EvictionsNumber.WithLabelValues(zone).Add(0)
+		evictionsNumber.WithLabelValues(zone).Add(0)
 	}
 }
 
@@ -697,10 +674,10 @@ func (nc *NodeController) handleDisruption(zoneToNodeConditions map[string][]*v1
 	newZoneStates := map[string]zoneState{}
 	allAreFullyDisrupted := true
 	for k, v := range zoneToNodeConditions {
-		ZoneSize.WithLabelValues(k).Set(float64(len(v)))
+		zoneSize.WithLabelValues(k).Set(float64(len(v)))
 		unhealthy, newState := nc.computeZoneStateFunc(v)
-		ZoneHealth.WithLabelValues(k).Set(float64(100*(len(v)-unhealthy)) / float64(len(v)))
-		UnhealthyNodes.WithLabelValues(k).Set(float64(unhealthy))
+		zoneHealth.WithLabelValues(k).Set(float64(100*(len(v)-unhealthy)) / float64(len(v)))
+		unhealthyNodes.WithLabelValues(k).Set(float64(unhealthy))
 		if newState != stateFullDisruption {
 			allAreFullyDisrupted = false
 		}
@@ -714,9 +691,9 @@ func (nc *NodeController) handleDisruption(zoneToNodeConditions map[string][]*v1
 	allWasFullyDisrupted := true
 	for k, v := range nc.zoneStates {
 		if _, have := zoneToNodeConditions[k]; !have {
-			ZoneSize.WithLabelValues(k).Set(0)
-			ZoneHealth.WithLabelValues(k).Set(100)
-			UnhealthyNodes.WithLabelValues(k).Set(0)
+			zoneSize.WithLabelValues(k).Set(0)
+			zoneHealth.WithLabelValues(k).Set(100)
+			unhealthyNodes.WithLabelValues(k).Set(0)
 			delete(nc.zoneStates, k)
 			continue
 		}

@@ -1,0 +1,12 @@
+- filter out service range
+- where should the rate limiting live?
+  - probably outside of the core logic
+- how to handle node controller restart?
+  - allocator may give out ranges that were already used.
+
+
+
+- list nodes() start sync
+- ? lost updates ?
+- add node
+- add node
