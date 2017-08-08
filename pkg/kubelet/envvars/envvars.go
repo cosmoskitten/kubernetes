@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"k8s.io/api/core/v1"
+	"k8s.io/kubernetes/pkg/api/v1/helper"
 )
 
 // FromServices builds environment variables that a container is started with,
@@ -38,6 +39,10 @@ func FromServices(services []*v1.Service) []v1.EnvVar {
 		if service.Spec.Type == v1.ServiceTypeExternalName {
 			result = append(result, v1.EnvVar{Name: name, Value: service.Spec.ExternalName})
 		} else {
+			// Skip services without a ClusterIP as those would end in an empty env var
+			if !helper.IsServiceIPSet(service) {
+				continue
+			}
 			result = append(result, v1.EnvVar{Name: name, Value: service.Spec.ClusterIP})
 		}
 
