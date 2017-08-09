@@ -92,6 +92,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 					HostPath: &api.HostPathVolumeSource{Path: "/foo"},
 				},
 				StorageClassName: "valid",
+				VolumeType: &api.PersistentVolumeFile,
 			}),
 		},
 		"good-volume-with-retain-policy": {
@@ -229,6 +230,20 @@ func TestValidatePersistentVolumes(t *testing.T) {
 					HostPath: &api.HostPathVolumeSource{Path: "/foo"},
 				},
 				StorageClassName: "-invalid-",
+			}),
+		},
+		"invalid-volumetype": {
+			isExpectedFailure: true,
+			volume: testVolume("foo", "", api.PersistentVolumeSpec{
+				Capacity: api.ResourceList{
+					api.ResourceName(api.ResourceStorage): resource.MustParse("10G"),
+				},
+				AccessModes: []api.PersistentVolumeAccessMode{api.ReadWriteOnce},
+				PersistentVolumeSource: api.PersistentVolumeSource{
+					HostPath: &api.HostPathVolumeSource{Path: "/foo"},
+				},
+				StorageClassName: "valid",
+				VolumeType: &api.PersistentVolumeType("fakevolumetype"),
 			}),
 		},
 		// LocalVolume alpha feature disabled
@@ -549,6 +564,7 @@ func TestValidatePersistentVolumeClaim(t *testing.T) {
 					},
 				},
 				StorageClassName: &validClassName,
+				VolumeType: &api.PersistentVolumeFile,
 			}),
 		},
 		"invalid-label-selector": {
@@ -673,6 +689,30 @@ func TestValidatePersistentVolumeClaim(t *testing.T) {
 					},
 				},
 				StorageClassName: &invalidClassName,
+			}),
+		},
+		"invalid-volumetype": {
+			isExpectedFailure: true,
+			claim: testVolumeClaim("foo", "ns", api.PersistentVolumeClaimSpec{
+				Selector: &metav1.LabelSelector{
+					MatchExpressions: []metav1.LabelSelectorRequirement{
+						{
+							Key:      "key2",
+							Operator: "Exists",
+						},
+					},
+				},
+				AccessModes: []api.PersistentVolumeAccessMode{
+					api.ReadWriteOnce,
+					api.ReadOnlyMany,
+				},
+				Resources: api.ResourceRequirements{
+					Requests: api.ResourceList{
+						api.ResourceName(api.ResourceStorage): resource.MustParse("10G"),
+					},
+				},
+				StorageClassName: &validClassName,
+				VolumeType: &api.PersistentVolumeType("fakevolumetype"),
 			}),
 		},
 	}

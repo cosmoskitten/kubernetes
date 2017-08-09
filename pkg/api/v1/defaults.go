@@ -231,6 +231,13 @@ func SetDefaults_PersistentVolumeClaim(obj *v1.PersistentVolumeClaim) {
 	if obj.Status.Phase == "" {
 		obj.Status.Phase = v1.ClaimPending
 	}
+	if obj.Spec.VolumeType == ""  {
+		obj.Spec.VolumeType = v1.PersistentVolumeFile
+	}
+	if obj.Spec.VolumeType == nil  {
+		obj.Spec.VolumeType = new(v1.PersistentVolumeType)
+		*obj.Spec.VolumeType = v1.PersistentVolumeFile
+	}
 }
 func SetDefaults_ISCSIVolumeSource(obj *v1.ISCSIVolumeSource) {
 	if obj.ISCSIInterface == "" {

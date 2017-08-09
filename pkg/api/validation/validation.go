@@ -1172,6 +1172,8 @@ var supportedAccessModes = sets.NewString(string(api.ReadWriteOnce), string(api.
 
 var supportedReclaimPolicy = sets.NewString(string(api.PersistentVolumeReclaimDelete), string(api.PersistentVolumeReclaimRecycle), string(api.PersistentVolumeReclaimRetain))
 
+var supportedVolumeTypes = sets.NewString(string(api.PersistentVolumeBlock), string(api.PersistentVolumeFile))
+
 func ValidatePersistentVolume(pv *api.PersistentVolume) field.ErrorList {
 	metaPath := field.NewPath("metadata")
 	allErrs := ValidateObjectMeta(&pv.ObjectMeta, false, ValidatePersistentVolumeName, metaPath)
@@ -1397,6 +1399,11 @@ func ValidatePersistentVolume(pv *api.PersistentVolume) field.ErrorList {
 		}
 	}
 
+	if pv.Spec.VolumeType != nil && len(*pv.Spec.VolumeType) > 0  {
+		if *pv.Spec.VolumeType != api.PersistentVolumeFile && *pv.Spec.VolumeType != api.PersistentVolumeBlock {
+				allErrs = append(allErrs, field.NotSupported(specPath.Child("volumeType"), *pv.Spec.VolumeType, supportedVolumeTypes.List()))
+		}
+	}
 	return allErrs
 }
 
@@ -1451,6 +1458,11 @@ func ValidatePersistentVolumeClaimSpec(spec *api.PersistentVolumeClaimSpec, fldP
 	if spec.StorageClassName != nil && len(*spec.StorageClassName) > 0 {
 		for _, msg := range ValidateClassName(*spec.StorageClassName, false) {
 			allErrs = append(allErrs, field.Invalid(fldPath.Child("storageClassName"), *spec.StorageClassName, msg))
+		}
+	}
+	if spec.VolumeType != nil && len(*spec.VolumeType) > 0 {
+		if *spec.VolumeType != api.PersistentVolumeFile && *spec.VolumeType != api.PersistentVolumeBlock {
+			allErrs = append(allErrs, field.NotSupported(fldPath.Child("volumeType"), *spec.VolumeType, supportedVolumeTypes.List()))
 		}
 	}
 	return allErrs

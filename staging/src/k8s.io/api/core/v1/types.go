@@ -520,6 +520,10 @@ type PersistentVolumeSpec struct {
 	// means that this volume does not belong to any StorageClass.
 	// +optional
 	StorageClassName string `json:"storageClassName,omitempty" protobuf:"bytes,6,opt,name=storageClassName"`
+	// VolumeType defines if a volume is intended to be used with a formatted filesystem
+	// or to remain in raw block state.
+	// +optional
+	VolumeType *PersistentVolumeType `json:"volumeType,omitempty" protobuf:"bytes,7,opt,name=volumeType,casttype=PersistentVolumeType"`
 }
 
 // PersistentVolumeReclaimPolicy describes a policy for end-of-life maintenance of persistent volumes.
@@ -535,6 +539,16 @@ const (
 	// PersistentVolumeReclaimRetain means the volume will be left in its current phase (Released) for manual reclamation by the administrator.
 	// The default policy is Retain.
 	PersistentVolumeReclaimRetain PersistentVolumeReclaimPolicy = "Retain"
+)
+
+// PersistentVolumeType describes how a volume is intended to be consumed, either block or file.
+type PersistentVolumeType string
+
+const (
+	// PersistentVolumeBlock means the volume will not be formatted with a filesystem and will remain a raw block device.
+	PersistentVolumeBlock PersistentVolumeType = "block"
+	// PersistentVolumeFile means the volume will be or is formatted with a filesystem.
+	PersistentVolumeFile PersistentVolumeType = "file"
 )
 
 // PersistentVolumeStatus is the current status of a persistent volume.
@@ -624,6 +638,10 @@ type PersistentVolumeClaimSpec struct {
 	// More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty" protobuf:"bytes,5,opt,name=storageClassName"`
+	// VolumeType defines what type of volume is required by the claim.
+	// values include file or block and default is file if not present
+	// +optional
+	VolumeType *PersistentVolumeType `json:"volumeType,omitempty" protobuf:"bytes,6,opt,name=volumeType,casttype=PersistentVolumeType"`
 }
 
 // PersistentVolumeClaimStatus is the current status of a persistent volume claim.
