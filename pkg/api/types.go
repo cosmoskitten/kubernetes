@@ -455,6 +455,10 @@ type PersistentVolumeSpec struct {
 	// means that this volume does not belong to any StorageClass.
 	// +optional
 	StorageClassName string
+	// VolumeType defines if a volume is intended to be used with a formatted filesystem
+	// or to remain in raw block state.
+	// +optional
+	VolumeType *PersistentVolumeType
 }
 
 // PersistentVolumeReclaimPolicy describes a policy for end-of-life maintenance of persistent volumes
@@ -470,6 +474,16 @@ const (
 	// PersistentVolumeReclaimRetain means the volume will be left in its current phase (Released) for manual reclamation by the administrator.
 	// The default policy is Retain.
 	PersistentVolumeReclaimRetain PersistentVolumeReclaimPolicy = "Retain"
+)
+
+// PersistentVolumeType describes how a volume is intended to be consumed, either block or file.
+type PersistentVolumeType string
+
+const (
+	// PersistentVolumeBlock means the volume will not be formatted with a filesystem and will remain a raw block device.
+	PersistentVolumeBlock PersistentVolumeType = "Block"
+	// PersistentVolumeFile means the volume will be or is formatted with a filesystem.
+	PersistentVolumeFile PersistentVolumeType = "Filesystem"
 )
 
 type PersistentVolumeStatus struct {
@@ -541,6 +555,10 @@ type PersistentVolumeClaimSpec struct {
 	// More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes/#class-1
 	// +optional
 	StorageClassName *string
+	// VolumeType defines what type of volume is required by the claim.
+	// values include Filesystem or Block and default is Filesystem if not present
+	// +optional
+	VolumeType *PersistentVolumeType
 }
 
 type PersistentVolumeClaimStatus struct {

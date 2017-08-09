@@ -74,6 +74,8 @@ func testVolumeWithNodeAffinity(t *testing.T, name string, namespace string, aff
 }
 
 func TestValidatePersistentVolumes(t *testing.T) {
+	invalidType := api.PersistentVolumeType("fake")
+	validType := api.PersistentVolumeFile
 	scenarios := map[string]struct {
 		isExpectedFailure bool
 		volume            *api.PersistentVolume
@@ -89,6 +91,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 					HostPath: &api.HostPathVolumeSource{Path: "/foo"},
 				},
 				StorageClassName: "valid",
+				VolumeType:       &validType,
 			}),
 		},
 		"good-volume-with-retain-policy": {
@@ -226,6 +229,20 @@ func TestValidatePersistentVolumes(t *testing.T) {
 					HostPath: &api.HostPathVolumeSource{Path: "/foo"},
 				},
 				StorageClassName: "-invalid-",
+			}),
+		},
+		"invalid-volumetype": {
+			isExpectedFailure: true,
+			volume: testVolume("foo", "", api.PersistentVolumeSpec{
+				Capacity: api.ResourceList{
+					api.ResourceName(api.ResourceStorage): resource.MustParse("10G"),
+				},
+				AccessModes: []api.PersistentVolumeAccessMode{api.ReadWriteOnce},
+				PersistentVolumeSource: api.PersistentVolumeSource{
+					HostPath: &api.HostPathVolumeSource{Path: "/foo"},
+				},
+				StorageClassName: "valid",
+				VolumeType:       &invalidType,
 			}),
 		},
 		// LocalVolume alpha feature disabled
@@ -521,6 +538,8 @@ func testVolumeClaimAnnotation(name string, namespace string, ann string, annval
 func TestValidatePersistentVolumeClaim(t *testing.T) {
 	invalidClassName := "-invalid-"
 	validClassName := "valid"
+	invalidType := api.PersistentVolumeType("fake")
+	validType := api.PersistentVolumeFile
 	scenarios := map[string]struct {
 		isExpectedFailure bool
 		claim             *api.PersistentVolumeClaim
@@ -546,6 +565,7 @@ func TestValidatePersistentVolumeClaim(t *testing.T) {
 					},
 				},
 				StorageClassName: &validClassName,
+				VolumeType:       &validType,
 			}),
 		},
 		"invalid-label-selector": {
@@ -670,6 +690,30 @@ func TestValidatePersistentVolumeClaim(t *testing.T) {
 					},
 				},
 				StorageClassName: &invalidClassName,
+			}),
+		},
+		"invalid-volumetype": {
+			isExpectedFailure: true,
+			claim: testVolumeClaim("foo", "ns", api.PersistentVolumeClaimSpec{
+				Selector: &metav1.LabelSelector{
+					MatchExpressions: []metav1.LabelSelectorRequirement{
+						{
+							Key:      "key2",
+							Operator: "Exists",
+						},
+					},
+				},
+				AccessModes: []api.PersistentVolumeAccessMode{
+					api.ReadWriteOnce,
+					api.ReadOnlyMany,
+				},
+				Resources: api.ResourceRequirements{
+					Requests: api.ResourceList{
+						api.ResourceName(api.ResourceStorage): resource.MustParse("10G"),
+					},
+				},
+				StorageClassName: &validClassName,
+				VolumeType:       &invalidType,
 			}),
 		},
 	}
