@@ -28,6 +28,7 @@ import (
 	"k8s.io/apiserver/pkg/storage"
 	"k8s.io/apiserver/pkg/storage/names"
 	"k8s.io/kubernetes/pkg/api"
+	pvutil "k8s.io/kubernetes/pkg/api/persistentvolume"
 	"k8s.io/kubernetes/pkg/api/validation"
 	volumevalidation "k8s.io/kubernetes/pkg/volume/validation"
 )
@@ -50,6 +51,8 @@ func (persistentvolumeStrategy) NamespaceScoped() bool {
 func (persistentvolumeStrategy) PrepareForCreate(ctx genericapirequest.Context, obj runtime.Object) {
 	pv := obj.(*api.PersistentVolume)
 	pv.Status = api.PersistentVolumeStatus{}
+
+	pvutil.DropDisabledAlphaFields(&pv.Spec)
 }
 
 func (persistentvolumeStrategy) Validate(ctx genericapirequest.Context, obj runtime.Object) field.ErrorList {
@@ -71,6 +74,9 @@ func (persistentvolumeStrategy) PrepareForUpdate(ctx genericapirequest.Context, 
 	newPv := obj.(*api.PersistentVolume)
 	oldPv := old.(*api.PersistentVolume)
 	newPv.Status = oldPv.Status
+
+	pvutil.DropDisabledAlphaFields(&newPv.Spec)
+	pvutil.DropDisabledAlphaFields(&oldPv.Spec)
 }
 
 func (persistentvolumeStrategy) ValidateUpdate(ctx genericapirequest.Context, obj, old runtime.Object) field.ErrorList {

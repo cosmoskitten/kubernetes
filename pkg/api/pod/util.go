@@ -249,6 +249,12 @@ func DropDisabledAlphaFields(podSpec *api.PodSpec) {
 	for i := range podSpec.InitContainers {
 		DropDisabledVolumeMountsAlphaFields(podSpec.InitContainers[i].VolumeMounts)
 	}
+	for i := range podSpec.Containers {
+		DropDisabledVolumeDevicesAlphaFields(podSpec.Containers[i].VolumeDevices)
+	}
+	for i := range podSpec.InitContainers {
+		DropDisabledVolumeDevicesAlphaFields(podSpec.InitContainers[i].VolumeDevices)
+	}
 }
 
 // DropDisabledVolumeMountsAlphaFields removes disabled fields from []VolumeMount.
@@ -257,6 +263,16 @@ func DropDisabledVolumeMountsAlphaFields(volumeMounts []api.VolumeMount) {
 	if !utilfeature.DefaultFeatureGate.Enabled(features.MountPropagation) {
 		for i := range volumeMounts {
 			volumeMounts[i].MountPropagation = nil
+		}
+	}
+}
+
+// DropDisabledVolumeDevicesAlphaFields removes disabled fields from []VolumeDevice.
+// This should be called from PrepareForCreate/PrepareForUpdate for all resources containing a VolumeDevice
+func DropDisabledVolumeDevicesAlphaFields(volumeDevices []api.VolumeDevice) {
+	if !utilfeature.DefaultFeatureGate.Enabled(features.BlockVolumeSupport) {
+		for i := range volumeDevices {
+			volumeDevices[i].DevicePath = ""
 		}
 	}
 }
