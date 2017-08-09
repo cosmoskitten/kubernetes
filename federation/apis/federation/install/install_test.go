@@ -68,7 +68,7 @@ func TestCodec(t *testing.T) {
 
 func TestInterfacesFor(t *testing.T) {
 	if _, err := api.Registry.GroupOrDie(federation.GroupName).InterfacesFor(federation.SchemeGroupVersion); err == nil {
-		t.Fatalf("unexpected non-error: %v", err)
+		t.Fatalf("expected an error: %v", err)
 	}
 	for i, version := range api.Registry.GroupOrDie(federation.GroupName).GroupVersions {
 		if vi, err := api.Registry.GroupOrDie(federation.GroupName).InterfacesFor(version); err != nil || vi == nil {
