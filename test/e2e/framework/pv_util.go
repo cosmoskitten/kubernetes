@@ -34,6 +34,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/pkg/api/testapi"
 	"k8s.io/kubernetes/pkg/api/v1/helper"
@@ -288,6 +289,18 @@ func CreatePVCPV(c clientset.Interface, pvConfig PersistentVolumeConfig, pvcConf
 	// make the pv spec
 	pv := MakePersistentVolume(pvConfig)
 
+	if pv.Spec.VolumeMode != nil || pvc.Spec.VolumeMode != nil {
+		err1 := utilfeature.DefaultFeatureGate.Set("BlockVolumeSupport=true")
+		if err1 != nil {
+			// Do nothing for now
+		}
+	}else{
+		err1 := utilfeature.DefaultFeatureGate.Set("BlockVolumeSupport=true")
+		if err1 != nil {
+			// Do nothing for now
+		}
+	}
+
 	By(fmt.Sprintf("Creating a PVC followed by a%s PV", preBindMsg))
 	pvc, err := CreatePVC(c, ns, pvc)
 	if err != nil {
@@ -322,6 +335,18 @@ func CreatePVPVC(c clientset.Interface, pvConfig PersistentVolumeConfig, pvcConf
 	// make the pv and pvc definitions
 	pv := MakePersistentVolume(pvConfig)
 	pvc := MakePersistentVolumeClaim(pvcConfig, ns)
+
+	if pv.Spec.VolumeMode != nil || pvc.Spec.VolumeMode != nil {
+		err1 := utilfeature.DefaultFeatureGate.Set("BlockVolumeSupport=true")
+		if err1 != nil {
+			// Do nothing for now
+		}
+	}else{
+		err1 := utilfeature.DefaultFeatureGate.Set("BlockVolumeSupport=true")
+		if err1 != nil {
+			// Do nothing for now
+		}
+	}
 
 	// instantiate the pv
 	pv, err := createPV(c, pv)
