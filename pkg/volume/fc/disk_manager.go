@@ -57,7 +57,31 @@ func diskSetUp(manager diskManager, b fcDiskMounter, volPath string, mounter mou
 	}
 	err = mounter.Mount(globalPDPath, volPath, "", options)
 	if err != nil {
-		glog.Errorf("failed to bind mount:%s", globalPDPath)
+		glog.V(4).Infof("Mount failed: %v", err)
+		noMnt, err = b.mounter.IsLikelyNotMountPoint(volPath)
+		if err != nil {
+			glog.Errorf("IsLikelyNotMountPoint check failed: %v", err)
+			return err
+		}
+		if !noMnt {
+			if err = b.mounter.Unmount(volPath); err != nil {
+				glog.Errorf("Failed to unmount: %v", err)
+				return err
+			}
+			noMnt, err = b.mounter.IsLikelyNotMountPoint(volPath)
+			if err != nil {
+				glog.Errorf("IsLikelyNotMountPoint check failed: %v", err)
+				return err
+			}
+			if !noMnt {
+				//  will most likely retry on next sync loop.
+				glog.Errorf("%s is still mounted, despite call to unmount().  Will try again next sync loop.", b.GetPath())
+				return err
+			}
+		}
+		os.Remove(volPath)
+
+		glog.Errorf("Failed to mount %s: %v", volPath, err)
 		return err
 	}
 
