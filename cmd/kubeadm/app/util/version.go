@@ -22,9 +22,12 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+
+	versionlib "k8s.io/kubernetes/pkg/version"
 )
 
 var (
+	kubeadmVersion        = "use-kubeadm-version"
 	kubeReleaseBucketURL  = "https://dl.k8s.io"
 	kubeReleaseRegex      = regexp.MustCompile(`^v?(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)([-0-9a-zA-Z_\.+]*)?$`)
 	kubeReleaseLabelRegex = regexp.MustCompile(`^[[:lower:]]+(-[-\w_\.]+)?$`)
@@ -49,7 +52,9 @@ var (
 //  latest-1    (latest release in 1.x, including alpha/beta)
 //  latest-1.0  (and similarly 1.1, 1.2, 1.3, ...)
 func KubernetesReleaseVersion(version string) (string, error) {
-	if kubeReleaseRegex.MatchString(version) {
+	if version == kubeadmVersion {
+		return versionlib.Get().GitVersion, nil
+	} else if kubeReleaseRegex.MatchString(version) {
 		if strings.HasPrefix(version, "v") {
 			return version, nil
 		}

@@ -14,6 +14,7 @@ filegroup(
     srcs = [
         ":package-srcs",
         "//build/debs:all-srcs",
+        "//build/nested-cluster:all-srcs",
         "//build/release-tars:all-srcs",
         "//build/rpms:all-srcs",
         "//build/visible_to:all-srcs",
@@ -66,6 +67,12 @@ DOCKERIZED_BINARIES = {
     stamp = True,
 ) for binary in DOCKERIZED_BINARIES.keys()]
 
+[docker_bundle(
+    name = binary + "-amd64",
+    images = {"gcr.io/google_containers/%s-amd64:{STABLE_DOCKER_TAG}" % binary: binary + "-internal"},
+    stamp = True,
+) for binary in DOCKERIZED_BINARIES.keys()]
+
 [genrule(
     name = binary + "_docker_tag",
     srcs = [meta["target"]],
@@ -84,6 +91,16 @@ grep ^STABLE_BUILD_SCM_REVISION bazel-out/stable-status.txt \
     >$@
 """,
     stamp = 1,
+)
+
+filegroup(
+    name = "master-components",
+    srcs = [":%s.tar" % binary for binary in DOCKERIZED_BINARIES.keys()],
+)
+
+filegroup(
+    name = "master-components-amd64",
+    srcs = [":%s-amd64.tar" % binary for binary in DOCKERIZED_BINARIES.keys()],
 )
 
 release_filegroup(

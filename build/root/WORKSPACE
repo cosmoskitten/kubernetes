@@ -69,3 +69,11 @@ docker_pull(
     repository = "library/busybox",
     tag = "latest",  # ignored, but kept here for documentation
 )
+
+docker_pull(
+    name = "nested-kubelet-base",
+    digest = "sha256:73b00d7051892b52953543f0ad584fc7afab3f78170ad611e50cf65b735095ff",
+    registry = "gcr.io",
+    repository = "qlee-dev/nested-kubelet-base",
+    tag = "0.1",
+)
