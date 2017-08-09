@@ -180,6 +180,9 @@ type NodeController struct {
 	// if set to true NodeController will taint Nodes with 'TaintNodeNotReady' and 'TaintNodeUnreachable'
 	// taints instead of evicting Pods itself.
 	useTaintBasedEvictions bool
+
+	// nodeEvictor handles node eviction, taint based or otherwise.
+	nodeEvictor nodeEvictor
 }
 
 // NewNodeController returns a new node controller to sync instances from cloudprovider.
@@ -260,9 +263,13 @@ func NewNodeController(
 		runTaintManager:             runTaintManager,
 		useTaintBasedEvictions:      useTaintBasedEvictions && runTaintManager,
 	}
-	if useTaintBasedEvictions {
+	if useTaintBasedEvictions && runTaintManager {
+		nc.nodeEvictor = newTaintBasedNodeEvictor(nc)
 		glog.Infof("NodeController is using taint based evictions.")
+	} else {
+		nc.nodeEvictor = newDefaultNodeEvictor(nc)
 	}
+
 	nc.enterPartialDisruptionFunc = nc.ReducedQPSFunc
 	nc.enterFullDisruptionFunc = nc.HealthyQPSFunc
 	nc.computeZoneStateFunc = nc.ComputeZoneState
