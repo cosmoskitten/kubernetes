@@ -5,6 +5,8 @@
 {% set num_nodes = pillar.get('num_nodes', -1) -%}
 {% set nanny_memory = "90Mi" -%}
 {% set nanny_memory_per_node = 200 -%}
+{% set prometheus_to_sd_prefix = "custom.googleapis.com" -%}
+{% set prometheus_to_sd_endpoint = "https://monitoring.googleapis.com/" -%}
 {% if num_nodes >= 0 -%}
   {% set nanny_memory = (90 * 1024 + num_nodes * nanny_memory_per_node)|string + "Ki" -%}
 {% endif -%}
@@ -69,7 +71,8 @@ spec:
           command:
             - /monitor
             - --source=heapster:http://localhost:8082?whitelisted=stackdriver_requests_count,stackdriver_timeseries_count
-            - --stackdriver-prefix=container.googleapis.com/internal/addons
+            - --stackdriver-prefix={{ prometheus_to_sd_prefix }}/internal/addons
+            - --api-override={{ prometheus_to_sd_endpoint }}
             - --pod-id=$(POD_NAME)
             - --namespace-id=$(POD_NAMESPACE)
           volumeMounts:

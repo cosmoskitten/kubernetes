@@ -1,3 +1,6 @@
+{% set prometheus_to_sd_prefix = "custom.googleapis.com" -%}
+{% set prometheus_to_sd_endpoint = "https://monitoring.googleapis.com/" -%}
+
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -54,7 +57,8 @@ spec:
         command:
           - /monitor
           - --component=event_exporter
-          - --stackdriver-prefix=container.googleapis.com/internal/addons
+          - --stackdriver-prefix={{ prometheus_to_sd_prefix }}/internal/addons
+          - --api-override={{ prometheus_to_sd_endpoint }}
           - --whitelisted-metrics=stackdriver_sink_received_entry_count,stackdriver_sink_request_count,stackdriver_sink_successfully_sent_entry_count
         volumeMounts:
         - name: ssl-certs

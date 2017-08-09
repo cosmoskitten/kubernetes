@@ -1,3 +1,6 @@
+{% set prometheus_to_sd_prefix = "custom.googleapis.com" -%}
+{% set prometheus_to_sd_endpoint = "https://monitoring.googleapis.com/" -%}
+
 apiVersion: extensions/v1beta1
 kind: DaemonSet
 metadata:
@@ -86,7 +89,8 @@ spec:
           - /monitor
           - --component=fluentd
           - --target-port=31337
-          - --stackdriver-prefix=container.googleapis.com/internal/addons
+          - --stackdriver-prefix={{ prometheus_to_sd_prefix }}/internal/addons
+          - --api-override={{ prometheus_to_sd_endpoint }}
           - --whitelisted-metrics=stackdriver_successful_requests_count,stackdriver_failed_requests_count,stackdriver_ingested_entries_count,stackdriver_dropped_entries_count
         volumeMounts:
         - name: ssl-certs
