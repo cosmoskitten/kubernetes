@@ -78,6 +78,7 @@ func (m *sioMgr) getClient() (sioInterface, error) {
 		client.spName = configs[confKey.storagePool]
 		client.sdcPath = configs[confKey.sdcRootPath]
 		client.provisionMode = configs[confKey.storageMode]
+		client.sdcGuid = configs[confKey.sdcGuid]
 
 		m.client = client
 
@@ -238,10 +239,6 @@ func (m *sioMgr) DeleteVolume(volName string) error {
 	return nil
 
 }
-
-//*****************************************************************
-// Helpers
-//*****************************************************************
 
 // isSdcMappedToVol returns true if the sdc is mapped to the volume
 func (m *sioMgr) isSdcMappedToVol(sdcID string, vol *siotypes.Volume) bool {

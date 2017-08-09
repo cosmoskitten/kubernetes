@@ -388,6 +388,12 @@ func (v *sioVolume) setSioMgr() error {
 			return err
 		}
 
+		// merge in Sdc Guid label value
+		if err := attachSdcGuid(v.plugin, configData); err != nil {
+			glog.Error(log("failed to retrieve sdc guid: %", err))
+			return err
+		}
+
 		mgr, err := newSioMgr(configData)
 		if err != nil {
 			glog.Error(log("failed to reset sio manager: %v", err))
@@ -417,6 +423,12 @@ func (v *sioVolume) resetSioMgr() error {
 		// attach secret
 		if err := attachSecret(v.plugin, v.namespace, configData); err != nil {
 			glog.Error(log("failed to load secret: %v", err))
+			return err
+		}
+
+		// merge in Sdc Guid label value
+		if err := attachSdcGuid(v.plugin, configData); err != nil {
+			glog.Error(log("failed to retrieve sdc guid: %", err))
 			return err
 		}
 
@@ -454,6 +466,12 @@ func (v *sioVolume) setSioMgrFromConfig() error {
 			return err
 		}
 
+		// merge in Sdc Guid label value
+		if err := attachSdcGuid(v.plugin, configData); err != nil {
+			glog.Error(log("failed to retrieve sdc guid: %v", err))
+			return err
+		}
+
 		mgr, err := newSioMgr(data)
 		if err != nil {
 			glog.Error(log("failed while setting scaleio mgr from config: %v", err))
@@ -464,6 +482,8 @@ func (v *sioVolume) setSioMgrFromConfig() error {
 	return nil
 }
 
+// setSioMgrFromSpec sets the scaleio manager from a spec object.
+// The spec may be complete or incomplete depending on lifecycle phase.
 func (v *sioVolume) setSioMgrFromSpec() error {
 	glog.V(4).Info(log("setting sio manager from spec"))
 	if v.sioMgr == nil {
@@ -480,6 +500,12 @@ func (v *sioVolume) setSioMgrFromSpec() error {
 		// attach secret object to config data
 		if err := attachSecret(v.plugin, v.namespace, configData); err != nil {
 			glog.Error(log("failed to load secret: %v", err))
+			return err
+		}
+
+		// merge in Sdc Guid label value
+		if err := attachSdcGuid(v.plugin, configData); err != nil {
+			glog.Error(log("failed to retrieve sdc guid: %", err))
 			return err
 		}
 

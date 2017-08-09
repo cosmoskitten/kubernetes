@@ -73,6 +73,7 @@ type sioClient struct {
 	spClient         *sio.StoragePool
 	provisionMode    string
 	sdcPath          string
+	sdcGuid          string
 	instanceID       string
 	inited           bool
 	diskRegex        *regexp.Regexp
@@ -289,28 +290,43 @@ func (c *sioClient) DeleteVolume(id sioVolumeID) error {
 	return nil
 }
 
+// IID returns the scaleio instance id for node
 func (c *sioClient) IID() (string, error) {
 	if err := c.init(); err != nil {
 		return "", err
 	}
 
+	// if instanceID not set, retrieve it
 	if c.instanceID == "" {
+		guid, err := c.getGuid()
+		if err != nil {
+			return "", err
+		}
+		sdc, err := c.sysClient.FindSdc("SdcGuid", guid)
+		if err != nil {
+			glog.Error(log("failed to retrieve sdc info %s", err))
+			return "", err
+		}
+		c.instanceID = sdc.Sdc.ID
+		glog.V(4).Info(log("retrieved instanceID %s", c.instanceID))
+	}
+	return c.instanceID, nil
+}
+
+// getGuid returns instance GUID, if not set using resource labels
+// it attemps to fallback to using drv_cfg binary
+func (c *sioClient) getGuid() (string, error) {
+	if c.sdcGuid == "" {
+		glog.Warning(log("sdc guid not set, falling back to using drv_cfg to get it"))
 		cmd := c.getSdcCmd()
 		output, err := exec.Command(cmd, "--query_guid").Output()
 		if err != nil {
 			glog.Error(log("drv_cfg --query_guid failed: %v", err))
 			return "", err
 		}
-		guid := strings.TrimSpace(string(output))
-		sdc, err := c.sysClient.FindSdc("SdcGuid", guid)
-		if err != nil {
-			glog.Error(log("failed to get sdc info %s", err))
-			return "", err
-		}
-		c.instanceID = sdc.Sdc.ID
-		glog.V(4).Info(log("got instanceID %s", c.instanceID))
+		c.sdcGuid = strings.TrimSpace(string(output))
 	}
-	return c.instanceID, nil
+	return c.sdcGuid, nil
 }
 
 // getSioDiskPaths traverse local disk devices to retrieve device path
