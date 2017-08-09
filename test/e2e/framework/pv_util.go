@@ -34,6 +34,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/pkg/api/testapi"
 	"k8s.io/kubernetes/pkg/api/v1/helper"
@@ -255,6 +256,10 @@ func DeletePVCandValidatePVGroup(c clientset.Interface, ns string, pvols PVMap, 
 
 // create the PV resource. Fails test on error.
 func createPV(c clientset.Interface, pv *v1.PersistentVolume) (*v1.PersistentVolume, error) {
+	err1 := utilfeature.DefaultFeatureGate.Set("BlockVolumeSupport=true")
+	if err1 != nil {
+		//do nothing for now
+	}
 	pv, err := c.CoreV1().PersistentVolumes().Create(pv)
 	if err != nil {
 		return nil, fmt.Errorf("PV Create API error: %v", err)
@@ -264,6 +269,10 @@ func createPV(c clientset.Interface, pv *v1.PersistentVolume) (*v1.PersistentVol
 
 // create the PVC resource. Fails test on error.
 func CreatePVC(c clientset.Interface, ns string, pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolumeClaim, error) {
+	err1 := utilfeature.DefaultFeatureGate.Set("BlockVolumeSupport=true")
+	if err1 != nil {
+		//do nothing for now
+	}
 	pvc, err := c.CoreV1().PersistentVolumeClaims(ns).Create(pvc)
 	if err != nil {
 		return nil, fmt.Errorf("PVC Create API error: %v", err)
@@ -318,6 +327,11 @@ func CreatePVPVC(c clientset.Interface, pvConfig PersistentVolumeConfig, pvcConf
 		preBindMsg = " pre-bound"
 	}
 	Logf("Creating a PV followed by a%s PVC", preBindMsg)
+
+	err1 := utilfeature.DefaultFeatureGate.Set("BlockVolumeSupport=true")
+	if err1 != nil {
+		//do nothing for now
+	}
 
 	// make the pv and pvc definitions
 	pv := MakePersistentVolume(pvConfig)
@@ -567,6 +581,10 @@ func makePvcKey(ns, name string) types.NamespacedName {
 //   ClaimRef cannot be completely filled-in in this func. Therefore, the ClaimRef's name
 //   is added later in CreatePVCPV.
 func MakePersistentVolume(pvConfig PersistentVolumeConfig) *v1.PersistentVolume {
+	err1 := utilfeature.DefaultFeatureGate.Set("BlockVolumeSupport=true")
+	if err1 != nil {
+		//do nothing for now
+	}
 	var claimRef *v1.ObjectReference
 	// If the reclaimPolicy is not provided, assume Retain
 	if pvConfig.ReclaimPolicy == "" {
@@ -616,6 +634,10 @@ func MakePersistentVolume(pvConfig PersistentVolumeConfig) *v1.PersistentVolume 
 //   pvc.Spec.VolumeName to this claim.
 func MakePersistentVolumeClaim(cfg PersistentVolumeClaimConfig, ns string) *v1.PersistentVolumeClaim {
 	// Specs are expected to match this test's PersistentVolume
+	err1 := utilfeature.DefaultFeatureGate.Set("BlockVolumeSupport=true")
+	if err1 != nil {
+		//do nothing for now
+	}
 
 	if len(cfg.AccessModes) == 0 {
 		Logf("AccessModes unspecified, default: all modes (RWO, RWX, ROX).")

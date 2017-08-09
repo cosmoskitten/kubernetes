@@ -37,6 +37,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/registry/rest"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 )
 
 type Tester struct {
@@ -51,6 +52,10 @@ type Tester struct {
 }
 
 func New(t *testing.T, storage rest.Storage, scheme *runtime.Scheme) *Tester {
+	err := utilfeature.DefaultFeatureGate.Set("BlockVolumeSupport=true")
+	if err != nil {
+		// do nothing for now
+	}
 	return &Tester{
 		T:       t,
 		storage: storage,

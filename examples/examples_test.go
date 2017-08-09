@@ -32,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/apimachinery/pkg/util/yaml"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/testapi"
 	"k8s.io/kubernetes/pkg/api/validation"
@@ -76,6 +77,10 @@ func validateObject(obj runtime.Object) (errors field.ErrorList) {
 			errors = append(errors, validateObject(&t.Items[i])...)
 		}
 	case *api.PersistentVolume:
+		err := utilfeature.DefaultFeatureGate.Set("BlockVolumeSupport=true")
+		if err != nil {
+			// do nothing for now
+		}
 		errors = validation.ValidatePersistentVolume(t)
 	case *api.PersistentVolumeClaim:
 		if t.Namespace == "" {

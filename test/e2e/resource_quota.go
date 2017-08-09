@@ -25,6 +25,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/pkg/quota/evaluator/core"
 	"k8s.io/kubernetes/test/e2e/framework"
@@ -645,6 +646,10 @@ func newTestResourceQuotaWithScope(name string, scope v1.ResourceQuotaScope) *v1
 
 // newTestResourceQuota returns a quota that enforces default constraints for testing
 func newTestResourceQuota(name string) *v1.ResourceQuota {
+	err := utilfeature.DefaultFeatureGate.Set("BlockVolumeSupport=true")
+	if err != nil {
+		//do nothing for now
+	}
 	hard := v1.ResourceList{}
 	hard[v1.ResourcePods] = resource.MustParse("5")
 	hard[v1.ResourceServices] = resource.MustParse("10")
@@ -689,6 +694,10 @@ func newTestPodForQuota(f *framework.Framework, name string, requests v1.Resourc
 
 // newTestPersistentVolumeClaimForQuota returns a simple persistent volume claim
 func newTestPersistentVolumeClaimForQuota(name string) *v1.PersistentVolumeClaim {
+	err := utilfeature.DefaultFeatureGate.Set("BlockVolumeSupport=true")
+	if err != nil {
+		//do nothing for now
+	}
 	return &v1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,

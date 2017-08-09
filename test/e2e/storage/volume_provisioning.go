@@ -40,6 +40,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/authentication/serviceaccount"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	clientset "k8s.io/client-go/kubernetes"
 	v1helper "k8s.io/kubernetes/pkg/api/v1/helper"
 	storageutil "k8s.io/kubernetes/pkg/apis/storage/v1/util"
@@ -686,6 +687,10 @@ func updateDefaultStorageClass(c clientset.Interface, scName string, defaultStr 
 }
 
 func newClaim(t storageClassTest, ns, suffix string) *v1.PersistentVolumeClaim {
+	err1 := utilfeature.DefaultFeatureGate.Set("BlockVolumeSupport=true")
+	if err1 != nil {
+		//do nothing for now
+	}
 	claim := v1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: "pvc-",
