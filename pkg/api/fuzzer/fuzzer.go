@@ -367,6 +367,10 @@ var Funcs = func(codecs runtimeserializer.CodecFactory) []interface{} {
 			c.FuzzNoCustom(pvc) // fuzz self without calling this function again
 			types := []api.PersistentVolumeClaimPhase{api.ClaimBound, api.ClaimPending, api.ClaimLost}
 			pvc.Status.Phase = types[c.Rand.Intn(len(types))]
+			if pvc.Spec.VolumeType == nil {
+				pvc.Spec.VolumeType = new(api.PersistentVolumeType)
+				*pvc.Spec.VolumeType = api.PersistentVolumeFilesystem
+			}
 		},
 		func(obj *api.AzureDiskVolumeSource, c fuzz.Continue) {
 			if obj.CachingMode == nil {

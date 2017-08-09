@@ -787,9 +787,14 @@ func TestSetDefaultPersistentVolumeClaim(t *testing.T) {
 	pvc := &v1.PersistentVolumeClaim{}
 	obj2 := roundTrip(t, runtime.Object(pvc))
 	pvc2 := obj2.(*v1.PersistentVolumeClaim)
+	expectedType := v1.PersistentVolumeFilesystem
+	defaultType := pvc2.Spec.VolumeType
 
 	if pvc2.Status.Phase != v1.ClaimPending {
 		t.Errorf("Expected claim phase %v, got %v", v1.ClaimPending, pvc2.Status.Phase)
+	}
+	if defaultType == nil || *defaultType != expectedType {
+		t.Errorf("Expected claim volumeType %v, got %v", expectedType, defaultType)
 	}
 }
 
