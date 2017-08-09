@@ -531,11 +531,7 @@ func (nc *NodeController) monitorNodeStatus() error {
 		util.RecordNodeEvent(nc.recorder, added[i].Name, string(added[i].UID), v1.EventTypeNormal, "RegisteredNode", fmt.Sprintf("Registered Node %v in NodeController", added[i].Name))
 		nc.knownNodeSet[added[i].Name] = added[i]
 		nc.addPodEvictorForNewZone(added[i])
-		if nc.useTaintBasedEvictions {
-			nc.markNodeAsHealthy(added[i])
-		} else {
-			nc.cancelPodEviction(added[i])
-		}
+		nc.nodeEvictor.cancelPodEvictionOrMarkNodeAsHealthy(added[i])
 	}
 
 	for i := range deleted {
@@ -726,11 +722,7 @@ func (nc *NodeController) handleDisruption(zoneToNodeConditions map[string][]*v1
 		if allAreFullyDisrupted {
 			glog.V(0).Info("NodeController detected that all Nodes are not-Ready. Entering master disruption mode.")
 			for i := range nodes {
-				if nc.useTaintBasedEvictions {
-					nc.markNodeAsHealthy(nodes[i])
-				} else {
-					nc.cancelPodEviction(nodes[i])
-				}
+				nc.nodeEvictor.cancelPodEvictionOrMarkNodeAsHealthy(nodes[i])
 			}
 			// We stop all evictions.
 			for k := range nc.zoneStates {
