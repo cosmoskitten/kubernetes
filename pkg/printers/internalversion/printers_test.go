@@ -825,6 +825,18 @@ func TestPrintNodeStatus(t *testing.T) {
 			},
 			status: "Unknown,SchedulingDisabled",
 		},
+		{
+			node: api.Node{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo10", Labels: map[string]string{"node-role.kubernetes.io/master": "", "kubernetes.io/role": "node"}},
+			},
+			status: "Unknown,master",
+		},
+		{
+			node: api.Node{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo11", Labels: map[string]string{"kubernetes.io/role": "node"}},
+			},
+			status: "Unknown,node",
+		},
 	}
 
 	for _, test := range table {

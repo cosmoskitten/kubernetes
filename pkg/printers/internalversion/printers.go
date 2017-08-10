@@ -41,6 +41,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/kubernetes/cmd/kubeadm/app/constants"
 	"k8s.io/kubernetes/federation/apis/federation"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/events"
@@ -1157,6 +1158,10 @@ func printNode(obj *api.Node, options printers.PrintOptions) ([]metav1alpha1.Tab
 	if obj.Spec.Unschedulable {
 		status = append(status, "SchedulingDisabled")
 	}
+	nodeRole := findNodeRole(obj)
+	if len(nodeRole) > 0 {
+		status = append(status, nodeRole)
+	}
 
 	row.Cells = append(row.Cells, obj.Name, strings.Join(status, ","), translateTimestamp(obj.CreationTimestamp), obj.Status.NodeInfo.KubeletVersion)
 	if options.Wide {
@@ -1174,6 +1179,20 @@ func printNode(obj *api.Node, options printers.PrintOptions) ([]metav1alpha1.Tab
 	}
 
 	return []metav1alpha1.TableRow{row}, nil
+}
+
+// findNodeRole returns the role of a given node, or "" if none found.
+// The role is determined by looking in order for:
+// * a node-role.kubernetes.io/master label
+// * a kubernetes.io/role label
+func findNodeRole(node *api.Node) string {
+	if _, ok := node.Labels[constants.LabelNodeRoleMaster]; ok {
+		return "master"
+	}
+	if role := node.Labels["kubernetes.io/role"]; role != "" {
+		return role
+	}
+	return ""
 }
 
 // Returns first external ip of the node or "<none>" if none is found.
