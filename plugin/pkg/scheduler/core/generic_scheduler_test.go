@@ -33,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/kubernetes/plugin/pkg/scheduler/algorithm"
+	"k8s.io/kubernetes/plugin/pkg/scheduler/algorithm/predicates"
 	algorithmpredicates "k8s.io/kubernetes/plugin/pkg/scheduler/algorithm/predicates"
 	algorithmpriorities "k8s.io/kubernetes/plugin/pkg/scheduler/algorithm/priorities"
 	priorityutil "k8s.io/kubernetes/plugin/pkg/scheduler/algorithm/priorities/util"
@@ -307,8 +308,7 @@ func TestGenericScheduler(t *testing.T) {
 		}
 
 		scheduler := NewGenericScheduler(
-			cache, nil, test.predicates, algorithm.EmptyPredicateMetadataProducer, test.prioritizers, algorithm.EmptyMetadataProducer,
-			[]algorithm.SchedulerExtender{})
+			cache, nil, test.predicates, algorithm.EmptyPredicateMetadataProducer, test.prioritizers, algorithm.EmptyMetadataProducer, []algorithm.SchedulerExtender{})
 		machine, err := scheduler.Schedule(test.pod, schedulertesting.FakeNodeLister(makeNodeList(test.nodes)))
 
 		if !reflect.DeepEqual(err, test.wErr) {
@@ -786,16 +786,19 @@ func TestSelectNodesForPreemption(t *testing.T) {
 
 	for _, test := range tests {
 		nodes := []*v1.Node{}
+		potentialNodeNames := map[string]bool{}
 		for _, n := range test.nodes {
 			node := makeNode(n, priorityutil.DefaultMilliCpuRequest*5, priorityutil.DefaultMemoryRequest*5)
 			node.ObjectMeta.Labels = map[string]string{"hostname": node.Name}
 			nodes = append(nodes, node)
+			potentialNodeNames[node.Name] = true
+
 		}
 		if test.addAffinityPredicate {
 			test.predicates["affinity"] = algorithmpredicates.NewPodAffinityPredicate(FakeNodeInfo(*nodes[0]), schedulertesting.FakePodLister(test.pods))
 		}
 		nodeNameToInfo := schedulercache.CreateNodeNameToInfoMap(test.pods, nodes)
-		nodeToPods := selectNodesForPreemption(test.pod, nodeNameToInfo, nodes, test.predicates, PredicateMetadata)
+		nodeToPods := selectNodesForPreemption(test.pod, nodeNameToInfo, nodes, potentialNodeNames, test.predicates, PredicateMetadata)
 		if err := checkPreemptionVictims(test.name, test.expected, nodeToPods); err != nil {
 			t.Error(err)
 		}
@@ -949,7 +952,7 @@ func TestPickOneNodeForPreemption(t *testing.T) {
 			nodes = append(nodes, makeNode(n, priorityutil.DefaultMilliCpuRequest*5, priorityutil.DefaultMemoryRequest*5))
 		}
 		nodeNameToInfo := schedulercache.CreateNodeNameToInfoMap(test.pods, nodes)
-		node := pickOneNodeForPreemption(selectNodesForPreemption(test.pod, nodeNameToInfo, nodes, test.predicates, PredicateMetadata))
+		node := pickOneNodeForPreemption(selectNodesForPreemption(test.pod, nodeNameToInfo, nodes, nil, test.predicates, PredicateMetadata))
 		found := false
 		for _, nodeName := range test.expected {
 			if node == nodeName {
@@ -960,5 +963,225 @@ func TestPickOneNodeForPreemption(t *testing.T) {
 		if !found {
 			t.Errorf("test [%v]: unexpected node: %v", test.name, node)
 		}
+	}
+}
+
+func TestNodesWherePreemptionMightHelp(t *testing.T) {
+	// Prepare 4 node names.
+	nodeNames := []string{}
+	for i := 1; i < 5; i++ {
+		nodeNames = append(nodeNames, fmt.Sprintf("machine%d", i))
+	}
+
+	tests := []struct {
+		name          string
+		failedPredMap FailedPredicateMap
+		pod           *v1.Pod
+		expected      []string // list of nodes
+	}{
+		{
+			name: "No node should be attempted",
+			failedPredMap: FailedPredicateMap{
+				"machine1": []algorithm.PredicateFailureReason{predicates.ErrNodeSelectorNotMatch},
+				"machine2": []algorithm.PredicateFailureReason{predicates.ErrPodNotMatchHostName},
+				"machine3": []algorithm.PredicateFailureReason{predicates.ErrTaintsTolerationsNotMatch},
+				"machine4": []algorithm.PredicateFailureReason{predicates.ErrNodeLabelPresenceViolated},
+			},
+			pod:      &v1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "pod1"}},
+			expected: []string{},
+		},
+		{
+			name: "pod affinity should not be tried",
+			failedPredMap: FailedPredicateMap{
+				"machine1": []algorithm.PredicateFailureReason{predicates.ErrPodAffinityNotMatch},
+				"machine2": []algorithm.PredicateFailureReason{predicates.ErrPodNotMatchHostName},
+			},
+			pod: &v1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "pod1"}, Spec: v1.PodSpec{Affinity: &v1.Affinity{
+				PodAffinity: &v1.PodAffinity{
+					RequiredDuringSchedulingIgnoredDuringExecution: []v1.PodAffinityTerm{
+						{
+							LabelSelector: &metav1.LabelSelector{
+								MatchExpressions: []metav1.LabelSelectorRequirement{
+									{
+										Key:      "service",
+										Operator: metav1.LabelSelectorOpIn,
+										Values:   []string{"securityscan", "value2"},
+									},
+								},
+							},
+							TopologyKey: "hostname",
+						},
+					},
+				}}}},
+			expected: []string{"machine3", "machine4"},
+		},
+		{
+			name: "pod with both pod affinity and anti-affinity should be tried",
+			failedPredMap: FailedPredicateMap{
+				"machine1": []algorithm.PredicateFailureReason{predicates.ErrPodAffinityNotMatch},
+				"machine2": []algorithm.PredicateFailureReason{predicates.ErrPodNotMatchHostName},
+			},
+			pod: &v1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "pod1"}, Spec: v1.PodSpec{Affinity: &v1.Affinity{
+				PodAffinity: &v1.PodAffinity{
+					RequiredDuringSchedulingIgnoredDuringExecution: []v1.PodAffinityTerm{
+						{
+							LabelSelector: &metav1.LabelSelector{
+								MatchExpressions: []metav1.LabelSelectorRequirement{
+									{
+										Key:      "service",
+										Operator: metav1.LabelSelectorOpIn,
+										Values:   []string{"securityscan", "value2"},
+									},
+								},
+							},
+							TopologyKey: "hostname",
+						},
+					},
+				},
+				PodAntiAffinity: &v1.PodAntiAffinity{
+					RequiredDuringSchedulingIgnoredDuringExecution: []v1.PodAffinityTerm{
+						{
+							LabelSelector: &metav1.LabelSelector{
+								MatchExpressions: []metav1.LabelSelectorRequirement{
+									{
+										Key:      "service",
+										Operator: metav1.LabelSelectorOpNotIn,
+										Values:   []string{"blah", "foo"},
+									},
+								},
+							},
+							TopologyKey: "region",
+						},
+					},
+				},
+			}}},
+			expected: []string{"machine1", "machine3", "machine4"},
+		},
+		{
+			name: "Mix of failed predicates works fine",
+			failedPredMap: FailedPredicateMap{
+				"machine1": []algorithm.PredicateFailureReason{predicates.ErrNodeSelectorNotMatch, predicates.ErrNodeOutOfDisk, predicates.NewInsufficientResourceError(v1.ResourceMemory, 1000, 500, 300)},
+				"machine2": []algorithm.PredicateFailureReason{predicates.ErrPodNotMatchHostName, predicates.ErrDiskConflict},
+				"machine3": []algorithm.PredicateFailureReason{predicates.NewInsufficientResourceError(v1.ResourceMemory, 1000, 600, 400)},
+				"machine4": []algorithm.PredicateFailureReason{},
+			},
+			pod:      &v1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "pod1"}},
+			expected: []string{"machine3", "machine4"},
+		},
+	}
+
+	for _, test := range tests {
+		nodes := nodesWherePreemptionMightHelp(test.pod, makeNodeList(nodeNames), test.failedPredMap)
+		if len(test.expected) != len(nodes) {
+			t.Errorf("test [%v]:number of nodes is not the same as expected. exptectd: %d, got: %d. Nodes: %v", test.name, len(test.expected), len(nodes), nodes)
+		}
+		for _, node := range test.expected {
+			if _, ok := nodes[node]; !ok {
+				t.Errorf("test [%v]: expected node %v was not in the map.", test.name, node)
+			}
+		}
+	}
+}
+
+func TestPreempt(t *testing.T) {
+	failedPredMap := FailedPredicateMap{
+		"machine1": []algorithm.PredicateFailureReason{predicates.NewInsufficientResourceError(v1.ResourceMemory, 1000, 500, 300)},
+		"machine2": []algorithm.PredicateFailureReason{predicates.ErrDiskConflict},
+		"machine3": []algorithm.PredicateFailureReason{predicates.NewInsufficientResourceError(v1.ResourceMemory, 1000, 600, 400)},
+	}
+	// Prepare 3 node names.
+	nodeNames := []string{}
+	for i := 1; i < 4; i++ {
+		nodeNames = append(nodeNames, fmt.Sprintf("machine%d", i))
+	}
+	tests := []struct {
+		name         string
+		pod          *v1.Pod
+		pods         []*v1.Pod
+		expectedNode string
+		expectedPods []string // list of preempted pods
+	}{
+		{
+			name: "basic preemption logic",
+			pod: &v1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "pod1"}, Spec: v1.PodSpec{
+				Containers: veryLargeContainers,
+				Priority:   &highPriority},
+			},
+			pods: []*v1.Pod{
+				{ObjectMeta: metav1.ObjectMeta{Name: "m1.1"}, Spec: v1.PodSpec{Containers: smallContainers, Priority: &lowPriority, NodeName: "machine1"}, Status: v1.PodStatus{Phase: v1.PodRunning}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "m1.2"}, Spec: v1.PodSpec{Containers: smallContainers, Priority: &lowPriority, NodeName: "machine1"}, Status: v1.PodStatus{Phase: v1.PodRunning}},
+
+				{ObjectMeta: metav1.ObjectMeta{Name: "m2.1"}, Spec: v1.PodSpec{Containers: largeContainers, Priority: &highPriority, NodeName: "machine2"}, Status: v1.PodStatus{Phase: v1.PodRunning}},
+
+				{ObjectMeta: metav1.ObjectMeta{Name: "m3.1"}, Spec: v1.PodSpec{Containers: mediumContainers, Priority: &midPriority, NodeName: "machine3"}, Status: v1.PodStatus{Phase: v1.PodRunning}},
+			},
+			expectedNode: "machine1",
+			expectedPods: []string{"m1.1", "m1.2"},
+		},
+		{
+			name: "One node doesn't need any preemption",
+			pod: &v1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "pod1"}, Spec: v1.PodSpec{
+				Containers: veryLargeContainers,
+				Priority:   &highPriority},
+			},
+			pods: []*v1.Pod{
+				{ObjectMeta: metav1.ObjectMeta{Name: "m1.1"}, Spec: v1.PodSpec{Containers: smallContainers, Priority: &lowPriority, NodeName: "machine1"}, Status: v1.PodStatus{Phase: v1.PodRunning}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "m1.2"}, Spec: v1.PodSpec{Containers: smallContainers, Priority: &lowPriority, NodeName: "machine1"}, Status: v1.PodStatus{Phase: v1.PodRunning}},
+
+				{ObjectMeta: metav1.ObjectMeta{Name: "m2.1"}, Spec: v1.PodSpec{Containers: largeContainers, Priority: &highPriority, NodeName: "machine2"}, Status: v1.PodStatus{Phase: v1.PodRunning}},
+			},
+			expectedNode: "machine3",
+			expectedPods: []string{},
+		},
+	}
+
+	for _, test := range tests {
+		stop := make(chan struct{})
+		cache := schedulercache.New(time.Duration(0), stop)
+		for _, pod := range test.pods {
+			cache.AddPod(pod)
+		}
+		for _, name := range nodeNames {
+			cache.AddNode(makeNode(name, priorityutil.DefaultMilliCpuRequest*5, priorityutil.DefaultMemoryRequest*5))
+		}
+		scheduler := NewGenericScheduler(
+			cache, nil, map[string]algorithm.FitPredicate{"matches": algorithmpredicates.PodFitsResources}, algorithm.EmptyPredicateMetadataProducer, []algorithm.PriorityConfig{{Function: numericPriority, Weight: 1}}, algorithm.EmptyMetadataProducer, []algorithm.SchedulerExtender{})
+		// Call Preempt and check the expected results.
+		node, victims, err := scheduler.Preempt(test.pod, schedulertesting.FakeNodeLister(makeNodeList(nodeNames)), error(&FitError{test.pod, failedPredMap}))
+		if err != nil {
+			t.Errorf("test [%v]: unexpected error in preemption: %v", test.name, err)
+		}
+		if node != test.expectedNode {
+			t.Errorf("test [%v]: expected node: %v, got: %v", test.name, test.expectedNode, node)
+		}
+		if len(victims) != len(test.expectedPods) {
+			t.Errorf("test [%v]: expected %v pods, got %v.", test.name, len(test.expectedPods), len(victims))
+		}
+		for _, victim := range victims {
+			found := false
+			for _, expPod := range test.expectedPods {
+				if expPod == victim.Name {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Errorf("test [%v]: pod %v is not expected to be a victim.", test.name, victim.Name)
+			}
+			// Mark the victims for deletion and record the preemptor's nominated node name.
+			now := metav1.Now()
+			victim.DeletionTimestamp = &now
+			test.pod.Annotations = make(map[string]string)
+			test.pod.Annotations[NominatedNodeAnnotationKey] = node
+		}
+		// Call preempt again and make sure it doesn't preempt any more pods.
+		node, victims, err = scheduler.Preempt(test.pod, schedulertesting.FakeNodeLister(makeNodeList(nodeNames)), error(&FitError{test.pod, failedPredMap}))
+		if err != nil {
+			t.Errorf("test [%v]: unexpected error in preemption: %v", test.name, err)
+		}
+		if node != "" && len(victims) > 0 {
+			t.Errorf("test [%v]: didn't expect any more preemption. Node %v is selected for preemption.", test.name, node)
+		}
+		close(stop)
 	}
 }
