@@ -175,10 +175,6 @@ type NodeController struct {
 	// tainted nodes, if they're not tolerated.
 	runTaintManager bool
 
-	// if set to true NodeController will taint Nodes with 'TaintNodeNotReady' and 'TaintNodeUnreachable'
-	// taints instead of evicting Pods itself.
-	useTaintBasedEvictions bool
-
 	// nodeEvictor handles node eviction, taint based or otherwise.
 	nodeEvictor nodeEvictor
 }
@@ -259,7 +255,6 @@ func NewNodeController(
 		unhealthyZoneThreshold:      unhealthyZoneThreshold,
 		zoneStates:                  make(map[string]zoneState),
 		runTaintManager:             runTaintManager,
-		useTaintBasedEvictions:      useTaintBasedEvictions && runTaintManager,
 	}
 	if useTaintBasedEvictions && runTaintManager {
 		nc.nodeEvictor = newTaintBasedNodeEvictor(nc)
