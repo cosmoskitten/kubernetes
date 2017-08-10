@@ -3378,6 +3378,15 @@ func (in *PersistentVolumeClaimSpec) DeepCopyInto(out *PersistentVolumeClaimSpec
 			**out = **in
 		}
 	}
+	if in.VolumeType != nil {
+		in, out := &in.VolumeType, &out.VolumeType
+		if *in == nil {
+			*out = nil
+		} else {
+			*out = new(PersistentVolumeType)
+			**out = **in
+		}
+	}
 	return
 }
 
@@ -3696,6 +3705,15 @@ func (in *PersistentVolumeSpec) DeepCopyInto(out *PersistentVolumeSpec) {
 			*out = nil
 		} else {
 			*out = new(ObjectReference)
+			**out = **in
+		}
+	}
+	if in.VolumeType != nil {
+		in, out := &in.VolumeType, &out.VolumeType
+		if *in == nil {
+			*out = nil
+		} else {
+			*out = new(PersistentVolumeType)
 			**out = **in
 		}
 	}

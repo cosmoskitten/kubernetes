@@ -2915,6 +2915,7 @@ func autoConvert_v1_PersistentVolumeClaimSpec_To_api_PersistentVolumeClaimSpec(i
 	}
 	out.VolumeName = in.VolumeName
 	out.StorageClassName = (*string)(unsafe.Pointer(in.StorageClassName))
+	out.VolumeType = (*api.PersistentVolumeType)(unsafe.Pointer(in.VolumeType))
 	return nil
 }
 
@@ -2931,6 +2932,7 @@ func autoConvert_api_PersistentVolumeClaimSpec_To_v1_PersistentVolumeClaimSpec(i
 	}
 	out.VolumeName = in.VolumeName
 	out.StorageClassName = (*string)(unsafe.Pointer(in.StorageClassName))
+	out.VolumeType = (*v1.PersistentVolumeType)(unsafe.Pointer(in.VolumeType))
 	return nil
 }
 
@@ -3096,6 +3098,7 @@ func autoConvert_v1_PersistentVolumeSpec_To_api_PersistentVolumeSpec(in *v1.Pers
 	out.ClaimRef = (*api.ObjectReference)(unsafe.Pointer(in.ClaimRef))
 	out.PersistentVolumeReclaimPolicy = api.PersistentVolumeReclaimPolicy(in.PersistentVolumeReclaimPolicy)
 	out.StorageClassName = in.StorageClassName
+	out.VolumeType = (*api.PersistentVolumeType)(unsafe.Pointer(in.VolumeType))
 	return nil
 }
 
@@ -3113,6 +3116,7 @@ func autoConvert_api_PersistentVolumeSpec_To_v1_PersistentVolumeSpec(in *api.Per
 	out.ClaimRef = (*v1.ObjectReference)(unsafe.Pointer(in.ClaimRef))
 	out.PersistentVolumeReclaimPolicy = v1.PersistentVolumeReclaimPolicy(in.PersistentVolumeReclaimPolicy)
 	out.StorageClassName = in.StorageClassName
+	out.VolumeType = (*v1.PersistentVolumeType)(unsafe.Pointer(in.VolumeType))
 	return nil
 }
 
