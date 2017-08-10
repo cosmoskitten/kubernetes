@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/http"
 	"sync"
 	"time"
 
@@ -106,6 +107,7 @@ type GenericAdmissionWebhook struct {
 	negotiatedSerializer runtime.NegotiatedSerializer
 	clientCert           []byte
 	clientKey            []byte
+	proxyTransport       *http.Transport
 }
 
 var (
@@ -113,6 +115,10 @@ var (
 	_ = admissioninit.WantsClientCert(&GenericAdmissionWebhook{})
 	_ = admissioninit.WantsExternalKubeClientSet(&GenericAdmissionWebhook{})
 )
+
+func (a *GenericAdmissionWebhook) SetProxyTransport(pt *http.Transport) {
+	a.proxyTransport = pt
+}
 
 func (a *GenericAdmissionWebhook) SetServiceResolver(sr admissioninit.ServiceResolver) {
 	a.serviceResolver = sr
@@ -242,20 +248,35 @@ func (a *GenericAdmissionWebhook) hookClient(h *v1alpha1.ExternalAdmissionHook) 
 		return nil, err
 	}
 
+	tlsConfig := rest.TLSClientConfig{
+		CAData:   h.ClientConfig.CABundle,
+		CertData: a.clientCert,
+		KeyData:  a.clientKey,
+	}
+
+	rt, err := rest.TransportFor(&rest.Config{TLSClientConfig: tlsConfig})
+	if err != nil {
+		return nil, err
+	}
+	if a.proxyTransport.Dial != nil {
+		switch transport := rt.(type) {
+		case *http.Transport:
+			transport.Dial = a.proxyTransport.Dial
+		default:
+			return nil, fmt.Errorf("unable to set dialer as rest transport is of type %T", rt)
+		}
+	}
+
 	// TODO: cache these instead of constructing one each time
 	cfg := &rest.Config{
-		Host:    u.Host,
-		APIPath: u.Path,
-		TLSClientConfig: rest.TLSClientConfig{
-			CAData:   h.ClientConfig.CABundle,
-			CertData: a.clientCert,
-			KeyData:  a.clientKey,
-		},
+		Host:      u.Host,
+		APIPath:   u.Path,
 		UserAgent: "kube-apiserver-admission",
 		Timeout:   30 * time.Second,
 		ContentConfig: rest.ContentConfig{
 			NegotiatedSerializer: a.negotiatedSerializer,
 		},
+		Transport: rt,
 	}
 	return rest.UnversionedRESTClientFor(cfg)
 }
