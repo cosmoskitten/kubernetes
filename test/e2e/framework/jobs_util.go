@@ -53,9 +53,9 @@ func NewTestJob(behavior, name string, rPol v1.RestartPolicy, parallelism, compl
 		},
 		Spec: batch.JobSpec{
 			ActiveDeadlineSeconds: activeDeadlineSeconds,
-			Parallelism:    &parallelism,
-			Completions:    &completions,
-			ManualSelector: newBool(false),
+			Parallelism:           &parallelism,
+			Completions:           &completions,
+			ManualSelector:        newBool(false),
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{JobSelectorKey: name},
