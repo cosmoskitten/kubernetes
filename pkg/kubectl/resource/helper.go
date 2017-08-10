@@ -52,7 +52,7 @@ func NewHelper(client RESTClient, mapping *meta.RESTMapping) *Helper {
 	}
 }
 
-func (m *Helper) Get(namespace, name string, export bool) (runtime.Object, error) {
+func (m *Helper) Get(namespace, name string, export, includeUninitialized bool) (runtime.Object, error) {
 	req := m.RESTClient.Get().
 		NamespaceIfScoped(namespace, m.NamespaceScoped).
 		Resource(m.Resource).
@@ -61,11 +61,15 @@ func (m *Helper) Get(namespace, name string, export bool) (runtime.Object, error
 		// TODO: I should be part of GetOptions
 		req.Param("export", strconv.FormatBool(export))
 	}
+	if includeUninitialized {
+		// TODO: I should be part of GetOptions
+		req.Param("includeUninitialized", strconv.FormatBool(includeUninitialized))
+	}
 	return req.Do().Get()
 }
 
 // TODO: add field selector
-func (m *Helper) List(namespace, apiVersion string, selector labels.Selector, export bool) (runtime.Object, error) {
+func (m *Helper) List(namespace, apiVersion string, selector labels.Selector, export, includeUninitialized bool) (runtime.Object, error) {
 	req := m.RESTClient.Get().
 		NamespaceIfScoped(namespace, m.NamespaceScoped).
 		Resource(m.Resource).
@@ -75,6 +79,9 @@ func (m *Helper) List(namespace, apiVersion string, selector labels.Selector, ex
 	if export {
 		// TODO: I should be part of ListOptions
 		req.Param("export", strconv.FormatBool(export))
+	}
+	if includeUninitialized {
+		req.Param("includeUninitialized", strconv.FormatBool(includeUninitialized))
 	}
 	return req.Do().Get()
 }
