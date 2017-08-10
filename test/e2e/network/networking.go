@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/kubernetes/pkg/master/ports"
 	"k8s.io/kubernetes/test/e2e/framework"
@@ -192,6 +193,29 @@ var _ = SIGDescribe("Networking", func() {
 			By(fmt.Sprintf("dialing(udp) %v (node) --> %v:%v (nodeIP)", config.NodeIP, config.NodeIP, config.NodeUdpPort))
 			config.DialFromNode("udp", config.NodeIP, config.NodeUdpPort, config.MaxTries, config.MaxTries, sets.NewString())
 		})
-		// TODO: Test sessionAffinity #31712
+
+		It("should function for pod-Service session affinity: http", func() {
+			config := framework.NewNetworkingTestConfig(f)
+			By(fmt.Sprintf("dialing(http) %v --> %v:%v (config.clusterIP)", config.TestContainerPod.Name, config.ClusterIP, framework.ClusterHttpPort))
+			updateSessionAffinity := func(svc *v1.Service) {
+				svc.Spec.SessionAffinity = v1.ServiceAffinityClientIP
+			}
+			framework.UpdateService(f.ClientSet, config.NodePortService.Namespace, config.NodePortService.Name, updateSessionAffinity)
+			firstEndpoints, err := config.GetEndpointsFromTestContainer("http", config.ClusterIP, framework.ClusterHttpPort, config.MaxTries, 0)
+			if err != nil {
+				framework.Failf("Unable to get endpoints from test containers: %v", err)
+			}
+			for i := 0; i < 10; i++ {
+				eps, err := config.GetEndpointsFromTestContainer("http", config.ClusterIP, framework.ClusterHttpPort, config.MaxTries, 0)
+				if err != nil {
+					framework.Failf("Unable to get endpoints from test containers: %v", err)
+				}
+				if !eps.Equal(firstEndpoints) {
+					framework.Failf("Expect endpoints: %v, got: %v", firstEndpoints, eps)
+				}
+			}
+			By(fmt.Sprintf("dialing(http) %v --> %v:%v (nodeIP)", config.TestContainerPod.Name, config.ExternalAddrs[0], config.NodeHttpPort))
+			config.DialFromTestContainer("http", config.NodeIP, config.NodeHttpPort, config.MaxTries, 0, config.EndpointHostnames())
+		})
 	})
 })
