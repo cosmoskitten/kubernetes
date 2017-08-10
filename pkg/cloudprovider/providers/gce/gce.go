@@ -80,6 +80,9 @@ const (
 	gceComputeAPIEndpoint = "https://www.googleapis.com/compute/v1/"
 )
 
+// All supported alpha APIs
+var SupportedAlphaApi = map[string]bool{}
+
 // GCECloud is an implementation of Interface, LoadBalancer and Instances for Google Compute Engine.
 type GCECloud struct {
 	// ClusterID contains functionality for getting (and initializing) the ingress-uid. Call GCECloud.Initialize()
@@ -113,6 +116,7 @@ type GCECloud struct {
 	// lock to prevent shared resources from being prematurely deleted while the operation is
 	// in progress.
 	sharedResourceLock sync.Mutex
+	enabledAlphaApi    map[string]bool
 }
 
 type ServiceManager interface {
@@ -146,6 +150,8 @@ type ConfigFile struct {
 		// Specifying ApiEndpoint will override the default GCE compute API endpoint.
 		ApiEndpoint string `gcfg:"api-endpoint"`
 		LocalZone   string `gcfg:"local-zone"`
+		// Possible values: all, none(default) and list of api names separated by comma
+		EnableAlphaAPI []string `gcfg:"enable-alpha-api"`
 	}
 }
 
@@ -162,6 +168,7 @@ type CloudConfig struct {
 	NodeInstancePrefix string
 	TokenSource        oauth2.TokenSource
 	UseMetadataServer  bool
+	EnableAlphaAPI     []string
 }
 
 func init() {
@@ -240,6 +247,7 @@ func generateCloudConfig(configFile *ConfigFile) (cloudConfig *CloudConfig, err 
 
 		cloudConfig.NodeTags = configFile.Global.NodeTags
 		cloudConfig.NodeInstancePrefix = configFile.Global.NodeInstancePrefix
+		cloudConfig.EnableAlphaAPI = configFile.Global.EnableAlphaAPI
 	}
 
 	// retrieve projectID and zone
@@ -375,6 +383,23 @@ func CreateGCECloud(config *CloudConfig) (*GCECloud, error) {
 
 	operationPollRateLimiter := flowcontrol.NewTokenBucketRateLimiter(10, 100) // 10 qps, 100 bucket size.
 
+	enableAlphaApiMap := make(map[string]bool)
+	for _, apiName := range config.EnableAlphaAPI {
+		name := strings.ToLower(apiName)
+		if name == "all" {
+			enableAlphaApiMap = SupportedAlphaApi
+			break
+		}
+		if name == "none" {
+			enableAlphaApiMap = make(map[string]bool)
+			break
+		}
+		if _, ok := SupportedAlphaApi[name]; !ok {
+			return nil, fmt.Errorf("Alpha API %q is not supported.", apiName)
+		}
+		enableAlphaApiMap[name] = true
+	}
+
 	gce := &GCECloud{
 		service:                  service,
 		serviceAlpha:             serviceAlpha,
@@ -393,6 +418,7 @@ func CreateGCECloud(config *CloudConfig) (*GCECloud, error) {
 		nodeInstancePrefix:       config.NodeInstancePrefix,
 		useMetadataServer:        config.UseMetadataServer,
 		operationPollRateLimiter: operationPollRateLimiter,
+		enabledAlphaApi:          enableAlphaApiMap,
 	}
 
 	gce.manager = &GCEServiceManager{gce}
