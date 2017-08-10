@@ -77,6 +77,8 @@ type Builder struct {
 
 	export bool
 
+	includeUninitialized bool
+
 	schema validation.Schema
 }
 
@@ -276,6 +278,12 @@ func (b *Builder) Selector(selector labels.Selector) *Builder {
 // ExportParam accepts the export boolean for these resources
 func (b *Builder) ExportParam(export bool) *Builder {
 	b.export = export
+	return b
+}
+
+// IncludeUninitializedParam accepts the include-uninitialized boolean for these resources
+func (b *Builder) IncludeUninitializedParam(includeUninitialized bool) *Builder {
+	b.includeUninitialized = includeUninitialized
 	return b
 }
 
@@ -607,7 +615,7 @@ func (b *Builder) visitBySelector() *Result {
 		if mapping.Scope.Name() != meta.RESTScopeNameNamespace {
 			selectorNamespace = ""
 		}
-		visitors = append(visitors, NewSelector(client, mapping, selectorNamespace, b.selector, b.export))
+		visitors = append(visitors, NewSelector(client, mapping, selectorNamespace, b.selector, b.export, b.includeUninitialized))
 	}
 	if b.continueOnError {
 		result.visitor = EagerVisitorList(visitors)
@@ -680,7 +688,7 @@ func (b *Builder) visitByResource() *Result {
 			}
 		}
 
-		info := NewInfo(client, mapping, selectorNamespace, tuple.Name, b.export)
+		info := NewInfo(client, mapping, selectorNamespace, tuple.Name, b.export, b.includeUninitialized)
 		items = append(items, info)
 	}
 
@@ -739,7 +747,7 @@ func (b *Builder) visitByName() *Result {
 
 	visitors := []Visitor{}
 	for _, name := range b.names {
-		info := NewInfo(client, mapping, selectorNamespace, name, b.export)
+		info := NewInfo(client, mapping, selectorNamespace, name, b.export, b.includeUninitialized)
 		visitors = append(visitors, info)
 	}
 	result.visitor = VisitorList(visitors)

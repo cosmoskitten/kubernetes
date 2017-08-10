@@ -94,16 +94,19 @@ type Info struct {
 	ResourceVersion string
 	// Optional, should this resource be exported, stripped of cluster-specific and instance specific fields
 	Export bool
+	// Optional, should include uninitialized resources
+	IncludeUninitialized bool
 }
 
 // NewInfo returns a new info object
-func NewInfo(client RESTClient, mapping *meta.RESTMapping, namespace, name string, export bool) *Info {
+func NewInfo(client RESTClient, mapping *meta.RESTMapping, namespace, name string, export, includeUninitialized bool) *Info {
 	return &Info{
-		Client:    client,
-		Mapping:   mapping,
-		Namespace: namespace,
-		Name:      name,
-		Export:    export,
+		Client:               client,
+		Mapping:              mapping,
+		Namespace:            namespace,
+		Name:                 name,
+		Export:               export,
+		IncludeUninitialized: includeUninitialized,
 	}
 }
 
@@ -114,7 +117,7 @@ func (i *Info) Visit(fn VisitorFunc) error {
 
 // Get retrieves the object from the Namespace and Name fields
 func (i *Info) Get() (err error) {
-	obj, err := NewHelper(i.Client, i.Mapping).Get(i.Namespace, i.Name, i.Export)
+	obj, err := NewHelper(i.Client, i.Mapping).Get(i.Namespace, i.Name, i.Export, i.IncludeUninitialized)
 	if err != nil {
 		if errors.IsNotFound(err) && len(i.Namespace) > 0 && i.Namespace != metav1.NamespaceDefault && i.Namespace != metav1.NamespaceAll {
 			err2 := i.Client.Get().AbsPath("api", "v1", "namespaces", i.Namespace).Do().Error()
