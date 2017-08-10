@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/golang/glog"
@@ -66,13 +67,24 @@ func NamedCheck(name string, check func(r *http.Request) error) HealthzChecker {
 // than once for the same mux will result in a panic.
 func InstallHandler(mux mux, checks ...HealthzChecker) {
 	if len(checks) == 0 {
-		glog.Info("No default health checks specified. Installing the ping handler.")
+		if glog.V(5) {
+			glog.Info("No default health checks specified. Installing the ping handler.")
+		}
 		checks = []HealthzChecker{PingHealthz}
 	}
-	glog.Infof("Installing %v healthz checkers", len(checks))
+
+	if glog.V(5) {
+		// accumulate the names of checks for printing them out.
+		checkerNames := make([]string, 0, len(checks))
+		for _, check := range checks {
+			// quote the Name so we can disambiguate
+			checkerNames = append(checkerNames, "\""+check.Name()+"\"")
+		}
+		glog.Info("Installing healthz checkers:", strings.Join(checkerNames, ", "))
+	}
+
 	mux.Handle("/healthz", handleRootHealthz(checks...))
 	for _, check := range checks {
-		glog.Infof("Installing %q healthz checker", check.Name())
 		mux.Handle(fmt.Sprintf("/healthz/%v", check.Name()), adaptCheckToHandler(check.Check))
 	}
 }
