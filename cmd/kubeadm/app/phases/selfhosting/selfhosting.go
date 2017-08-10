@@ -34,6 +34,10 @@ import (
 	"k8s.io/kubernetes/pkg/api"
 )
 
+const (
+	selfHostedWaitTimeout = 1 * time.Minute
+)
+
 // CreateSelfHostedControlPlane is responsible for turning a Static Pod-hosted control plane to a self-hosted one
 // It achieves that task this way:
 // 1. Load the Static Pod specification from disk (from /etc/kubernetes/manifests)
@@ -80,16 +84,23 @@ func CreateSelfHostedControlPlane(cfg *kubeadmapi.MasterConfiguration, client cl
 			}
 		}
 
-		// Wait for the self-hosted component to come up
-		kubeadmutil.WaitForPodsWithLabel(client, buildSelfHostedWorkloadLabelQuery(componentName))
+		// Wait for the self-hosted component to get into the Running state
+		if err := kubeadmutil.WaitForPodsWithLabel(client, selfHostedWaitTimeout, os.Stdout, buildSelfHostedWorkloadLabelQuery(componentName)); err != nil {
+			return err
+		}
 
 		// Remove the old Static Pod manifest
 		if err := os.RemoveAll(manifestPath); err != nil {
 			return fmt.Errorf("unable to delete static pod manifest for %s [%v]", componentName, err)
 		}
 
-		// Make sure the API is responsive at /healthz
-		kubeadmutil.WaitForAPI(client)
+		// Wait for the mirror Pod hash to be removed; otherwise we'll run into race conditions here when the kubelet hasn't had time to
+		// remove the Static Pod (or the mirror Pod respectively). This implicitely also tests that the API server endpoint is healthy,
+		// because this blocks until the API server returns a 404 Not Found when getting the Static Pod
+		staticPodName := fmt.Sprintf("%s-%s", componentName, cfg.NodeName)
+		if err := kubeadmutil.WaitForPodToDisappear(client, selfHostedWaitTimeout, staticPodName); err != nil {
+			return err
+		}
 
 		fmt.Printf("[self-hosted] self-hosted %s ready after %f seconds\n", componentName, time.Since(start).Seconds())
 	}

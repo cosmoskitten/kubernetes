@@ -296,7 +296,7 @@ func (i *Init) Run(out io.Writer) error {
 		return err
 	}
 
-	if err := addonsphase.CreateEssentialAddons(i.cfg, client); err != nil {
+	if err := addonsphase.CreateEssentialAddons(i.cfg, client,k8sVersion); err != nil {
 		return err
 	}
 

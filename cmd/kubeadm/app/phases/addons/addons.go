@@ -32,11 +32,12 @@ import (
 	kubeadmutil "k8s.io/kubernetes/cmd/kubeadm/app/util"
 	apiclientutil "k8s.io/kubernetes/cmd/kubeadm/app/util/apiclient"
 	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/util/version"
 	"k8s.io/kubernetes/plugin/pkg/scheduler/algorithm"
 )
 
 // CreateEssentialAddons creates the kube-proxy and kube-dns addons
-func CreateEssentialAddons(cfg *kubeadmapi.MasterConfiguration, client clientset.Interface) error {
+func CreateEssentialAddons(cfg *kubeadmapi.MasterConfiguration, client clientset.Interface, k8sVersion *version.Version) error {
 	proxyConfigMapBytes, err := kubeadmutil.ParseTemplate(KubeProxyConfigMap, struct{ MasterEndpoint string }{
 		// Fetch this value from the kubeconfig file
 		MasterEndpoint: fmt.Sprintf("https://%s:%d", cfg.API.AdvertiseAddress, cfg.API.BindPort),
@@ -61,7 +62,7 @@ func CreateEssentialAddons(cfg *kubeadmapi.MasterConfiguration, client clientset
 	dnsDeploymentBytes, err := kubeadmutil.ParseTemplate(KubeDNSDeployment, struct{ ImageRepository, Arch, Version, DNSDomain, MasterTaintKey string }{
 		ImageRepository: cfg.ImageRepository,
 		Arch:            runtime.GOARCH,
-		Version:         KubeDNSVersion,
+		Version:         kubeadmconstants.GetKubeDNSVersion(k8sVersion),
 		DNSDomain:       cfg.Networking.DNSDomain,
 		MasterTaintKey:  kubeadmconstants.LabelNodeRoleMaster,
 	})

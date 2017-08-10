@@ -17,8 +17,8 @@ limitations under the License.
 package controlplane
 
 import (
-	"bytes"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -35,7 +35,6 @@ import (
 	kubeadmconstants "k8s.io/kubernetes/cmd/kubeadm/app/constants"
 	"k8s.io/kubernetes/cmd/kubeadm/app/images"
 	authzmodes "k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes"
-	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	kubetypes "k8s.io/kubernetes/pkg/kubelet/types"
 	"k8s.io/kubernetes/pkg/util/version"
 )
@@ -51,6 +50,25 @@ const (
 // where kubelet will pick and schedule them.
 func WriteStaticPodManifests(cfg *kubeadmapi.MasterConfiguration, k8sVersion *version.Version, manifestsDir string) error {
 
+	staticPodSpecs := GetControlPlanePods(cfg, k8sVersion)
+
+	if err := os.MkdirAll(manifestsDir, 0700); err != nil {
+		return fmt.Errorf("failed to create directory %q [%v]", manifestsDir, err)
+	}
+	for name, spec := range staticPodSpecs {
+		filename := kubeadmconstants.GetStaticPodFilepath(name, manifestsDir)
+		serializedBytes, err := yaml.Marshal(spec)
+		if err != nil {
+			return fmt.Errorf("failed to marshal manifest for %q to YAML [%v]", name, err)
+		}
+		if err := ioutil.WriteFile(filename, serializedBytes, 0700); err != nil {
+			return fmt.Errorf("failed to write static pod manifest file for %q (%q) [%v]", name, filename, err)
+		}
+	}
+	return nil
+}
+
+func GetControlPlanePods(cfg *kubeadmapi.MasterConfiguration, k8sVersion *version.Version) map[string]v1.Pod {
 	// Get the required hostpath mounts
 	mounts := getHostPathVolumesForTheControlPlane(cfg)
 
@@ -99,21 +117,7 @@ func WriteStaticPodManifests(cfg *kubeadmapi.MasterConfiguration, k8sVersion *ve
 
 		staticPodSpecs[kubeadmconstants.Etcd] = etcdPod
 	}
-
-	if err := os.MkdirAll(manifestsDir, 0700); err != nil {
-		return fmt.Errorf("failed to create directory %q [%v]", manifestsDir, err)
-	}
-	for name, spec := range staticPodSpecs {
-		filename := kubeadmconstants.GetStaticPodFilepath(name, manifestsDir)
-		serialized, err := yaml.Marshal(spec)
-		if err != nil {
-			return fmt.Errorf("failed to marshal manifest for %q to YAML [%v]", name, err)
-		}
-		if err := cmdutil.DumpReaderToFile(bytes.NewReader(serialized), filename); err != nil {
-			return fmt.Errorf("failed to create static pod manifest file for %q (%q) [%v]", name, filename, err)
-		}
-	}
-	return nil
+	return staticPodSpecs
 }
 
 // componentResources returns the v1.ResourceRequirements object needed for allocating a specified amount of the CPU

@@ -17,11 +17,15 @@ limitations under the License.
 package util
 
 import (
+	"crypto/sha256"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
 	"k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
@@ -37,15 +41,15 @@ func CreateClientAndWaitForAPI(file string) (*clientset.Clientset, error) {
 	}
 
 	fmt.Println("[apiclient] Created API client, waiting for the control plane to become ready")
-	WaitForAPI(client)
+	WaitForAPI(client, 30*time.Minute)
 
 	return client, nil
 }
 
 // WaitForAPI waits for the API Server's /healthz endpoint to report "ok"
-func WaitForAPI(client clientset.Interface) {
+func WaitForAPI(client clientset.Interface, timeout time.Duration) error {
 	start := time.Now()
-	wait.PollInfinite(kubeadmconstants.APICallRetryInterval, func() (bool, error) {
+	return wait.PollImmediate(kubeadmconstants.APICallRetryInterval, timeout, func() (bool, error) {
 		healthStatus := 0
 		client.Discovery().RESTClient().Get().AbsPath("/healthz").Do().StatusCode(&healthStatus)
 		if healthStatus != http.StatusOK {
@@ -59,22 +63,27 @@ func WaitForAPI(client clientset.Interface) {
 
 // WaitForPodsWithLabel will lookup pods with the given label and wait until they are all
 // reporting status as running.
-func WaitForPodsWithLabel(client clientset.Interface, labelKeyValPair string) {
-	// TODO: Implement a timeout
-	// TODO: Implement a verbosity switch
-	wait.PollInfinite(kubeadmconstants.APICallRetryInterval, func() (bool, error) {
+func WaitForPodsWithLabel(client clientset.Interface, timeout time.Duration, out io.Writer, labelKeyValPair string) error {
+
+	lastKnownPodNumber := -1
+	return wait.PollImmediate(kubeadmconstants.APICallRetryInterval, timeout, func() (bool, error) {
 		listOpts := metav1.ListOptions{LabelSelector: labelKeyValPair}
-		apiPods, err := client.CoreV1().Pods(metav1.NamespaceSystem).List(listOpts)
+		pods, err := client.CoreV1().Pods(metav1.NamespaceSystem).List(listOpts)
 		if err != nil {
-			fmt.Printf("[apiclient] Error getting Pods with label selector %q [%v]\n", labelKeyValPair, err)
+			fmt.Fprintf(out, "[apiclient] Error getting Pods with label selector %q [%v]\n", labelKeyValPair, err)
 			return false, nil
 		}
 
-		if len(apiPods.Items) == 0 {
+		if lastKnownPodNumber != len(pods.Items) {
+			fmt.Fprintf(out, "[apiclient] Found %d Pods for label selector %s\n", len(pods.Items), labelKeyValPair)
+			lastKnownPodNumber = len(pods.Items)
+		}
+
+		if len(pods.Items) == 0 {
 			return false, nil
 		}
-		for _, pod := range apiPods.Items {
-			fmt.Printf("[apiclient] Pod %s status: %s\n", pod.Name, pod.Status.Phase)
+
+		for _, pod := range pods.Items {
 			if pod.Status.Phase != v1.PodRunning {
 				return false, nil
 			}
@@ -82,4 +91,70 @@ func WaitForPodsWithLabel(client clientset.Interface, labelKeyValPair string) {
 
 		return true, nil
 	})
+}
+
+// WaitForPodToDisappear blocks until it timeouts or gets a "NotFound" response from the API Server when getting the Pod in question
+func WaitForPodToDisappear(client clientset.Interface, timeout time.Duration, podName string) error {
+	return wait.PollImmediate(kubeadmconstants.APICallRetryInterval, timeout, func() (bool, error) {
+		_, err := client.CoreV1().Pods(metav1.NamespaceSystem).Get(podName, metav1.GetOptions{})
+		if err != nil && apierrors.IsNotFound(err) {
+			return true, nil
+		}
+		return false, nil
+	})
+}
+
+// WaitForStaticPodControlPlaneHashes blocks until it timeouts or gets a hash map for all components and their Static Pods
+func WaitForStaticPodControlPlaneHashes(client clientset.Interface, timeout time.Duration, nodeName string) (map[string]string, error) {
+
+	var mirrorPodHashes map[string]string
+	err := wait.PollImmediate(kubeadmconstants.APICallRetryInterval, timeout, func() (bool, error) {
+
+		hashes, err := getStaticPodControlPlaneHashes(client, nodeName)
+		if err != nil {
+			return false, nil
+		}
+		mirrorPodHashes = hashes
+		return true, nil
+	})
+	return mirrorPodHashes, err
+}
+
+// WaitForStaticPodControlPlaneHashChange blocks until it timeouts or notices that the Mirror Pod (for the Static Pod, respectively) has changed
+// This implicitely means this function blocks until the kubelet has restarted the Static Pod in question
+func WaitForStaticPodControlPlaneHashChange(client clientset.Interface, timeout time.Duration, nodeName, component, previousHash string) error {
+	return wait.PollImmediate(kubeadmconstants.APICallRetryInterval, timeout, func() (bool, error) {
+
+		hashes, err := getStaticPodControlPlaneHashes(client, nodeName)
+		if err != nil {
+			return false, nil
+		}
+		// We should continue polling until the UID changes
+		if hashes[component] == previousHash {
+			return false, nil
+		}
+
+		return true, nil
+	})
+}
+
+// getStaticPodControlPlaneHashes computes hashes for all the control plane's Static Pod resources
+func getStaticPodControlPlaneHashes(client clientset.Interface, nodeName string) (map[string]string, error) {
+
+	mirrorPodHashes := map[string]string{}
+	for _, component := range kubeadmconstants.MasterComponents {
+		staticPodName := fmt.Sprintf("%s-%s", component, nodeName)
+		staticPod, err := client.CoreV1().Pods(metav1.NamespaceSystem).Get(staticPodName, metav1.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+
+		podBytes, err := json.Marshal(staticPod)
+		if err != nil {
+			return nil, err
+		}
+
+		mirrorPodHashes[component] = fmt.Sprintf("%x", sha256.Sum256(podBytes))
+	}
+	return mirrorPodHashes, nil
 }
