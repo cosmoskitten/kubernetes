@@ -13,12 +13,10 @@ go_library(
         "events.go",
         "histogram.go",
         "trace.go",
+        "trace_go17.go",
     ],
     tags = ["automanaged"],
-    deps = [
-        "//vendor/golang.org/x/net/context:go_default_library",
-        "//vendor/golang.org/x/net/internal/timeseries:go_default_library",
-    ],
+    deps = ["//vendor/golang.org/x/net/internal/timeseries:go_default_library"],
 )
 
 filegroup(

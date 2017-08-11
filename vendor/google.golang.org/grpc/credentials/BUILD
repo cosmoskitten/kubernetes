@@ -11,7 +11,7 @@ go_library(
     name = "go_default_library",
     srcs = [
         "credentials.go",
-        "credentials_util_go17.go",
+        "credentials_util_go18.go",
     ],
     tags = ["automanaged"],
     deps = ["//vendor/golang.org/x/net/context:go_default_library"],

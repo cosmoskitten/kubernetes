@@ -9,7 +9,11 @@ load(
 
 go_library(
     name = "go_default_library",
-    srcs = ["logger.go"],
+    srcs = [
+        "grpclog.go",
+        "logger.go",
+        "loggerv2.go",
+    ],
     tags = ["automanaged"],
 )
 

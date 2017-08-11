@@ -10,10 +10,11 @@ load(
 go_library(
     name = "go_default_library",
     srcs = [
+        "ciphers.go",
         "client_conn_pool.go",
         "configure_transport.go",
+        "databuffer.go",
         "errors.go",
-        "fixed_buffer.go",
         "flow.go",
         "frame.go",
         "go16.go",
@@ -22,6 +23,7 @@ go_library(
         "gotrack.go",
         "headermap.go",
         "http2.go",
+        "not_go19.go",
         "pipe.go",
         "server.go",
         "transport.go",

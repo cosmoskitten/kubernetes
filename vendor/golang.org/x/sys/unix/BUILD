@@ -10,6 +10,7 @@ load(
 go_library(
     name = "go_default_library",
     srcs = [
+        "asm.s",
         "asm_linux_amd64.s",
         "bluetooth_linux.go",
         "constants.go",
