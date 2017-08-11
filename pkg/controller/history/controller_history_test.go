@@ -257,26 +257,44 @@ func TestRealHistory_CreateControllerRevision(t *testing.T) {
 	testFn := func(test *testcase, t *testing.T) {
 		client := fake.NewSimpleClientset()
 		informerFactory := informers.NewSharedInformerFactory(client, controller.NoResyncPeriodFunc())
-
 		stop := make(chan struct{})
 		defer close(stop)
 		informerFactory.Start(stop)
 		informer := informerFactory.Apps().V1beta1().ControllerRevisions()
 		informerFactory.WaitForCacheSync(stop)
 		history := NewHistory(client, informer.Lister())
+
+		var collisionCount int64
 		for i := range test.existing {
-			_, err := history.CreateControllerRevision(test.existing[i].parent, test.existing[i].revision)
+			_, err := history.CreateControllerRevision(test.existing[i].parent, test.existing[i].revision, &collisionCount)
 			if err != nil {
 				t.Fatal(err)
 			}
 		}
-		created, err := history.CreateControllerRevision(test.parent, test.revision)
+		// Clear collisionCount before creating the test revision
+		collisionCount = 0
+		created, err := history.CreateControllerRevision(test.parent, test.revision, &collisionCount)
 		if err != nil {
 			t.Errorf("%s: %s", test.name, err)
 		}
-		if test.rename && created.Name == test.revision.Name {
-			t.Errorf("%s: wanted rename got %s %s", test.name, created.Name, test.revision.Name)
 
+		if test.rename {
+			if created.Name == test.revision.Name {
+				t.Errorf("%s: wanted rename got %s %s", test.name, created.Name, test.revision.Name)
+			}
+			expectedName := ControllerRevisionName(test.parent.GetName(), HashControllerRevision(test.revision, &collisionCount))
+			if created.Name != expectedName {
+				t.Errorf("%s: on name collision wanted new name %s got %s", test.name, expectedName, created.Name)
+			}
+
+			// Second name collision should have incremented collisionCount to 1
+			_, err = history.CreateControllerRevision(test.parent, test.revision, &collisionCount)
+			if err != nil {
+				t.Errorf("%s: %s", test.name, err)
+			}
+			if collisionCount != 1 {
+				t.Errorf("%s: on second name collision wanted collisionCount 1 got %d", test.name, collisionCount)
+			}
 		}
 		if !test.rename && created.Name != test.revision.Name {
 			t.Errorf("%s: wanted %s got %s", test.name, test.revision.Name, created.Name)
@@ -374,19 +392,38 @@ func TestFakeHistory_CreateControllerRevision(t *testing.T) {
 		informer := informerFactory.Apps().V1beta1().ControllerRevisions()
 		informerFactory.WaitForCacheSync(stop)
 		history := NewFakeHistory(informer)
+
+		var collisionCount int64
 		for i := range test.existing {
-			_, err := history.CreateControllerRevision(test.existing[i].parent, test.existing[i].revision)
+			_, err := history.CreateControllerRevision(test.existing[i].parent, test.existing[i].revision, &collisionCount)
 			if err != nil {
 				t.Fatal(err)
 			}
 		}
-		created, err := history.CreateControllerRevision(test.parent, test.revision)
+		// Clear collisionCount before creating the test revision
+		collisionCount = 0
+		created, err := history.CreateControllerRevision(test.parent, test.revision, &collisionCount)
 		if err != nil {
 			t.Errorf("%s: %s", test.name, err)
 		}
-		if test.rename && created.Name == test.revision.Name {
-			t.Errorf("%s: wanted rename got %s %s", test.name, created.Name, test.revision.Name)
 
+		if test.rename {
+			if created.Name == test.revision.Name {
+				t.Errorf("%s: wanted rename got %s %s", test.name, created.Name, test.revision.Name)
+			}
+			expectedName := ControllerRevisionName(test.parent.GetName(), HashControllerRevision(test.revision, &collisionCount))
+			if created.Name != expectedName {
+				t.Errorf("%s: on name collision wanted new name %s got %s", test.name, expectedName, created.Name)
+			}
+
+			// Second name collision should have incremented collisionCount to 1
+			_, err = history.CreateControllerRevision(test.parent, test.revision, &collisionCount)
+			if err != nil {
+				t.Errorf("%s: %s", test.name, err)
+			}
+			if collisionCount != 1 {
+				t.Errorf("%s: on second name collision wanted collisionCount 1 got %d", test.name, collisionCount)
+			}
 		}
 		if !test.rename && created.Name != test.revision.Name {
 			t.Errorf("%s: wanted %s got %s", test.name, test.revision.Name, created.Name)
@@ -511,8 +548,9 @@ func TestRealHistory_UpdateControllerRevision(t *testing.T) {
 		informer := informerFactory.Apps().V1beta1().ControllerRevisions()
 		informerFactory.WaitForCacheSync(stop)
 		history := NewHistory(client, informer.Lister())
+		var collisionCount int64
 		for i := range test.existing {
-			_, err := history.CreateControllerRevision(test.existing[i].parent, test.existing[i].revision)
+			_, err := history.CreateControllerRevision(test.existing[i].parent, test.existing[i].revision, &collisionCount)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -641,8 +679,9 @@ func TestFakeHistory_UpdateControllerRevision(t *testing.T) {
 		informer := informerFactory.Apps().V1beta1().ControllerRevisions()
 		informerFactory.WaitForCacheSync(stop)
 		history := NewFakeHistory(informer)
+		var collisionCount int64
 		for i := range test.existing {
-			_, err := history.CreateControllerRevision(test.existing[i].parent, test.existing[i].revision)
+			_, err := history.CreateControllerRevision(test.existing[i].parent, test.existing[i].revision, &collisionCount)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -731,8 +770,9 @@ func TestRealHistory_DeleteControllerRevision(t *testing.T) {
 		informer := informerFactory.Apps().V1beta1().ControllerRevisions()
 		informerFactory.WaitForCacheSync(stop)
 		history := NewHistory(client, informer.Lister())
+		var collisionCount int64
 		for i := range test.existing {
-			_, err := history.CreateControllerRevision(test.existing[i].parent, test.existing[i].revision)
+			_, err := history.CreateControllerRevision(test.existing[i].parent, test.existing[i].revision, &collisionCount)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -839,8 +879,9 @@ func TestFakeHistory_DeleteControllerRevision(t *testing.T) {
 		informer := informerFactory.Apps().V1beta1().ControllerRevisions()
 		informerFactory.WaitForCacheSync(stop)
 		history := NewFakeHistory(informer)
+		var collisionCount int64
 		for i := range test.existing {
-			_, err := history.CreateControllerRevision(test.existing[i].parent, test.existing[i].revision)
+			_, err := history.CreateControllerRevision(test.existing[i].parent, test.existing[i].revision, &collisionCount)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -982,8 +1023,9 @@ func TestRealHistory_AdoptControllerRevision(t *testing.T) {
 		informerFactory.WaitForCacheSync(stop)
 
 		history := NewHistory(client, informer.Lister())
+		var collisionCount int64
 		for i := range test.existing {
-			_, err := history.CreateControllerRevision(test.existing[i].parent, test.existing[i].revision)
+			_, err := history.CreateControllerRevision(test.existing[i].parent, test.existing[i].revision, &collisionCount)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1093,8 +1135,9 @@ func TestFakeHistory_AdoptControllerRevision(t *testing.T) {
 		informerFactory.WaitForCacheSync(stop)
 
 		history := NewFakeHistory(informer)
+		var collisionCount int64
 		for i := range test.existing {
-			_, err := history.CreateControllerRevision(test.existing[i].parent, test.existing[i].revision)
+			_, err := history.CreateControllerRevision(test.existing[i].parent, test.existing[i].revision, &collisionCount)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1243,8 +1286,9 @@ func TestRealHistory_ReleaseControllerRevision(t *testing.T) {
 		informerFactory.WaitForCacheSync(stop)
 
 		history := NewHistory(client, informer.Lister())
+		var collisionCount int64
 		for i := range test.existing {
-			_, err := history.CreateControllerRevision(test.existing[i].parent, test.existing[i].revision)
+			_, err := history.CreateControllerRevision(test.existing[i].parent, test.existing[i].revision, &collisionCount)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1371,8 +1415,9 @@ func TestFakeHistory_ReleaseControllerRevision(t *testing.T) {
 		informer := informerFactory.Apps().V1beta1().ControllerRevisions()
 		informerFactory.WaitForCacheSync(stop)
 		history := NewFakeHistory(informer)
+		var collisionCount int64
 		for i := range test.existing {
-			_, err := history.CreateControllerRevision(test.existing[i].parent, test.existing[i].revision)
+			_, err := history.CreateControllerRevision(test.existing[i].parent, test.existing[i].revision, &collisionCount)
 			if err != nil {
 				t.Fatal(err)
 			}
