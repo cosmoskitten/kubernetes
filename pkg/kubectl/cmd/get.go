@@ -58,7 +58,8 @@ var (
 
 		This command will hide resources that have completed, such as pods that are
 		in the Succeeded or Failed phases. You can see the full results for any
-		resource by providing the '--show-all' flag.
+		resource by providing the '--show-all' flag, but this flag does not include
+		the uninitialized objects by default, unless '--include-uninitialized' is explicitly set.
 
 		By specifying the output as 'template' and providing a Go template as the value
 		of the --template flag, you can filter the attributes of the fetched resources.`)
@@ -127,6 +128,7 @@ func NewCmdGet(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comman
 	}
 	cmdutil.AddPrinterFlags(cmd)
 	cmd.Flags().StringP("selector", "l", "", "Selector (label query) to filter on, supports '=', '==', and '!='.(e.g. -l key1=value1,key2=value2)")
+	cmdutil.AddIncludeUninitializedFlag(cmd)
 	cmd.Flags().BoolP("watch", "w", false, "After listing/getting the requested object, watch for changes.")
 	cmd.Flags().Bool("watch-only", false, "Watch for changes to the requested object(s), without listing/getting first.")
 	cmd.Flags().Bool("show-kind", false, "If present, list the resource type for the requested object(s).")
@@ -195,13 +197,21 @@ func RunGet(f cmdutil.Factory, out, errOut io.Writer, cmd *cobra.Command, args [
 	}
 
 	export := cmdutil.GetFlagBool(cmd, "export")
-	includeUninitialized := cmdutil.GetFlagBool(cmd, "include-uninitialized")
 
 	filterFuncs := f.DefaultResourceFilterFunc()
 	filterOpts := f.DefaultResourceFilterOptions(cmd, allNamespaces)
 
 	// handle watch separately since we cannot watch multiple resource types
 	isWatch, isWatchOnly := cmdutil.GetFlagBool(cmd, "watch"), cmdutil.GetFlagBool(cmd, "watch-only")
+
+	var includeUninitialized bool
+	if (isWatch || isWatchOnly) && len(args) == 2 {
+		// include the uninitialized objects by default
+		// unless explicitly set --include-uninitialized=false
+		includeUninitialized = true
+	}
+	cmdutil.GetExplicitIncludeUninitialized(cmd, &includeUninitialized)
+
 	if isWatch || isWatchOnly {
 		builder, err := f.NewUnstructuredBuilder(true)
 		if err != nil {
