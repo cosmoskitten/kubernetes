@@ -54,7 +54,7 @@ func ControllerRevisionName(prefix string, hash uint32) string {
 	return fmt.Sprintf("%s-%d", prefix, hash)
 }
 
-// NewControllerRevision returns the a ControllerRevision with a ControllerRef pointing parent and indicating that
+// NewControllerRevision returns a ControllerRevision with a ControllerRef pointing to parent and indicating that
 // parent is of parentKind. The ControllerRevision has labels matching selector, contains Data equal to data, and
 // has a Revision equal to revision. If the returned error is nil, the returned ControllerRevision is valid. If the
 // returned error is not nil, the returned ControllerRevision is invalid for use.
@@ -94,7 +94,7 @@ func NewControllerRevision(parent metav1.Object,
 
 // HashControllerRevision hashes the contents of revision's Data using FNV hashing. If probe is not nil, the byte value
 // of probe is added written to the hash as well.
-func HashControllerRevision(revision *apps.ControllerRevision, probe *uint32) uint32 {
+func HashControllerRevision(revision *apps.ControllerRevision, probe *int64) uint32 {
 	hf := fnv.New32()
 	if len(revision.Data.Raw) > 0 {
 		hf.Write(revision.Data.Raw)
@@ -103,7 +103,7 @@ func HashControllerRevision(revision *apps.ControllerRevision, probe *uint32) ui
 		hashutil.DeepHashObject(hf, revision.Data.Object)
 	}
 	if probe != nil {
-		hf.Write([]byte(strconv.FormatInt(int64(*probe), 10)))
+		hf.Write([]byte(strconv.FormatInt(*probe, 10)))
 	}
 	return hf.Sum32()
 
@@ -177,11 +177,13 @@ type Interface interface {
 	// returned error is not nil, the returned slice is not valid.
 	ListControllerRevisions(parent metav1.Object, selector labels.Selector) ([]*apps.ControllerRevision, error)
 	// CreateControllerRevision attempts to create the revision as owned by parent via a ControllerRef. If name
-	// collision occurs, a unique identifier is added to the hash of the revision and it is renamed using
-	// ControllerRevisionName. Implementations may cease to attempt to retry creation after some number of attempts
-	// and return an error. If the returned error is not nil, creation failed. If the returned error is nil, the
-	// returned ControllerRevision has been created.
-	CreateControllerRevision(parent metav1.Object, revision *apps.ControllerRevision) (*apps.ControllerRevision, error)
+	// collision occurs, collisionCount (incremented each time collision occurs except for the first time) is
+	// added to the hash of the revision and it is renamed using ControllerRevisionName. Implementations may
+	// cease to attempt to retry creation after some number of attempts and return an error. If the returned
+	// error is not nil, creation failed. If the returned error is nil, the returned ControllerRevision has been
+	// created.
+	// Callers must make sure that collisionCount is not nil. An error is returned if it is.
+	CreateControllerRevision(parent metav1.Object, revision *apps.ControllerRevision, collisionCount *int64) (*apps.ControllerRevision, error)
 	// DeleteControllerRevision attempts to delete revision. If the returned error is not nil, deletion has failed.
 	DeleteControllerRevision(revision *apps.ControllerRevision) error
 	// UpdateControllerRevision updates revision such that its Revision is equal to newRevision. Implementations
@@ -233,9 +235,10 @@ func (rh *realHistory) ListControllerRevisions(parent metav1.Object, selector la
 	return owned, err
 }
 
-func (rh *realHistory) CreateControllerRevision(parent metav1.Object, revision *apps.ControllerRevision) (*apps.ControllerRevision, error) {
-	// Initialize the probe to 0
-	probe := uint32(0)
+func (rh *realHistory) CreateControllerRevision(parent metav1.Object, revision *apps.ControllerRevision, collisionCount *int64) (*apps.ControllerRevision, error) {
+	if collisionCount == nil {
+		return nil, fmt.Errorf("collisionCount should not be nil")
+	}
 
 	// Clone the input
 	any, err := scheme.Scheme.DeepCopy(revision)
@@ -244,12 +247,13 @@ func (rh *realHistory) CreateControllerRevision(parent metav1.Object, revision *
 	}
 	clone := any.(*apps.ControllerRevision)
 
+	// First attempt to create the revision will not use collisionCount
+	var useCollisionCount bool
 	// Continue to attempt to create the revision updating the name with a new hash on each iteration
 	for {
 		var hash uint32
-		// The first attempt uses no probe to resolve collisions
-		if probe > 0 {
-			hash = HashControllerRevision(revision, &probe)
+		if useCollisionCount {
+			hash = HashControllerRevision(revision, collisionCount)
 		} else {
 			hash = HashControllerRevision(revision, nil)
 		}
@@ -257,7 +261,11 @@ func (rh *realHistory) CreateControllerRevision(parent metav1.Object, revision *
 		clone.Name = ControllerRevisionName(parent.GetName(), hash)
 		created, err := rh.client.AppsV1beta1().ControllerRevisions(parent.GetNamespace()).Create(clone)
 		if errors.IsAlreadyExists(err) {
-			probe++
+			if useCollisionCount {
+				*collisionCount++
+			} else {
+				useCollisionCount = true
+			}
 			continue
 		}
 		return created, err
@@ -370,9 +378,10 @@ func (fh *fakeHistory) addRevision(revision *apps.ControllerRevision) (*apps.Con
 	return revision, fh.indexer.Update(revision)
 }
 
-func (fh *fakeHistory) CreateControllerRevision(parent metav1.Object, revision *apps.ControllerRevision) (*apps.ControllerRevision, error) {
-	// Initialize the probe to 0
-	probe := uint32(0)
+func (fh *fakeHistory) CreateControllerRevision(parent metav1.Object, revision *apps.ControllerRevision, collisionCount *int64) (*apps.ControllerRevision, error) {
+	if collisionCount == nil {
+		return nil, fmt.Errorf("collisionCount should not be nil")
+	}
 
 	// Clone the input
 	any, err := scheme.Scheme.DeepCopy(revision)
@@ -382,12 +391,13 @@ func (fh *fakeHistory) CreateControllerRevision(parent metav1.Object, revision *
 	clone := any.(*apps.ControllerRevision)
 	clone.Namespace = parent.GetNamespace()
 
+	// First attempt to create the revision will not use collisionCount
+	var useCollisionCount bool
 	// Continue to attempt to create the revision updating the name with a new hash on each iteration
 	for {
 		var hash uint32
-		// The first attempt uses no probe to resolve collisions
-		if probe > 0 {
-			hash = HashControllerRevision(revision, &probe)
+		if useCollisionCount {
+			hash = HashControllerRevision(revision, collisionCount)
 		} else {
 			hash = HashControllerRevision(revision, nil)
 		}
@@ -395,7 +405,11 @@ func (fh *fakeHistory) CreateControllerRevision(parent metav1.Object, revision *
 		clone.Name = ControllerRevisionName(parent.GetName(), hash)
 		created, err := fh.addRevision(clone)
 		if errors.IsAlreadyExists(err) {
-			probe++
+			if useCollisionCount {
+				*collisionCount++
+			} else {
+				useCollisionCount = true
+			}
 			continue
 		}
 		return created, err
