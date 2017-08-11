@@ -54,6 +54,13 @@ const (
 	// Allow asynchronous coordination of object creation.
 	// Auto-enabled by the Initializers admission plugin.
 	Initializers utilfeature.Feature = "Initializers"
+
+	// owner: @smarterclayton
+	// alpha: v1.8
+	//
+	// Allow API clients to retrieve resource lists in pages rather than
+	// all at once.
+	APIListPaging utilfeature.Feature = "APIListPaging"
 )
 
 func init() {
@@ -68,4 +75,5 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	AdvancedAuditing:        {Default: false, PreRelease: utilfeature.Alpha},
 	APIResponseCompression:  {Default: false, PreRelease: utilfeature.Alpha},
 	Initializers:            {Default: false, PreRelease: utilfeature.Alpha},
+	APIListPaging:           {Default: false, PreRelease: utilfeature.Alpha},
 }
