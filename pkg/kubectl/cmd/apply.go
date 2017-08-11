@@ -131,6 +131,7 @@ func NewCmdApply(baseName string, f cmdutil.Factory, out, errOut io.Writer) *cob
 	cmdutil.AddPrinterFlags(cmd)
 	cmdutil.AddRecordFlag(cmd)
 	cmdutil.AddInclude3rdPartyFlags(cmd)
+	cmdutil.AddIncludeUninitializedFlag(cmd)
 
 	// apply subcommands
 	cmd.AddCommand(NewCmdApplyViewLastApplied(f, out, errOut))
@@ -214,12 +215,23 @@ func RunApply(f cmdutil.Factory, cmd *cobra.Command, out, errOut io.Writer, opti
 		return err
 	}
 
+	var includeUninitialized bool
+	if options.Prune {
+		// include the uninitialized objects by default
+		// unless explicitly set --include-uninitialized=false
+		includeUninitialized = true
+	}
+	if cmd.Flags().Changed("include-uninitialized") {
+		includeUninitialized = cmdutil.GetFlagBool(cmd, "include-uninitialized")
+	}
+
 	r := builder.
 		Schema(schema).
 		ContinueOnError().
 		NamespaceParam(cmdNamespace).DefaultNamespace().
 		FilenameParam(enforceNamespace, &options.FilenameOptions).
 		SelectorParam(options.Selector).
+		IncludeUninitializedParam(includeUninitialized).
 		Flatten().
 		Do()
 	err = r.Err()

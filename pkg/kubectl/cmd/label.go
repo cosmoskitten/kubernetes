@@ -136,6 +136,7 @@ func NewCmdLabel(f cmdutil.Factory, out io.Writer) *cobra.Command {
 	cmdutil.AddDryRunFlag(cmd)
 	cmdutil.AddRecordFlag(cmd)
 	cmdutil.AddInclude3rdPartyFlags(cmd)
+	cmdutil.AddIncludeUninitializedFlag(cmd)
 
 	return cmd
 }
@@ -185,10 +186,26 @@ func (o *LabelOptions) RunLabel(f cmdutil.Factory, cmd *cobra.Command) error {
 		return err
 	}
 
+	var includeUninitialized bool
+	if o.all {
+		// include the uninitialized objects by default
+		// unless explicitly set --include-uninitialized=false
+		includeUninitialized = true
+	}
+	if o.selector != "" {
+		// does not include the uninitialized objects by default
+		// unless explicitly set --include-uninitialized=true
+		includeUninitialized = false
+	}
+	if cmd.Flags().Changed("include-uninitialized") {
+		includeUninitialized = cmdutil.GetFlagBool(cmd, "include-uninitialized")
+	}
+
 	b := builder.
 		ContinueOnError().
 		NamespaceParam(cmdNamespace).DefaultNamespace().
 		FilenameParam(enforceNamespace, &o.FilenameOptions).
+		IncludeUninitializedParam(includeUninitialized).
 		Flatten()
 
 	if !o.local {
