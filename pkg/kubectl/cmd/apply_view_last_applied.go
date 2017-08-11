@@ -136,12 +136,12 @@ func (o *ViewLastAppliedOptions) RunApplyViewLastApplied() error {
 	for _, str := range o.LastAppliedConfigurationList {
 		switch o.OutputFormat {
 		case "json":
-			var prettyJSON bytes.Buffer
-			err := json.Indent(&prettyJSON, []byte(str), "", "  ")
+			prettyJSON := new(bytes.Buffer)
+			err := json.Indent(prettyJSON, []byte(str), "", "  ")
 			if err != nil {
 				return err
 			}
-			fmt.Fprint(o.Out, string(prettyJSON.Bytes()))
+			fmt.Fprint(o.Out, prettyJSON.String())
 		case "yaml":
 			yamlOutput, err := yaml.JSONToYAML([]byte(str))
 			if err != nil {
