@@ -47,6 +47,7 @@ const (
 
 	// CreatedByAnnotation represents the key used to store the spec(json)
 	// used to create the resource.
+	// This field is deprecated in favor of ControllerRef.
 	CreatedByAnnotation = "kubernetes.io/created-by"
 
 	// PreferAvoidPodsAnnotationKey represents the key of preferAvoidPods data (json serialized)
