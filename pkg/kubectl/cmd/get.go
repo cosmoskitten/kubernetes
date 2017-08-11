@@ -127,6 +127,7 @@ func NewCmdGet(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comman
 	}
 	cmdutil.AddPrinterFlags(cmd)
 	cmd.Flags().StringP("selector", "l", "", "Selector (label query) to filter on, supports '=', '==', and '!='.(e.g. -l key1=value1,key2=value2)")
+	cmdutil.AddIncludeUninitializedFlag(cmd)
 	cmd.Flags().BoolP("watch", "w", false, "After listing/getting the requested object, watch for changes.")
 	cmd.Flags().Bool("watch-only", false, "Watch for changes to the requested object(s), without listing/getting first.")
 	cmd.Flags().Bool("show-kind", false, "If present, list the resource type for the requested object(s).")
@@ -168,6 +169,7 @@ func RunGet(f cmdutil.Factory, out, errOut io.Writer, cmd *cobra.Command, args [
 	selector := cmdutil.GetFlagString(cmd, "selector")
 	allNamespaces := cmdutil.GetFlagBool(cmd, "all-namespaces")
 	showKind := cmdutil.GetFlagBool(cmd, "show-kind")
+	showAll := cmdutil.GetFlagBool(cmd, "show-all")
 	builder, err := f.NewUnstructuredBuilder(true)
 	if err != nil {
 		return err
@@ -195,13 +197,21 @@ func RunGet(f cmdutil.Factory, out, errOut io.Writer, cmd *cobra.Command, args [
 	}
 
 	export := cmdutil.GetFlagBool(cmd, "export")
-	includeUninitialized := cmdutil.GetFlagBool(cmd, "include-uninitialized")
 
 	filterFuncs := f.DefaultResourceFilterFunc()
 	filterOpts := f.DefaultResourceFilterOptions(cmd, allNamespaces)
 
 	// handle watch separately since we cannot watch multiple resource types
 	isWatch, isWatchOnly := cmdutil.GetFlagBool(cmd, "watch"), cmdutil.GetFlagBool(cmd, "watch-only")
+
+	var includeUninitialized bool
+	if (isWatch || isWatchOnly) && len(args) == 2 {
+		// include the uninitialized objects by default
+		// unless explicitly set --include-uninitialized=false
+		includeUninitialized = true
+	}
+	includeUninitialized = cmdutil.GetIncludeUninitialized(cmd, showAll, "")
+
 	if isWatch || isWatchOnly {
 		builder, err := f.NewUnstructuredBuilder(true)
 		if err != nil {

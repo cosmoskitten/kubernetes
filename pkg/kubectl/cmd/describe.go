@@ -39,6 +39,7 @@ import (
 var (
 	describe_long = templates.LongDesc(`
 		Show details of a specific resource or group of resources.
+		Include the uninitialized objects by default, unless user explicitly set --include-uninitialized=false.
 		This command joins many API calls together to form a detailed description of a
 		given resource or group of resources.
 
@@ -81,7 +82,7 @@ func NewCmdDescribe(f cmdutil.Factory, out, cmdErr io.Writer) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:     "describe (-f FILENAME | TYPE [NAME_PREFIX | -l label] | TYPE/NAME)",
-		Short:   i18n.T("Show details of a specific resource or group of resources"),
+		Short:   i18n.T("Show details of a specific resource or group of resources, include the uninitialized objects by default, unless user explicitly set --include-uninitialized=false"),
 		Long:    describe_long,
 		Example: describe_example,
 		Run: func(cmd *cobra.Command, args []string) {
@@ -97,6 +98,7 @@ func NewCmdDescribe(f cmdutil.Factory, out, cmdErr io.Writer) *cobra.Command {
 	cmd.Flags().Bool("all-namespaces", false, "If present, list the requested object(s) across all namespaces. Namespace in current context is ignored even if specified with --namespace.")
 	cmd.Flags().BoolVar(&describerSettings.ShowEvents, "show-events", true, "If true, display events related to the described object.")
 	cmdutil.AddInclude3rdPartyFlags(cmd)
+	cmdutil.AddIncludeUninitializedFlag(cmd)
 	return cmd
 }
 
@@ -120,11 +122,17 @@ func RunDescribe(f cmdutil.Factory, out, cmdErr io.Writer, cmd *cobra.Command, a
 		return err
 	}
 
+	// include the uninitialized objects by default
+	// unless user explicitly set --include-uninitialized=false
+	includeUninitialized := true
+	cmdutil.GetExplicitIncludeUninitialized(cmd, &includeUninitialized)
+
 	r := builder.
 		ContinueOnError().
 		NamespaceParam(cmdNamespace).DefaultNamespace().AllNamespaces(allNamespaces).
 		FilenameParam(enforceNamespace, options).
 		SelectorParam(selector).
+		IncludeUninitialized(includeUninitialized).
 		ResourceTypeOrNameArgs(true, args...).
 		Flatten().
 		Do()
