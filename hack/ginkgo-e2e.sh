@@ -155,4 +155,5 @@ export PATH=$(dirname "${e2e_test}"):"${PATH}"
   ${NUM_NODES:+"--num-nodes=${NUM_NODES}"} \
   ${E2E_REPORT_DIR:+"--report-dir=${E2E_REPORT_DIR}"} \
   ${E2E_REPORT_PREFIX:+"--report-prefix=${E2E_REPORT_PREFIX}"} \
+  ${KUBEMARK_EXTERNAL_KUBECONFIG:+"--kubemark-external-kubeconfig=${KUBEMARK_EXTERNAL_KUBECONFIG}"} \
   "${@:-}"

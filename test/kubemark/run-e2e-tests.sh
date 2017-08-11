@@ -32,6 +32,12 @@ export KUBE_MASTER_URL="https://${KUBE_MASTER_IP}"
 export KUBECONFIG="${ABSOLUTE_ROOT}/test/kubemark/resources/kubeconfig.kubemark"
 export E2E_MIN_STARTUP_PODS=0
 
+: ${KUBE_ENABLE_CLUSTER_AUTOSCALER:="false"}
+if [[ "${KUBE_ENABLE_CLUSTER_AUTOSCALER}" == "true" ]]; then
+  KUBEMARK_EXTERNAL_KUBECONFIG=${DEFAULT_KUBECONFIG}
+  export KUBEMARK_EXTERNAL_KUBECONFIG
+fi
+
 if [[ -z "$@" ]]; then
 	ARGS='--ginkgo.focus=[Feature:Performance]'
 else
