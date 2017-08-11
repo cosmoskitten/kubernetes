@@ -29,14 +29,15 @@ import (
 type ConfigOverrides struct {
 	AuthInfo clientcmdapi.AuthInfo
 	// ClusterDefaults are applied before the configured cluster info is loaded.
-	ClusterDefaults clientcmdapi.Cluster
-	ClusterInfo     clientcmdapi.Cluster
-	Context         clientcmdapi.Context
-	CurrentContext  string
-	Timeout         string
+	ClusterDefaults      clientcmdapi.Cluster
+	ClusterInfo          clientcmdapi.Cluster
+	Context              clientcmdapi.Context
+	CurrentContext       string
+	Timeout              string
+	IncludeUninitialized bool
 }
 
-// ConfigOverrideFlags holds the flag names to be used for binding command line flags.  Notice that this structure tightly
+// ConfigOverrideFlags holds the flag names to be used for binding command line flags. Notice that this structure tightly
 // corresponds to ConfigOverrides
 type ConfigOverrideFlags struct {
 	AuthOverrideFlags    AuthOverrideFlags
@@ -44,6 +45,7 @@ type ConfigOverrideFlags struct {
 	ContextOverrideFlags ContextOverrideFlags
 	CurrentContext       FlagInfo
 	Timeout              FlagInfo
+	IncludeUninitialized FlagInfo
 }
 
 // AuthOverrideFlags holds the flag names to be used for binding command line flags for AuthInfo objects
@@ -130,22 +132,23 @@ func (f FlagInfo) BindBoolFlag(flags *pflag.FlagSet, target *bool) FlagInfo {
 }
 
 const (
-	FlagClusterName      = "cluster"
-	FlagAuthInfoName     = "user"
-	FlagContext          = "context"
-	FlagNamespace        = "namespace"
-	FlagAPIServer        = "server"
-	FlagInsecure         = "insecure-skip-tls-verify"
-	FlagCertFile         = "client-certificate"
-	FlagKeyFile          = "client-key"
-	FlagCAFile           = "certificate-authority"
-	FlagEmbedCerts       = "embed-certs"
-	FlagBearerToken      = "token"
-	FlagImpersonate      = "as"
-	FlagImpersonateGroup = "as-group"
-	FlagUsername         = "username"
-	FlagPassword         = "password"
-	FlagTimeout          = "request-timeout"
+	FlagClusterName          = "cluster"
+	FlagAuthInfoName         = "user"
+	FlagContext              = "context"
+	FlagNamespace            = "namespace"
+	FlagAPIServer            = "server"
+	FlagInsecure             = "insecure-skip-tls-verify"
+	FlagCertFile             = "client-certificate"
+	FlagKeyFile              = "client-key"
+	FlagCAFile               = "certificate-authority"
+	FlagEmbedCerts           = "embed-certs"
+	FlagBearerToken          = "token"
+	FlagImpersonate          = "as"
+	FlagImpersonateGroup     = "as-group"
+	FlagUsername             = "username"
+	FlagPassword             = "password"
+	FlagTimeout              = "request-timeout"
+	FlagIncludeUninitialized = "include-uninitialized"
 )
 
 // RecommendedConfigOverrideFlags is a convenience method to return recommended flag names prefixed with a string of your choosing
@@ -155,8 +158,9 @@ func RecommendedConfigOverrideFlags(prefix string) ConfigOverrideFlags {
 		ClusterOverrideFlags: RecommendedClusterOverrideFlags(prefix),
 		ContextOverrideFlags: RecommendedContextOverrideFlags(prefix),
 
-		CurrentContext: FlagInfo{prefix + FlagContext, "", "", "The name of the kubeconfig context to use"},
-		Timeout:        FlagInfo{prefix + FlagTimeout, "", "0", "The length of time to wait before giving up on a single server request. Non-zero values should contain a corresponding time unit (e.g. 1s, 2m, 3h). A value of zero means don't timeout requests."},
+		CurrentContext:       FlagInfo{prefix + FlagContext, "", "", "The name of the kubeconfig context to use"},
+		Timeout:              FlagInfo{prefix + FlagTimeout, "", "0", "The length of time to wait before giving up on a single server request. Non-zero values should contain a corresponding time unit (e.g. 1s, 2m, 3h). A value of zero means don't timeout requests."},
+		IncludeUninitialized: FlagInfo{prefix + FlagIncludeUninitialized, "", "false", "If true, will include the objects which have a non-empty initializer list"},
 	}
 }
 
@@ -198,6 +202,7 @@ func BindOverrideFlags(overrides *ConfigOverrides, flags *pflag.FlagSet, flagNam
 	BindContextFlags(&overrides.Context, flags, flagNames.ContextOverrideFlags)
 	flagNames.CurrentContext.BindStringFlag(flags, &overrides.CurrentContext)
 	flagNames.Timeout.BindStringFlag(flags, &overrides.Timeout)
+	flagNames.IncludeUninitialized.BindBoolFlag(flags, &overrides.IncludeUninitialized)
 }
 
 // BindAuthInfoFlags is a convenience method to bind the specified flags to their associated variables
