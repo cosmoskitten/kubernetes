@@ -120,6 +120,10 @@ func NewCmdInit(out io.Writer) *cobra.Command {
 		"Specify range of IP addresses for the pod network; if set, the control plane will automatically allocate CIDRs for every node",
 	)
 	cmd.PersistentFlags().StringVar(
+		&cfg.Networking.PodMaskSize, "pod-network-mask-size", cfg.Networking.PodMaskSize,
+		"Mask size for node cidr in cluster. (default 24)",
+	)
+	cmd.PersistentFlags().StringVar(
 		&cfg.Networking.DNSDomain, "service-dns-domain", cfg.Networking.DNSDomain,
 		`Use alternative domain for services, e.g. "myorg.internal"`,
 	)

@@ -74,6 +74,7 @@ type Networking struct {
 	ServiceSubnet string
 	PodSubnet     string
 	DNSDomain     string
+	PodMaskSize   string
 }
 
 type Etcd struct {
