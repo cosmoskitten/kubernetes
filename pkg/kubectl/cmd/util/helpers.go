@@ -52,8 +52,9 @@ import (
 )
 
 const (
-	ApplyAnnotationsFlag = "save-config"
-	DefaultErrorExitCode = 1
+	ApplyAnnotationsFlag     = "save-config"
+	DefaultErrorExitCode     = 1
+	IncludeUninitializedFlag = "include-uninitialized"
 )
 
 type debugError interface {
@@ -431,7 +432,7 @@ func AddDryRunFlag(cmd *cobra.Command) {
 }
 
 func AddIncludeUninitializedFlag(cmd *cobra.Command) {
-	cmd.Flags().Bool("include-uninitialized", false, "If true, include the object(s) that have not been realized yet. Such object(s) have a non-empty initializer list.")
+	cmd.Flags().Bool(IncludeUninitializedFlag, false, `If true, the kubectl command applies to uninitialized objects. If explicitly set to false, this flag overrides other flags that make the kubectl commands apply to uninitialized objects, e.g., "--all". Objects with empty metadata.initializers are regarded as initialized.`)
 }
 
 func AddPodRunningTimeoutFlag(cmd *cobra.Command, defaultTimeout time.Duration) {
@@ -839,4 +840,28 @@ func ManualStrip(file []byte) []byte {
 		}
 	}
 	return stripped
+}
+
+// GetExplicitIncludeUninitialized will reassign includeUninitialized if the flag IncludeUninitializedFlag is explicitly set
+func GetExplicitIncludeUninitialized(cmd *cobra.Command, includeUninitialized *bool) {
+	if cmd.Flags().Changed(IncludeUninitializedFlag) {
+		*includeUninitialized = GetFlagBool(cmd, IncludeUninitializedFlag)
+	}
+}
+
+// GetIncludeUninitialized gets --include-uninitialized flag value
+func GetIncludeUninitialized(cmd *cobra.Command, all bool, selector string) bool {
+	var includeUninitialized bool
+	if all {
+		// include the uninitialized objects by default
+		// unless explicitly set --include-uninitialized=false
+		includeUninitialized = true
+	}
+	if selector != "" {
+		// does not include the uninitialized objects by default
+		// unless explicitly set --include-uninitialized=true
+		includeUninitialized = false
+	}
+	GetExplicitIncludeUninitialized(cmd, &includeUninitialized)
+	return includeUninitialized
 }
