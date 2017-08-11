@@ -126,6 +126,7 @@ func NewCmdGet(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comman
 		ArgAliases: argAliases,
 	}
 	cmdutil.AddPrinterFlags(cmd)
+	cmdutil.AddIncludeUninitializedFlag(cmd)
 	cmd.Flags().StringP("selector", "l", "", "Selector (label query) to filter on, supports '=', '==', and '!='.")
 	cmd.Flags().BoolP("watch", "w", false, "After listing/getting the requested object, watch for changes.")
 	cmd.Flags().Bool("watch-only", false, "Watch for changes to the requested object(s), without listing/getting first.")
@@ -168,6 +169,7 @@ func RunGet(f cmdutil.Factory, out, errOut io.Writer, cmd *cobra.Command, args [
 	selector := cmdutil.GetFlagString(cmd, "selector")
 	allNamespaces := cmdutil.GetFlagBool(cmd, "all-namespaces")
 	showKind := cmdutil.GetFlagBool(cmd, "show-kind")
+	showAll := cmdutil.GetFlagBool(cmd, "show-all")
 	builder, err := f.NewUnstructuredBuilder(true)
 	if err != nil {
 		return err
@@ -195,7 +197,7 @@ func RunGet(f cmdutil.Factory, out, errOut io.Writer, cmd *cobra.Command, args [
 	}
 
 	export := cmdutil.GetFlagBool(cmd, "export")
-	includeUninitialized := cmdutil.GetFlagBool(cmd, "include-uninitialized")
+	includeUninitialized := cmdutil.GetIncludeUninitialized(cmd, showAll, "")
 
 	filterFuncs := f.DefaultResourceFilterFunc()
 	filterOpts := f.DefaultResourceFilterOptions(cmd, allNamespaces)

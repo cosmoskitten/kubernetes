@@ -118,7 +118,7 @@ func NewCmdApply(baseName string, f cmdutil.Factory, out, errOut io.Writer) *cob
 	cmdutil.AddFilenameOptionFlags(cmd, &options.FilenameOptions, usage)
 	cmd.MarkFlagRequired("filename")
 	cmd.Flags().Bool("overwrite", true, "Automatically resolve conflicts between the modified and live configuration by using values from the modified configuration")
-	cmd.Flags().BoolVar(&options.Prune, "prune", false, "Automatically delete resource objects that do not appear in the configs and are created by either apply or create --save-config. Should be used with either -l or --all.")
+	cmd.Flags().BoolVar(&options.Prune, "prune", false, "Automatically delete resource objects (include the uninitialized objects by default, unless user explicitly set --include-uninitialized=false) that do not appear in the configs and are created by either apply or create --save-config. Should be used with either -l or --all.")
 	cmd.Flags().BoolVar(&options.Cascade, "cascade", true, "Only relevant during a prune or a force apply. If true, cascade the deletion of the resources managed by pruned or deleted resources (e.g. Pods created by a ReplicationController).")
 	cmd.Flags().IntVar(&options.GracePeriod, "grace-period", -1, "Only relevant during a prune or a force apply. Period of time in seconds given to pruned or deleted resources to terminate gracefully. Ignored if negative.")
 	cmd.Flags().BoolVar(&options.Force, "force", false, fmt.Sprintf("Delete and re-create the specified resource, when PATCH encounters conflict and has retried for %d times.", maxPatchRetry))
@@ -131,6 +131,7 @@ func NewCmdApply(baseName string, f cmdutil.Factory, out, errOut io.Writer) *cob
 	cmdutil.AddPrinterFlags(cmd)
 	cmdutil.AddRecordFlag(cmd)
 	cmdutil.AddInclude3rdPartyFlags(cmd)
+	cmdutil.AddIncludeUninitializedFlag(cmd)
 
 	// apply subcommands
 	cmd.AddCommand(NewCmdApplyViewLastApplied(f, out, errOut))
@@ -214,12 +215,21 @@ func RunApply(f cmdutil.Factory, cmd *cobra.Command, out, errOut io.Writer, opti
 		return err
 	}
 
+	var includeUninitialized bool
+	if options.Prune {
+		// include the uninitialized objects by default
+		// unless explicitly set --include-uninitialized=false
+		includeUninitialized = true
+	}
+	cmdutil.GetExplicitIncludeUninitialized(cmd, &includeUninitialized)
+
 	r := builder.
 		Schema(schema).
 		ContinueOnError().
 		NamespaceParam(cmdNamespace).DefaultNamespace().
 		FilenameParam(enforceNamespace, &options.FilenameOptions).
 		SelectorParam(options.Selector).
+		IncludeUninitialized(includeUninitialized).
 		Flatten().
 		Do()
 	err = r.Err()

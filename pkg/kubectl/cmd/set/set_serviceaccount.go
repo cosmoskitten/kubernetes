@@ -99,6 +99,7 @@ func NewCmdServiceAccount(f cmdutil.Factory, out, err io.Writer) *cobra.Command 
 	cmd.Flags().BoolVar(&saConfig.local, "local", false, "If true, set image will NOT contact api-server but run locally.")
 	cmdutil.AddRecordFlag(cmd)
 	cmdutil.AddDryRunFlag(cmd)
+	cmdutil.AddIncludeUninitializedFlag(cmd)
 	return cmd
 }
 
@@ -124,9 +125,12 @@ func (saConfig *serviceAccountConfig) Complete(f cmdutil.Factory, cmd *cobra.Com
 	}
 	saConfig.serviceAccountName = args[len(args)-1]
 	resources := args[:len(args)-1]
+	includeUninitialized := cmdutil.GetIncludeUninitialized(cmd, saConfig.all, "")
+	cmdutil.GetExplicitIncludeUninitialized(cmd, &includeUninitialized)
 	builder := f.NewBuilder(!saConfig.local).ContinueOnError().
 		NamespaceParam(cmdNamespace).DefaultNamespace().
 		FilenameParam(enforceNamespace, &saConfig.fileNameOptions).
+		IncludeUninitialized(includeUninitialized).
 		Flatten()
 	if !saConfig.local {
 		builder.ResourceTypeOrNameArgs(saConfig.all, resources...).

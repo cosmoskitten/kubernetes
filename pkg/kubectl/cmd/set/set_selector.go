@@ -96,6 +96,7 @@ func NewCmdSelector(f cmdutil.Factory, out io.Writer) *cobra.Command {
 	cmdutil.AddFilenameOptionFlags(cmd, &options.fileOptions, usage)
 	cmdutil.AddDryRunFlag(cmd)
 	cmdutil.AddRecordFlag(cmd)
+	cmdutil.AddIncludeUninitializedFlag(cmd)
 
 	return cmd
 }
@@ -121,10 +122,12 @@ func (o *SelectorOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args [
 		return err
 	}
 
+	includeUninitialized := cmdutil.GetIncludeUninitialized(cmd, o.all, "")
 	o.builder = f.NewBuilder(!o.local).
 		ContinueOnError().
 		NamespaceParam(cmdNamespace).DefaultNamespace().
 		FilenameParam(enforceNamespace, &o.fileOptions).
+		IncludeUninitialized(includeUninitialized).
 		Flatten()
 
 	if !o.local {

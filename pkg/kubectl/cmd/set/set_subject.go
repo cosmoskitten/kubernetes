@@ -105,6 +105,7 @@ func NewCmdSubject(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Co
 	cmd.Flags().StringArrayVar(&options.Users, "user", []string{}, "Usernames to bind to the role")
 	cmd.Flags().StringArrayVar(&options.Groups, "group", []string{}, "Groups to bind to the role")
 	cmd.Flags().StringArrayVar(&options.ServiceAccounts, "serviceaccount", []string{}, "Service accounts to bind to the role")
+	cmdutil.AddIncludeUninitializedFlag(cmd)
 	return cmd
 }
 
@@ -123,10 +124,12 @@ func (o *SubjectOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args []
 		return err
 	}
 
+	includeUninitialized := cmdutil.GetIncludeUninitialized(cmd, o.All, o.Selector)
 	builder := f.NewBuilder(!o.Local).
 		ContinueOnError().
 		NamespaceParam(cmdNamespace).DefaultNamespace().
 		FilenameParam(enforceNamespace, &o.FilenameOptions).
+		IncludeUninitialized(includeUninitialized).
 		Flatten()
 
 	if !o.Local {

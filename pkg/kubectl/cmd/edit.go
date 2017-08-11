@@ -93,7 +93,7 @@ func NewCmdEdit(f cmdutil.Factory, out, errOut io.Writer) *cobra.Command {
 		Example: fmt.Sprintf(editExample),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.ChangeCause = f.Command(cmd, false)
-			if err := options.Complete(f, out, errOut, args); err != nil {
+			if err := options.Complete(f, out, errOut, args, cmd); err != nil {
 				cmdutil.CheckErr(err)
 			}
 			if err := options.Run(); err != nil {
