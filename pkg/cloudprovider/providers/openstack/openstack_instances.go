@@ -146,6 +146,9 @@ func (os *OpenStack) InstanceID() (string, error) {
 	if len(os.localInstanceID) == 0 {
 		id, err := readInstanceID()
 		if err != nil {
+			if err == ErrNotFound {
+				return "", cloudprovider.InstanceNotFound
+			}
 			return "", err
 		}
 		os.localInstanceID = id
