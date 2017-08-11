@@ -110,6 +110,7 @@ func NewCmdImage(f cmdutil.Factory, out, err io.Writer) *cobra.Command {
 	cmd.Flags().BoolVar(&options.Local, "local", false, "If true, set image will NOT contact api-server but run locally.")
 	cmdutil.AddRecordFlag(cmd)
 	cmdutil.AddDryRunFlag(cmd)
+	cmdutil.AddIncludeUninitializedFlag(cmd)
 	return cmd
 }
 
@@ -137,10 +138,26 @@ func (o *ImageOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args []st
 		return err
 	}
 
+	var includeUninitialized bool
+	if o.All {
+		// include the uninitialized objects by default
+		// unless explicitly set --include-uninitialized=false
+		includeUninitialized = true
+	}
+	if o.Selector != "" {
+		// does not include the uninitialized objects by default
+		// unless explicitly set --include-uninitialized=true
+		includeUninitialized = false
+	}
+	if cmd.Flags().Changed("include-uninitialized") {
+		includeUninitialized = cmdutil.GetFlagBool(cmd, "include-uninitialized")
+	}
+
 	builder := f.NewBuilder(!o.Local).
 		ContinueOnError().
 		NamespaceParam(cmdNamespace).DefaultNamespace().
 		FilenameParam(enforceNamespace, &o.FilenameOptions).
+		IncludeUninitializedParam(includeUninitialized).
 		Flatten()
 	if !o.Local {
 		builder = builder.

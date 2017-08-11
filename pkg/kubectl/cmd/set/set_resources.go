@@ -120,6 +120,7 @@ func NewCmdResources(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.
 	cmd.Flags().BoolVar(&options.Local, "local", false, "If true, set resources will NOT contact api-server but run locally.")
 	cmdutil.AddDryRunFlag(cmd)
 	cmdutil.AddRecordFlag(cmd)
+	cmdutil.AddIncludeUninitializedFlag(cmd)
 	cmd.Flags().StringVar(&options.Limits, "limits", options.Limits, "The resource requirement requests for this container.  For example, 'cpu=100m,memory=256Mi'.  Note that server side components may assign requests depending on the server configuration, such as limit ranges.")
 	cmd.Flags().StringVar(&options.Requests, "requests", options.Requests, "The resource requirement requests for this container.  For example, 'cpu=100m,memory=256Mi'.  Note that server side components may assign requests depending on the server configuration, such as limit ranges.")
 	return cmd
@@ -141,11 +142,26 @@ func (o *ResourcesOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args 
 		return err
 	}
 
+	var includeUninitialized bool
+	if o.All {
+		// include the uninitialized objects by default
+		// unless explicitly set --include-uninitialized=false
+		includeUninitialized = true
+	}
+	if o.Selector != "" {
+		// does not include the uninitialized objects by default
+		// unless explicitly set --include-uninitialized=true
+		includeUninitialized = false
+	}
+	if cmd.Flags().Changed("include-uninitialized") {
+		includeUninitialized = cmdutil.GetFlagBool(cmd, "include-uninitialized")
+	}
+
 	builder := f.NewBuilder(!o.Local).
 		ContinueOnError().
 		NamespaceParam(cmdNamespace).DefaultNamespace().
-		//FilenameParam(enforceNamespace, o.Filenames...).
 		FilenameParam(enforceNamespace, &o.FilenameOptions).
+		IncludeUninitializedParam(includeUninitialized).
 		Flatten()
 
 	if !o.Local {
