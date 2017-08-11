@@ -118,6 +118,8 @@ func (t CmdTool) args(path string) []string {
 
 	if t.IsShell {
 		last := args[len(args)-1]
+		// if use shell to execute, for example: `bash -c "command_string"`
+		// 'command_string' should be one united part, so we do a concat here
 		args[len(args)-1] = fmt.Sprintf("%s %q", last, path)
 	} else {
 		args = append(t.Args, path)
@@ -148,18 +150,18 @@ func (t CmdTool) Launch(paths []string) error {
 	if err := (term.TTY{In: os.Stdin, TryDev: true}).Safe(cmd.Run); err != nil {
 		if err, ok := err.(*exec.Error); ok {
 			if err.Err == exec.ErrNotFound {
-				return fmt.Errorf("unable to launch the %s %q", t.Name, strings.Join(cmdPrefix, " "))
+				return fmt.Errorf("unable to launch the %s %q, %v", t.Name, strings.Join(cmdPrefix, " "), err)
 			}
 		}
 
-		//diff command will return 1 when compare different
+		// The diff command returns 1 when there is a difference between the files.
 		if t.Name == "diff" {
 			if _, ok := err.(*exec.ExitError); ok {
 				return nil
 			}
 		}
 
-		return fmt.Errorf("unknown error with the %s %q", t.Name, strings.Join(cmdPrefix, " "))
+		return fmt.Errorf("error running %v %v: %v", t.Name, cmdPrefix, err)
 	}
 	return nil
 }
