@@ -652,6 +652,14 @@ func (u *UnstructuredList) SetSelfLink(selfLink string) {
 	u.setNestedField(selfLink, "metadata", "selfLink")
 }
 
+func (u *UnstructuredList) GetContinue() string {
+	return getNestedString(u.Object, "metadata", "continue")
+}
+
+func (u *UnstructuredList) SetContinue(c string) {
+	u.setNestedField(c, "metadata", "continue")
+}
+
 func (u *UnstructuredList) SetGroupVersionKind(gvk schema.GroupVersionKind) {
 	u.SetAPIVersion(gvk.GroupVersion().String())
 	u.SetKind(gvk.Kind)
