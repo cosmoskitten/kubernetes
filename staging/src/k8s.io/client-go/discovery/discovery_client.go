@@ -373,7 +373,7 @@ func (d *DiscoveryClient) SwaggerSchema(version schema.GroupVersion) (*swagger.A
 
 // OpenAPISchema fetches the open api schema using a rest client and parses the proto.
 func (d *DiscoveryClient) OpenAPISchema() (*openapi_v2.Document, error) {
-	data, err := d.restClient.Get().AbsPath("/swagger-2.0.0.pb-v1").Do().Raw()
+	data, err := d.restClient.Get().SetHeader("Cache-control", "max-stale=0").AbsPath("/swagger-2.0.0.pb-v1").Do().Raw()
 	if err != nil {
 		return nil, err
 	}

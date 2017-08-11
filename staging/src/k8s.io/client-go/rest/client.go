@@ -244,7 +244,9 @@ func (c *RESTClient) Patch(pt types.PatchType) *Request {
 
 // Get begins a GET request. Short for c.Verb("GET").
 func (c *RESTClient) Get() *Request {
-	return c.Verb("GET")
+	// Default cache-control to "no-store, no-cache" to make sure we
+	// don't store sensitive information.
+	return c.Verb("GET").SetHeader("Cache-control", "no-store, no-cache")
 }
 
 // Delete begins a DELETE request. Short for c.Verb("DELETE").

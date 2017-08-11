@@ -234,6 +234,67 @@ func TestCacheRoundTripper(t *testing.T) {
 	req := &http.Request{
 		Method: http.MethodGet,
 		URL:    &url.URL{Host: "localhost"},
+		Header: make(http.Header),
+	}
+	req.Header.Set("Cache-control", "max-stale: 0")
+	rt.Response = &http.Response{
+		Header:     http.Header{"ETag": []string{`"123456"`}},
+		Body:       ioutil.NopCloser(bytes.NewReader([]byte("Content"))),
+		StatusCode: http.StatusOK,
+	}
+	resp, err := cache.RoundTrip(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	content, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(content) != "Content" {
+		t.Errorf(`Expected Body to be "Content", got %q`, string(content))
+	}
+
+	// Second call, returns cached response
+	req = &http.Request{
+		Method: http.MethodGet,
+		URL:    &url.URL{Host: "localhost"},
+		Header: make(http.Header),
+	}
+	req.Header.Set("Cache-control", "max-stale: 0")
+	rt.Response = &http.Response{
+		StatusCode: http.StatusNotModified,
+		Body:       ioutil.NopCloser(bytes.NewReader([]byte("Other Content"))),
+	}
+
+	resp, err = cache.RoundTrip(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Read body and make sure we have the initial content
+	content, err = ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(content) != "Content" {
+		t.Errorf("Invalid content read from cache %q", string(content))
+	}
+}
+
+func TestCacheRoundTripperDefaultToNoStore(t *testing.T) {
+	rt := &testRoundTripper{}
+	cacheDir, err := ioutil.TempDir("", "cache-rt")
+	defer os.RemoveAll(cacheDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cache := NewCacheRoundTripper(cacheDir, rt)
+
+	// First call, caches the response
+	req := &http.Request{
+		Method: http.MethodGet,
+		URL:    &url.URL{Host: "localhost"},
 	}
 	rt.Response = &http.Response{
 		Header:     http.Header{"ETag": []string{`"123456"`}},
@@ -258,22 +319,34 @@ func TestCacheRoundTripper(t *testing.T) {
 		URL:    &url.URL{Host: "localhost"},
 	}
 	rt.Response = &http.Response{
-		StatusCode: http.StatusNotModified,
-		Body:       ioutil.NopCloser(bytes.NewReader([]byte("Other Content"))),
+		Header:     http.Header{"ETag": []string{`"654321"`}},
+		Body:       ioutil.NopCloser(bytes.NewReader([]byte("New Content"))),
+		StatusCode: http.StatusOK,
 	}
 
 	resp, err = cache.RoundTrip(req)
 	if err != nil {
 		t.Fatal(err)
 	}
+	if rt.Request.Header.Get("If-None-Match") != "" {
+		t.Error("Request has cached previous response, but shouldn't have")
+	}
 
-	// Read body and make sure we have the initial content
+	// Read body and make sure we have the new content
 	content, err = ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(content) != "Content" {
+	if string(content) != "New Content" {
 		t.Errorf("Invalid content read from cache %q", string(content))
+	}
+
+	// Verify that the cache doesn't have the key
+	// NOTE: This is assuming that the cache key IS
+	// `req.URL.String()`, which actually depends on httpcache
+	// implementation.
+	if _, ok := cache.rt.Cache.Get(req.URL.String()); ok {
+		t.Errorf("Key was found in cache.")
 	}
 }

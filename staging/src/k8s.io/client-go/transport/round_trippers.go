@@ -93,15 +93,40 @@ type authProxyRoundTripper struct {
 	rt http.RoundTripper
 }
 
+// defaultNoStoreRoundTripper is a round-tripper that sets the default
+// Cache-control to "no-store, no-cache" if no value has been set. This
+// will prevent us from caching zealously.
+type defaultNoStoreRoundTripper struct {
+	rt *httpcache.Transport
+}
+
+func (t *defaultNoStoreRoundTripper) RoundTrip(req *http.Request) (resp *http.Response, err error) {
+	cacheControl := req.Header.Get("Cache-control")
+
+	// t.rt shouldn't cache if CacheControl is set to no-store, or
+	// no-cache, but let's be extra careful.
+	if strings.Contains(cacheControl, "no-store") ||
+		strings.Contains(cacheControl, "no-cache") ||
+		cacheControl == "" {
+		// Bypass cache layer.
+		return t.rt.Transport.RoundTrip(req)
+	}
+	return t.rt.RoundTrip(req)
+}
+
+func (t *defaultNoStoreRoundTripper) WrappedRoundTripper() http.RoundTripper {
+	return t.rt.Transport
+}
+
 // NewCacheRoundTripper creates a roundtripper that reads the ETag on
 // response headers and send the If-None-Match header on subsequent
 // corresponding requests.
-func NewCacheRoundTripper(cacheDir string, rt http.RoundTripper) http.RoundTripper {
+func NewCacheRoundTripper(cacheDir string, rt http.RoundTripper) *defaultNoStoreRoundTripper {
 	d := diskv.New(diskv.Options{BasePath: cacheDir})
 	t := httpcache.NewTransport(diskcache.NewWithDiskv(d))
 	t.Transport = rt
 
-	return t
+	return &defaultNoStoreRoundTripper{rt: t}
 }
 
 // NewAuthProxyRoundTripper provides a roundtripper which will add auth proxy fields to requests for
