@@ -25,8 +25,7 @@ import (
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// ListOptions is the query options to a standard REST list call, and has future support for
-// watch calls.
+// ListOptions is the query options to a standard REST list call.
 type ListOptions struct {
 	metav1.TypeMeta
 
@@ -48,6 +47,9 @@ type ListOptions struct {
 	ResourceVersion string
 	// Timeout for the list/watch call.
 	TimeoutSeconds *int64
+
+	Limit    int64
+	Continue string
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
