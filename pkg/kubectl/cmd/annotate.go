@@ -190,10 +190,12 @@ func (o AnnotateOptions) RunAnnotate(f cmdutil.Factory, cmd *cobra.Command) erro
 		return err
 	}
 
+	includeUninitialized := cmdutil.GetFlagBool(cmd, "include-uninitialized")
 	b := builder.
 		ContinueOnError().
 		NamespaceParam(namespace).DefaultNamespace().
 		FilenameParam(enforceNamespace, &o.FilenameOptions).
+		IncludeUninitializedParam(includeUninitialized).
 		Flatten()
 
 	if !o.local {

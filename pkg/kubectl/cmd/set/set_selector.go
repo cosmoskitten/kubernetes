@@ -121,10 +121,12 @@ func (o *SelectorOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args [
 		return err
 	}
 
+	includeUninitialized := cmdutil.GetFlagBool(cmd, "include-uninitialized")
 	o.builder = f.NewBuilder(!o.local).
 		ContinueOnError().
 		NamespaceParam(cmdNamespace).DefaultNamespace().
 		FilenameParam(enforceNamespace, &o.fileOptions).
+		IncludeUninitializedParam(includeUninitialized).
 		Flatten()
 
 	if !o.local {

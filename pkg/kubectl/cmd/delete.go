@@ -133,7 +133,7 @@ func NewCmdDelete(f cmdutil.Factory, out, errOut io.Writer) *cobra.Command {
 		Example: delete_example,
 		Run: func(cmd *cobra.Command, args []string) {
 			cmdutil.CheckErr(cmdutil.ValidateOutputArgs(cmd))
-			if err := options.Complete(f, out, errOut, args); err != nil {
+			if err := options.Complete(f, out, errOut, args, cmd); err != nil {
 				cmdutil.CheckErr(err)
 			}
 			if err := options.Validate(cmd); err != nil {
@@ -162,10 +162,20 @@ func NewCmdDelete(f cmdutil.Factory, out, errOut io.Writer) *cobra.Command {
 	return cmd
 }
 
-func (o *DeleteOptions) Complete(f cmdutil.Factory, out, errOut io.Writer, args []string) error {
+func (o *DeleteOptions) Complete(f cmdutil.Factory, out, errOut io.Writer, args []string, cmd *cobra.Command) error {
 	cmdNamespace, enforceNamespace, err := f.DefaultNamespace()
 	if err != nil {
 		return err
+	}
+
+	var includeUninitialized bool
+	if o.DeleteAll {
+		// include the uninitialized objects by default
+		// unless explicitly set --include-uninitialized=false
+		includeUninitialized = true
+	}
+	if cmd.Flags().Changed("include-uninitialized") {
+		includeUninitialized = cmdutil.GetFlagBool(cmd, "include-uninitialized")
 	}
 
 	// Set up client based support.
@@ -185,6 +195,7 @@ func (o *DeleteOptions) Complete(f cmdutil.Factory, out, errOut io.Writer, args 
 		NamespaceParam(cmdNamespace).DefaultNamespace().
 		FilenameParam(enforceNamespace, &o.FilenameOptions).
 		SelectorParam(o.Selector).
+		IncludeUninitializedParam(includeUninitialized).
 		SelectAllParam(o.DeleteAll).
 		ResourceTypeOrNameArgs(false, args...).RequireObject(false).
 		Flatten().
