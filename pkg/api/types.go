@@ -3755,6 +3755,10 @@ type ResourceQuotaSpec struct {
 	// If not specified, the quota matches all objects.
 	// +optional
 	Scopes []ResourceQuotaScope
+	// If specified, indicates this ResourceQuota applies to to that priority class
+	// If not specified, this ResourceQuota applies to all priority classes.
+	// +optional
+	PriorityClassName string
 }
 
 // ResourceQuotaStatus defines the enforced hard limits and observed use

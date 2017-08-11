@@ -4289,6 +4289,10 @@ type ResourceQuotaSpec struct {
 	// If not specified, the quota matches all objects.
 	// +optional
 	Scopes []ResourceQuotaScope `json:"scopes,omitempty" protobuf:"bytes,2,rep,name=scopes,casttype=ResourceQuotaScope"`
+	// If specified, indicates this ResourceQuota applies to to that priority class
+	// If not specified, this ResourceQuota applies to all priority classes.
+	// +optional
+	PriorityClassName string `json:"priorityClassName,omitempty" protobuf:"bytes,24,opt,name=priorityClassName"`
 }
 
 // ResourceQuotaStatus defines the enforced hard limits and observed use.
