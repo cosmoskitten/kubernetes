@@ -141,11 +141,26 @@ func (o *ResourcesOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args 
 		return err
 	}
 
+	var includeUninitialized bool
+	if o.All {
+		// include the uninitialized objects by default
+		// unless explicitly set --include-uninitialized=false
+		includeUninitialized = true
+	}
+	if o.Selector != "" {
+		// does not include the uninitialized objects by default
+		// unless explicitly set --include-uninitialized=true
+		includeUninitialized = false
+	}
+	if cmd.Flags().Changed("include-uninitialized") {
+		includeUninitialized = cmdutil.GetFlagBool(cmd, "include-uninitialized")
+	}
+
 	builder := f.NewBuilder(!o.Local).
 		ContinueOnError().
 		NamespaceParam(cmdNamespace).DefaultNamespace().
-		//FilenameParam(enforceNamespace, o.Filenames...).
 		FilenameParam(enforceNamespace, &o.FilenameOptions).
+		IncludeUninitializedParam(includeUninitialized).
 		Flatten()
 
 	if !o.Local {

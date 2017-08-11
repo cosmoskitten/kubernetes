@@ -120,11 +120,14 @@ func RunDescribe(f cmdutil.Factory, out, cmdErr io.Writer, cmd *cobra.Command, a
 		return err
 	}
 
+	// include the uninitialized objects by default
+	includeUninitialized := true
 	r := builder.
 		ContinueOnError().
 		NamespaceParam(cmdNamespace).DefaultNamespace().AllNamespaces(allNamespaces).
 		FilenameParam(enforceNamespace, options).
 		SelectorParam(selector).
+		IncludeUninitializedParam(includeUninitialized).
 		ResourceTypeOrNameArgs(true, args...).
 		Flatten().
 		Do()

@@ -168,6 +168,7 @@ func RunGet(f cmdutil.Factory, out, errOut io.Writer, cmd *cobra.Command, args [
 	selector := cmdutil.GetFlagString(cmd, "selector")
 	allNamespaces := cmdutil.GetFlagBool(cmd, "all-namespaces")
 	showKind := cmdutil.GetFlagBool(cmd, "show-kind")
+	showAll := cmdutil.GetFlagBool(cmd, "show-all")
 	builder, err := f.NewUnstructuredBuilder(true)
 	if err != nil {
 		return err
@@ -195,7 +196,16 @@ func RunGet(f cmdutil.Factory, out, errOut io.Writer, cmd *cobra.Command, args [
 	}
 
 	export := cmdutil.GetFlagBool(cmd, "export")
-	includeUninitialized := cmdutil.GetFlagBool(cmd, "include-uninitialized")
+
+	var includeUninitialized bool
+	if showAll {
+		// include the uninitialized objects by default
+		// unless explicitly set --include-uninitialized=false
+		includeUninitialized = true
+	}
+	if cmd.Flags().Changed("include-uninitialized") {
+		includeUninitialized = cmdutil.GetFlagBool(cmd, "include-uninitialized")
+	}
 
 	filterFuncs := f.DefaultResourceFilterFunc()
 	filterOpts := f.DefaultResourceFilterOptions(cmd, allNamespaces)
