@@ -412,6 +412,14 @@ func (os *OpenStack) DiskIsAttached(instanceID, volumeID string) (bool, error) {
 		return false, err
 	}
 
+	if instanceID == "" {
+		if volume.AttachedServerId != "" {
+			return true, nil
+		} else {
+			return false, nil
+		}
+	}
+
 	return instanceID == volume.AttachedServerId, nil
 }
 
