@@ -1,7 +1,5 @@
 package(default_visibility = ["//visibility:public"])
 
-licenses(["notice"])
-
 load(
     "@io_bazel_rules_go//go:def.bzl",
     "go_library",
@@ -40,7 +38,6 @@ go_library(
         "util.go",
         "volume_util.go",
     ],
-    tags = ["automanaged"],
     deps = [
         "//federation/apis/federation/v1beta1:go_default_library",
         "//pkg/api:go_default_library",
@@ -48,7 +45,6 @@ go_library(
         "//pkg/api/v1/helper:go_default_library",
         "//pkg/api/v1/node:go_default_library",
         "//pkg/api/v1/pod:go_default_library",
-        "//pkg/api/v1/service:go_default_library",
         "//pkg/apis/batch:go_default_library",
         "//pkg/apis/componentconfig:go_default_library",
         "//pkg/apis/extensions:go_default_library",
@@ -68,6 +64,7 @@ go_library(
         "//pkg/kubelet/metrics:go_default_library",
         "//pkg/kubelet/sysctl:go_default_library",
         "//pkg/kubelet/util/format:go_default_library",
+        "//pkg/kubemark:go_default_library",
         "//pkg/master/ports:go_default_library",
         "//pkg/ssh:go_default_library",
         "//pkg/util/file:go_default_library",
@@ -129,6 +126,7 @@ go_library(
         "//vendor/k8s.io/apimachinery/pkg/watch:go_default_library",
         "//vendor/k8s.io/client-go/discovery:go_default_library",
         "//vendor/k8s.io/client-go/dynamic:go_default_library",
+        "//vendor/k8s.io/client-go/informers:go_default_library",
         "//vendor/k8s.io/client-go/kubernetes:go_default_library",
         "//vendor/k8s.io/client-go/kubernetes/typed/authorization/v1beta1:go_default_library",
         "//vendor/k8s.io/client-go/kubernetes/typed/core/v1:go_default_library",

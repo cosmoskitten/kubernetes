@@ -36,7 +36,7 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/pkg/cloudprovider/providers/azure"
 	gcecloud "k8s.io/kubernetes/pkg/cloudprovider/providers/gce"
-	"k8s.io/kubernetes/pkg/util/logs"
+	"k8s.io/kubernetes/pkg/kubectl/util/logs"
 	commontest "k8s.io/kubernetes/test/e2e/common"
 	"k8s.io/kubernetes/test/e2e/framework"
 	"k8s.io/kubernetes/test/e2e/framework/ginkgowrapper"
@@ -78,10 +78,19 @@ func setupProviderConfig() error {
 			managedZones = []string{zone}
 		}
 
-		gceCloud, err := gcecloud.CreateGCECloud(framework.TestContext.CloudConfig.ApiEndpoint,
-			framework.TestContext.CloudConfig.ProjectID,
-			region, zone, managedZones, "" /* networkUrl */, "" /* subnetworkUrl */, nil, /* nodeTags */
-			"" /* nodeInstancePerfix */, nil /* tokenSource */, false /* useMetadataServer */)
+		gceCloud, err := gcecloud.CreateGCECloud(&gcecloud.CloudConfig{
+			ApiEndpoint:        framework.TestContext.CloudConfig.ApiEndpoint,
+			ProjectID:          framework.TestContext.CloudConfig.ProjectID,
+			Region:             region,
+			Zone:               zone,
+			ManagedZones:       managedZones,
+			NetworkURL:         "",
+			SubnetworkURL:      "",
+			NodeTags:           nil,
+			NodeInstancePrefix: "",
+			TokenSource:        nil,
+			UseMetadataServer:  false})
+
 		if err != nil {
 			return fmt.Errorf("Error building GCE/GKE provider: %v", err)
 		}
@@ -299,8 +308,8 @@ func gatherTestSuiteMetrics() error {
 		return fmt.Errorf("error loading client: %v", err)
 	}
 
-	// Grab metrics for apiserver, scheduler, controller-manager, kubelet (for non-kubemark case).
-	grabber, err := metrics.NewMetricsGrabber(c, !framework.ProviderIs("kubemark"), true, true, true)
+	// Grab metrics for apiserver, scheduler, controller-manager, kubelet (for non-kubemark case) and cluster autoscaler (optionally).
+	grabber, err := metrics.NewMetricsGrabber(c, nil, !framework.ProviderIs("kubemark"), true, true, true, framework.TestContext.IncludeClusterAutoscalerMetrics)
 	if err != nil {
 		return fmt.Errorf("failed to create MetricsGrabber: %v", err)
 	}
