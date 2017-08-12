@@ -21,6 +21,8 @@ import (
 	"sync"
 
 	"k8s.io/apimachinery/pkg/util/sets"
+
+	"github.com/golang/glog"
 )
 
 // ThreadSafeStore is an interface that allows concurrent access to a storage backend.
@@ -241,7 +243,7 @@ func (c *threadSafeMap) AddIndexers(newIndexers Indexers) error {
 
 // updateIndices modifies the objects location in the managed indexes, if this is an update, you must provide an oldObj
 // updateIndices must be called from a function that already has a lock on the cache
-func (c *threadSafeMap) updateIndices(oldObj interface{}, newObj interface{}, key string) error {
+func (c *threadSafeMap) updateIndices(oldObj interface{}, newObj interface{}, key string) {
 	// if we got an old object, we need to remove it before we add it again
 	if oldObj != nil {
 		c.deleteFromIndices(oldObj, key)
@@ -249,7 +251,8 @@ func (c *threadSafeMap) updateIndices(oldObj interface{}, newObj interface{}, ke
 	for name, indexFunc := range c.indexers {
 		indexValues, err := indexFunc(newObj)
 		if err != nil {
-			return err
+			glog.Warningf("Unable to calculate an index entry for key %q on index %q: %v", key, name, err)
+			continue // Must iterate all indexers to update all indexes
 		}
 		index := c.indices[name]
 		if index == nil {
@@ -266,16 +269,16 @@ func (c *threadSafeMap) updateIndices(oldObj interface{}, newObj interface{}, ke
 			set.Insert(key)
 		}
 	}
-	return nil
 }
 
 // deleteFromIndices removes the object from each of the managed indexes
 // it is intended to be called from a function that already has a lock on the cache
-func (c *threadSafeMap) deleteFromIndices(obj interface{}, key string) error {
+func (c *threadSafeMap) deleteFromIndices(obj interface{}, key string) {
 	for name, indexFunc := range c.indexers {
 		indexValues, err := indexFunc(obj)
 		if err != nil {
-			return err
+			glog.Warningf("Unable to calculate an index entry for key %q on index %q: %v", key, name, err)
+			continue // Must iterate all indexers to cleanup all indexes
 		}
 
 		index := c.indices[name]
@@ -289,7 +292,6 @@ func (c *threadSafeMap) deleteFromIndices(obj interface{}, key string) error {
 			}
 		}
 	}
-	return nil
 }
 
 func (c *threadSafeMap) Resync() error {
