@@ -451,7 +451,16 @@ func (f *ring0Factory) Resumer(info *resource.Info) ([]byte, error) {
 }
 
 func (f *ring0Factory) DefaultNamespace() (string, bool, error) {
-	return f.clientConfig.Namespace()
+	namespace, boolRetval, err := f.clientConfig.Namespace()
+
+	namespacesPrefix := "namespaces/"
+	if strings.HasPrefix(namespace, namespacesPrefix) {
+		namespace = strings.TrimPrefix(namespace, namespacesPrefix)
+	}
+	if len(namespace) <= 0 {
+		return namespace, boolRetval, fmt.Errorf("namespace cannot be empty")
+	}
+	return namespace, boolRetval, err
 }
 
 const (

@@ -70,6 +70,28 @@ func TestNewFactoryNoFlagBindings(t *testing.T) {
 	}
 }
 
+func TestNewFactoryWithNamespacePrefix(t *testing.T) {
+	overrides := &clientcmd.ConfigOverrides{}
+	overrides.Context.Namespace = "namespaces/test"
+	clientConfig := clientcmd.NewDefaultClientConfig(*clientcmdapi.NewConfig(), overrides)
+	factory := NewFactory(clientConfig)
+
+	if ns, _, _ := factory.DefaultNamespace(); ns != "test" {
+		t.Fatalf("namespaces/ prefix not stripped off namespace, expected 'test', got '%s'", ns)
+	}
+}
+
+func TestNewFactoryWithNamespacePrefixAndNoNamespace(t *testing.T) {
+	overrides := &clientcmd.ConfigOverrides{}
+	overrides.Context.Namespace = "namespaces/"
+	clientConfig := clientcmd.NewDefaultClientConfig(*clientcmdapi.NewConfig(), overrides)
+	factory := NewFactory(clientConfig)
+
+	ns, _, err := factory.DefaultNamespace(); if err == nil {
+		t.Fatalf("expected error when namespace is specified only as 'namespaces/', got namespace '%s'", ns)
+	}
+}
+
 func TestPortsForObject(t *testing.T) {
 	f := NewFactory(nil)
 
