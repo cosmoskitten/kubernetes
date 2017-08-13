@@ -156,6 +156,10 @@ func RegisterCustomFitPredicate(policy schedulerapi.PredicatePolicy) string {
 		// checking to see if a pre-defined predicate is requested
 		glog.V(2).Infof("Predicate type %s already registered, reusing.", policy.Name)
 		return policy.Name
+	} else if predicateFactory, ok = mandatoryFitPredicateMap[policy.Name]; ok {
+		// checking to see if a pre-defined predicate is requested
+		glog.V(2).Infof("Predicate type %s already registered, reusing.", policy.Name)
+		return policy.Name
 	}
 
 	if predicateFactory == nil {
@@ -170,6 +174,10 @@ func IsFitPredicateRegistered(name string) bool {
 	schedulerFactoryMutex.Lock()
 	defer schedulerFactoryMutex.Unlock()
 	_, ok := fitPredicateMap[name]
+	if !ok {
+		_, found := mandatoryFitPredicateMap[name]
+		return found
+	}
 	return ok
 }
 
@@ -316,7 +324,11 @@ func getFitPredicateFunctions(names sets.String, args PluginFactoryArgs) (map[st
 	for _, name := range names.List() {
 		factory, ok := fitPredicateMap[name]
 		if !ok {
-			return nil, fmt.Errorf("Invalid predicate name %q specified - no corresponding function found", name)
+			// If the predicate is mandatory, return error.
+			if _, found := mandatoryFitPredicateMap[name]; !found {
+				return nil, fmt.Errorf("Invalid predicate name %q specified - no corresponding function found", name)
+			}
+			continue
 		}
 		predicates[name] = factory(args)
 	}
@@ -436,11 +448,16 @@ func ListRegisteredFitPredicates() []string {
 	schedulerFactoryMutex.Lock()
 	defer schedulerFactoryMutex.Unlock()
 
-	names := []string{}
+	names := sets.NewString()
+
 	for name := range fitPredicateMap {
-		names = append(names, name)
+		names.Insert(name)
 	}
-	return names
+	for name := range mandatoryFitPredicateMap {
+		names.Insert(name)
+	}
+
+	return names.List()
 }
 
 func ListRegisteredPriorityFunctions() []string {

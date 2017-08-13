@@ -21,7 +21,9 @@ import (
 	"strconv"
 
 	"k8s.io/apimachinery/pkg/util/sets"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/kubernetes/pkg/cloudprovider/providers/aws"
+	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/plugin/pkg/scheduler/algorithm"
 	"k8s.io/kubernetes/plugin/pkg/scheduler/algorithm/predicates"
 	"k8s.io/kubernetes/plugin/pkg/scheduler/algorithm/priorities"
@@ -116,7 +118,7 @@ func init() {
 }
 
 func defaultPredicates() sets.String {
-	return sets.NewString(
+	predSet := sets.NewString(
 		// Fit is determined by volume zone requirements.
 		factory.RegisterFitPredicateFactory(
 			"NoVolumeZoneConflict",
@@ -167,7 +169,13 @@ func defaultPredicates() sets.String {
 		factory.RegisterFitPredicate("GeneralPredicates", predicates.GeneralPredicates),
 
 		// Fit is determined based on whether a pod can tolerate all of the node's taints
-		factory.RegisterFitPredicate("PodToleratesNodeTaints", predicates.PodToleratesNodeTaints),
+		func() string {
+			// If taint node by condition is enabled, toleration predicate is mandatory.
+			if utilfeature.DefaultFeatureGate.Enabled(features.TaintNodesByCondition) {
+				return factory.RegisterMandatoryFitPredicate("PodToleratesNodeTaints", predicates.PodToleratesNodeTaints)
+			}
+			return factory.RegisterFitPredicate("PodToleratesNodeTaints", predicates.PodToleratesNodeTaints)
+		}(),
 
 		// Fit is determined by node memory pressure condition.
 		factory.RegisterFitPredicate("CheckNodeMemoryPressure", predicates.CheckNodeMemoryPressurePredicate),
@@ -176,8 +184,13 @@ func defaultPredicates() sets.String {
 		factory.RegisterFitPredicate("CheckNodeDiskPressure", predicates.CheckNodeDiskPressurePredicate),
 
 		// Fit is determied by node condtions: not ready, network unavailable and out of disk.
-		factory.RegisterFitPredicate("CheckNodeCondition", predicates.CheckNodeConditionPredicate),
-		factory.RegisterMandatoryFitPredicate("CheckNodeCondition", predicates.CheckNodeConditionPredicate),
+		func() string {
+			// If taint node by condition is enabled, do not register node condition predicate.
+			if utilfeature.DefaultFeatureGate.Enabled(features.TaintNodesByCondition) {
+				return ""
+			}
+			return factory.RegisterMandatoryFitPredicate("CheckNodeCondition", predicates.CheckNodeConditionPredicate)
+		}(),
 
 		// Fit is determined by volume zone requirements.
 		factory.RegisterFitPredicateFactory(
@@ -187,6 +200,10 @@ func defaultPredicates() sets.String {
 			},
 		),
 	)
+
+	predSet.Delete("")
+
+	return predSet
 }
 
 func defaultPriorities() sets.String {
