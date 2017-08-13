@@ -269,6 +269,32 @@ func TestGetObjects(t *testing.T) {
 	}
 }
 
+func TestGetObjectsWithPrefixedNamespace(t *testing.T) {
+	pods, _, _ := testData()
+
+	f, tf, codec, _ := cmdtesting.NewAPIFactory()
+	tf.Printer = &testPrinter{}
+	tf.UnstructuredClient = &fake.RESTClient{
+		APIRegistry:          api.Registry,
+		NegotiatedSerializer: unstructuredSerializer,
+		Resp:                 &http.Response{StatusCode: 200, Header: defaultHeader(), Body: objBody(codec, &pods.Items[0])},
+	}
+	tf.Namespace = "namespaces/test"
+	buf := bytes.NewBuffer([]byte{})
+	errBuf := bytes.NewBuffer([]byte{})
+
+	cmd := NewCmdGet(f, buf, errBuf)
+	cmd.SetOutput(buf)
+	cmd.Run(cmd, []string{"pods", "foo"})
+
+	expected := []runtime.Object{&pods.Items[0]}
+	verifyObjects(t, expected, tf.Printer.(*testPrinter).Objects)
+
+	if len(buf.String()) == 0 {
+		t.Error("unexpected empty output")
+	}
+}
+
 func TestGetObjectsFiltered(t *testing.T) {
 	initTestErrorHandler(t)
 

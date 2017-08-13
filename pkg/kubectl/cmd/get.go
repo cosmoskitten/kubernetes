@@ -178,6 +178,10 @@ func RunGet(f cmdutil.Factory, out, errOut io.Writer, cmd *cobra.Command, args [
 		return err
 	}
 
+	if strings.HasPrefix(cmdNamespace, "namespaces/") {
+		cmdNamespace = strings.Split(cmdNamespace, "/")[1]
+	}
+
 	if allNamespaces {
 		enforceNamespace = false
 	}
