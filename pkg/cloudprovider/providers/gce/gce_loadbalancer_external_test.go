@@ -74,12 +74,14 @@ func TestVerifyRequestedIP(t *testing.T) {
 			expectErr: false,
 		},
 	} {
-		s := NewFakeCloudAddressService()
-		if tc.ipList != nil {
-			s.SetRegionalAddresses(region, tc.ipList)
-		}
-		isUserOwnedIP, err := verifyUserRequestedIP(s, region, tc.requestedIP, tc.fwdRuleIP, lbRef)
-		assert.Equal(t, tc.expectErr, err != nil, fmt.Sprintf("%s: %v", desc, err))
-		assert.Equal(t, tc.expectUserOwned, isUserOwnedIP, desc)
+		t.Run(desc, func(t *testing.T) {
+			s := NewFakeCloudAddressService()
+			if tc.ipList != nil {
+				s.SetRegionalAddresses(region, tc.ipList)
+			}
+			isUserOwnedIP, err := verifyUserRequestedIP(s, region, tc.requestedIP, tc.fwdRuleIP, lbRef)
+			assert.Equal(t, tc.expectErr, err != nil, fmt.Sprintf("err: %v", err))
+			assert.Equal(t, tc.expectUserOwned, isUserOwnedIP, desc)
+		})
 	}
 }
