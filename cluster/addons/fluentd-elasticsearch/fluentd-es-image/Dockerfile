@@ -19,7 +19,7 @@
 # Note that fluentd is run with root permssion to allow access to
 # log files with root only access under /var/log/containers/*
 
-FROM gcr.io/google-containers/debian-base-amd64:0.1
+FROM gcr.io/google-containers/debian-base-amd64:0.2
 
 COPY Gemfile /Gemfile
 
