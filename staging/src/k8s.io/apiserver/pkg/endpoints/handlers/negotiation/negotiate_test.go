@@ -19,7 +19,10 @@ package negotiation
 import (
 	"net/http"
 	"net/url"
+	"sort"
 	"testing"
+
+	"bitbucket.org/ww/goautoneg"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -181,7 +184,36 @@ func TestNegotiate(t *testing.T) {
 			serializer:  fakeCodec,
 			params:      map[string]string{"pretty": "1"},
 		},
-
+		{
+			req: &http.Request{
+				Header: http.Header{
+					"Accept": []string{"application/json;as=BOGUS;v=v1alpha1;g=meta.k8s.io, application/json"},
+				},
+			},
+			contentType: "application/json",
+			ns:          &fakeNegotiater{serializer: fakeCodec, types: []string{"application/json"}},
+			serializer:  fakeCodec,
+		},
+		{
+			req: &http.Request{
+				Header: http.Header{
+					"Accept": []string{"application/BOGUS, application/json"},
+				},
+			},
+			contentType: "application/json",
+			ns:          &fakeNegotiater{serializer: fakeCodec, types: []string{"application/json"}},
+			serializer:  fakeCodec,
+		},
+		{
+			req: &http.Request{
+				Header: http.Header{
+					"Accept": []string{"application/json, text/plain;as=PartialObjectMetadataList;v=v1alpha1;g=meta.k8s.io"},
+				},
+			},
+			contentType: "text/plain",
+			ns:          &fakeNegotiater{serializer: fakeCodec, types: []string{"application/json", "text/plain"}},
+			serializer:  fakeCodec,
+		},
 		// "application" is not a valid media type, so the server will reject the response during
 		// negotiation (the server, in error, has specified an invalid media type)
 		{
@@ -242,4 +274,98 @@ func TestNegotiate(t *testing.T) {
 			t.Errorf("%d: unexpected %s %s", i, test.serializer, s.Serializer)
 		}
 	}
+}
+
+func TestReverseSortCandidateMediaTypeSlice(t *testing.T) {
+	testCases := []struct {
+		unsorted candidateMediaTypeSlice
+		expected candidateMediaTypeSlice
+	}{
+		{
+			unsorted: candidateMediaTypeSlice{
+				candidateMediaType{length: 1, clauses: goautoneg.Accept{Type: "text1"}},
+				candidateMediaType{length: 2, clauses: goautoneg.Accept{Type: "text2"}},
+				candidateMediaType{length: 3, clauses: goautoneg.Accept{Type: "text3"}},
+			},
+			expected: candidateMediaTypeSlice{
+				candidateMediaType{length: 3, clauses: goautoneg.Accept{Type: "text3"}},
+				candidateMediaType{length: 2, clauses: goautoneg.Accept{Type: "text2"}},
+				candidateMediaType{length: 1, clauses: goautoneg.Accept{Type: "text1"}},
+			},
+		},
+		{
+			unsorted: candidateMediaTypeSlice{
+				candidateMediaType{length: 1, clauses: goautoneg.Accept{Type: "text1"}},
+				candidateMediaType{length: 2, clauses: goautoneg.Accept{Type: "text2-1"}},
+				candidateMediaType{length: 2, clauses: goautoneg.Accept{Type: "text2-2"}},
+				candidateMediaType{length: 3, clauses: goautoneg.Accept{Type: "text3"}},
+			},
+			expected: candidateMediaTypeSlice{
+				candidateMediaType{length: 3, clauses: goautoneg.Accept{Type: "text3"}},
+				candidateMediaType{length: 2, clauses: goautoneg.Accept{Type: "text2-1"}},
+				candidateMediaType{length: 2, clauses: goautoneg.Accept{Type: "text2-2"}},
+				candidateMediaType{length: 1, clauses: goautoneg.Accept{Type: "text1"}},
+			},
+		},
+	}
+	for _, test := range testCases {
+		sort.Stable(sort.Reverse(test.unsorted))
+		for i := 0; i < len(test.unsorted); i++ {
+			if test.unsorted[i].clauses.Type != test.expected[i].clauses.Type {
+				t.Errorf("sort error")
+			}
+		}
+	}
+}
+
+func TestMostSpecificMediaType(t *testing.T) {
+	testCases := []struct {
+		Candidate      goautoneg.Accept
+		ExpectedLength int
+	}{
+		{
+			Candidate:      goautoneg.Accept{Type: "text", SubType: "plain", Q: 0, Params: map[string]string{"format": "flowed"}},
+			ExpectedLength: 21,
+		},
+		{
+			Candidate:      goautoneg.Accept{Type: "text", SubType: "plain", Q: 0, Params: nil},
+			ExpectedLength: 9,
+		},
+		{
+			Candidate:      goautoneg.Accept{Type: "text", SubType: "*", Q: 0, Params: nil},
+			ExpectedLength: 5,
+		},
+		{
+			Candidate:      goautoneg.Accept{Type: "1234567890", SubType: "123", Q: 0, Params: nil},
+			ExpectedLength: 13,
+		},
+		{
+			Candidate:      goautoneg.Accept{Type: "123456789", SubType: "123", Q: 0, Params: nil},
+			ExpectedLength: 12,
+		},
+		{
+			Candidate:      goautoneg.Accept{Type: "12345678", SubType: "123", Q: 0, Params: nil},
+			ExpectedLength: 11,
+		},
+		{
+			Candidate:      goautoneg.Accept{Type: "1234567", SubType: "123", Q: 0, Params: nil},
+			ExpectedLength: 10,
+		},
+		{
+			Candidate:      goautoneg.Accept{Type: "123456", SubType: "123", Q: 0, Params: nil},
+			ExpectedLength: 9,
+		},
+		{
+			Candidate:      goautoneg.Accept{Type: "12345", SubType: "123", Q: 0, Params: nil},
+			ExpectedLength: 8,
+		},
+	}
+
+	for _, test := range testCases {
+		l := mediaTypeLength(test.Candidate)
+		if test.ExpectedLength != l {
+			t.Errorf("error: expected length %d, got %d", test.ExpectedLength, l)
+		}
+	}
+
 }
