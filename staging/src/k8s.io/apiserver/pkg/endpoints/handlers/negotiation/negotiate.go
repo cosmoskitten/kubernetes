@@ -263,6 +263,33 @@ func acceptMediaTypeOptions(params map[string]string, accepts *AcceptedMediaType
 	return options, true
 }
 
+type candidateMediaType struct {
+	accepted *AcceptedMediaType
+	clauses  goautoneg.Accept
+}
+
+func mostSpecificMediaType(l []candidateMediaType) (candidateMediaType, int) {
+	max := struct {
+		len   int
+		index int
+	}{
+		len:   0,
+		index: 0,
+	}
+	for i, val := range l {
+		paramLen := 0
+		for k, v := range val.clauses.Params {
+			paramLen = paramLen + len(k) + len(v)
+		}
+		specLen := len(val.clauses.Type) + len(val.clauses.SubType) + paramLen
+		if specLen > max.len {
+			max.len = specLen
+			max.index = i
+		}
+	}
+	return l[max.index], max.index
+}
+
 // NegotiateMediaTypeOptions returns the most appropriate content type given the accept header and
 // a list of alternatives along with the accepted media type parameters.
 func NegotiateMediaTypeOptions(header string, accepted []AcceptedMediaType, endpoint EndpointRestrictions) (MediaTypeOptions, bool) {
@@ -273,6 +300,7 @@ func NegotiateMediaTypeOptions(header string, accepted []AcceptedMediaType, endp
 	}
 
 	clauses := goautoneg.ParseAccept(header)
+	candidateMediaTypeList := []candidateMediaType{}
 	for _, clause := range clauses {
 		for i := range accepted {
 			accepts := &accepted[i]
@@ -280,12 +308,21 @@ func NegotiateMediaTypeOptions(header string, accepted []AcceptedMediaType, endp
 			case clause.Type == accepts.Type && clause.SubType == accepts.SubType,
 				clause.Type == accepts.Type && clause.SubType == "*",
 				clause.Type == "*" && clause.SubType == "*":
-				// TODO: should we prefer the first type with no unrecognized options?  Do we need to ignore unrecognized
-				// parameters.
-				return acceptMediaTypeOptions(clause.Params, accepts, endpoint)
+				candidateMediaTypeList = append(candidateMediaTypeList, candidateMediaType{accepted: accepts, clauses: clause})
 			}
 		}
 	}
+
+	//run until element all removed
+	for len(candidateMediaTypeList) > 0 {
+		val, index := mostSpecificMediaType(candidateMediaTypeList)
+		if retVal, ret := acceptMediaTypeOptions(val.clauses.Params, val.accepted, endpoint); ret == true {
+			return retVal, true
+		}
+		//remove element
+		candidateMediaTypeList = append(candidateMediaTypeList[:index], candidateMediaTypeList[index+1:]...)
+	}
+
 	return MediaTypeOptions{}, false
 }
 
