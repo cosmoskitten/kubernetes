@@ -17,6 +17,7 @@ limitations under the License.
 package clientcmd
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"reflect"
@@ -525,4 +526,44 @@ func TestNamespaceOverride(t *testing.T) {
 	}
 
 	matchStringArg("foo", ns, t)
+}
+
+func TestNamespacePrefixStrip(t *testing.T) {
+	config := &DirectClientConfig{
+		overrides: &ConfigOverrides{
+			Context: clientcmdapi.Context{
+				Namespace: "namespaces/foo",
+			},
+		},
+	}
+
+	ns, overridden, err := config.Namespace()
+
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+
+	if !overridden {
+		t.Errorf("Expected overridden = true")
+	}
+
+	matchStringArg("foo", ns, t)
+}
+
+func TestNamespacePrefixStripWithNothingAfterPrefix(t *testing.T) {
+	config := &DirectClientConfig{
+		overrides: &ConfigOverrides{
+			Context: clientcmdapi.Context{
+				Namespace: "namespaces/",
+			},
+		},
+	}
+
+	_, _, err := config.Namespace()
+
+	if err == nil {
+		t.Errorf("Unexpected lack of error")
+	}
+
+	matchStringArg("invalid configuration: no configuration has been provided", fmt.Sprintf("%v", err), t)
 }
