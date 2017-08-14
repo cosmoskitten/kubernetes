@@ -85,6 +85,7 @@ readonly KUBE_CONTAINER_RSYNC_PORT=8730
 #
 # $1 - server architecture
 kube::build::get_docker_wrapped_binaries() {
+  ## TODO(dixudx): update the tag to v8 when the image get pushed
   debian_iptables_version=v7
   ### If you change any of these lists, please also update DOCKERIZED_BINARIES
   ### in build/BUILD.
