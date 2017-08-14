@@ -24,6 +24,7 @@ import (
 
 	"bitbucket.org/ww/goautoneg"
 
+	metav1alpha1 "k8s.io/apimachinery/pkg/apis/meta/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
@@ -154,9 +155,21 @@ var DefaultEndpointRestrictions = emptyEndpointRestrictions{}
 
 type emptyEndpointRestrictions struct{}
 
-func (emptyEndpointRestrictions) AllowsConversion(schema.GroupVersionKind) bool { return false }
-func (emptyEndpointRestrictions) AllowsServerVersion(string) bool               { return false }
-func (emptyEndpointRestrictions) AllowsStreamSchema(s string) bool              { return s == "watch" }
+func (emptyEndpointRestrictions) AllowsConversion(gvk schema.GroupVersionKind) bool {
+	if gvk.GroupVersion() == metav1alpha1.SchemeGroupVersion {
+		switch gvk.Kind {
+		case "Table", "PartialObjectMetadata", "PartialObjectMetadataList":
+			// TODO: should delineate between lists and non-list endpoints
+			return true
+		default:
+			return false
+		}
+	}
+	return false
+}
+
+func (emptyEndpointRestrictions) AllowsServerVersion(string) bool  { return false }
+func (emptyEndpointRestrictions) AllowsStreamSchema(s string) bool { return s == "watch" }
 
 // AcceptedMediaType contains information about a valid media type that the
 // server can serialize.
@@ -263,6 +276,27 @@ func acceptMediaTypeOptions(params map[string]string, accepts *AcceptedMediaType
 	return options, true
 }
 
+type candidateMediaType struct {
+	accepted *AcceptedMediaType
+	clauses  goautoneg.Accept
+}
+
+func mostSpecificMediaType(l []candidateMediaType) int {
+	var maxLen, maxIndex int
+	for i, val := range l {
+		paramLen := 0
+		for k, v := range val.clauses.Params {
+			paramLen = paramLen + len(k) + len(v)
+		}
+		specLen := len(val.clauses.Type) + len(val.clauses.SubType) + paramLen
+		if specLen > maxLen {
+			maxLen = specLen
+			maxIndex = i
+		}
+	}
+	return maxIndex
+}
+
 // NegotiateMediaTypeOptions returns the most appropriate content type given the accept header and
 // a list of alternatives along with the accepted media type parameters.
 func NegotiateMediaTypeOptions(header string, accepted []AcceptedMediaType, endpoint EndpointRestrictions) (MediaTypeOptions, bool) {
@@ -272,6 +306,7 @@ func NegotiateMediaTypeOptions(header string, accepted []AcceptedMediaType, endp
 		}, true
 	}
 
+	var candidates []candidateMediaType
 	clauses := goautoneg.ParseAccept(header)
 	for _, clause := range clauses {
 		for i := range accepted {
@@ -280,12 +315,22 @@ func NegotiateMediaTypeOptions(header string, accepted []AcceptedMediaType, endp
 			case clause.Type == accepts.Type && clause.SubType == accepts.SubType,
 				clause.Type == accepts.Type && clause.SubType == "*",
 				clause.Type == "*" && clause.SubType == "*":
-				// TODO: should we prefer the first type with no unrecognized options?  Do we need to ignore unrecognized
-				// parameters.
-				return acceptMediaTypeOptions(clause.Params, accepts, endpoint)
+				candidates = append(candidates, candidateMediaType{accepted: accepts, clauses: clause})
 			}
 		}
 	}
+
+	// run until elements are removed
+	for len(candidates) > 0 {
+		index := mostSpecificMediaType(candidates)
+		if retVal, ret := acceptMediaTypeOptions(candidates[index].clauses.Params, candidates[index].accepted, endpoint); ret {
+			return retVal, true
+		}
+		// swap index with the last item, then truncate the array by one.
+		candidates[index], candidates[len(candidates)-1] = candidates[len(candidates)-1], candidates[index]
+		candidates = candidates[:len(candidates)-1]
+	}
+
 	return MediaTypeOptions{}, false
 }
 

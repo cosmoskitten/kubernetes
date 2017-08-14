@@ -19,7 +19,10 @@ package negotiation
 import (
 	"net/http"
 	"net/url"
+	"reflect"
 	"testing"
+
+	"bitbucket.org/ww/goautoneg"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -181,7 +184,36 @@ func TestNegotiate(t *testing.T) {
 			serializer:  fakeCodec,
 			params:      map[string]string{"pretty": "1"},
 		},
-
+		{
+			req: &http.Request{
+				Header: http.Header{
+					"Accept": []string{"application/json;as=BOGUS;v=v1alpha1;g=meta.k8s.io, application/json"},
+				},
+			},
+			contentType: "application/json",
+			ns:          &fakeNegotiater{serializer: fakeCodec, types: []string{"application/json"}},
+			serializer:  fakeCodec,
+		},
+		{
+			req: &http.Request{
+				Header: http.Header{
+					"Accept": []string{"application/BOGUS, application/json"},
+				},
+			},
+			contentType: "application/json",
+			ns:          &fakeNegotiater{serializer: fakeCodec, types: []string{"application/json"}},
+			serializer:  fakeCodec,
+		},
+		{
+			req: &http.Request{
+				Header: http.Header{
+					"Accept": []string{"application/json, text/plain;as=PartialObjectMetadataList;v=v1alpha1;g=meta.k8s.io"},
+				},
+			},
+			contentType: "text/plain",
+			ns:          &fakeNegotiater{serializer: fakeCodec, types: []string{"application/json", "text/plain"}},
+			serializer:  fakeCodec,
+		},
 		// "application" is not a valid media type, so the server will reject the response during
 		// negotiation (the server, in error, has specified an invalid media type)
 		{
@@ -242,4 +274,47 @@ func TestNegotiate(t *testing.T) {
 			t.Errorf("%d: unexpected %s %s", i, test.serializer, s.Serializer)
 		}
 	}
+}
+
+func TestMostSpecificMediaType(t *testing.T) {
+	testCases := []struct {
+		CandidateList     []candidateMediaType
+		ExpectedCandidate candidateMediaType
+	}{
+		{
+			CandidateList: []candidateMediaType{
+				{accepted: nil, clauses: goautoneg.Accept{Type: "text", SubType: "plain", Q: 0, Params: map[string]string{"format": "flowed"}}},
+				{accepted: nil, clauses: goautoneg.Accept{Type: "text", SubType: "plain", Q: 0, Params: nil}},
+				{accepted: nil, clauses: goautoneg.Accept{Type: "text", SubType: "*", Q: 0, Params: nil}},
+				{accepted: nil, clauses: goautoneg.Accept{Type: "*", SubType: "*", Q: 0, Params: nil}},
+			},
+			ExpectedCandidate: candidateMediaType{accepted: nil, clauses: goautoneg.Accept{Type: "text", SubType: "plain", Q: 0, Params: map[string]string{"format": "flowed"}}},
+		},
+		{
+			CandidateList: []candidateMediaType{
+				{accepted: nil, clauses: goautoneg.Accept{Type: "application", SubType: "json", Q: 0, Params: map[string]string{"test1": "test2"}}},
+				{accepted: nil, clauses: goautoneg.Accept{Type: "application", SubType: "json", Q: 0, Params: map[string]string{"test2": "test1"}}},
+			},
+			ExpectedCandidate: candidateMediaType{accepted: nil, clauses: goautoneg.Accept{Type: "application", SubType: "json", Q: 0, Params: map[string]string{"test1": "test2"}}},
+		},
+		{
+			CandidateList: []candidateMediaType{
+				{accepted: nil, clauses: goautoneg.Accept{Type: "1234567890", SubType: "123", Q: 0, Params: nil}},
+				{accepted: nil, clauses: goautoneg.Accept{Type: "123456789", SubType: "123", Q: 0, Params: nil}},
+				{accepted: nil, clauses: goautoneg.Accept{Type: "12345678", SubType: "123", Q: 0, Params: nil}},
+				{accepted: nil, clauses: goautoneg.Accept{Type: "1234567", SubType: "123", Q: 0, Params: nil}},
+				{accepted: nil, clauses: goautoneg.Accept{Type: "123456", SubType: "123", Q: 0, Params: nil}},
+				{accepted: nil, clauses: goautoneg.Accept{Type: "12345", SubType: "123", Q: 0, Params: nil}},
+			},
+			ExpectedCandidate: candidateMediaType{accepted: nil, clauses: goautoneg.Accept{Type: "1234567890", SubType: "123", Q: 0, Params: nil}},
+		},
+	}
+
+	for _, test := range testCases {
+		i := mostSpecificMediaType(test.CandidateList)
+		if !reflect.DeepEqual(test.CandidateList[i], test.ExpectedCandidate) {
+			t.Errorf("error: expected %v, got %v", test.ExpectedCandidate, test.CandidateList[i])
+		}
+	}
+
 }
