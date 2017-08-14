@@ -26,6 +26,7 @@ import (
 	"mime"
 	"net/http"
 	"net/url"
+	"os"
 	"path"
 	"reflect"
 	"strconv"
@@ -714,6 +715,11 @@ func (r *Request) Do() Result {
 
 	var result Result
 	err := r.request(func(req *http.Request, resp *http.Response) {
+		rest_log := fmt.Sprintf("Request: %s %s\n", req.Method, req.URL)
+		f, _ := os.OpenFile("/tmp/rest-op.log", os.O_APPEND|os.O_WRONLY, os.ModeAppend)
+		f.WriteString(rest_log)
+		f.Close()
+
 		result = r.transformResponse(resp, req)
 	})
 	if err != nil {
