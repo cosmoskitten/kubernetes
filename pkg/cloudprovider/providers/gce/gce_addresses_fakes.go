@@ -46,17 +46,17 @@ func NewFakeCloudAddressService() *FakeCloudAddressService {
 	}
 }
 
+// SetRegionalAddresses populates the addresses of the region with the name to
+// IP map.
 func (cas *FakeCloudAddressService) SetRegionalAddresses(region string, ipList map[string]string) {
 	cas.Lock()
 	defer cas.Unlock()
-	if _, exists := cas.addrsByRegionAndName[region]; !exists {
-		cas.addrsByRegionAndName[region] = make(map[string]*compute.Address)
-	}
+	// Reset addresses in the region.
+	cas.addrsByRegionAndName[region] = make(map[string]*compute.Address)
 
-	regionStore := cas.addrsByRegionAndName[region]
 	for name, ip := range ipList {
 		cas.reservedAddrs[ip] = true
-		regionStore[name] = &compute.Address{Name: name, Address: ip}
+		cas.addrsByRegionAndName[region][name] = &compute.Address{Name: name, Address: ip}
 	}
 }
 

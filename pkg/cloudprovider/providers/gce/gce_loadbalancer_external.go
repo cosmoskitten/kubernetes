@@ -423,7 +423,7 @@ func (gce *GCECloud) DeleteExternalTargetPoolAndChecks(name, region, clusterID s
 }
 
 // verifyUserRequestedIP checks the user-provided IP  to see whether it can be
-// used for the LB.  It also returns whetherthe IP is considered owned by the
+// used for the LB.  It also returns whether the IP is considered owned by the
 // user.
 func verifyUserRequestedIP(s CloudAddressService, region, requestedIP, fwdRuleIP, lbRef string) (ownedByUser bool, err error) {
 	if requestedIP == "" {

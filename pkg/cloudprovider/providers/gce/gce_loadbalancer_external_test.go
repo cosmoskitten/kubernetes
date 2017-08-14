@@ -46,6 +46,7 @@ func TestEnsureStaticIP(t *testing.T) {
 func TestVerifyRequestedIP(t *testing.T) {
 	region := "test-region"
 	lbRef := "test-lb"
+	s := NewFakeCloudAddressService()
 
 	for desc, tc := range map[string]struct {
 		requestedIP     string
@@ -75,10 +76,7 @@ func TestVerifyRequestedIP(t *testing.T) {
 		},
 	} {
 		t.Run(desc, func(t *testing.T) {
-			s := NewFakeCloudAddressService()
-			if tc.ipList != nil {
-				s.SetRegionalAddresses(region, tc.ipList)
-			}
+			s.SetRegionalAddresses(region, tc.ipList)
 			isUserOwnedIP, err := verifyUserRequestedIP(s, region, tc.requestedIP, tc.fwdRuleIP, lbRef)
 			assert.Equal(t, tc.expectErr, err != nil, fmt.Sprintf("err: %v", err))
 			assert.Equal(t, tc.expectUserOwned, isUserOwnedIP, desc)
