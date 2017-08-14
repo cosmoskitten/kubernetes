@@ -27,14 +27,14 @@ const (
 	// // alpha: v1.4
 	// MyFeature() bool
 
-	// owner: tallclair
+	// owner: @tallclair
 	// alpha: v1.5
 	//
 	// StreamingProxyRedirects controls whether the apiserver should intercept (and follow)
 	// redirects from the backend (Kubelet) for streaming requests (exec/attach/port-forward).
 	StreamingProxyRedirects utilfeature.Feature = "StreamingProxyRedirects"
 
-	// owner: tallclair
+	// owner: @tallclair
 	// alpha: v1.7
 	//
 	// AdvancedAuditing enables a much more general API auditing pipeline, which includes support for
@@ -47,6 +47,13 @@ const (
 	//
 	// Enables compression of REST responses (GET and LIST only)
 	APIResponseCompression utilfeature.Feature = "APIResponseCompression"
+
+	// owner: @k82cn
+	// alpha: v1.8
+	//
+	// Taint nodes based on their condition status for 'NetworkUnavailable',
+	// 'MemoryPressure', 'OutOfDisk' and 'DiskPressure'.
+	TaintNodesByCondition utilfeature.Feature = "TaintNodesByCondition"
 )
 
 func init() {
@@ -60,4 +67,5 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	StreamingProxyRedirects: {Default: true, PreRelease: utilfeature.Beta},
 	AdvancedAuditing:        {Default: false, PreRelease: utilfeature.Alpha},
 	APIResponseCompression:  {Default: false, PreRelease: utilfeature.Alpha},
+	TaintNodesByCondition:   {Default: false, PreRelease: utilfeature.Alpha},
 }

@@ -33,6 +33,7 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
+	genericfeatures "k8s.io/apiserver/pkg/features"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	appsinformers "k8s.io/client-go/informers/apps/v1beta1"
 	coreinformers "k8s.io/client-go/informers/core/v1"
@@ -1343,7 +1344,7 @@ func NodeConditionPredicates(nodeInfo *schedulercache.NodeInfo) (bool, []algorit
 	reasons := []algorithm.PredicateFailureReason{}
 
 	// If TaintNodesByCondition feature was enabled, account PodToleratesNodeTaints predicates.
-	if utilfeature.DefaultFeatureGate.Enabled(features.TaintNodesByCondition) {
+	if utilfeature.DefaultFeatureGate.Enabled(genericfeatures.TaintNodesByCondition) {
 		return true, nil
 	}
 

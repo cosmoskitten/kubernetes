@@ -17,6 +17,7 @@ limitations under the License.
 package features
 
 import (
+	apiextensionsfeatures "k8s.io/apiextensions-apiserver/pkg/features"
 	genericfeatures "k8s.io/apiserver/pkg/features"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 )
@@ -43,13 +44,6 @@ const (
 	// owner: @mtaufen
 	// alpha: v1.4
 	DynamicKubeletConfig utilfeature.Feature = "DynamicKubeletConfig"
-
-	// owner: tallclair
-	// alpha: v1.5
-	//
-	// StreamingProxyRedirects controls whether the apiserver should intercept (and follow)
-	// redirects from the backend (Kubelet) for streaming requests (exec/attach/port-forward).
-	StreamingProxyRedirects utilfeature.Feature = genericfeatures.StreamingProxyRedirects
 
 	// owner: @pweil-
 	// alpha: v1.5
@@ -126,13 +120,6 @@ const (
 	//
 	// Enable equivalence class cache for scheduler.
 	EnableEquivalenceClassCache utilfeature.Feature = "EnableEquivalenceClassCache"
-
-	// owner: @k82cn
-	// alpha: v1.8
-	//
-	// Taint nodes based on their condition status for 'NetworkUnavailable',
-	// 'MemoryPressure', 'OutOfDisk' and 'DiskPressure'.
-	TaintNodesByCondition utilfeature.Feature = "TaintNodesByCondition"
 )
 
 func init() {
@@ -161,7 +148,12 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 
 	// inherited features from generic apiserver, relisted here to get a conflict if it is changed
 	// unintentionally on either side:
-	StreamingProxyRedirects:          {Default: true, PreRelease: utilfeature.Beta},
-	genericfeatures.AdvancedAuditing: {Default: false, PreRelease: utilfeature.Alpha},
-	TaintNodesByCondition:            {Default: false, PreRelease: utilfeature.Alpha},
+	genericfeatures.StreamingProxyRedirects: {Default: true, PreRelease: utilfeature.Beta},
+	genericfeatures.AdvancedAuditing:        {Default: false, PreRelease: utilfeature.Alpha},
+	genericfeatures.APIResponseCompression:  {Default: false, PreRelease: utilfeature.Alpha},
+	genericfeatures.TaintNodesByCondition:   {Default: false, PreRelease: utilfeature.Alpha},
+
+	// inherited features from apiextensions-apiserver, relisted here to get a conflict if it is changed
+	// unintentionally on either side:
+	apiextensionsfeatures.CustomResourceValidation: {Default: false, PreRelease: utilfeature.Alpha},
 }
