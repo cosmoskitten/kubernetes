@@ -77,6 +77,13 @@ func (deploymentStrategy) PrepareForUpdate(ctx genericapirequest.Context, obj, o
 	oldDeployment := old.(*extensions.Deployment)
 	newDeployment.Status = oldDeployment.Status
 
+	// update is not allowed to set spec for v1beta2
+	// We assume API version is not v1beta2 if no RequestInfo is found
+	requestInfo, found := genericapirequest.RequestInfoFrom(ctx)
+	if found && requestInfo.APIVersion == "v1beta2" {
+		newDeployment.Spec = oldDeployment.Spec
+	}
+
 	// Spec updates bump the generation so that we can distinguish between
 	// scaling events and template changes, annotation updates bump the generation
 	// because annotations are copied from deployments to their replica sets.

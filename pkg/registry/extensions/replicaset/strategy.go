@@ -72,6 +72,13 @@ func (rsStrategy) PrepareForUpdate(ctx genericapirequest.Context, obj, old runti
 	// update is not allowed to set status
 	newRS.Status = oldRS.Status
 
+	// update is not allowed to set spec for v1beta2
+	// We assume API version is not v1beta2 if no RequestInfo is found
+	requestInfo, found := genericapirequest.RequestInfoFrom(ctx)
+	if found && requestInfo.APIVersion == "v1beta2" {
+		newRS.Spec = oldRS.Spec
+	}
+
 	// Any changes to the spec increment the generation number, any changes to the
 	// status should reflect the generation number of the corresponding object. We push
 	// the burden of managing the status onto the clients because we can't (in general)
