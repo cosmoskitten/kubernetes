@@ -17,9 +17,12 @@ limitations under the License.
 package replicaset
 
 import (
+	"net/http"
+	"reflect"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/apis/extensions"
@@ -139,5 +142,69 @@ func TestReplicaSetStatusStrategy(t *testing.T) {
 	errs := StatusStrategy.ValidateUpdate(ctx, newRS, oldRS)
 	if len(errs) != 0 {
 		t.Errorf("Unexpected error %v", errs)
+	}
+}
+
+func TestSelectorImmutability(t *testing.T) {
+	tests := []struct {
+		method                 string
+		url                    string
+		oldSelectorLabels      map[string]string
+		newSelectorLabels      map[string]string
+		expectedAPIVersion     string
+		expectedSelectorLabels map[string]string
+	}{
+		{"GET", "/api/v1beta2/namespaces", map[string]string{"a": "b"}, map[string]string{"c": "d"}, "v1beta2", map[string]string{"a": "b"}},
+		{"GET", "/api/v1beta1/namespaces", map[string]string{"a": "b"}, map[string]string{"c": "d"}, "v1beta1", map[string]string{"c": "d"}},
+	}
+
+	resolver := newTestRequestInfoResolver()
+
+	for _, test := range tests {
+		req, _ := http.NewRequest(test.method, test.url, nil)
+
+		apiRequestInfo, err := resolver.NewRequestInfo(req)
+		if err != nil {
+			t.Errorf("Unexpected error for url: %s %v", test.url, err)
+		}
+		if !apiRequestInfo.IsResourceRequest {
+			t.Errorf("Expected resource request")
+		}
+		if test.expectedAPIVersion != apiRequestInfo.APIVersion {
+			t.Errorf("Unexpected apiVersion for url: %s, expected: %s, actual: %s", test.url, test.expectedAPIVersion, apiRequestInfo.APIVersion)
+		}
+
+		oldReplicaSet := newReplicaSetWithSelectorLabels(&test.oldSelectorLabels)
+		newReplicaSet := newReplicaSetWithSelectorLabels(&test.newSelectorLabels)
+
+		context := genericapirequest.NewContext()
+		context = genericapirequest.WithRequestInfo(context, apiRequestInfo)
+
+		rsStrategy{}.PrepareForUpdate(context, newReplicaSet, oldReplicaSet)
+
+		if !reflect.DeepEqual(test.expectedSelectorLabels, newReplicaSet.Spec.Selector.MatchLabels) {
+			t.Errorf("Unexpected Spec.Selector, expected: %v, actual: %v", test.expectedSelectorLabels, newReplicaSet.Spec.Selector.MatchLabels)
+		}
+	}
+}
+
+func newTestRequestInfoResolver() *genericapirequest.RequestInfoFactory {
+	return &genericapirequest.RequestInfoFactory{
+		APIPrefixes:          sets.NewString("api"),
+		GrouplessAPIPrefixes: sets.NewString("api"),
+	}
+}
+
+func newReplicaSetWithSelectorLabels(selectorLabels *map[string]string) *extensions.ReplicaSet {
+	return &extensions.ReplicaSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test",
+		},
+		Spec: extensions.ReplicaSetSpec{
+			Selector: &metav1.LabelSelector{
+				MatchLabels:      *selectorLabels,
+				MatchExpressions: []metav1.LabelSelectorRequirement{},
+			},
+		},
 	}
 }

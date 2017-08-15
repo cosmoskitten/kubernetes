@@ -70,6 +70,14 @@ func (daemonSetStrategy) PrepareForUpdate(ctx genericapirequest.Context, obj, ol
 	// update is not allowed to set TemplateGeneration
 	newDaemonSet.Spec.TemplateGeneration = oldDaemonSet.Spec.TemplateGeneration
 
+	// update is not allowed to set Spec.Selector for v1beta2
+	// we assume it is not v1beta2 if no API version is found in RequestInfo
+	// TODO(#50791): after v1beta1 is retired, move selector immutability check to validation codes
+	requestInfo, found := genericapirequest.RequestInfoFrom(ctx)
+	if found && requestInfo.APIVersion == "v1beta2" {
+		newDaemonSet.Spec.Selector = oldDaemonSet.Spec.Selector
+	}
+
 	// Any changes to the spec increment the generation number, any changes to the
 	// status should reflect the generation number of the corresponding object. We push
 	// the burden of managing the status onto the clients because we can't (in general)
