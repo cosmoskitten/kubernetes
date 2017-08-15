@@ -54,11 +54,11 @@ func testLabels() map[string]string {
 }
 
 // newDeployment returns a RollingUpdate Deployment with with a fake container image
-func newDeployment(name, ns string, replicas int32) *v1beta1.Deployment {
+func newDeployment(name, ns string, replicas int32, apiVersion string) *v1beta1.Deployment {
 	return &v1beta1.Deployment{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Deployment",
-			APIVersion: "extensions/v1beta1",
+			APIVersion: apiVersion,
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: ns,

@@ -40,12 +40,12 @@ func testLabels() map[string]string {
 	return map[string]string{"name": "test"}
 }
 
-func newRS(name, namespace string, replicas int) *v1beta1.ReplicaSet {
+func newRS(name, namespace string, replicas int, apiVersion string) *v1beta1.ReplicaSet {
 	replicasCopy := int32(replicas)
 	return &v1beta1.ReplicaSet{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "ReplicaSet",
-			APIVersion: "extensions/v1beta1",
+			APIVersion: apiVersion,
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
@@ -225,7 +225,7 @@ func TestAdoption(t *testing.T) {
 		rsClient := clientSet.Extensions().ReplicaSets(ns.Name)
 		podClient := clientSet.Core().Pods(ns.Name)
 		const rsName = "rs"
-		rs, err := rsClient.Create(newRS(rsName, ns.Name, 1))
+		rs, err := rsClient.Create(newRS(rsName, ns.Name, 1, "extension/v1beta1"))
 		if err != nil {
 			t.Fatalf("Failed to create replica set: %v", err)
 		}
@@ -299,7 +299,7 @@ func TestUpdateSelectorToAdopt(t *testing.T) {
 	defer closeFn()
 	ns := framework.CreateTestingNamespace("rs-update-selector-to-adopt", s, t)
 	defer framework.DeleteTestingNamespace(ns, s, t)
-	rs := newRS("rs", ns.Name, 1)
+	rs := newRS("rs", ns.Name, 1, "extension/v1beta1")
 	// let rs's selector only match pod1
 	rs.Spec.Selector.MatchLabels["uniqueKey"] = "1"
 	rs.Spec.Template.Labels["uniqueKey"] = "1"
@@ -341,7 +341,7 @@ func TestUpdateSelectorToRemoveControllerRef(t *testing.T) {
 	podInformer := informers.Core().V1().Pods().Informer()
 	ns := framework.CreateTestingNamespace("rs-update-selector-to-remove-controllerref", s, t)
 	defer framework.DeleteTestingNamespace(ns, s, t)
-	rs := newRS("rs", ns.Name, 2)
+	rs := newRS("rs", ns.Name, 2, "extension/v1beta1")
 	pod1 := newMatchingPod("pod1", ns.Name)
 	pod1.Labels["uniqueKey"] = "1"
 	pod2 := newMatchingPod("pod2", ns.Name)
@@ -388,7 +388,7 @@ func TestUpdateLabelToRemoveControllerRef(t *testing.T) {
 	defer closeFn()
 	ns := framework.CreateTestingNamespace("rs-update-label-to-remove-controllerref", s, t)
 	defer framework.DeleteTestingNamespace(ns, s, t)
-	rs := newRS("rs", ns.Name, 2)
+	rs := newRS("rs", ns.Name, 2, "extension/v1beta1")
 	pod1 := newMatchingPod("pod1", ns.Name)
 	pod2 := newMatchingPod("pod2", ns.Name)
 	createRSsPods(t, clientSet, []*v1beta1.ReplicaSet{rs}, []*v1.Pod{pod1, pod2}, ns.Name)
@@ -431,7 +431,7 @@ func TestUpdateLabelToBeAdopted(t *testing.T) {
 	defer closeFn()
 	ns := framework.CreateTestingNamespace("rs-update-label-to-be-adopted", s, t)
 	defer framework.DeleteTestingNamespace(ns, s, t)
-	rs := newRS("rs", ns.Name, 1)
+	rs := newRS("rs", ns.Name, 1, "extension/v1beta1")
 	// let rs's selector only matches pod1
 	rs.Spec.Selector.MatchLabels["uniqueKey"] = "1"
 	rs.Spec.Template.Labels["uniqueKey"] = "1"
@@ -460,5 +460,36 @@ func TestUpdateLabelToBeAdopted(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
+	close(stopCh)
+}
+
+// TODO(juntee): add tests for selector immutability when apps/v1beta2 infomers and listers are available
+func TestRSSelectorMutability(t *testing.T) {
+	s, closeFn, rm, informers, clientSet := rmSetup(t)
+	defer closeFn()
+	ns := framework.CreateTestingNamespace("rs-selector-mutability", s, t)
+	defer framework.DeleteTestingNamespace(ns, s, t)
+	rs := newRS("rs", ns.Name, 0, "extension/v1beta1")
+	createRSsPods(t, clientSet, []*v1beta1.ReplicaSet{rs}, []*v1.Pod{}, ns.Name)
+
+	stopCh := make(chan struct{})
+	informers.Start(stopCh)
+	go rm.Run(5, stopCh)
+	waitRSStable(t, clientSet, rs, ns.Name)
+
+	// Change selector - selectors are MUTABLE for extensions/v1beta1 only
+	newRS := rs
+	newSelectorLabels := map[string]string{"changed_name": "changed_test"}
+	newRS.Spec.Selector.MatchLabels = newSelectorLabels
+	newRS.Spec.Template.Labels = newSelectorLabels
+
+	replicaset, err := clientSet.Extensions().ReplicaSets(ns.Name).Update(newRS)
+	if err != nil {
+		t.Fatalf("failed to update deployment %s: %v", replicaset.Name, err)
+	}
+	if !reflect.DeepEqual(replicaset.Spec.Selector.MatchLabels, newSelectorLabels) {
+		t.Errorf("selector should NOT be changed for extensions/v1beta1, expected: %v, got: %v", newSelectorLabels, replicaset.Spec.Selector.MatchLabels)
+	}
+
 	close(stopCh)
 }
