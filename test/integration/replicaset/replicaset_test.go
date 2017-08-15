@@ -149,6 +149,18 @@ func rmSetup(t *testing.T) (*httptest.Server, framework.CloseFunc, *replicaset.R
 	return s, closeFn, rm, informers, clientSet
 }
 
+func rmSimpleSetup(t *testing.T) (*httptest.Server, framework.CloseFunc, clientset.Interface) {
+	masterConfig := framework.NewIntegrationTestMasterConfig()
+	_, s, closeFn := framework.RunAMaster(masterConfig)
+
+	config := restclient.Config{Host: s.URL}
+	clientSet, err := clientset.NewForConfig(&config)
+	if err != nil {
+		t.Fatalf("Error in create clientset: %v", err)
+	}
+	return s, closeFn, clientSet
+}
+
 // wait for the podInformer to observe the pods. Call this function before
 // running the RS controller to prevent the rc manager from creating new pods
 // rather than adopting the existing ones.
@@ -461,4 +473,40 @@ func TestUpdateLabelToBeAdopted(t *testing.T) {
 		t.Fatal(err)
 	}
 	close(stopCh)
+}
+
+// selectors are IMMUTABLE for all API versions except extensions/v1beta1
+func TestRSSelectorImmutability(t *testing.T) {
+	s, closeFn, clientSet := rmSimpleSetup(t)
+	defer closeFn()
+	ns := framework.CreateTestingNamespace("rs-selector-immutability", s, t)
+	defer framework.DeleteTestingNamespace(ns, s, t)
+	rs := newRS("rs", ns.Name, 0)
+	createRSsPods(t, clientSet, []*v1beta1.ReplicaSet{rs}, []*v1.Pod{}, ns.Name)
+
+	// test to ensure extensions/v1beta1 selector is mutable
+	selectorLabels := map[string]string{"changed_name": "changed_test"}
+	rs.Spec.Selector.MatchLabels = selectorLabels
+	rs.Spec.Template.Labels = selectorLabels
+	replicaset, err := clientSet.ExtensionsV1beta1().ReplicaSets(ns.Name).Update(rs)
+	if err != nil {
+		t.Fatalf("failed to update extensions/v1beta1 replicaset %s: %v", replicaset.Name, err)
+	}
+	if !reflect.DeepEqual(replicaset.Spec.Selector.MatchLabels, selectorLabels) {
+		t.Errorf("selector should be changed for extensions/v1beta1, expected: %v, got: %v", selectorLabels, replicaset.Spec.Selector.MatchLabels)
+	}
+
+	// test to ensure apps/v1beta2 selector is immutable
+	rsV1beta2, err := clientSet.AppsV1beta2().ReplicaSets(ns.Name).Get(replicaset.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("failed to get apps/v1beta2 replicaset %s: %v", replicaset.Name, err)
+	}
+
+	replicasetV1beta2, err := clientSet.AppsV1beta2().ReplicaSets(ns.Name).Update(rsV1beta2)
+	if err != nil {
+		t.Fatalf("failed to update apps/v1beta2 replicaset %s: %v", rsV1beta2.Name, err)
+	}
+	if !reflect.DeepEqual(replicasetV1beta2.Spec.Selector.MatchLabels, selectorLabels) {
+		t.Errorf("selector should NOT be changed for apps/v1beta2, expected: %v, got: %v", selectorLabels, replicasetV1beta2.Spec.Selector.MatchLabels)
+	}
 }

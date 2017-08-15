@@ -17,9 +17,11 @@ limitations under the License.
 package deployment
 
 import (
+	"reflect"
 	"testing"
 
 	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	deploymentutil "k8s.io/kubernetes/pkg/controller/deployment/util"
 	"k8s.io/kubernetes/test/integration/framework"
 )
@@ -67,5 +69,62 @@ func TestNewDeployment(t *testing.T) {
 	}
 	if newRS.Annotations[v1.LastAppliedConfigAnnotation] != "" {
 		t.Errorf("expected new ReplicaSet last-applied annotation not copied from Deployment %s", deploy.Name)
+	}
+}
+
+// selectors are IMMUTABLE for all API versions except apps/v1beta1 and extensions/v1beta1
+func TestDeploymentSelectorImmutability(t *testing.T) {
+	s, closeFn, c := dcSimpleSetup(t)
+	defer closeFn()
+	name := "test-deployment-selector-immutability"
+	ns := framework.CreateTestingNamespace(name, s, t)
+	defer framework.DeleteTestingNamespace(ns, s, t)
+
+	tester := &deploymentTester{t: t, c: c, deployment: newDeployment(name, ns.Name, int32(20))}
+	deploymentExtensionsV1beta1, err := c.ExtensionsV1beta1().Deployments(ns.Name).Create(tester.deployment)
+	if err != nil {
+		t.Fatalf("failed to create extensions/v1beta1 deployment %s: %v", tester.deployment.Name, err)
+	}
+
+	// test to ensure extensions/v1beta1 selector is mutable
+	oldSelectorLabels := tester.deployment.Spec.Selector.MatchLabels
+	newSelectorLabels := map[string]string{"changed_name": "changed_test"}
+	deploymentExtensionsV1beta1.Spec.Selector.MatchLabels = newSelectorLabels
+	deploymentExtensionsV1beta1.Spec.Template.Labels = newSelectorLabels
+	updatedDeploymentExtensionsV1beta1, err := c.ExtensionsV1beta1().Deployments(ns.Name).Update(deploymentExtensionsV1beta1)
+	if err != nil {
+		t.Fatalf("failed to update extensions/v1beta1 deployment %s: %v", deploymentExtensionsV1beta1.Name, err)
+	}
+	if !reflect.DeepEqual(updatedDeploymentExtensionsV1beta1.Spec.Selector.MatchLabels, newSelectorLabels) {
+		t.Errorf("selector should be changed for extensions/v1beta1, expected: %v, got: %v", newSelectorLabels, updatedDeploymentExtensionsV1beta1.Spec.Selector.MatchLabels)
+	}
+
+	// test to ensure apps/v1beta1 selector is mutable
+	deploymentAppsV1beta1, err := c.AppsV1beta1().Deployments(ns.Name).Get(updatedDeploymentExtensionsV1beta1.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("failed to get apps/v1beta1 deployment %s: %v", updatedDeploymentExtensionsV1beta1.Name, err)
+	}
+	deploymentAppsV1beta1.Spec.Selector.MatchLabels = oldSelectorLabels
+	deploymentAppsV1beta1.Spec.Template.Labels = oldSelectorLabels
+	updatedDeploymentAppsV1beta1, err := c.AppsV1beta1().Deployments(ns.Name).Update(deploymentAppsV1beta1)
+	if err != nil {
+		t.Fatalf("failed to update apps/v1beta1 deployment %s: %v", deploymentAppsV1beta1.Name, err)
+	}
+	if !reflect.DeepEqual(updatedDeploymentAppsV1beta1.Spec.Selector.MatchLabels, oldSelectorLabels) {
+		t.Errorf("selector should be changed for apps/v1beta1, expected: %v, got: %v", oldSelectorLabels, updatedDeploymentAppsV1beta1.Spec.Selector.MatchLabels)
+	}
+
+	// test to ensure apps/v1beta2 selector is immutable
+	deploymentAppsV1beta2, err := c.AppsV1beta2().Deployments(ns.Name).Get(updatedDeploymentAppsV1beta1.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("failed to get apps/v1beta2 deployment %s: %v", updatedDeploymentAppsV1beta1.Name, err)
+	}
+	deploymentAppsV1beta2.Spec.Selector.MatchLabels = newSelectorLabels
+	updatedDeploymentAppsV1beta2, err := c.AppsV1beta2().Deployments(ns.Name).Update(deploymentAppsV1beta2)
+	if err != nil {
+		t.Fatalf("failed to update apps/v1beta2 deployment %s: %v", deploymentAppsV1beta2.Name, err)
+	}
+	if !reflect.DeepEqual(updatedDeploymentAppsV1beta2.Spec.Selector.MatchLabels, oldSelectorLabels) {
+		t.Errorf("selector should NOT be changed for apps/v1beta2, expected: %v, got: %v", oldSelectorLabels, updatedDeploymentAppsV1beta2.Spec.Selector.MatchLabels)
 	}
 }
