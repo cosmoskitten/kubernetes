@@ -77,6 +77,14 @@ func (deploymentStrategy) PrepareForUpdate(ctx genericapirequest.Context, obj, o
 	oldDeployment := old.(*extensions.Deployment)
 	newDeployment.Status = oldDeployment.Status
 
+	// update is not allowed to set Spec.Selector for v1beta2
+	// we assume it is not v1beta2 if no API group and/or version is found in RequestInfo
+	// TODO(#50791): after v1beta1 is retired, move selector immutability check to validation codes
+	requestInfo, found := genericapirequest.RequestInfoFrom(ctx)
+	if found && requestInfo.APIGroup == "apps" && requestInfo.APIVersion == "v1beta2" {
+		newDeployment.Spec.Selector = oldDeployment.Spec.Selector
+	}
+
 	// Spec updates bump the generation so that we can distinguish between
 	// scaling events and template changes, annotation updates bump the generation
 	// because annotations are copied from deployments to their replica sets.
