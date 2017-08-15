@@ -21,6 +21,10 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	computealpha "google.golang.org/api/compute/v0.alpha"
+	computebeta "google.golang.org/api/compute/v0.beta"
+	computev1 "google.golang.org/api/compute/v1"
 )
 
 func TestExtraKeyInConfig(t *testing.T) {
@@ -435,5 +439,18 @@ func TestGenerateCloudConfigs(t *testing.T) {
 		if !reflect.DeepEqual(cloudConfig, tc.cloudConfig) {
 			t.Errorf("Expecting cloud config: %v, but got %v", tc.cloudConfig, cloudConfig)
 		}
+	}
+}
+
+func TestConvertToV1Operation(t *testing.T) {
+	var op interface{}
+	op = convertToV1Operation(&computebeta.Operation{})
+	if _, ok := op.(*computev1.Operation); !ok {
+		t.Errorf("Expect output to be v1 operation, but got %v", op)
+	}
+
+	op = convertToV1Operation(&computealpha.Operation{})
+	if _, ok := op.(*computev1.Operation); !ok {
+		t.Errorf("Expect output to be v1 operation, but got %v", op)
 	}
 }
