@@ -25,6 +25,7 @@ import (
 	"k8s.io/kubernetes/plugin/pkg/scheduler/algorithm"
 	"k8s.io/kubernetes/plugin/pkg/scheduler/schedulercache"
 	schedutil "k8s.io/kubernetes/plugin/pkg/scheduler/util"
+	"sync"
 )
 
 type PredicateMetadataFactory struct {
@@ -87,7 +88,7 @@ func (pfactory *PredicateMetadataFactory) GetMetadata(pod *v1.Pod, nodeNameToInf
 		podPorts:                  schedutil.GetUsedPorts(pod),
 		matchingAntiAffinityTerms: matchingTerms,
 	}
-	for predicateName, precomputeFunc := range predicatePrecomputations {
+	for predicateName, precomputeFunc := range predicateMetadataProducers {
 		glog.V(10).Infof("Precompute: %v", predicateName)
 		precomputeFunc(predicateMetadata)
 	}
