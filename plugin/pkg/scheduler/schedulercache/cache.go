@@ -106,6 +106,29 @@ func (cache *schedulerCache) List(selector labels.Selector) ([]*v1.Pod, error) {
 	return pods, nil
 }
 
+// PodFilter is a simple interface that helps filter out pods.
+// This is here only to avoid circular dependency between schedulercache and
+// algorithm. Ideally, it should have been in algorithm/types.go.
+type PodFilter interface {
+	// Filter returns true or false depending on whether the pod should pass the
+	// filter or not.
+	Filter(*v1.Pod) bool
+}
+
+func (cache *schedulerCache) FilteredList(podFilter PodFilter, selector labels.Selector) ([]*v1.Pod, error) {
+	cache.mu.Lock()
+	defer cache.mu.Unlock()
+	var pods []*v1.Pod
+	for _, info := range cache.nodes {
+		for _, pod := range info.pods {
+			if podFilter.Filter(pod) && selector.Matches(labels.Set(pod.Labels)) {
+				pods = append(pods, pod)
+			}
+		}
+	}
+	return pods, nil
+}
+
 func (cache *schedulerCache) AssumePod(pod *v1.Pod) error {
 	key, err := getPodKey(pod)
 	if err != nil {

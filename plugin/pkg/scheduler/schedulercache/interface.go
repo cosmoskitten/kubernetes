@@ -93,4 +93,7 @@ type Cache interface {
 
 	// List lists all cached pods (including assumed ones).
 	List(labels.Selector) ([]*v1.Pod, error)
+
+	// FilteredList returns all cached pods that pass the filter.
+	FilteredList(filter PodFilter, selector labels.Selector) ([]*v1.Pod, error)
 }

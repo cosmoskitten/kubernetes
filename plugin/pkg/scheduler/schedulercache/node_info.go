@@ -458,3 +458,19 @@ func (n *NodeInfo) RemoveNode(node *v1.Node) error {
 func getPodKey(pod *v1.Pod) (string, error) {
 	return clientcache.MetaNamespaceKeyFunc(pod)
 }
+
+// Filter implements PodFilter interface. It returns true if the pod node name
+// matches NodeInfo.node and the pod is found in the pods list. Otherwise,
+// returns true.
+func (n *NodeInfo) Filter(pod *v1.Pod) bool {
+	pUID := pod.GetUID()
+	if pod.Spec.NodeName != n.node.Name {
+		return true
+	}
+	for _, p := range n.pods {
+		if p.GetUID() == pUID {
+			return true
+		}
+	}
+	return false
+}
