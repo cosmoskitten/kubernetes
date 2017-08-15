@@ -14,6 +14,7 @@ go_library(
         "//vendor/golang.org/x/text/secure/bidirule:go_default_library",
         "//vendor/golang.org/x/text/unicode/norm:go_default_library",
     ],
+    visibility = ["//visibility:public"],
 )
 
 filegroup(
