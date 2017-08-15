@@ -72,6 +72,15 @@ func (rsStrategy) PrepareForUpdate(ctx genericapirequest.Context, obj, old runti
 	// update is not allowed to set status
 	newRS.Status = oldRS.Status
 
+	// Update is not allowed to set Spec.Selector for all groups/versions except extensions/v1beta1.
+	// If RequestInfo is nil, it is better to revert to old behavior (i.e. allow update to set Spec.Selector)
+	// to prevent unintentionally breaking users who may rely on the old behavior.
+	// TODO(#50791): after v1beta1 is retired, move selector immutability check to validation codes
+	requestInfo, found := genericapirequest.RequestInfoFrom(ctx)
+	if found && !(requestInfo.APIGroup == "extensions" && requestInfo.APIVersion == "v1beta1") {
+		newRS.Spec.Selector = oldRS.Spec.Selector
+	}
+
 	// Any changes to the spec increment the generation number, any changes to the
 	// status should reflect the generation number of the corresponding object. We push
 	// the burden of managing the status onto the clients because we can't (in general)
