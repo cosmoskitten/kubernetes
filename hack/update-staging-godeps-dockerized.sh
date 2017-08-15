@@ -51,6 +51,7 @@ while getopts ":df" opt; do
 done
 
 kube::util::ensure_dockerized
+KUBE_GOPATH="/godeps"
 kube::golang::setup_env
 kube::util::ensure_single_dir_gopath
 kube::util::ensure_no_staging_repos_in_gopath

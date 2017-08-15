@@ -43,6 +43,9 @@ RUN git config --system user.email "nobody@k8s.io" \
 # Fix permissions on gopath
 RUN chmod -R a+rwx $GOPATH
 
+# Add godeps directory for volume mount, and make it writable by current user
+RUN mkdir /godeps && chmod a+rwx /godeps
+
 # Make log messages use the right timezone
 ADD localtime /etc/localtime
 RUN chmod a+r /etc/localtime

@@ -16,7 +16,7 @@
 
 # The golang package that we are building.
 readonly KUBE_GO_PACKAGE=k8s.io/kubernetes
-readonly KUBE_GOPATH="${KUBE_OUTPUT}/go"
+KUBE_GOPATH="${KUBE_GOPATH:-${KUBE_OUTPUT}/go}"
 
 # The set of server targets that we are only building for Linux
 # If you update this list, please also update build/BUILD.
