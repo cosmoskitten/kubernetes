@@ -80,6 +80,11 @@ const (
 	gceComputeAPIEndpoint = "https://www.googleapis.com/compute/v1/"
 )
 
+// APIObject is an abstraction of all GCE API object in go client
+type APIObject interface {
+	MarshalJSON() ([]byte, error)
+}
+
 // GCECloud is an implementation of Interface, LoadBalancer and Instances for Google Compute Engine.
 type GCECloud struct {
 	// ClusterID contains functionality for getting (and initializing) the ingress-uid. Call GCECloud.Initialize()
