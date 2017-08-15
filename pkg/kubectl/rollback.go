@@ -226,7 +226,12 @@ func (r *DaemonSetRollbacker) Rollback(obj runtime.Object, updatedAnnotations ma
 	}
 	versionedExtensionsClient := versionedExtensionsClientV1beta1(r.c)
 	versionedAppsClient := versionedAppsClientV1beta1(r.c)
-	versionedDS, allHistory, err := controlledHistories(versionedExtensionsClient, versionedAppsClient, ds.Namespace, ds.Name)
+	versionedDS, err := retrieveVersionedDaemonSet(versionedExtensionsClient, ds.Namespace, ds.Name)
+	if err != nil {
+		return "", err
+	}
+
+	allHistory, err := controlledHistories(versionedAppsClient, versionedDS.Spec.Selector, versionedDS.Namespace, versionedDS.UID)
 	if err != nil {
 		return "", fmt.Errorf("unable to find history controlled by DaemonSet %s: %v", ds.Name, err)
 	}
@@ -290,6 +295,7 @@ type StatefulSetRollbacker struct {
 	c clientset.Interface
 }
 
+// toRevision is a non-negative integer, with 0 being reserved to indicate rolling back to previous configuration
 func (r *StatefulSetRollbacker) Rollback(obj runtime.Object, updatedAnnotations map[string]string, toRevision int64, dryRun bool) (string, error) {
 	if toRevision < 0 {
 		return "", revisionNotFoundErr(toRevision)
@@ -300,7 +306,12 @@ func (r *StatefulSetRollbacker) Rollback(obj runtime.Object, updatedAnnotations 
 		return "", fmt.Errorf("passed object is not a StatefulSet: %#v", obj)
 	}
 	versionedAppsClient := versionedAppsClientV1beta1(r.c)
-	versionedSS, allHistory, err := controlledSSHistories(versionedAppsClient, ss.Namespace, ss.Name)
+	versionedSS, err := retrieveVersionedStatefulSet(versionedAppsClient, ss.Namespace, ss.Name)
+	if err != nil {
+		return "", err
+	}
+
+	allHistory, err := controlledHistories(versionedAppsClient, versionedSS.Spec.Selector, versionedSS.Namespace, versionedSS.UID)
 	if err != nil {
 		return "", fmt.Errorf("unable to find history controlled by StatefulSet %s: %v", ss.Name, err)
 	}
