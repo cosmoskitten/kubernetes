@@ -155,7 +155,12 @@ type DaemonSetHistoryViewer struct {
 func (h *DaemonSetHistoryViewer) ViewHistory(namespace, name string, revision int64) (string, error) {
 	versionedExtensionsClient := versionedExtensionsClientV1beta1(h.c)
 	versionedAppsClient := versionedAppsClientV1beta1(h.c)
-	ds, allHistory, err := controlledHistories(versionedExtensionsClient, versionedAppsClient, namespace, name)
+	versionedDS, err := retrieveVersionedDaemonSet(versionedExtensionsClient, namespace, name)
+	if err != nil {
+		return "", err
+	}
+
+	allHistory, err := controlledHistories(versionedAppsClient, versionedDS)
 	if err != nil {
 		return "", fmt.Errorf("unable to find history controlled by DaemonSet %s: %v", name, err)
 	}
@@ -175,7 +180,7 @@ func (h *DaemonSetHistoryViewer) ViewHistory(namespace, name string, revision in
 		if !ok {
 			return "", fmt.Errorf("unable to find the specified revision")
 		}
-		dsOfHistory, err := applyHistory(ds, history)
+		dsOfHistory, err := applyHistory(versionedDS, history)
 		if err != nil {
 			return "", fmt.Errorf("unable to parse history %s", history.Name)
 		}
@@ -256,29 +261,50 @@ func (h *StatefulSetHistoryViewer) ViewHistory(namespace, name string, revision 
 	})
 }
 
-// controlledHistories returns all ControllerRevisions controlled by the given DaemonSet
-func controlledHistories(extensions clientextensionsv1beta1.ExtensionsV1beta1Interface, apps clientappsv1beta1.AppsV1beta1Interface, namespace, name string) (*extensionsv1beta1.DaemonSet, []*appsv1beta1.ControllerRevision, error) {
+func retrieveVersionedDaemonSet(extensions clientextensionsv1beta1.ExtensionsV1beta1Interface, namespace, name string) (*extensionsv1beta1.DaemonSet, error) {
 	ds, err := extensions.DaemonSets(namespace).Get(name, metav1.GetOptions{})
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to retrieve DaemonSet %s: %v", name, err)
+		return nil, fmt.Errorf("failed to retrieve DaemonSet %s: %v", name, err)
 	}
+	return ds, nil
+}
+
+func retrieveVersionedStatefulSet(apps clientappsv1beta1.AppsV1beta1Interface, namespace, name string) (*appsv1beta1.StatefulSet, error) {
+	ss, err := apps.StatefulSets(namespace).Get(name, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve StatefulSet %s: %v", name, err)
+	}
+	return ss, nil
+}
+
+// controlledHistories returns all ControllerRevisions controlled by the given API object
+func controlledHistories(apps clientappsv1beta1.AppsV1beta1Interface, obj runtime.Object) ([]*appsv1beta1.ControllerRevision, error) {
+	accessor, err := meta.Accessor(obj)
+	if err != nil {
+		return nil, fmt.Errorf("failed to obtain accessor for object %s: %v", accessor.GetName(), err)
+	}
+
 	var result []*appsv1beta1.ControllerRevision
-	selector, err := metav1.LabelSelectorAsSelector(ds.Spec.Selector)
-	if err != nil {
-		return nil, nil, err
+	labelSelector := metav1.LabelSelector{
+		MatchLabels:      accessor.GetLabels(),
+		MatchExpressions: []metav1.LabelSelectorRequirement{},
 	}
-	historyList, err := apps.ControllerRevisions(ds.Namespace).List(metav1.ListOptions{LabelSelector: selector.String()})
+	selector, err := metav1.LabelSelectorAsSelector(&labelSelector)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
+	}
+	historyList, err := apps.ControllerRevisions(accessor.GetNamespace()).List(metav1.ListOptions{LabelSelector: selector.String()})
+	if err != nil {
+		return nil, err
 	}
 	for i := range historyList.Items {
 		history := historyList.Items[i]
-		// Only add history that belongs to the DaemonSet
-		if metav1.IsControlledBy(&history, ds) {
+		// Only add history that belongs to the API object
+		if metav1.IsControlledBy(&history, accessor) {
 			result = append(result, &history)
 		}
 	}
-	return ds, result, nil
+	return result, nil
 }
 
 // applyHistory returns a specific revision of DaemonSet by applying the given history to a copy of the given DaemonSet
@@ -301,32 +327,6 @@ func applyHistory(ds *extensionsv1beta1.DaemonSet, history *appsv1beta1.Controll
 		return nil, err
 	}
 	return clone, nil
-}
-
-// controlledSSHistories returns all ControllerRevisions controlled by the given StatefulSet
-func controlledSSHistories(apps clientappsv1beta1.AppsV1beta1Interface, namespace, name string) (*appsv1beta1.StatefulSet, []*appsv1beta1.ControllerRevision, error) {
-	ss, err := apps.StatefulSets(namespace).Get(name, metav1.GetOptions{})
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to retrieve StatefulSet %s: %v", name, err)
-	}
-	var result []*appsv1beta1.ControllerRevision
-	selector, err := metav1.LabelSelectorAsSelector(ss.Spec.Selector)
-	if err != nil {
-		return nil, nil, err
-	}
-	historyList, err := apps.ControllerRevisions(ss.Namespace).List(metav1.ListOptions{LabelSelector: selector.String()})
-	if err != nil {
-		return nil, nil, err
-	}
-	for i := range historyList.Items {
-		history := historyList.Items[i]
-		// Skip history that doesn't belong to the StatefulSet
-		if controllerRef := controller.GetControllerOf(&history); controllerRef == nil || controllerRef.UID != ss.UID {
-			continue
-		}
-		result = append(result, &history)
-	}
-	return ss, result, nil
 }
 
 // TODO: copied here until this becomes a describer
