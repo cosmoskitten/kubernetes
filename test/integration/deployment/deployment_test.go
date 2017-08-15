@@ -17,6 +17,7 @@ limitations under the License.
 package deployment
 
 import (
+	"reflect"
 	"testing"
 
 	"k8s.io/api/core/v1"
@@ -67,5 +68,61 @@ func TestNewDeployment(t *testing.T) {
 	}
 	if newRS.Annotations[v1.LastAppliedConfigAnnotation] != "" {
 		t.Errorf("expected new ReplicaSet last-applied annotation not copied from Deployment %s", deploy.Name)
+	}
+}
+
+func TestDeploymentSelectorImmutability(t *testing.T) {
+	s, closeFn, c := dcSimpleSetup(t)
+	defer closeFn()
+	name := "test-deployment-selector-immutability"
+	ns := framework.CreateTestingNamespace(name, s, t)
+	defer framework.DeleteTestingNamespace(ns, s, t)
+
+	replicas := int32(20)
+	appsV1beta2Tester := &deploymentAppsV1beta2Tester{t: t, c: c, deployment: newAppsV1beta2Deployment(name, ns.Name, replicas)}
+
+	deploy, err := c.AppsV1beta2().Deployments(ns.Name).Create(appsV1beta2Tester.deployment)
+	if err != nil {
+		t.Fatalf("failed to create deployment %s: %v", deploy.Name, err)
+	}
+
+	// Change selector - selectors are IMMUTABLE for all API versions except apps/v1beta1 and extensions/v1beta1
+	oldSelectorLabels := appsV1beta2Tester.deployment.Spec.Selector.MatchLabels
+	newSelectorLabels := map[string]string{"changed_name": "changed_test"}
+	appsV1beta2Tester.deployment.Spec.Selector.MatchLabels = newSelectorLabels
+	deploy, err = c.AppsV1beta2().Deployments(ns.Name).Update(appsV1beta2Tester.deployment)
+	if err != nil {
+		t.Fatalf("failed to update deployment %s: %v", deploy.Name, err)
+	}
+	if !reflect.DeepEqual(deploy.Spec.Selector.MatchLabels, oldSelectorLabels) {
+		t.Errorf("selector should NOT be changed for apps/v1beta2, expected: %v, got: %v", newSelectorLabels, deploy.Spec.Selector.MatchLabels)
+	}
+}
+
+func TestDeploymentSelectorMutability(t *testing.T) {
+	s, closeFn, c := dcSimpleSetup(t)
+	defer closeFn()
+	name := "test-deployment-selector-mutability"
+	ns := framework.CreateTestingNamespace(name, s, t)
+	defer framework.DeleteTestingNamespace(ns, s, t)
+
+	replicas := int32(20)
+	extensionsV1beta1Tester := &deploymentTester{t: t, c: c, deployment: newDeployment(name, ns.Name, replicas)}
+
+	deploy, err := c.Extensions().Deployments(ns.Name).Create(extensionsV1beta1Tester.deployment)
+	if err != nil {
+		t.Fatalf("failed to create deployment %s: %v", deploy.Name, err)
+	}
+
+	// Change selector - selectors are MUTABLE for apps/v1beta1 and extensions/v1beta1 only
+	newSelectorLabels := map[string]string{"changed_name": "changed_test"}
+	extensionsV1beta1Tester.deployment.Spec.Selector.MatchLabels = newSelectorLabels
+	extensionsV1beta1Tester.deployment.Spec.Template.Labels = newSelectorLabels
+	deploy, err = c.Extensions().Deployments(ns.Name).Update(extensionsV1beta1Tester.deployment)
+	if err != nil {
+		t.Fatalf("failed to update deployment %s: %v", deploy.Name, err)
+	}
+	if !reflect.DeepEqual(deploy.Spec.Selector.MatchLabels, newSelectorLabels) {
+		t.Errorf("selector should be changed for extensions/v1beta1, expected: %v, got: %v", newSelectorLabels, deploy.Spec.Selector.MatchLabels)
 	}
 }

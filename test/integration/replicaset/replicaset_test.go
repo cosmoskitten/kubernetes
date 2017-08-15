@@ -23,6 +23,7 @@ import (
 	"testing"
 	"time"
 
+	"k8s.io/api/apps/v1beta2"
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -52,6 +53,39 @@ func newRS(name, namespace string, replicas int) *v1beta1.ReplicaSet {
 			Name:      name,
 		},
 		Spec: v1beta1.ReplicaSetSpec{
+			Selector: &metav1.LabelSelector{
+				MatchLabels: testLabels(),
+			},
+			Replicas: &replicasCopy,
+			Template: v1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: testLabels(),
+				},
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Name:  "fake-name",
+							Image: "fakeimage",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func newAppsV1beta2RS(name, namespace string, replicas int) *v1beta2.ReplicaSet {
+	replicasCopy := int32(replicas)
+	return &v1beta2.ReplicaSet{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "ReplicaSet",
+			APIVersion: "apps/v1beta2",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      name,
+		},
+		Spec: v1beta2.ReplicaSetSpec{
 			Selector: &metav1.LabelSelector{
 				MatchLabels: testLabels(),
 			},
@@ -147,6 +181,18 @@ func rmSetup(t *testing.T) (*httptest.Server, framework.CloseFunc, *replicaset.R
 		t.Fatalf("Failed to create replicaset controller")
 	}
 	return s, closeFn, rm, informers, clientSet
+}
+
+func rmSimpleSetup(t *testing.T) (*httptest.Server, framework.CloseFunc, clientset.Interface) {
+	masterConfig := framework.NewIntegrationTestMasterConfig()
+	_, s, closeFn := framework.RunAMaster(masterConfig)
+
+	config := restclient.Config{Host: s.URL}
+	clientSet, err := clientset.NewForConfig(&config)
+	if err != nil {
+		t.Fatalf("Error in create clientset: %v", err)
+	}
+	return s, closeFn, clientSet
 }
 
 // wait for the podInformer to observe the pods. Call this function before
@@ -261,6 +307,21 @@ func TestAdoption(t *testing.T) {
 
 func createRSsPods(t *testing.T, clientSet clientset.Interface, rss []*v1beta1.ReplicaSet, pods []*v1.Pod, ns string) {
 	rsClient := clientSet.Extensions().ReplicaSets(ns)
+	podClient := clientSet.Core().Pods(ns)
+	for _, rs := range rss {
+		if _, err := rsClient.Create(rs); err != nil {
+			t.Fatalf("Failed to create replica set %s: %v", rs.Name, err)
+		}
+	}
+	for _, pod := range pods {
+		if _, err := podClient.Create(pod); err != nil {
+			t.Fatalf("Failed to create pod %s: %v", pod.Name, err)
+		}
+	}
+}
+
+func createAppsV1beta2RSsPods(t *testing.T, clientSet clientset.Interface, rss []*v1beta2.ReplicaSet, pods []*v1.Pod, ns string) {
+	rsClient := clientSet.AppsV1beta2().ReplicaSets(ns)
 	podClient := clientSet.Core().Pods(ns)
 	for _, rs := range rss {
 		if _, err := rsClient.Create(rs); err != nil {
@@ -461,4 +522,48 @@ func TestUpdateLabelToBeAdopted(t *testing.T) {
 		t.Fatal(err)
 	}
 	close(stopCh)
+}
+
+func TestRSSelectorImmutability(t *testing.T) {
+	s, closeFn, clientSet := rmSimpleSetup(t)
+	defer closeFn()
+	ns := framework.CreateTestingNamespace("rs-selector-immutability", s, t)
+	defer framework.DeleteTestingNamespace(ns, s, t)
+	rs := newAppsV1beta2RS("rs", ns.Name, 0)
+	createAppsV1beta2RSsPods(t, clientSet, []*v1beta2.ReplicaSet{rs}, []*v1.Pod{}, ns.Name)
+
+	// Change selector - selectors are IMMUTABLE for all API versions except extension/v1beta1
+	oldSelectorLabels := rs.Spec.Selector.MatchLabels
+	newSelectorLabels := map[string]string{"changed_name": "changed_test"}
+	rs.Spec.Selector.MatchLabels = newSelectorLabels
+
+	replicaset, err := clientSet.AppsV1beta2().ReplicaSets(ns.Name).Update(rs)
+	if err != nil {
+		t.Fatalf("failed to update replicaset %s: %v", replicaset.Name, err)
+	}
+	if !reflect.DeepEqual(replicaset.Spec.Selector.MatchLabels, oldSelectorLabels) {
+		t.Errorf("selector should NOT be changed for apps/v1beta2, expected: %v, got: %v", oldSelectorLabels, replicaset.Spec.Selector.MatchLabels)
+	}
+}
+
+func TestRSSelectorMutability(t *testing.T) {
+	s, closeFn, clientSet := rmSimpleSetup(t)
+	defer closeFn()
+	ns := framework.CreateTestingNamespace("rs-selector-mutability", s, t)
+	defer framework.DeleteTestingNamespace(ns, s, t)
+	rs := newRS("rs", ns.Name, 0)
+	createRSsPods(t, clientSet, []*v1beta1.ReplicaSet{rs}, []*v1.Pod{}, ns.Name)
+
+	// Change selector - selectors are MUTABLE for extensions/v1beta1 only
+	newSelectorLabels := map[string]string{"changed_name": "changed_test"}
+	rs.Spec.Selector.MatchLabels = newSelectorLabels
+	rs.Spec.Template.Labels = newSelectorLabels
+
+	replicaset, err := clientSet.Extensions().ReplicaSets(ns.Name).Update(rs)
+	if err != nil {
+		t.Fatalf("failed to update replicaset %s: %v", replicaset.Name, err)
+	}
+	if !reflect.DeepEqual(replicaset.Spec.Selector.MatchLabels, newSelectorLabels) {
+		t.Errorf("selector should be changed for extensions/v1beta1, expected: %v, got: %v", newSelectorLabels, replicaset.Spec.Selector.MatchLabels)
+	}
 }

@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"k8s.io/api/apps/v1beta2"
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -49,6 +50,12 @@ type deploymentTester struct {
 	deployment *v1beta1.Deployment
 }
 
+type deploymentAppsV1beta2Tester struct {
+	t          *testing.T
+	c          clientset.Interface
+	deployment *v1beta2.Deployment
+}
+
 func testLabels() map[string]string {
 	return map[string]string{"name": "test"}
 }
@@ -69,6 +76,40 @@ func newDeployment(name, ns string, replicas int32) *v1beta1.Deployment {
 			Selector: &metav1.LabelSelector{MatchLabels: testLabels()},
 			Strategy: v1beta1.DeploymentStrategy{
 				Type: v1beta1.RollingUpdateDeploymentStrategyType,
+			},
+			Template: v1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: testLabels(),
+				},
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Name:  fakeImageName,
+							Image: fakeImage,
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+// newDeployment returns a RollingUpdate Deployment with with a fake container image
+func newAppsV1beta2Deployment(name, ns string, replicas int32) *v1beta2.Deployment {
+	return &v1beta2.Deployment{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Deployment",
+			APIVersion: "apps/v1beta2",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: ns,
+			Name:      name,
+		},
+		Spec: v1beta2.DeploymentSpec{
+			Replicas: &replicas,
+			Selector: &metav1.LabelSelector{MatchLabels: testLabels()},
+			Strategy: v1beta2.DeploymentStrategy{
+				Type: v1beta2.RollingUpdateDeploymentStrategyType,
 			},
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -113,6 +154,20 @@ func dcSetup(t *testing.T) (*httptest.Server, framework.CloseFunc, *replicaset.R
 		replicaset.BurstReplicas,
 	)
 	return s, closeFn, rm, dc, informers, clientSet
+}
+
+// dcSimpleSetup sets up necessities for Deployment integration test, including master, apiserver,
+// and clientset, but not controllers and informers
+func dcSimpleSetup(t *testing.T) (*httptest.Server, framework.CloseFunc, clientset.Interface) {
+	masterConfig := framework.NewIntegrationTestMasterConfig()
+	_, s, closeFn := framework.RunAMaster(masterConfig)
+
+	config := restclient.Config{Host: s.URL}
+	clientSet, err := clientset.NewForConfig(&config)
+	if err != nil {
+		t.Fatalf("error in create clientset: %v", err)
+	}
+	return s, closeFn, clientSet
 }
 
 // addPodConditionReady sets given pod status to ready at given time

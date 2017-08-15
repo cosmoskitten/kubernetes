@@ -77,6 +77,17 @@ func (deploymentStrategy) PrepareForUpdate(ctx genericapirequest.Context, obj, o
 	oldDeployment := old.(*extensions.Deployment)
 	newDeployment.Status = oldDeployment.Status
 
+	// Update is not allowed to set Spec.Selector for all groups/versions except extensions/v1beta1.
+	// RequestInfo will not be nil in default namespace, but we still have to check for it to prevent
+	// breaking storage registry TestUpdate() and TestScaleUpdate() unit tests. Refer this link for more info:
+	// https://github.com/kubernetes/kubernetes/pull/50719#issuecomment-323449792
+	// TODO(#50791): after v1beta1 is retired, move selector immutability check to validation codes
+	requestInfo, found := genericapirequest.RequestInfoFrom(ctx)
+	if found && !((requestInfo.APIGroup == "apps" || requestInfo.APIGroup == "extensions") &&
+		requestInfo.APIVersion == "v1beta1") {
+		newDeployment.Spec.Selector = oldDeployment.Spec.Selector
+	}
+
 	// Spec updates bump the generation so that we can distinguish between
 	// scaling events and template changes, annotation updates bump the generation
 	// because annotations are copied from deployments to their replica sets.
