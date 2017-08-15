@@ -18,6 +18,7 @@ package apiclient
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -25,13 +26,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
-	kubeadmconstants "k8s.io/kubernetes/cmd/kubeadm/app/constants"
+	"k8s.io/kubernetes/cmd/kubeadm/app/constants"
 )
 
 // WaitForAPI waits for the API Server's /healthz endpoint to report "ok"
-func WaitForAPI(client clientset.Interface) {
+func WaitForAPI(client clientset.Interface, timeout time.Duration) error {
 	start := time.Now()
-	wait.PollInfinite(kubeadmconstants.APICallRetryInterval, func() (bool, error) {
+	return wait.PollImmediate(constants.APICallRetryInterval, timeout, func() (bool, error) {
 		healthStatus := 0
 		client.Discovery().RESTClient().Get().AbsPath("/healthz").Do().StatusCode(&healthStatus)
 		if healthStatus != http.StatusOK {
@@ -45,22 +46,26 @@ func WaitForAPI(client clientset.Interface) {
 
 // WaitForPodsWithLabel will lookup pods with the given label and wait until they are all
 // reporting status as running.
-func WaitForPodsWithLabel(client clientset.Interface, labelKeyValPair string) {
-	// TODO: Implement a timeout
-	// TODO: Implement a verbosity switch
-	wait.PollInfinite(kubeadmconstants.APICallRetryInterval, func() (bool, error) {
+func WaitForPodsWithLabel(client clientset.Interface, timeout time.Duration, out io.Writer, labelKeyValPair string) error {
+	lastKnownPodNumber := -1
+	return wait.PollImmediate(constants.APICallRetryInterval, timeout, func() (bool, error) {
 		listOpts := metav1.ListOptions{LabelSelector: labelKeyValPair}
-		apiPods, err := client.CoreV1().Pods(metav1.NamespaceSystem).List(listOpts)
+		pods, err := client.CoreV1().Pods(metav1.NamespaceSystem).List(listOpts)
 		if err != nil {
-			fmt.Printf("[apiclient] Error getting Pods with label selector %q [%v]\n", labelKeyValPair, err)
+			fmt.Fprintf(out, "[apiclient] Error getting Pods with label selector %q [%v]\n", labelKeyValPair, err)
 			return false, nil
 		}
 
-		if len(apiPods.Items) == 0 {
+		if lastKnownPodNumber != len(pods.Items) {
+			fmt.Fprintf(out, "[apiclient] Found %d Pods for label selector %s\n", len(pods.Items), labelKeyValPair)
+			lastKnownPodNumber = len(pods.Items)
+		}
+
+		if len(pods.Items) == 0 {
 			return false, nil
 		}
-		for _, pod := range apiPods.Items {
-			fmt.Printf("[apiclient] Pod %s status: %s\n", pod.Name, pod.Status.Phase)
+
+		for _, pod := range pods.Items {
 			if pod.Status.Phase != v1.PodRunning {
 				return false, nil
 			}

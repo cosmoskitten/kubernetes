@@ -33,6 +33,11 @@ import (
 	"k8s.io/kubernetes/pkg/api"
 )
 
+const (
+	// selfHostingWaitTimeout describes the maximum amount of time a self-hosting wait process should wait before timing out
+	selfHostingWaitTimeout = 2 * time.Minute
+)
+
 // CreateSelfHostedControlPlane is responsible for turning a Static Pod-hosted control plane to a self-hosted one
 // It achieves that task this way:
 // 1. Load the Static Pod specification from disk (from /etc/kubernetes/manifests)
@@ -72,9 +77,10 @@ func CreateSelfHostedControlPlane(cfg *kubeadmapi.MasterConfiguration, client cl
 			return err
 		}
 
-		// Wait for the self-hosted component to come up
-		// TODO: Enforce a timeout
-		apiclient.WaitForPodsWithLabel(client, buildSelfHostedWorkloadLabelQuery(componentName))
+		// Wait for the self-hosted component to come up with a timeout limit
+		if err := apiclient.WaitForPodsWithLabel(client, selfHostingWaitTimeout, os.Stdout, buildSelfHostedWorkloadLabelQuery(componentName)); err != nil {
+			return err
+		}
 
 		// Remove the old Static Pod manifest
 		if err := os.RemoveAll(manifestPath); err != nil {
@@ -83,7 +89,7 @@ func CreateSelfHostedControlPlane(cfg *kubeadmapi.MasterConfiguration, client cl
 
 		// Make sure the API is responsive at /healthz
 		// TODO: Follow-up on fixing the race condition here and respect the timeout error that can be returned
-		apiclient.WaitForAPI(client)
+		apiclient.WaitForAPI(client, selfHostingWaitTimeout)
 
 		fmt.Printf("[self-hosted] self-hosted %s ready after %f seconds\n", componentName, time.Since(start).Seconds())
 	}
