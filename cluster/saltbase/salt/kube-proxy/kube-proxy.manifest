@@ -36,6 +36,9 @@
 
 {% set container_env = "" -%}
 
+# Please keep above salt configuration in-sync with:
+# cluster/saltbase/salt/kube-proxy/kube-proxy.manifest
+
 # kube-proxy podspec
 apiVersion: v1
 kind: Pod

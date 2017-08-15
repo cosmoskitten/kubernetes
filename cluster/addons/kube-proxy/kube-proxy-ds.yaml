@@ -1,0 +1,125 @@
+{% set kubeconfig = "--kubeconfig=/var/lib/kube-proxy/kubeconfig" -%}
+{% if grains.api_servers is defined -%}
+  {% set api_servers = "--master=https://" + grains.api_servers -%}
+{% else -%}
+  {% set ips = salt['mine.get']('roles:kubernetes-master', 'network.ip_addrs', 'grain').values() -%}
+  {% set api_servers = "--master=https://" + ips[0][0] -%}
+{% endif -%}
+{% if grains['cloud'] is defined and grains.cloud in [ 'aws', 'gce', 'vagrant', 'photon-controller', 'openstack', 'azure-legacy' ]  %}
+  {% set api_servers_with_port = api_servers -%}
+{% else -%}
+  {% set api_servers_with_port = api_servers + ":6443" -%}
+{% endif -%}
+{% set test_args = "" -%}
+{% if pillar['kubeproxy_test_args'] is defined -%}
+  {% set test_args=pillar['kubeproxy_test_args'] %}
+{% endif -%}
+{% set cluster_cidr = "" -%}
+{% if pillar['cluster_cidr'] is defined -%}
+  {% set cluster_cidr=" --cluster-cidr=" + pillar['cluster_cidr'] %}
+{% endif -%}
+
+{% set log_level = pillar['log_level'] -%}
+{% if pillar['kubeproxy_test_log_level'] is defined -%}
+  {% set log_level = pillar['kubeproxy_test_log_level'] -%}
+{% endif -%}
+
+{% set feature_gates = "" -%}
+{% if grains.feature_gates is defined -%}
+ {% set feature_gates = "--feature-gates=" + grains.feature_gates -%}
+{% endif -%}
+
+{% set throttles = "--iptables-sync-period=1m --iptables-min-sync-period=10s" -%}
+
+# test_args should always go last to overwrite prior configuration
+{% set params = log_level + " " + throttles + " " + feature_gates + " " + test_args -%}
+
+{% set container_env = "" -%}
+
+# Please keep above salt configuration in-sync with:
+# cluster/addons/kube-proxy/kube-proxy-ds.yaml
+
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  labels:
+    k8s-app: kube-proxy
+    addonmanager.kubernetes.io/mode: Reconcile
+  name: kube-proxy
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      k8s-app: kube-proxy
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 10%
+  template:
+    metadata:
+      labels:
+        k8s-app: kube-proxy
+      annotations:
+        scheduler.alpha.kubernetes.io/critical-pod: ''
+    spec:
+      hostNetwork: true
+      nodeSelector:
+        beta.kubernetes.io/kube-proxy-ds-ready: "true"
+      initContainers:
+      - name: touch-lock
+        image: busybox
+        command: ['/bin/touch', '/run/xtables.lock']
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - mountPath: /run
+          name: run
+          readOnly: false
+      containers:
+      - name: kube-proxy
+        image: {{pillar['kube_docker_registry']}}/kube-proxy:{{pillar['kube-proxy_docker_tag']}}
+        resources:
+          requests:
+            cpu: {{ cpurequest }}
+        command:
+        - /bin/sh
+        - -c
+        - echo -998 > /proc/$$$/oom_score_adj && kube-proxy {{api_servers_with_port}} {{kubeconfig}} {{cluster_cidr}} --resource-container="" {{params}} 1>>/var/log/kube-proxy.log 2>&1
+        {{container_env}}
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - mountPath: /etc/ssl/certs
+          name: etc-ssl-certs
+          readOnly: true
+        - mountPath: /usr/share/ca-certificates
+          name: usr-ca-certs
+          readOnly: true
+        - mountPath: /var/log
+          name: varlog
+          readOnly: false
+        - mountPath: /var/lib/kube-proxy/kubeconfig
+          name: kubeconfig
+          readOnly: false
+        - mountPath: /run/xtables.lock
+          name: xtables-lock
+          readOnly: false
+      volumes:
+      - name: etc-ssl-certs
+        hostPath:
+          path: /etc/ssl/certs
+      - name: usr-ca-certs
+        hostPath:
+          path: /usr/share/ca-certificates
+      - name: varlog
+        hostPath:
+          path: /var/log
+      - name: kubeconfig
+        hostPath:
+          path: /var/lib/kube-proxy/kubeconfig
+      - name: xtables-lock
+        hostPath:
+          path: /run/xtables.lock
+      - name: run
+        hostPath:
+          path: /run
