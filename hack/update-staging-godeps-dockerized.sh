@@ -88,26 +88,14 @@ function diffGodepManifest() {
 }
 
 # Create a fake git repo for staging to prevent godeps from complaining
-pushd "${KUBE_ROOT}" >/dev/null
-  git init >/dev/null
-  git config --local user.email "nobody@k8s.io"
-  git config --local user.name "$0"
-  git add . >/dev/null
-  git commit -q -m "Snapshot" >/dev/null
-popd >/dev/null
+kube::util::ensure-git-tree "${KUBE_ROOT}"
 
 # move into staging and save the dependencies for everything in order
 mkdir -p "${TMP_GOPATH}/src/k8s.io"
 for repo in $(ls ${KUBE_ROOT}/staging/src/k8s.io); do
   cp -a "${KUBE_ROOT}/staging/src/k8s.io/${repo}" "${TMP_GOPATH}/src/k8s.io/"
 
-  pushd "${TMP_GOPATH}/src/k8s.io/${repo}" >/dev/null
-    git init >/dev/null
-    git config --local user.email "nobody@k8s.io"
-    git config --local user.name "$0"
-    git add . >/dev/null
-    git commit -q -m "Snapshot" >/dev/null
-  popd >/dev/null
+  kube::util::ensure-git-tree "${TMP_GOPATH}/src/k8s.io/${repo}"
 
   updateGodepManifest
   diffGodepManifest
