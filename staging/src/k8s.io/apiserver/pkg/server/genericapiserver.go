@@ -283,6 +283,7 @@ func (s preparedGenericAPIServer) NonBlockingRun(stopCh <-chan struct{}) error {
 		}
 	}
 
+	glog.V(1).Infof("WRF About to run preparedGenericAPIServer::RunPostStartHooks()")
 	s.RunPostStartHooks(stopCh)
 
 	if _, err := systemd.SdNotify(true, "READY=1\n"); err != nil {

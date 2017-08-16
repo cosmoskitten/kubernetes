@@ -40,6 +40,14 @@ function load-docker-images() {
         restart_docker=true
       fi
   
+      timeout 120 docker load -i /srv/salt/kube-bins/cloud-controller-manager.tar 1>/dev/null 2>&1
+      rc=$?
+      if [[ $rc == 0 ]]; then
+        let loadedImageFlags="$loadedImageFlags|4"
+      elif [[ $rc == 124 ]]; then
+        restart_docker=true
+      fi
+  
       timeout 120 docker load -i /srv/salt/kube-bins/kube-controller-manager.tar 1>/dev/null 2>&1
       rc=$?
       if [[ $rc == 0 ]]; then
@@ -73,6 +81,7 @@ function load-rkt-images() {
   convert-rkt-image /srv/salt/kube-bins/kube-apiserver.tar
   convert-rkt-image /srv/salt/kube-bins/kube-scheduler.tar
   convert-rkt-image /srv/salt/kube-bins/kube-controller-manager.tar
+  convert-rkt-image /srv/salt/kube-bins/cloud-controller-manager.tar
 
   # Currently, we can't run docker image tarballs directly,
   # So we use 'rkt fetch' to load the docker images into rkt image stores.

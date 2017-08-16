@@ -368,6 +368,9 @@ function create-master-auth {
   if [[ -n "${KUBE_BEARER_TOKEN:-}" ]]; then
     append_or_replace_prefixed_line "${known_tokens_csv}" "${KUBE_BEARER_TOKEN},"             "admin,admin,system:masters"
   fi
+  if [[ -n "${CLOUD_CONTROLLER_MANAGER_TOKEN:-}" ]]; then
+    append_or_replace_prefixed_line "${known_tokens_csv}" "${CLOUD_CONTROLLER_MANAGER_TOKEN}," "system:cloud-controller-manager,uid:system:cloud-controller-manager"
+  fi
   if [[ -n "${KUBE_CONTROLLER_MANAGER_TOKEN:-}" ]]; then
     append_or_replace_prefixed_line "${known_tokens_csv}" "${KUBE_CONTROLLER_MANAGER_TOKEN}," "system:kube-controller-manager,uid:system:kube-controller-manager"
   fi
@@ -563,6 +566,7 @@ rules:
         resources: ["nodes"]
   - level: None
     users:
+      - system:cloud-controller-manager
       - system:kube-controller-manager
       - system:kube-scheduler
       - system:serviceaccount:kube-system:endpoint-controller
@@ -726,6 +730,30 @@ users:
 EOF
 }
 
+function create-cloudcontrollermanager-kubeconfig {
+  echo "Creating cloud-controller-manager kubeconfig file"
+  mkdir -p /etc/srv/kubernetes/cloud-controller-manager
+  cat <<EOF >/etc/srv/kubernetes/cloud-controller-manager/kubeconfig
+apiVersion: v1
+kind: Config
+users:
+- name: cloud-controller-manager
+  user:
+    token: ${CLOUD_CONTROLLER_MANAGER_TOKEN}
+clusters:
+- name: local
+  cluster:
+    insecure-skip-tls-verify: true
+    server: https://localhost:443
+contexts:
+- context:
+    cluster: local
+    user: cloud-controller-manager
+  name: service-account-context
+current-context: service-account-context
+EOF
+}
+
 function create-kubecontrollermanager-kubeconfig {
   echo "Creating kube-controller-manager kubeconfig file"
   mkdir -p /etc/srv/kubernetes/kube-controller-manager
@@ -884,7 +912,7 @@ function start-kubelet {
   local flags="${KUBELET_TEST_LOG_LEVEL:-"--v=2"} ${KUBELET_TEST_ARGS:-}"
   flags+=" --allow-privileged=true"
   flags+=" --cgroup-root=/"
-  flags+=" --cloud-provider=gce"
+  flags+=" --cloud-provider=external"
   flags+=" --cluster-dns=${DNS_SERVER_IP}"
   flags+=" --cluster-domain=${DNS_DOMAIN}"
   flags+=" --pod-manifest-path=/etc/kubernetes/manifests"
@@ -1258,7 +1286,7 @@ function start-kube-apiserver {
   local params="${API_SERVER_TEST_LOG_LEVEL:-"--v=2"} ${APISERVER_TEST_ARGS:-} ${CLOUD_CONFIG_OPT}"
   params+=" --address=127.0.0.1"
   params+=" --allow-privileged=true"
-  params+=" --cloud-provider=gce"
+  params+=" --cloud-provider=external"
   params+=" --client-ca-file=${CA_CERT_BUNDLE_PATH}"
   params+=" --etcd-servers=http://127.0.0.1:2379"
   params+=" --etcd-servers-overrides=/events#http://127.0.0.1:4002"
@@ -1497,6 +1525,64 @@ function start-kube-apiserver {
   cp "${src_file}" /etc/kubernetes/manifests
 }
 
+# Starts cloud provider controller manager.
+# It prepares the log file, loads the docker image, calculates variables, sets them
+# in the manifest file, and then copies the manifest file to /etc/kubernetes/manifests.
+#
+# Assumed vars (which are calculated in function compute-master-manifest-variables)
+#   CLOUD_CONFIG_OPT
+#   CLOUD_CONFIG_VOLUME
+#   CLOUD_CONFIG_MOUNT
+#   DOCKER_REGISTRY
+function start-cloud-controller-manager {
+  echo "Start cloud provider controller-manager"
+  create-cloudcontrollermanager-kubeconfig
+  prepare-log-file /var/log/cloud-controller-manager.log
+  # Calculate variables and assemble the command line.
+  local params="${CONTROLLER_MANAGER_TEST_LOG_LEVEL:-"--v=2"} ${CLOUD_CONTROLLER_MANAGER_TEST_ARGS:-} ${CLOUD_CONFIG_OPT}"
+  params+=" --use-service-account-credentials"
+  params+=" --cloud-provider=gce"
+  params+=" --kubeconfig=/etc/srv/kubernetes/cloud-controller-manager/kubeconfig"
+  params+=" --service-account-private-key-file=${SERVICEACCOUNT_KEY_PATH}"
+  if [[ -n "${ENABLE_GARBAGE_COLLECTOR:-}" ]]; then
+    params+=" --enable-garbage-collector=${ENABLE_GARBAGE_COLLECTOR}"
+  fi
+  if [[ -n "${CLUSTER_IP_RANGE:-}" ]]; then
+    params+=" --cluster-cidr=${CLUSTER_IP_RANGE}"
+  fi
+  if [[ "${NETWORK_PROVIDER:-}" == "kubenet" ]]; then
+    params+=" --allocate-node-cidrs=true"
+  elif [[ -n "${ALLOCATE_NODE_CIDRS:-}" ]]; then
+    params+=" --allocate-node-cidrs=${ALLOCATE_NODE_CIDRS}"
+  fi
+  if [[ "${ENABLE_IP_ALIASES:-}" == 'true' ]]; then
+    params+=" --cidr-allocator-type=CloudAllocator"
+    params+=" --configure-cloud-routes=false"
+  fi
+  if [[ -n "${FEATURE_GATES:-}" ]]; then
+    params+=" --feature-gates=${FEATURE_GATES}"
+  fi
+  local -r kube_rc_docker_tag=$(cat /home/kubernetes/kube-docker-files/cloud-controller-manager.docker_tag)
+  local container_env=""
+  if [[ -n "${ENABLE_CACHE_MUTATION_DETECTOR:-}" ]]; then
+    container_env="\"env\":[{\"name\": \"KUBE_CACHE_MUTATION_DETECTOR\", \"value\": \"${ENABLE_CACHE_MUTATION_DETECTOR}\"}],"
+  fi
+
+  local -r src_file="${KUBE_HOME}/kube-manifests/kubernetes/gci-trusty/cloud-controller-manager.manifest"
+  remove-salt-config-comments "${src_file}"
+  # Evaluate variables.
+  sed -i -e "s@{{srv_kube_path}}@/etc/srv/kubernetes@g" "${src_file}"
+  sed -i -e "s@{{pillar\['kube_docker_registry'\]}}@${DOCKER_REGISTRY}@g" "${src_file}"
+  sed -i -e "s@{{pillar\['cloud-controller-manager_docker_tag'\]}}@${kube_rc_docker_tag}@g" "${src_file}"
+  sed -i -e "s@{{params}}@${params}@g" "${src_file}"
+  sed -i -e "s@{{container_env}}@${container_env}@g" ${src_file}
+  sed -i -e "s@{{cloud_config_mount}}@${CLOUD_CONFIG_MOUNT}@g" "${src_file}"
+  sed -i -e "s@{{cloud_config_volume}}@${CLOUD_CONFIG_VOLUME}@g" "${src_file}"
+  sed -i -e "s@{{additional_cloud_config_mount}}@@g" "${src_file}"
+  sed -i -e "s@{{additional_cloud_config_volume}}@@g" "${src_file}"
+  cp "${src_file}" /etc/kubernetes/manifests
+}
+
 # Starts kubernetes controller manager.
 # It prepares the log file, loads the docker image, calculates variables, sets them
 # in the manifest file, and then copies the manifest file to /etc/kubernetes/manifests.
@@ -1513,7 +1599,7 @@ function start-kube-controller-manager {
   # Calculate variables and assemble the command line.
   local params="${CONTROLLER_MANAGER_TEST_LOG_LEVEL:-"--v=2"} ${CONTROLLER_MANAGER_TEST_ARGS:-} ${CLOUD_CONFIG_OPT}"
   params+=" --use-service-account-credentials"
-  params+=" --cloud-provider=gce"
+  params+=" --cloud-provider=external"
   params+=" --kubeconfig=/etc/srv/kubernetes/kube-controller-manager/kubeconfig"
   params+=" --root-ca-file=${CA_CERT_BUNDLE_PATH}"
   params+=" --service-account-private-key-file=${SERVICEACCOUNT_KEY_PATH}"
@@ -1931,6 +2017,7 @@ if [[ -n "${KUBE_USER:-}" ]]; then
 fi
 
 # generate the controller manager and scheduler tokens here since they are only used on the master.
+CLOUD_CONTROLLER_MANAGER_TOKEN=$(dd if=/dev/urandom bs=128 count=1 2>/dev/null | base64 | tr -d "=+/" | dd bs=32 count=1 2>/dev/null)
 KUBE_CONTROLLER_MANAGER_TOKEN=$(dd if=/dev/urandom bs=128 count=1 2>/dev/null | base64 | tr -d "=+/" | dd bs=32 count=1 2>/dev/null)
 KUBE_SCHEDULER_TOKEN=$(dd if=/dev/urandom bs=128 count=1 2>/dev/null | base64 | tr -d "=+/" | dd bs=32 count=1 2>/dev/null)
 
@@ -1970,6 +2057,7 @@ if [[ "${KUBERNETES_MASTER:-}" == "true" ]]; then
   start-etcd-servers
   start-etcd-empty-dir-cleanup-pod
   start-kube-apiserver
+  start-cloud-controller-manager
   start-kube-controller-manager
   start-kube-scheduler
   start-kube-addons

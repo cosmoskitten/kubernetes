@@ -103,6 +103,14 @@ func init() {
 	// TODO: Create util on Role+Binding for leader locking if more cases evolve.
 	addNamespaceRole(metav1.NamespaceSystem, rbac.Role{
 		// role for the leader locking on supplied configmap
+		ObjectMeta: metav1.ObjectMeta{Name: "system::leader-locking-cloud-controller-manager"},
+		Rules: []rbac.PolicyRule{
+			rbac.NewRule("watch").Groups(legacyGroup).Resources("configmaps").RuleOrDie(),
+			rbac.NewRule("get", "update").Groups(legacyGroup).Resources("configmaps").Names("cloud-controller-manager").RuleOrDie(),
+		},
+	})
+	addNamespaceRole(metav1.NamespaceSystem, rbac.Role{
+		// role for the leader locking on supplied configmap
 		ObjectMeta: metav1.ObjectMeta{Name: "system::leader-locking-kube-controller-manager"},
 		Rules: []rbac.PolicyRule{
 			rbac.NewRule("watch").Groups(legacyGroup).Resources("configmaps").RuleOrDie(),
@@ -117,6 +125,8 @@ func init() {
 			rbac.NewRule("get", "update").Groups(legacyGroup).Resources("configmaps").Names("kube-scheduler").RuleOrDie(),
 		},
 	})
+	addNamespaceRoleBinding(metav1.NamespaceSystem,
+		rbac.NewRoleBinding("system::leader-locking-cloud-controller-manager", metav1.NamespaceSystem).SAs(metav1.NamespaceSystem, "cloud-controller-manager").BindingOrDie())
 	addNamespaceRoleBinding(metav1.NamespaceSystem,
 		rbac.NewRoleBinding("system::leader-locking-kube-controller-manager", metav1.NamespaceSystem).SAs(metav1.NamespaceSystem, "kube-controller-manager").BindingOrDie())
 	addNamespaceRoleBinding(metav1.NamespaceSystem,
