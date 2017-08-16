@@ -284,6 +284,16 @@ func (cnc *CloudNodeController) AddCloudNode(obj interface{}) {
 			return err
 		}
 
+		providerID, err := cloudprovider.GetInstanceProviderID(cnc.cloud, types.NodeName(curNode.Name))
+		if err == nil {
+			curNode.Spec.ProviderID = providerID
+		} else {
+			// we should attempt to set providerID on curNode, but
+			// we can continue if we fail since we will attempt to set
+			// node addresses given the node name in getNodeAddressesByProviderIDOrName
+			glog.Errorf("%v", err)
+		}
+
 		nodeAddresses, err := getNodeAddressesByProviderIDOrName(instances, curNode)
 		if err != nil {
 			glog.Errorf("%v", err)
