@@ -8339,6 +8339,71 @@ func getStorageResourceList(storage string) api.ResourceList {
 	return res
 }
 
+func getLocalStorageResourceList(scratch string) api.ResourceList {
+	res := api.ResourceList{}
+	if scratch != "" {
+		res[api.ResourceStorageScratch] = resource.MustParse(scratch)
+	}
+	return res
+}
+
+func TestValidateLimitRangeForLocalStorage(t *testing.T) {
+	successCases := []struct {
+		name string
+		spec api.LimitRangeSpec
+	}{
+		{
+			name: "all-fields-valid",
+			spec: api.LimitRangeSpec{
+				Limits: []api.LimitRangeItem{
+					{
+						Type:                 api.LimitTypePod,
+						Max:                  getLocalStorageResourceList("10000Mi"),
+						Min:                  getLocalStorageResourceList("100Mi"),
+						MaxLimitRequestRatio: getLocalStorageResourceList(""),
+					},
+					{
+						Type:                 api.LimitTypeContainer,
+						Max:                  getLocalStorageResourceList("10000Mi"),
+						Min:                  getLocalStorageResourceList("100Mi"),
+						Default:              getLocalStorageResourceList("500Mi"),
+						DefaultRequest:       getLocalStorageResourceList("200Mi"),
+						MaxLimitRequestRatio: getLocalStorageResourceList(""),
+					},
+				},
+			},
+		},
+	}
+
+	// Enable alpha feature LocalStorageCapacityIsolation
+	err := utilfeature.DefaultFeatureGate.Set("LocalStorageCapacityIsolation=true")
+	if err != nil {
+		t.Errorf("Failed to enable feature gate for LocalStorageCapacityIsolation: %v", err)
+		return
+	}
+
+	for _, successCase := range successCases {
+		limitRange := &api.LimitRange{ObjectMeta: metav1.ObjectMeta{Name: successCase.name, Namespace: "foo"}, Spec: successCase.spec}
+		if errs := ValidateLimitRange(limitRange); len(errs) != 0 {
+			t.Errorf("Case %v, unexpected error: %v", successCase.name, errs)
+		}
+	}
+
+	// Disable alpha feature LocalStorageCapacityIsolation
+	err = utilfeature.DefaultFeatureGate.Set("LocalStorageCapacityIsolation=false")
+	if err != nil {
+		t.Errorf("Failed to disable feature gate for LocalStorageCapacityIsolation: %v", err)
+		return
+	}
+	for _, successCase := range successCases {
+		limitRange := &api.LimitRange{ObjectMeta: metav1.ObjectMeta{Name: successCase.name, Namespace: "foo"}, Spec: successCase.spec}
+		if errs := ValidateLimitRange(limitRange); len(errs) == 0 {
+			t.Errorf("Case %v, expected feature gate unable error but actually no error", successCase.name)
+		}
+	}
+
+}
+
 func TestValidateLimitRange(t *testing.T) {
 	successCases := []struct {
 		name string
@@ -8533,7 +8598,7 @@ func TestValidateLimitRange(t *testing.T) {
 			}},
 			"default value 2 is greater than max value 1",
 		},
-		"invalid spec defaultrequest outside range": {
+		"invalid spec default request outside range": {
 			api.LimitRange{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "foo"}, Spec: api.LimitRangeSpec{
 				Limits: []api.LimitRangeItem{
 					{
@@ -8546,7 +8611,7 @@ func TestValidateLimitRange(t *testing.T) {
 			}},
 			"default request value 2 is greater than max value 1",
 		},
-		"invalid spec defaultrequest more than default": {
+		"invalid spec default request more than default": {
 			api.LimitRange{ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: "foo"}, Spec: api.LimitRangeSpec{
 				Limits: []api.LimitRangeItem{
 					{
