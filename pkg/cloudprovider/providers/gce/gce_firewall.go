@@ -27,6 +27,7 @@ func newFirewallMetricContext(request string) *metricContext {
 // GetFirewall returns the Firewall by name.
 func (gce *GCECloud) GetFirewall(name string) (*compute.Firewall, error) {
 	mc := newFirewallMetricContext("get")
+	warnStack("Calling gce.service.Firewalls.Get")
 	v, err := gce.service.Firewalls.Get(gce.NetworkProjectID(), name).Do()
 	return v, mc.Observe(err)
 }
@@ -34,6 +35,7 @@ func (gce *GCECloud) GetFirewall(name string) (*compute.Firewall, error) {
 // CreateFirewall creates the passed firewall
 func (gce *GCECloud) CreateFirewall(f *compute.Firewall) error {
 	mc := newFirewallMetricContext("create")
+	warnStack("Calling gce.service.Firewalls.Insert")
 	op, err := gce.service.Firewalls.Insert(gce.NetworkProjectID(), f).Do()
 	if err != nil {
 		return mc.Observe(err)
@@ -45,6 +47,7 @@ func (gce *GCECloud) CreateFirewall(f *compute.Firewall) error {
 // DeleteFirewall deletes the given firewall rule.
 func (gce *GCECloud) DeleteFirewall(name string) error {
 	mc := newFirewallMetricContext("delete")
+	warnStack("Calling gce.service.Firewalls.Delete")
 	op, err := gce.service.Firewalls.Delete(gce.NetworkProjectID(), name).Do()
 	if err != nil {
 		return mc.Observe(err)
@@ -55,6 +58,7 @@ func (gce *GCECloud) DeleteFirewall(name string) error {
 // UpdateFirewall applies the given firewall as an update to an existing service.
 func (gce *GCECloud) UpdateFirewall(f *compute.Firewall) error {
 	mc := newFirewallMetricContext("update")
+	warnStack("Calling gce.service.Firewalls.Update")
 	op, err := gce.service.Firewalls.Update(gce.NetworkProjectID(), f.Name, f).Do()
 	if err != nil {
 		return mc.Observe(err)

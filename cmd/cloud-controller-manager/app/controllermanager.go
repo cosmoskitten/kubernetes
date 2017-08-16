@@ -31,6 +31,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/server/healthz"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	clientset "k8s.io/client-go/kubernetes"
@@ -45,8 +46,11 @@ import (
 	"k8s.io/kubernetes/pkg/cloudprovider"
 	"k8s.io/kubernetes/pkg/controller"
 	cloudcontrollers "k8s.io/kubernetes/pkg/controller/cloud"
+	nodecontroller "k8s.io/kubernetes/pkg/controller/node"
+	"k8s.io/kubernetes/pkg/controller/node/ipam"
 	routecontroller "k8s.io/kubernetes/pkg/controller/route"
 	servicecontroller "k8s.io/kubernetes/pkg/controller/service"
+	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/util/configz"
 
 	"github.com/golang/glog"
@@ -182,19 +186,56 @@ func StartControllers(s *options.CloudControllerManagerServer, kubeconfig *restc
 	if cloud != nil {
 		// Initialize the cloud provider with a reference to the clientBuilder
 		cloud.Initialize(clientBuilder)
+	} else {
+		glog.Warningf("Was unable to initialize the cloud %s. Will not configure cloud provider routes.", s.CloudProvider)
 	}
 
 	versionedClient := client("shared-informers")
 	sharedInformers := informers.NewSharedInformerFactory(versionedClient, resyncPeriod(s)())
 
-	// Start the CloudNodeController
-	nodeController := cloudcontrollers.NewCloudNodeController(
-		sharedInformers.Core().V1().Nodes(),
-		client("cloud-node-controller"), cloud,
-		s.NodeMonitorPeriod.Duration,
-		s.NodeStatusUpdateFrequency.Duration)
+	// Start the NodeController
+	var clusterCIDR *net.IPNet
+	var err error
+	if len(strings.TrimSpace(s.ClusterCIDR)) != 0 {
+		_, clusterCIDR, err = net.ParseCIDR(s.ClusterCIDR)
+		if err != nil {
+			glog.Warningf("Unsuccessful parsing of cluster CIDR %v: %v", s.ClusterCIDR, err)
+		}
+	}
 
-	nodeController.Run()
+	var serviceCIDR *net.IPNet
+	if len(strings.TrimSpace(s.ServiceCIDR)) != 0 {
+		_, serviceCIDR, err = net.ParseCIDR(s.ServiceCIDR)
+		if err != nil {
+			glog.Warningf("Unsuccessful parsing of service CIDR %v: %v", s.ServiceCIDR, err)
+		}
+	}
+
+	nodeController, err := nodecontroller.NewNodeController(
+		sharedInformers.Core().V1().Pods(),
+		sharedInformers.Core().V1().Nodes(),
+		sharedInformers.Extensions().V1beta1().DaemonSets(),
+		cloud,
+		clientBuilder.ClientOrDie("cloud-node-controller"),
+		s.PodEvictionTimeout.Duration,
+		s.NodeEvictionRate,
+		s.SecondaryNodeEvictionRate,
+		s.LargeClusterSizeThreshold,
+		s.UnhealthyZoneThreshold,
+		s.NodeMonitorGracePeriod.Duration,
+		s.NodeStartupGracePeriod.Duration,
+		s.NodeMonitorPeriod.Duration,
+		clusterCIDR,
+		serviceCIDR,
+		int(s.NodeCIDRMaskSize),
+		s.AllocateNodeCIDRs,
+		ipam.CIDRAllocatorType(s.CIDRAllocatorType),
+		s.EnableTaintManager,
+		utilfeature.DefaultFeatureGate.Enabled(features.TaintBasedEvictions),
+		utilfeature.DefaultFeatureGate.Enabled(features.TaintNodesByCondition),
+	)
+
+	nodeController.Run(stop)
 	time.Sleep(wait.Jitter(s.ControllerStartInterval.Duration, ControllerStartJitter))
 
 	// Start the PersistentVolumeLabelController
@@ -231,7 +272,8 @@ func StartControllers(s *options.CloudControllerManagerServer, kubeconfig *restc
 				}
 			}
 
-			routeController := routecontroller.New(routes, client("route-controller"), sharedInformers.Core().V1().Nodes(), s.ClusterName, clusterCIDR)
+			// routeController := routecontroller.New(routes, client("route-controller"), sharedInformers.Core().V1().Nodes(), s.ClusterName, clusterCIDR)
+			routeController := routecontroller.New(routes, clientBuilder.ClientOrDie("route-controller"), sharedInformers.Core().V1().Nodes(), s.ClusterName, clusterCIDR)
 			go routeController.Run(stop, s.RouteReconciliationPeriod.Duration)
 			time.Sleep(wait.Jitter(s.ControllerStartInterval.Duration, ControllerStartJitter))
 		}

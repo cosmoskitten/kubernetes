@@ -51,6 +51,7 @@ import (
 	computebeta "google.golang.org/api/compute/v0.beta"
 	compute "google.golang.org/api/compute/v1"
 	container "google.golang.org/api/container/v1"
+	"runtime"
 )
 
 const (
@@ -769,4 +770,10 @@ func (manager *gceServiceManager) getProjectsAPIEndpointAlpha() string {
 	}
 
 	return projectsApiEndpoint
+}
+
+func warnStack(warn string) {
+	buf := make([]byte, 1<<16)
+	runtime.Stack(buf, true)
+	glog.Warningf("%s:\n %s", warn, buf)
 }

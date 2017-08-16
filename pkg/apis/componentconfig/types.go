@@ -272,6 +272,8 @@ type KubeControllerManagerConfiguration struct {
 	CloudProvider string
 	// cloudConfigFile is the path to the cloud provider configuration file.
 	CloudConfigFile string
+	// externalPlugin specifies the plugin to use when cloudProvider is "external".
+	ExternalPlugin string
 	// run with untagged cloud instances
 	AllowUntaggedCloud bool
 	// concurrentEndpointSyncs is the number of endpoint syncing operations

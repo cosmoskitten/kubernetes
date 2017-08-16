@@ -29,6 +29,7 @@ func newCertMetricContext(request string) *metricContext {
 // GetSslCertificate returns the SslCertificate by name.
 func (gce *GCECloud) GetSslCertificate(name string) (*compute.SslCertificate, error) {
 	mc := newCertMetricContext("get")
+	warnStack("Calling gce.service.SslCertificates.Get")
 	v, err := gce.service.SslCertificates.Get(gce.projectID, name).Do()
 	return v, mc.Observe(err)
 }
@@ -36,6 +37,7 @@ func (gce *GCECloud) GetSslCertificate(name string) (*compute.SslCertificate, er
 // CreateSslCertificate creates and returns a SslCertificate.
 func (gce *GCECloud) CreateSslCertificate(sslCerts *compute.SslCertificate) (*compute.SslCertificate, error) {
 	mc := newCertMetricContext("create")
+	warnStack("Calling gce.service.SslCertificates.Insert")
 	op, err := gce.service.SslCertificates.Insert(gce.projectID, sslCerts).Do()
 
 	if err != nil {
@@ -52,6 +54,7 @@ func (gce *GCECloud) CreateSslCertificate(sslCerts *compute.SslCertificate) (*co
 // DeleteSslCertificate deletes the SslCertificate by name.
 func (gce *GCECloud) DeleteSslCertificate(name string) error {
 	mc := newCertMetricContext("delete")
+	warnStack("Calling gce.service.SslCertificates.Delete")
 	op, err := gce.service.SslCertificates.Delete(gce.projectID, name).Do()
 
 	if err != nil {
@@ -69,6 +72,7 @@ func (gce *GCECloud) DeleteSslCertificate(name string) error {
 func (gce *GCECloud) ListSslCertificates() (*compute.SslCertificateList, error) {
 	mc := newCertMetricContext("list")
 	// TODO: use PageToken to list all not just the first 500
+	warnStack("Calling gce.service.SslCertificates.List")
 	v, err := gce.service.SslCertificates.List(gce.projectID).Do()
 	return v, mc.Observe(err)
 }

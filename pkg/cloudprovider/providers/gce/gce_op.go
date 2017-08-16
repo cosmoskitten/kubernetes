@@ -105,6 +105,7 @@ func (gce *GCECloud) waitForZoneOp(op gceObject, zone string, mc *metricContext)
 }
 
 func (gce *GCECloud) waitForGlobalOpInProject(op gceObject, projectID string, mc *metricContext) error {
+	warnStack("Calling gce.service.GlobalOperations.Get")
 	switch v := op.(type) {
 	case *computealpha.Operation:
 		return gce.waitForOp(convertToV1Operation(op), func(operationName string) (*computev1.Operation, error) {
@@ -126,6 +127,7 @@ func (gce *GCECloud) waitForGlobalOpInProject(op gceObject, projectID string, mc
 }
 
 func (gce *GCECloud) waitForRegionOpInProject(op gceObject, projectID, region string, mc *metricContext) error {
+	warnStack("Calling gce.service.RegionOperations.Get")
 	switch v := op.(type) {
 	case *computealpha.Operation:
 		return gce.waitForOp(convertToV1Operation(op), func(operationName string) (*computev1.Operation, error) {
@@ -147,6 +149,7 @@ func (gce *GCECloud) waitForRegionOpInProject(op gceObject, projectID, region st
 }
 
 func (gce *GCECloud) waitForZoneOpInProject(op gceObject, projectID, zone string, mc *metricContext) error {
+	warnStack("Calling gce.service.ZoneOperations.Get")
 	switch v := op.(type) {
 	case *computealpha.Operation:
 		return gce.waitForOp(convertToV1Operation(op), func(operationName string) (*computev1.Operation, error) {

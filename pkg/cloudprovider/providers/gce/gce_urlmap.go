@@ -29,6 +29,7 @@ func newUrlMapMetricContext(request string) *metricContext {
 // GetUrlMap returns the UrlMap by name.
 func (gce *GCECloud) GetUrlMap(name string) (*compute.UrlMap, error) {
 	mc := newUrlMapMetricContext("get")
+	warnStack("Calling gce.service.UrlMaps.Get")
 	v, err := gce.service.UrlMaps.Get(gce.projectID, name).Do()
 	return v, mc.Observe(err)
 }
@@ -36,6 +37,7 @@ func (gce *GCECloud) GetUrlMap(name string) (*compute.UrlMap, error) {
 // CreateUrlMap creates a url map
 func (gce *GCECloud) CreateUrlMap(urlMap *compute.UrlMap) error {
 	mc := newUrlMapMetricContext("create")
+	warnStack("Calling gce.service.UrlMaps.Insert")
 	op, err := gce.service.UrlMaps.Insert(gce.projectID, urlMap).Do()
 	if err != nil {
 		return mc.Observe(err)
@@ -46,6 +48,7 @@ func (gce *GCECloud) CreateUrlMap(urlMap *compute.UrlMap) error {
 // UpdateUrlMap applies the given UrlMap as an update
 func (gce *GCECloud) UpdateUrlMap(urlMap *compute.UrlMap) error {
 	mc := newUrlMapMetricContext("update")
+	warnStack("Calling gce.service.UrlMaps.Update")
 	op, err := gce.service.UrlMaps.Update(gce.projectID, urlMap.Name, urlMap).Do()
 	if err != nil {
 		return mc.Observe(err)
@@ -56,6 +59,7 @@ func (gce *GCECloud) UpdateUrlMap(urlMap *compute.UrlMap) error {
 // DeleteUrlMap deletes a url map by name.
 func (gce *GCECloud) DeleteUrlMap(name string) error {
 	mc := newUrlMapMetricContext("delete")
+	warnStack("Calling gce.service.UrlMaps.Delete")
 	op, err := gce.service.UrlMaps.Delete(gce.projectID, name).Do()
 	if err != nil {
 		if isHTTPErrorCode(err, http.StatusNotFound) {
@@ -70,6 +74,7 @@ func (gce *GCECloud) DeleteUrlMap(name string) error {
 func (gce *GCECloud) ListUrlMaps() (*compute.UrlMapList, error) {
 	mc := newUrlMapMetricContext("list")
 	// TODO: use PageToken to list all not just the first 500
+	warnStack("Calling gce.service.UrlMaps.List")
 	v, err := gce.service.UrlMaps.List(gce.projectID).Do()
 	return v, mc.Observe(err)
 }

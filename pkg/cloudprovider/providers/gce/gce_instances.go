@@ -98,6 +98,7 @@ func (gce *GCECloud) NodeAddressesByProviderID(providerID string) ([]v1.NodeAddr
 		return []v1.NodeAddress{}, err
 	}
 
+	warnStack("Calling gce.service.Instances.Get")
 	instance, err := gce.service.Instances.Get(project, zone, canonicalizeInstanceName(name)).Do()
 	if err != nil {
 		return []v1.NodeAddress{}, fmt.Errorf("error while querying for providerID %q: %v", providerID, err)
@@ -199,6 +200,7 @@ func (gce *GCECloud) InstanceType(nodeName types.NodeName) (string, error) {
 
 func (gce *GCECloud) AddSSHKeyToAllInstances(user string, keyData []byte) error {
 	return wait.Poll(2*time.Second, 30*time.Second, func() (bool, error) {
+		warnStack("Calling gce.service.Projects.Get")
 		project, err := gce.service.Projects.Get(gce.projectID).Do()
 		if err != nil {
 			glog.Errorf("Could not get project: %v", err)
@@ -264,6 +266,7 @@ func (gce *GCECloud) GetAllZones() (sets.String, error) {
 	for _, zone := range gce.managedZones {
 		mc := newInstancesMetricContext("list", zone)
 		// We only retrieve one page in each zone - we only care about existence
+		warnStack("Calling gce.service.Instances.List")
 		listCall := gce.service.Instances.List(gce.projectID, zone)
 
 		// No filter: We assume that a zone is either used or unused
@@ -327,6 +330,7 @@ func (gce *GCECloud) AliasRanges(nodeName types.NodeName) (cidrs []string, err e
 	}
 
 	var res *computebeta.Instance
+	warnStack("Calling gce.service.Instances.Get")
 	res, err = gce.serviceBeta.Instances.Get(
 		gce.projectID, instance.Zone, instance.Name).Do()
 	if err != nil {
@@ -349,6 +353,7 @@ func (gce *GCECloud) AddAliasToInstance(nodeName types.NodeName, alias *net.IPNe
 	if err != nil {
 		return err
 	}
+	warnStack("Calling gce.service.Instances.Get")
 	instance, err := gce.serviceAlpha.Instances.Get(gce.projectID, v1instance.Zone, v1instance.Name).Do()
 	if err != nil {
 		return err
@@ -401,6 +406,7 @@ func (gce *GCECloud) getInstancesByNames(names []string) ([]*gceInstance, error)
 		pageToken := ""
 		page := 0
 		for ; page == 0 || (pageToken != "" && page < maxPages); page++ {
+			warnStack("Calling gce.service.Instances.List")
 			listCall := gce.service.Instances.List(gce.projectID, zone)
 
 			if nodeInstancePrefix != "" {
@@ -475,10 +481,11 @@ func (gce *GCECloud) getInstanceByName(name string) (*gceInstance, error) {
 func (gce *GCECloud) getInstanceFromProjectInZoneByName(project, zone, name string) (*gceInstance, error) {
 	name = canonicalizeInstanceName(name)
 	mc := newInstancesMetricContext("get", zone)
+	warnStack("Calling gce.service.Instances.Get")
 	res, err := gce.service.Instances.Get(project, zone, name).Do()
 	mc.Observe(err)
 	if err != nil {
-		glog.Errorf("getInstanceFromProjectInZoneByName: failed to get instance %s; err: %v", name, err)
+		glog.Errorf("getInstanceFromProjectInZoneByName: failed to get instance %s, zone %s, project %s; err: %v", name, zone, project, err)
 		return nil, err
 	}
 
@@ -567,6 +574,7 @@ func (gce *GCECloud) computeHostTags(hosts []*gceInstance) ([]string, error) {
 		pageToken := ""
 		page := 0
 		for ; page == 0 || (pageToken != "" && page < maxPages); page++ {
+			warnStack("Calling gce.service.Instances.List")
 			listCall := gce.service.Instances.List(gce.projectID, zone)
 
 			if nodeInstancePrefix != "" {

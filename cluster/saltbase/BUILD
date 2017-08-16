@@ -68,6 +68,7 @@ pkg_tar(
 pkg_tar(
     name = "gci-trusty-salt-manifests",
     files = [
+        "salt/cloud-controller-manager/cloud-controller-manager.manifest",
         "salt/cluster-autoscaler/cluster-autoscaler.manifest",
         "salt/e2e-image-puller/e2e-image-puller.manifest",
         "salt/etcd/etcd.manifest",

@@ -25,6 +25,7 @@ func newTargetPoolMetricContext(request, region string) *metricContext {
 // GetTargetPool returns the TargetPool by name.
 func (gce *GCECloud) GetTargetPool(name, region string) (*compute.TargetPool, error) {
 	mc := newTargetPoolMetricContext("get", region)
+	warnStack("Calling gce.service.TargetPools.Get")
 	v, err := gce.service.TargetPools.Get(gce.projectID, region, name).Do()
 	return v, mc.Observe(err)
 }
@@ -32,6 +33,7 @@ func (gce *GCECloud) GetTargetPool(name, region string) (*compute.TargetPool, er
 // CreateTargetPool creates the passed TargetPool
 func (gce *GCECloud) CreateTargetPool(tp *compute.TargetPool, region string) error {
 	mc := newTargetPoolMetricContext("create", region)
+	warnStack("Calling gce.service.TargetPools.Insert")
 	op, err := gce.service.TargetPools.Insert(gce.projectID, region, tp).Do()
 	if err != nil {
 		return mc.Observe(err)
@@ -43,6 +45,7 @@ func (gce *GCECloud) CreateTargetPool(tp *compute.TargetPool, region string) err
 // DeleteTargetPool deletes TargetPool by name.
 func (gce *GCECloud) DeleteTargetPool(name, region string) error {
 	mc := newTargetPoolMetricContext("delete", region)
+	warnStack("Calling gce.service.TargetPools.Delete")
 	op, err := gce.service.TargetPools.Delete(gce.projectID, region, name).Do()
 	if err != nil {
 		return mc.Observe(err)
@@ -54,6 +57,7 @@ func (gce *GCECloud) DeleteTargetPool(name, region string) error {
 func (gce *GCECloud) AddInstancesToTargetPool(name, region string, instanceRefs []*compute.InstanceReference) error {
 	add := &compute.TargetPoolsAddInstanceRequest{Instances: instanceRefs}
 	mc := newTargetPoolMetricContext("add_instances", region)
+	warnStack("Calling gce.service.TargetPools.AddInstance")
 	op, err := gce.service.TargetPools.AddInstance(gce.projectID, region, name, add).Do()
 	if err != nil {
 		return mc.Observe(err)
@@ -65,6 +69,7 @@ func (gce *GCECloud) AddInstancesToTargetPool(name, region string, instanceRefs 
 func (gce *GCECloud) RemoveInstancesFromTargetPool(name, region string, instanceRefs []*compute.InstanceReference) error {
 	remove := &compute.TargetPoolsRemoveInstanceRequest{Instances: instanceRefs}
 	mc := newTargetPoolMetricContext("remove_instances", region)
+	warnStack("Calling gce.service.TargetPools.RemoveInstance")
 	op, err := gce.service.TargetPools.RemoveInstance(gce.projectID, region, name, remove).Do()
 	if err != nil {
 		return mc.Observe(err)

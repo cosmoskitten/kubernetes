@@ -73,6 +73,7 @@ func (gce *GCECloud) GetZoneByNodeName(nodeName types.NodeName) (cloudprovider.Z
 func (gce *GCECloud) ListZonesInRegion(region string) ([]*compute.Zone, error) {
 	mc := newZonesMetricContext("list", region)
 	filter := fmt.Sprintf("region eq %v", gce.getRegionLink(region))
+	warnStack("Calling gce.service.Zones.List")
 	list, err := gce.service.Zones.List(gce.projectID).Filter(filter).Do()
 	if err != nil {
 		return nil, mc.Observe(err)

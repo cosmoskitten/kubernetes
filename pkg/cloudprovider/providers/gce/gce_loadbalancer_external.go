@@ -321,6 +321,7 @@ func (gce *GCECloud) updateExternalLoadBalancer(clusterName string, service *v1.
 	}
 
 	loadBalancerName := cloudprovider.GetLoadBalancerName(service)
+	warnStack("Calling gce.service.TargetPools.Get")
 	pool, err := gce.service.TargetPools.Get(gce.projectID, gce.region, loadBalancerName).Do()
 	if err != nil {
 		return err
@@ -636,6 +637,7 @@ func (gce *GCECloud) ensureHttpHealthCheck(name, path string, port int32) (hc *c
 // Returns whether the forwarding rule exists, whether it needs to be updated,
 // what its IP address is (if it exists), and any error we encountered.
 func (gce *GCECloud) forwardingRuleNeedsUpdate(name, region string, loadBalancerIP string, ports []v1.ServicePort) (exists bool, needsUpdate bool, ipAddress string, err error) {
+	warnStack("Calling gce.service.ForwardingRules.Get")
 	fwd, err := gce.service.ForwardingRules.Get(gce.projectID, region, name).Do()
 	if err != nil {
 		if isHTTPErrorCode(err, http.StatusNotFound) {
@@ -675,6 +677,7 @@ func (gce *GCECloud) forwardingRuleNeedsUpdate(name, region string, loadBalancer
 // Doesn't check whether the hosts have changed, since host updating is handled
 // separately.
 func (gce *GCECloud) targetPoolNeedsUpdate(name, region string, affinityType v1.ServiceAffinity) (exists bool, needsUpdate bool, err error) {
+	warnStack("Calling gce.service.TargetPools.Get")
 	tp, err := gce.service.TargetPools.Get(gce.projectID, region, name).Do()
 	if err != nil {
 		if isHTTPErrorCode(err, http.StatusNotFound) {
@@ -761,6 +764,7 @@ func translateAffinityType(affinityType v1.ServiceAffinity) string {
 }
 
 func (gce *GCECloud) firewallNeedsUpdate(name, serviceName, region, ipAddress string, ports []v1.ServicePort, sourceRanges netsets.IPNet) (exists bool, needsUpdate bool, err error) {
+	warnStack("Calling gce.service.Firewalls.Get")
 	fw, err := gce.service.Firewalls.Get(gce.NetworkProjectID(), MakeFirewallName(name)).Do()
 	if err != nil {
 		if isHTTPErrorCode(err, http.StatusNotFound) {
@@ -808,6 +812,7 @@ func (gce *GCECloud) ensureHttpHealthCheckFirewall(svc *v1.Service, serviceName,
 	ports := []v1.ServicePort{{Protocol: "tcp", Port: hcPort}}
 
 	fwName := MakeHealthCheckFirewallName(clusterID, hcName, isNodesHealthCheck)
+	warnStack("Calling gce.service.Firewalls.Get")
 	fw, err := gce.service.Firewalls.Get(gce.NetworkProjectID(), fwName).Do()
 	if err != nil {
 		if !isHTTPErrorCode(err, http.StatusNotFound) {

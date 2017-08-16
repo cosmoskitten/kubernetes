@@ -485,6 +485,7 @@ function stage-images() {
 
   local docker_wrapped_binaries=(
     "kube-apiserver"
+    "cloud-controller-manager"
     "kube-controller-manager"
     "kube-scheduler"
     "kube-proxy"

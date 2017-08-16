@@ -29,6 +29,7 @@ func newTargetProxyMetricContext(request string) *metricContext {
 // GetTargetHttpProxy returns the UrlMap by name.
 func (gce *GCECloud) GetTargetHttpProxy(name string) (*compute.TargetHttpProxy, error) {
 	mc := newTargetProxyMetricContext("get")
+	warnStack("Calling gce.service.TargetHttpProxies.Get")
 	v, err := gce.service.TargetHttpProxies.Get(gce.projectID, name).Do()
 	return v, mc.Observe(err)
 }
@@ -36,6 +37,7 @@ func (gce *GCECloud) GetTargetHttpProxy(name string) (*compute.TargetHttpProxy, 
 // CreateTargetHttpProxy creates a TargetHttpProxy
 func (gce *GCECloud) CreateTargetHttpProxy(proxy *compute.TargetHttpProxy) error {
 	mc := newTargetProxyMetricContext("create")
+	warnStack("Calling gce.service.TargetHttpProxies.Get")
 	op, err := gce.service.TargetHttpProxies.Insert(gce.projectID, proxy).Do()
 	if err != nil {
 		return mc.Observe(err)
@@ -46,6 +48,7 @@ func (gce *GCECloud) CreateTargetHttpProxy(proxy *compute.TargetHttpProxy) error
 // SetUrlMapForTargetHttpProxy sets the given UrlMap for the given TargetHttpProxy.
 func (gce *GCECloud) SetUrlMapForTargetHttpProxy(proxy *compute.TargetHttpProxy, urlMap *compute.UrlMap) error {
 	mc := newTargetProxyMetricContext("set_url_map")
+	warnStack("Calling gce.service.TargetHttpProxies.SetUrlMap")
 	op, err := gce.service.TargetHttpProxies.SetUrlMap(
 		gce.projectID, proxy.Name, &compute.UrlMapReference{UrlMap: urlMap.SelfLink}).Do()
 	if err != nil {
@@ -57,6 +60,7 @@ func (gce *GCECloud) SetUrlMapForTargetHttpProxy(proxy *compute.TargetHttpProxy,
 // DeleteTargetHttpProxy deletes the TargetHttpProxy by name.
 func (gce *GCECloud) DeleteTargetHttpProxy(name string) error {
 	mc := newTargetProxyMetricContext("delete")
+	warnStack("Calling gce.service.TargetHttpProxies.Delete")
 	op, err := gce.service.TargetHttpProxies.Delete(gce.projectID, name).Do()
 	if err != nil {
 		if isHTTPErrorCode(err, http.StatusNotFound) {
@@ -71,6 +75,7 @@ func (gce *GCECloud) DeleteTargetHttpProxy(name string) error {
 func (gce *GCECloud) ListTargetHttpProxies() (*compute.TargetHttpProxyList, error) {
 	mc := newTargetProxyMetricContext("list")
 	// TODO: use PageToken to list all not just the first 500
+	warnStack("Calling gce.service.TargetHttpProxies.List")
 	v, err := gce.service.TargetHttpProxies.List(gce.projectID).Do()
 	return v, mc.Observe(err)
 }
@@ -80,6 +85,7 @@ func (gce *GCECloud) ListTargetHttpProxies() (*compute.TargetHttpProxyList, erro
 // GetTargetHttpsProxy returns the UrlMap by name.
 func (gce *GCECloud) GetTargetHttpsProxy(name string) (*compute.TargetHttpsProxy, error) {
 	mc := newTargetProxyMetricContext("get")
+	warnStack("Calling gce.service.TargetHttpProxies.Get")
 	v, err := gce.service.TargetHttpsProxies.Get(gce.projectID, name).Do()
 	return v, mc.Observe(err)
 }
@@ -87,6 +93,7 @@ func (gce *GCECloud) GetTargetHttpsProxy(name string) (*compute.TargetHttpsProxy
 // CreateTargetHttpsProxy creates a TargetHttpsProxy
 func (gce *GCECloud) CreateTargetHttpsProxy(proxy *compute.TargetHttpsProxy) error {
 	mc := newTargetProxyMetricContext("create")
+	warnStack("Calling gce.service.TargetHttpProxies.Insert")
 	op, err := gce.service.TargetHttpsProxies.Insert(gce.projectID, proxy).Do()
 	if err != nil {
 		return mc.Observe(err)
@@ -97,6 +104,7 @@ func (gce *GCECloud) CreateTargetHttpsProxy(proxy *compute.TargetHttpsProxy) err
 // SetUrlMapForTargetHttpsProxy sets the given UrlMap for the given TargetHttpsProxy.
 func (gce *GCECloud) SetUrlMapForTargetHttpsProxy(proxy *compute.TargetHttpsProxy, urlMap *compute.UrlMap) error {
 	mc := newTargetProxyMetricContext("set_url_map")
+	warnStack("Calling gce.service.TargetHttpProxies.SetUrlMap")
 	op, err := gce.service.TargetHttpsProxies.SetUrlMap(
 		gce.projectID, proxy.Name, &compute.UrlMapReference{UrlMap: urlMap.SelfLink}).Do()
 	if err != nil {
@@ -108,6 +116,7 @@ func (gce *GCECloud) SetUrlMapForTargetHttpsProxy(proxy *compute.TargetHttpsProx
 // SetSslCertificateForTargetHttpsProxy sets the given SslCertificate for the given TargetHttpsProxy.
 func (gce *GCECloud) SetSslCertificateForTargetHttpsProxy(proxy *compute.TargetHttpsProxy, sslCert *compute.SslCertificate) error {
 	mc := newTargetProxyMetricContext("set_ssl_cert")
+	warnStack("Calling gce.service.TargetHttpProxies.SetSslCertificates")
 	op, err := gce.service.TargetHttpsProxies.SetSslCertificates(
 		gce.projectID, proxy.Name, &compute.TargetHttpsProxiesSetSslCertificatesRequest{SslCertificates: []string{sslCert.SelfLink}}).Do()
 	if err != nil {
@@ -119,6 +128,7 @@ func (gce *GCECloud) SetSslCertificateForTargetHttpsProxy(proxy *compute.TargetH
 // DeleteTargetHttpsProxy deletes the TargetHttpsProxy by name.
 func (gce *GCECloud) DeleteTargetHttpsProxy(name string) error {
 	mc := newTargetProxyMetricContext("delete")
+	warnStack("Calling gce.service.TargetHttpProxies.Delete")
 	op, err := gce.service.TargetHttpsProxies.Delete(gce.projectID, name).Do()
 	if err != nil {
 		if isHTTPErrorCode(err, http.StatusNotFound) {
@@ -133,6 +143,7 @@ func (gce *GCECloud) DeleteTargetHttpsProxy(name string) error {
 func (gce *GCECloud) ListTargetHttpsProxies() (*compute.TargetHttpsProxyList, error) {
 	mc := newTargetProxyMetricContext("list")
 	// TODO: use PageToken to list all not just the first 500
+	warnStack("Calling gce.service.TargetHttpProxies.List")
 	v, err := gce.service.TargetHttpsProxies.List(gce.projectID).Do()
 	return v, mc.Observe(err)
 }

@@ -38,6 +38,7 @@ func (gce *GCECloud) ListRoutes(clusterName string) ([]*cloudprovider.Route, err
 	page := 0
 	for ; page == 0 || (pageToken != "" && page < maxPages); page++ {
 		mc := newRoutesMetricContext("list_page")
+		warnStack("Calling gce.service.Routes.List")
 		listCall := gce.service.Routes.List(gce.NetworkProjectID())
 
 		prefix := truncateClusterName(clusterName)
@@ -46,6 +47,7 @@ func (gce *GCECloud) ListRoutes(clusterName string) ([]*cloudprovider.Route, err
 		filter := "(name eq " + prefix + "-.*) "
 		filter = filter + "(network eq " + gce.NetworkURL() + ") "
 		filter = filter + "(description eq " + k8sNodeRouteTag + ")"
+		glog.Infof("About to use the filter \"%s\" to list routes.", filter)
 		listCall = listCall.Filter(filter)
 		if pageToken != "" {
 			listCall = listCall.PageToken(pageToken)
@@ -80,6 +82,7 @@ func (gce *GCECloud) CreateRoute(clusterName string, nameHint string, route *clo
 	}
 
 	mc := newRoutesMetricContext("create")
+	warnStack("Calling gce.service.GlobalOperations.Insert")
 	insertOp, err := gce.service.Routes.Insert(gce.NetworkProjectID(), &compute.Route{
 		Name:            routeName,
 		DestRange:       route.DestinationCIDR,
@@ -101,6 +104,7 @@ func (gce *GCECloud) CreateRoute(clusterName string, nameHint string, route *clo
 
 func (gce *GCECloud) DeleteRoute(clusterName string, route *cloudprovider.Route) error {
 	mc := newRoutesMetricContext("delete")
+	warnStack("Calling gce.service.GlobalOperations.Delete")
 	deleteOp, err := gce.service.Routes.Delete(gce.NetworkProjectID(), route.Name).Do()
 	if err != nil {
 		return mc.Observe(err)

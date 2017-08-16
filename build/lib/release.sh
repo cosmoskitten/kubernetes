@@ -406,6 +406,7 @@ function kube::release::package_kube_manifests_tarball() {
   cp "${salt_dir}/kube-scheduler/kube-scheduler.manifest" "${gci_dst_dir}"
   cp "${salt_dir}/kube-apiserver/kube-apiserver.manifest" "${gci_dst_dir}"
   cp "${salt_dir}/kube-apiserver/abac-authz-policy.jsonl" "${gci_dst_dir}"
+  cp "${salt_dir}/cloud-controller-manager/cloud-controller-manager.manifest" "${gci_dst_dir}"
   cp "${salt_dir}/kube-controller-manager/kube-controller-manager.manifest" "${gci_dst_dir}"
   cp "${salt_dir}/kube-addons/kube-addon-manager.yaml" "${gci_dst_dir}"
   cp "${salt_dir}/l7-gcp/glbc.manifest" "${gci_dst_dir}"
