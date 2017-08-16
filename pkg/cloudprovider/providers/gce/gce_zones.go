@@ -43,14 +43,34 @@ func (gce *GCECloud) GetZone() (cloudprovider.Zone, error) {
 // This is particularly useful in external cloud providers where the kubelet
 // does not initialize node data.
 func (gce *GCECloud) GetZoneByProviderID(providerID string) (cloudprovider.Zone, error) {
-	return cloudprovider.Zone{}, errors.New("GetZoneByProviderID not implemented")
+	_, zone, _, err := splitProviderID(providerID)
+	if err != nil {
+		return cloudprovider.Zone{}, err
+	}
+	region, err := GetGCERegion(zone)
+	if err != nil {
+		return cloudprovider.Zone{}, err
+	}
+	return cloudprovider.Zone{FailureDomain: zone, Region: region}, nil
 }
 
 // GetZoneByNodeName implements Zones.GetZoneByNodeName
 // This is particularly useful in external cloud providers where the kubelet
 // does not initialize node data.
 func (gce *GCECloud) GetZoneByNodeName(nodeName types.NodeName) (cloudprovider.Zone, error) {
-	return cloudprovider.Zone{}, errors.New("GetZoneByNodeName not imeplemented")
+	list, err := gce.service.Zones.List(gce.projectID).Filter(fmt.Sprintf("name eq %s", mapNodeNameToInstanceName(nodeName))).Do()
+	if err != nil {
+		return cloudprovider.Zone{}, errors.New(fmt.Sprintf("GetZoneByNodeName(%s) not implemented", nodeName))
+	}
+	if len(list.Items) != 1 {
+		return cloudprovider.Zone{}, errors.New("Could not find a match for node name")
+	}
+	zone := list.Items[0].Name
+	region, err := GetGCERegion(zone)
+	if err != nil {
+		return cloudprovider.Zone{}, err
+	}
+	return cloudprovider.Zone{FailureDomain: zone, Region: region}, nil
 }
 
 // ListZonesInRegion returns all zones in a GCP region

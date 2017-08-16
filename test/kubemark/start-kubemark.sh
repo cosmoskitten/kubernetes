@@ -58,6 +58,7 @@ ETCD_IMAGE="${ETCD_IMAGE:-3.0.17}"
 ETCD_VERSION="${ETCD_VERSION:-}"
 
 # Controller-manager related variables.
+CLOUD_CONTROLLER_MANAGER_TEST_ARGS="${CLOUD_CONTROLLER_MANAGER_TEST_ARGS:-}"
 CONTROLLER_MANAGER_TEST_ARGS="${CONTROLLER_MANAGER_TEST_ARGS:-}"
 ALLOCATE_NODE_CIDRS="${ALLOCATE_NODE_CIDRS:-}"
 CLUSTER_IP_RANGE="${CLUSTER_IP_RANGE:-}"
@@ -155,6 +156,7 @@ function copy-resource-files-to-master {
     "${RESOURCE_DIRECTORY}/manifests/etcd-events.yaml" \
     "${RESOURCE_DIRECTORY}/manifests/kube-apiserver.yaml" \
     "${RESOURCE_DIRECTORY}/manifests/kube-scheduler.yaml" \
+    "${RESOURCE_DIRECTORY}/manifests/cloud-controller-manager.yaml" \
     "${RESOURCE_DIRECTORY}/manifests/kube-controller-manager.yaml" \
     "${RESOURCE_DIRECTORY}/manifests/kube-addon-manager.yaml" \
     "${RESOURCE_DIRECTORY}/manifests/addons/kubemark-rbac-bindings" \

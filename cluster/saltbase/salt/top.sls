@@ -54,6 +54,7 @@ base:
     - l7-gcp
 {% endif %}
     - kube-apiserver
+    - cloud-controller-manager
     - kube-controller-manager
     - kube-scheduler
     - supervisor
