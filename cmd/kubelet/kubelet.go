@@ -45,12 +45,18 @@ func die(err error) {
 }
 
 func main() {
+	// construct the Scheme for the Kubelet API types
+	kubeletScheme, kubeletCodecs, err := options.NewKubeletSchemeAndCodecs()
+	if err != nil {
+		die(err)
+	}
+
 	// construct KubeletFlags object and register command line flags mapping
 	kubeletFlags := options.NewKubeletFlags()
 	kubeletFlags.AddFlags(pflag.CommandLine)
 
 	// construct KubeletConfiguration object and register command line flags mapping
-	defaultConfig, err := options.NewKubeletConfiguration()
+	defaultConfig, err := options.NewKubeletConfiguration(kubeletScheme)
 	if err != nil {
 		die(err)
 	}
@@ -80,7 +86,7 @@ func main() {
 	var kubeletConfigController *kubeletconfig.Controller
 	if utilfeature.DefaultFeatureGate.Enabled(features.DynamicKubeletConfig) {
 		var err error
-		kubeletConfig, kubeletConfigController, err = app.BootstrapKubeletConfigController(kubeletFlags, defaultConfig)
+		kubeletConfig, kubeletConfigController, err = app.BootstrapKubeletConfigController(kubeletCodecs, kubeletFlags, defaultConfig)
 		if err != nil {
 			die(err)
 		}
@@ -89,7 +95,12 @@ func main() {
 	}
 
 	// construct a KubeletServer from kubeletFlags and kubeletConfig
-	kubeletServer := &options.KubeletServer{KubeletFlags: *kubeletFlags, KubeletConfiguration: *kubeletConfig}
+	kubeletServer := &options.KubeletServer{
+		KubeletFlags:         *kubeletFlags,
+		KubeletConfiguration: *kubeletConfig,
+		KubeletScheme:        kubeletScheme,
+		KubeletCodecs:        kubeletCodecs,
+	}
 
 	// use kubeletServer to construct the default KubeletDeps
 	kubeletDeps, err := app.UnsecuredDependencies(kubeletServer)

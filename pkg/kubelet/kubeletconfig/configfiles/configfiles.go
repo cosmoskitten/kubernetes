@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/kubernetes/pkg/kubelet/apis/kubeletconfig"
 	utilcodec "k8s.io/kubernetes/pkg/kubelet/kubeletconfig/util/codec"
 	utilfs "k8s.io/kubernetes/pkg/kubelet/kubeletconfig/util/filesystem"
@@ -35,15 +36,18 @@ type Loader interface {
 type fsLoader struct {
 	// fs is the filesystem where the config files exist; can be mocked for testing
 	fs utilfs.Filesystem
+	// kubeletCodecs is the scheme used to decode config files
+	kubeletCodecs *serializer.CodecFactory
 	// configDir is the absolute path to the directory containing the configuration files
 	configDir string
 }
 
 // NewFSLoader returns a Loader that loads a KubeletConfiguration from the files in `configDir`
-func NewFSLoader(fs utilfs.Filesystem, configDir string) Loader {
+func NewFSLoader(fs utilfs.Filesystem, kubeletCodecs *serializer.CodecFactory, configDir string) Loader {
 	return &fsLoader{
-		fs:        fs,
-		configDir: configDir,
+		fs:            fs,
+		kubeletCodecs: kubeletCodecs,
+		configDir:     configDir,
 	}
 }
 
@@ -62,5 +66,5 @@ func (loader *fsLoader) Load() (*kubeletconfig.KubeletConfiguration, error) {
 		return nil, fmt.Errorf(errfmt, fmt.Errorf("config file was empty, but some parameters are required"))
 	}
 
-	return utilcodec.DecodeKubeletConfiguration(data)
+	return utilcodec.DecodeKubeletConfiguration(loader.kubeletCodecs, data)
 }
