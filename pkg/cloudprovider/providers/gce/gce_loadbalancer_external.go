@@ -139,6 +139,7 @@ func (gce *GCECloud) ensureExternalLoadBalancer(clusterName, clusterID string, a
 		if err != nil {
 			return nil, fmt.Errorf("failed to ensure a static IP for the LB: %v", err)
 		}
+		glog.V(4).Infof("EnsureLoadBalancer(%s): ensured IP address %s", lbRefStr, ipAddr)
 		// If the IP was not owned by the user, but it already existed, it
 		// could indicate that the previous update cycle failed. We can use
 		// this IP and try to run through the process again, but we should
@@ -446,6 +447,7 @@ func verifyUserRequestedIP(s CloudAddressService, region, requestedIP, fwdRuleIP
 	if requestedIP == fwdRuleIP {
 		// The requested IP is not a static IP, but is currently assigned
 		// to this forwarding rule, so we can just use it.
+		glog.V(4).Infof("verifyUserRequestedIP: the requested IP %q is not static, but is currently in use by for LB %s", requestedIP, lbRef)
 		return false, nil
 	}
 	// The requested IP is not static and it is not assigned to the
