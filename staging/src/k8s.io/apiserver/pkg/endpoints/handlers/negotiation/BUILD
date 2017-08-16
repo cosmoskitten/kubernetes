@@ -11,6 +11,7 @@ go_test(
     srcs = ["negotiate_test.go"],
     library = ":go_default_library",
     deps = [
+        "//vendor/bitbucket.org/ww/goautoneg:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/runtime:go_default_library",
     ],
@@ -26,6 +27,7 @@ go_library(
     deps = [
         "//vendor/bitbucket.org/ww/goautoneg:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
+        "//vendor/k8s.io/apimachinery/pkg/apis/meta/v1alpha1:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/runtime:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/runtime/schema:go_default_library",
     ],
