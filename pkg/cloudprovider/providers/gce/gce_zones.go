@@ -43,14 +43,15 @@ func (gce *GCECloud) GetZone() (cloudprovider.Zone, error) {
 // This is particularly useful in external cloud providers where the kubelet
 // does not initialize node data.
 func (gce *GCECloud) GetZoneByProviderID(providerID string) (cloudprovider.Zone, error) {
-	return cloudprovider.Zone{}, errors.New("GetZoneByProviderID not implemented")
+
+	return cloudprovider.Zone{}, errors.New(fmt.Sprintf("GetZoneByProviderID(%s) not implemented", providerID))
 }
 
 // GetZoneByNodeName implements Zones.GetZoneByNodeName
 // This is particularly useful in external cloud providers where the kubelet
 // does not initialize node data.
 func (gce *GCECloud) GetZoneByNodeName(nodeName types.NodeName) (cloudprovider.Zone, error) {
-	return cloudprovider.Zone{}, errors.New("GetZoneByNodeName not imeplemented")
+	return cloudprovider.Zone{}, errors.New(fmt.Sprintf("GetZoneByNodeName(%s) not implemented", nodeName))
 }
 
 // ListZonesInRegion returns all zones in a GCP region

@@ -272,6 +272,7 @@ func (c completedConfig) New(delegationTarget genericapiserver.DelegationTarget)
 		appsrest.RESTStorageProvider{},
 		admissionregistrationrest.RESTStorageProvider{},
 	}
+	glog.V(1).Infof("WRF About to call InstallAPIs")
 	m.InstallAPIs(c.Config.APIResourceConfigSource, c.Config.GenericConfig.RESTOptionsGetter, restStorageProviders...)
 
 	if c.Tunneler != nil {
@@ -333,11 +334,14 @@ func (m *Master) InstallAPIs(apiResourceConfigSource serverstorage.APIResourceCo
 		glog.V(1).Infof("Enabling API group %q.", groupName)
 
 		if postHookProvider, ok := restStorageBuilder.(genericapiserver.PostStartHookProvider); ok {
+			glog.V(1).Infof("WRF calling PostStartHook on %s", groupName)
 			name, hook, err := postHookProvider.PostStartHook()
 			if err != nil {
 				glog.Fatalf("Error building PostStartHook: %v", err)
 			}
 			m.GenericAPIServer.AddPostStartHookOrDie(name, hook)
+		} else {
+			glog.V(1).Infof("WRF could not call PostStartHook on %s - type %T", groupName, restStorageBuilder)
 		}
 
 		apiGroupsInfo = append(apiGroupsInfo, apiGroupInfo)

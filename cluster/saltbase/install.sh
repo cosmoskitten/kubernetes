@@ -26,6 +26,7 @@ readonly SALT_ROOT
 
 readonly KUBE_DOCKER_WRAPPED_BINARIES=(
   kube-apiserver
+  cloud-controller-manager
   kube-controller-manager
   kube-scheduler
   kube-proxy
