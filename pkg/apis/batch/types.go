@@ -109,6 +109,21 @@ type JobSpec struct {
 	// +optional
 	ActiveDeadlineSeconds *int64
 
+	// Optional number of retries before marking this job failed.
+	// Defaults to 6
+	// +optional
+	BackoffLimit *int32
+
+	// Optional time (in seconds) specifying how long the initial backoff will last.
+	// Defaults to 10s.
+	// +optional
+	BackoffSeconds *int64
+
+	// TODO enabled it when https://github.com/kubernetes/kubernetes/issues/28486 has been fixed
+	// Optional number of failed pods to retain.
+	// +optional
+	// FailedPodsLimit *int32
+
 	// A label query over pods that should match the pod count.
 	// Normally, the system sets this field for you.
 	// +optional

@@ -77,10 +77,26 @@ type JobSpec struct {
 	// +optional
 	Completions *int32 `json:"completions,omitempty" protobuf:"varint,2,opt,name=completions"`
 
-	// Optional duration in seconds relative to the startTime that the job may be active
+	// Specifies the duration in seconds relative to the startTime that the job may be active
 	// before the system tries to terminate it; value must be positive integer
 	// +optional
 	ActiveDeadlineSeconds *int64 `json:"activeDeadlineSeconds,omitempty" protobuf:"varint,3,opt,name=activeDeadlineSeconds"`
+
+	// Specifies the number of retries before marking this job failed.
+	// Defaults to 6
+	// +optional
+	BackoffLimit *int32 `json:"backoffLimit,omitempty" protobuf:"varint,7,opt,name=backoffLimit"`
+
+	// Optional time (in seconds) specifying how long the initial backoff will last.
+	// marking it failed.
+	// Defaults to 10s.
+	// +optional
+	BackoffSeconds *int64 `json:"backoffSeconds,omitempty" protobuf:"varint,8,opt,name=backoffSeconds"`
+
+	// TODO enabled it when https://github.com/kubernetes/kubernetes/issues/28486 has been fixed
+	// Optional number of failed pods to retain.
+	// +optional
+	// FailedPodsLimit *int32 `json:"failedPodsLimit,omitempty" protobuf:"varint,9,opt,name=failedPodsLimit"`
 
 	// A label query over pods that should match the pod count.
 	// Normally, the system sets this field for you.
