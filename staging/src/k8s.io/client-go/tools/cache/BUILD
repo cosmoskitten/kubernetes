@@ -35,6 +35,7 @@ go_test(
         "//vendor/k8s.io/apimachinery/pkg/watch:go_default_library",
         "//vendor/k8s.io/client-go/kubernetes/scheme:go_default_library",
         "//vendor/k8s.io/client-go/tools/cache/testing:go_default_library",
+        "//vendor/k8s.io/client-go/util/rbuf:go_default_library",
     ],
 )
 
@@ -79,6 +80,7 @@ go_library(
         "//vendor/k8s.io/apimachinery/pkg/watch:go_default_library",
         "//vendor/k8s.io/client-go/kubernetes/scheme:go_default_library",
         "//vendor/k8s.io/client-go/rest:go_default_library",
+        "//vendor/k8s.io/client-go/util/rbuf:go_default_library",
     ],
 )
 

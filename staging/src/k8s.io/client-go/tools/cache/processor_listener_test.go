@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/util/rbuf"
 )
 
 const (
@@ -34,11 +35,13 @@ func BenchmarkListener(b *testing.B) {
 	var swg sync.WaitGroup
 	swg.Add(b.N)
 	b.SetParallelism(concurrencyLevel)
+	// Preallocate enough space so that benchmark does not run out of it
+	buffer := rbuf.NewGrowing(1024*1024, 4*1024)
 	pl := newProcessListener(&ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			swg.Done()
 		},
-	}, 0, 0, time.Now())
+	}, 0, 0, time.Now(), buffer)
 	var wg wait.Group
 	defer wg.Wait()       // Wait for .run and .pop to stop
 	defer close(pl.addCh) // Tell .run and .pop to stop
