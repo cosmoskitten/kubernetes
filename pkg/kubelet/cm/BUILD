@@ -13,6 +13,7 @@ go_library(
         "container_manager.go",
         "container_manager_stub.go",
         "container_manager_unsupported.go",
+        "doc.go",
         "helpers_unsupported.go",
         "pod_container_manager_stub.go",
         "pod_container_manager_unsupported.go",
