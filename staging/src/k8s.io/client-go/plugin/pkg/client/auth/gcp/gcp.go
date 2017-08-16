@@ -306,3 +306,7 @@ func (t *conditionalTransport) RoundTrip(req *http.Request) (*http.Response, err
 
 	return res, nil
 }
+
+func (t *conditionalTransport) WrappedRoundTripper() http.RoundTripper {
+	return t.oauthTransport.Base
+}
