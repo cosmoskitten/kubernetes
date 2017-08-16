@@ -3427,10 +3427,23 @@ func validateContainerResourceName(value string, fldPath *field.Path) field.Erro
 	return field.ErrorList{}
 }
 
+// isLocalStorageResource checks whether the resource is local storage
+func isLocalStorageResource(name string) bool {
+	if name == string(api.ResourceStorageScratch) || name == string(api.ResourceRequestsStorageScratch) ||
+		name == string(api.ResourceLimitsStorageScratch) {
+		return true
+	} else {
+		return false
+	}
+}
+
 // Validate resource names that can go in a resource quota
 // Refer to docs/design/resources.md for more details.
 func ValidateResourceQuotaResourceName(value string, fldPath *field.Path) field.ErrorList {
 	allErrs := validateResourceName(value, fldPath)
+	if isLocalStorageResource(value) && !utilfeature.DefaultFeatureGate.Enabled(features.LocalStorageCapacityIsolation) {
+		return append(allErrs, field.Forbidden(fldPath, "ResourceStorageScratch field disabled by feature-gate for ResourceQuota"))
+	}
 	if len(strings.Split(value, "/")) == 1 {
 		if !helper.IsStandardQuotaResourceName(value) {
 			return append(allErrs, field.Invalid(fldPath, value, isInvalidQuotaResource))
