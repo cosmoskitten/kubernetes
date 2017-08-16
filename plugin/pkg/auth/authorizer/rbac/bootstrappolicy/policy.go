@@ -303,6 +303,23 @@ func ClusterRoles() []rbac.ClusterRole {
 			},
 		},
 		{
+			// a role to use for bootstrapping the cloud-controller-manager so it can create the shared informers
+			// service accounts, and secrets that we need to create separate identities for other controllers
+			ObjectMeta: metav1.ObjectMeta{Name: "system:cloud-controller-manager"},
+			Rules: []rbac.PolicyRule{
+				eventsRule(),
+				rbac.NewRule("create").Groups(legacyGroup).Resources("endpoints", "secrets", "serviceaccounts").RuleOrDie(),
+				rbac.NewRule("delete").Groups(legacyGroup).Resources("secrets").RuleOrDie(),
+				rbac.NewRule("get").Groups(legacyGroup).Resources("endpoints", "namespaces", "secrets", "serviceaccounts").RuleOrDie(),
+				rbac.NewRule("patch", "update").Groups(legacyGroup).Resources("nodes/status").RuleOrDie(),
+				rbac.NewRule("update").Groups(legacyGroup).Resources("endpoints", "secrets", "serviceaccounts").RuleOrDie(),
+				// Needed to check API access.  These creates are non-mutating
+				rbac.NewRule("create").Groups(authenticationGroup).Resources("tokenreviews").RuleOrDie(),
+				// Needed for all shared informers
+				rbac.NewRule("list", "watch").Groups("*").Resources("*").RuleOrDie(),
+			},
+		},
+		{
 			// a role to use for bootstrapping the kube-controller-manager so it can create the shared informers
 			// service accounts, and secrets that we need to create separate identities for other controllers
 			ObjectMeta: metav1.ObjectMeta{Name: "system:kube-controller-manager"},
@@ -402,6 +419,7 @@ func ClusterRoleBindings() []rbac.ClusterRoleBinding {
 		rbac.NewClusterBinding("system:discovery").Groups(user.AllAuthenticated, user.AllUnauthenticated).BindingOrDie(),
 		rbac.NewClusterBinding("system:basic-user").Groups(user.AllAuthenticated, user.AllUnauthenticated).BindingOrDie(),
 		rbac.NewClusterBinding("system:node-proxier").Users(user.KubeProxy).BindingOrDie(),
+		rbac.NewClusterBinding("system:cloud-controller-manager").Users(user.CloudControllerManager).BindingOrDie(),
 		rbac.NewClusterBinding("system:kube-controller-manager").Users(user.KubeControllerManager).BindingOrDie(),
 		rbac.NewClusterBinding("system:kube-dns").SAs("kube-system", "kube-dns").BindingOrDie(),
 		rbac.NewClusterBinding("system:kube-scheduler").Users(user.KubeScheduler).BindingOrDie(),
