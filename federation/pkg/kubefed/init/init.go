@@ -136,6 +136,8 @@ type initFederation struct {
 type initFederationOptions struct {
 	dnsZoneName                      string
 	serverImage                      string
+	imagePullPolicy                  string
+	imagePullSecrets                 string
 	dnsProvider                      string
 	dnsProviderConfig                string
 	etcdImage                        string
@@ -159,6 +161,8 @@ type initFederationOptions struct {
 func (o *initFederationOptions) Bind(flags *pflag.FlagSet, defaultServerImage, defaultEtcdImage string) {
 	flags.StringVar(&o.dnsZoneName, "dns-zone-name", "", "DNS suffix for this federation. Federated Service DNS names are published with this suffix.")
 	flags.StringVar(&o.serverImage, "image", defaultServerImage, "Image to use for federation API server and controller manager binaries.")
+	flags.StringVar(&o.imagePullPolicy, "imagePullPolicy", string(api.PullIfNotPresent), "PullPolicy describes a policy for if/when to pull a container image. The default pull policy is IfNotPresent which will not pull an image if it already exists.")
+	flags.StringVar(&o.imagePullSecrets, "imagePullSecrets", "", "Provide secrets that can access the private registry.")
 	flags.StringVar(&o.dnsProvider, "dns-provider", "", "Dns provider to be used for this deployment.")
 	flags.StringVar(&o.dnsProviderConfig, "dns-provider-config", "", "Config file path on local file system for configuring DNS provider.")
 	flags.StringVar(&o.etcdImage, "etcd-image", defaultEtcdImage, "Image to use for etcd server.")
@@ -361,7 +365,7 @@ func (i *initFederation) Run(cmdOut io.Writer, config util.AdminConfig) error {
 
 	fmt.Fprint(cmdOut, "Creating federation component deployments...")
 	glog.V(4).Info("Creating federation control plane components")
-	_, err = createAPIServer(hostClientset, i.commonOptions.FederationSystemNamespace, serverName, i.commonOptions.Name, i.options.serverImage, i.options.etcdImage, advertiseAddress, serverCredName, i.options.apiServerEnableHTTPBasicAuth, i.options.apiServerEnableTokenAuth, i.options.apiServerOverrides, pvc, i.options.dryRun)
+	_, err = createAPIServer(hostClientset, i.commonOptions.FederationSystemNamespace, serverName, i.commonOptions.Name, i.options.serverImage, i.options.imagePullPolicy, i.options.imagePullSecrets, i.options.etcdImage, advertiseAddress, serverCredName, i.options.apiServerEnableHTTPBasicAuth, i.options.apiServerEnableTokenAuth, i.options.apiServerOverrides, pvc, i.options.dryRun)
 	if err != nil {
 		return err
 	}
@@ -396,7 +400,7 @@ func (i *initFederation) Run(cmdOut io.Writer, config util.AdminConfig) error {
 
 	glog.V(4).Info("Creating federation controller manager deployment")
 
-	_, err = createControllerManager(hostClientset, i.commonOptions.FederationSystemNamespace, i.commonOptions.Name, svc.Name, cmName, i.options.serverImage, cmKubeconfigName, i.options.dnsZoneName, i.options.dnsProvider, i.options.dnsProviderConfig, sa.Name, dnsProviderSecret, i.options.controllerManagerOverrides, i.options.dryRun)
+	_, err = createControllerManager(hostClientset, i.commonOptions.FederationSystemNamespace, i.commonOptions.Name, svc.Name, cmName, i.options.serverImage, i.options.imagePullPolicy, i.options.imagePullSecrets, cmKubeconfigName, i.options.dnsZoneName, i.options.dnsProvider, i.options.dnsProviderConfig, sa.Name, dnsProviderSecret, i.options.controllerManagerOverrides, i.options.dryRun)
 	if err != nil {
 		return err
 	}
@@ -702,7 +706,7 @@ func createPVC(clientset client.Interface, namespace, svcName, federationName, e
 	return clientset.Core().PersistentVolumeClaims(namespace).Create(pvc)
 }
 
-func createAPIServer(clientset client.Interface, namespace, name, federationName, serverImage, etcdImage, advertiseAddress, credentialsName string, hasHTTPBasicAuthFile, hasTokenAuthFile bool, argOverrides map[string]string, pvc *api.PersistentVolumeClaim, dryRun bool) (*extensions.Deployment, error) {
+func createAPIServer(clientset client.Interface, namespace, name, federationName, serverImage, imagePullPolicy, imagePullSecrets, etcdImage, advertiseAddress, credentialsName string, hasHTTPBasicAuthFile, hasTokenAuthFile bool, argOverrides map[string]string, pvc *api.PersistentVolumeClaim, dryRun bool) (*extensions.Deployment, error) {
 	command := []string{
 		"/hyperkube",
 		"federation-apiserver",
@@ -748,9 +752,10 @@ func createAPIServer(clientset client.Interface, namespace, name, federationName
 				Spec: api.PodSpec{
 					Containers: []api.Container{
 						{
-							Name:    "apiserver",
-							Image:   serverImage,
-							Command: command,
+							Name:            "apiserver",
+							Image:           serverImage,
+							ImagePullPolicy: api.PullPolicy(imagePullPolicy),
+							Command:         command,
 							Ports: []api.ContainerPort{
 								{
 									Name:          apiServerSecurePortName,
@@ -777,6 +782,11 @@ func createAPIServer(clientset client.Interface, namespace, name, federationName
 								"--data-dir",
 								"/var/etcd/data",
 							},
+						},
+					},
+					ImagePullSecrets: []api.LocalObjectReference{
+						{
+							Name: imagePullSecrets,
 						},
 					},
 					Volumes: []api.Volume{
@@ -876,7 +886,7 @@ func createRoleBindings(clientset client.Interface, namespace, saName, federatio
 	return newRole, newRolebinding, err
 }
 
-func createControllerManager(clientset client.Interface, namespace, name, svcName, cmName, image, kubeconfigName, dnsZoneName, dnsProvider, dnsProviderConfig, saName string, dnsProviderSecret *api.Secret, argOverrides map[string]string, dryRun bool) (*extensions.Deployment, error) {
+func createControllerManager(clientset client.Interface, namespace, name, svcName, cmName, image, imagePullPolicy, imagePullSecrets, kubeconfigName, dnsZoneName, dnsProvider, dnsProviderConfig, saName string, dnsProviderSecret *api.Secret, argOverrides map[string]string, dryRun bool) (*extensions.Deployment, error) {
 	command := []string{
 		"/hyperkube",
 		"federation-controller-manager",
@@ -923,9 +933,10 @@ func createControllerManager(clientset client.Interface, namespace, name, svcNam
 				Spec: api.PodSpec{
 					Containers: []api.Container{
 						{
-							Name:    "controller-manager",
-							Image:   image,
-							Command: command,
+							Name:            "controller-manager",
+							Image:           image,
+							ImagePullPolicy: api.PullPolicy(imagePullPolicy),
+							Command:         command,
 							VolumeMounts: []api.VolumeMount{
 								{
 									Name:      kubeconfigName,
@@ -943,6 +954,11 @@ func createControllerManager(clientset client.Interface, namespace, name, svcNam
 									},
 								},
 							},
+						},
+					},
+					ImagePullSecrets: []api.LocalObjectReference{
+						{
+							Name: imagePullSecrets,
 						},
 					},
 					Volumes: []api.Volume{
