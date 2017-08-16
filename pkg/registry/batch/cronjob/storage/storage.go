@@ -73,6 +73,7 @@ func (r *StatusREST) New() runtime.Object {
 	return &batch.CronJob{}
 }
 
+// Destroy releases resources
 func (r *StatusREST) Destroy() {
 	r.store.Destroy()
 }

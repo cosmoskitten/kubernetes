@@ -108,6 +108,7 @@ func (r *StatusREST) New() runtime.Object {
 	return &extensions.Deployment{}
 }
 
+// Destroy releases resources
 func (r *StatusREST) Destroy() {
 	r.store.Destroy()
 }
@@ -132,7 +133,7 @@ func (r *RollbackREST) New() runtime.Object {
 	return &extensions.DeploymentRollback{}
 }
 
-// Destroy the storage
+// Destroy releases resources
 func (r *RollbackREST) Destroy() {
 	r.store.Destroy()
 }
@@ -208,8 +209,8 @@ func (r *ScaleREST) New() runtime.Object {
 	return &extensions.Scale{}
 }
 
-func (r *ScaleREST) Destroy() {
-}
+// Destroy releases resources
+func (r *ScaleREST) Destroy() {}
 
 func (r *ScaleREST) Get(ctx genericapirequest.Context, name string, options *metav1.GetOptions) (runtime.Object, error) {
 	deployment, err := r.registry.GetDeployment(ctx, name, options)
