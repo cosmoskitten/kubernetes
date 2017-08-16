@@ -141,7 +141,7 @@ func (meta *predicateMetadata) AddPod(addedPod *v1.Pod, nodeInfo *schedulercache
 	} else {
 		return err
 	}
-	// If addedPod is in the same namespace as the meta.pod, update the the list
+	// If addedPod is in the same namespace as the meta.pod, update the list
 	// of matching pods if applicable.
 	if meta.serviceAffinityInUse && addedPod.Namespace == meta.pod.Namespace {
 		selector := CreateSelectorFromLabels(meta.pod.Labels)
