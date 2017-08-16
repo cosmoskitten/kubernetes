@@ -36,6 +36,7 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	certificatesclient "k8s.io/client-go/kubernetes/typed/certificates/v1beta1"
 	"k8s.io/client-go/util/cert"
+	"k8s.io/kubernetes/pkg/kubelet/metrics"
 )
 
 const (
@@ -210,9 +211,11 @@ func (m *manager) Start() {
 		Steps:    7,
 	}
 	go wait.Forever(func() {
-		sleepInterval := m.rotationDeadline.Sub(time.Now())
-		glog.V(2).Infof("Waiting %v for next certificate rotation", sleepInterval)
-		time.Sleep(sleepInterval)
+		glog.V(2).Infof("Waiting %v for next certificate rotation", m.rotationDeadline.Sub(time.Now()))
+		for m.rotationDeadline.After(time.Now()) {
+			metrics.ClientCertificateExpiration.Set(m.rotationDeadline.Sub(time.Now()).Seconds())
+			time.Sleep(1 * time.Minute)
+		}
 		if err := wait.ExponentialBackoff(backoff, m.rotateCerts); err != nil {
 			glog.Errorf("Reached backoff limit, still unable to rotate certs: %v", err)
 			wait.PollInfinite(128*time.Second, m.rotateCerts)
@@ -270,6 +273,7 @@ func (m *manager) shouldRotate() bool {
 
 func (m *manager) rotateCerts() (bool, error) {
 	glog.V(2).Infof("Rotating certificates")
+	metrics.ClientCertificateExpiration.Set(m.rotationDeadline.Sub(time.Now()).Seconds())
 
 	csrPEM, keyPEM, err := m.generateCSR()
 	if err != nil {

@@ -16,6 +16,7 @@ go_library(
     ],
     deps = [
         "//pkg/kubelet/apis/kubeletconfig:go_default_library",
+        "//pkg/kubelet/metrics:go_default_library",
         "//pkg/util/file:go_default_library",
         "//vendor/github.com/golang/glog:go_default_library",
         "//vendor/k8s.io/api/certificates/v1beta1:go_default_library",

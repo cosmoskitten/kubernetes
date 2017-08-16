@@ -26,18 +26,19 @@ import (
 )
 
 const (
-	KubeletSubsystem           = "kubelet"
-	PodWorkerLatencyKey        = "pod_worker_latency_microseconds"
-	PodStartLatencyKey         = "pod_start_latency_microseconds"
-	CgroupManagerOperationsKey = "cgroup_manager_latency_microseconds"
-	DockerOperationsLatencyKey = "docker_operations_latency_microseconds"
-	DockerOperationsKey        = "docker_operations"
-	DockerOperationsErrorsKey  = "docker_operations_errors"
-	DockerOperationsTimeoutKey = "docker_operations_timeout"
-	PodWorkerStartLatencyKey   = "pod_worker_start_latency_microseconds"
-	PLEGRelistLatencyKey       = "pleg_relist_latency_microseconds"
-	PLEGRelistIntervalKey      = "pleg_relist_interval_microseconds"
-	EvictionStatsAgeKey        = "eviction_stats_age_microseconds"
+	KubeletSubsystem               = "kubelet"
+	PodWorkerLatencyKey            = "pod_worker_latency_microseconds"
+	PodStartLatencyKey             = "pod_start_latency_microseconds"
+	CgroupManagerOperationsKey     = "cgroup_manager_latency_microseconds"
+	DockerOperationsLatencyKey     = "docker_operations_latency_microseconds"
+	DockerOperationsKey            = "docker_operations"
+	DockerOperationsErrorsKey      = "docker_operations_errors"
+	DockerOperationsTimeoutKey     = "docker_operations_timeout"
+	PodWorkerStartLatencyKey       = "pod_worker_start_latency_microseconds"
+	PLEGRelistLatencyKey           = "pleg_relist_latency_microseconds"
+	PLEGRelistIntervalKey          = "pleg_relist_interval_microseconds"
+	EvictionStatsAgeKey            = "eviction_stats_age_microseconds"
+	ClientCertificateExpirationKey = "client_certificate_expiration_seconds"
 	// Metrics keys of remote runtime operations
 	RuntimeOperationsKey        = "runtime_operations"
 	RuntimeOperationsLatencyKey = "runtime_operations_latency_microseconds"
@@ -162,6 +163,13 @@ var (
 		},
 		[]string{"eviction_signal"},
 	)
+	ClientCertificateExpiration = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Subsystem: KubeletSubsystem,
+			Name:      ClientCertificateExpirationKey,
+			Help:      "Gauge of the remaining lifetime on the certificate used to authenticate a requests to the API server.",
+		},
+	)
 )
 
 var registerMetrics sync.Once
@@ -186,6 +194,7 @@ func Register(containerCache kubecontainer.RuntimeCache) {
 		prometheus.MustRegister(RuntimeOperationsLatency)
 		prometheus.MustRegister(RuntimeOperationsErrors)
 		prometheus.MustRegister(EvictionStatsAge)
+		prometheus.MustRegister(ClientCertificateExpiration)
 	})
 }
 
