@@ -1460,7 +1460,7 @@ type VolumeMount struct {
 	// This field is alpha in 1.8 and can be reworked or removed in a future
 	// release.
 	// Optional.
-	MountPropagation *MountPropagationMode `json:"mountPropagation,omitempty"`
+	MountPropagation *MountPropagationMode `json:"mountPropagation,omitempty" protobuf:"bytes,5,opt,name=mountPropagation,casttype=MountPropagationMode"`
 }
 
 // MountPropagationMode describes mount propagation.
