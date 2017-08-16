@@ -32,6 +32,7 @@ import (
 	kubeadmutil "k8s.io/kubernetes/cmd/kubeadm/app/util"
 	"k8s.io/kubernetes/cmd/kubeadm/app/util/apiclient"
 	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/util/version"
 )
 
 const (
@@ -40,7 +41,7 @@ const (
 )
 
 // EnsureDNSAddon creates the kube-dns addon
-func EnsureDNSAddon(cfg *kubeadmapi.MasterConfiguration, client clientset.Interface) error {
+func EnsureDNSAddon(cfg *kubeadmapi.MasterConfiguration, client clientset.Interface, k8sVersion *version.Version) error {
 	if err := CreateServiceAccount(client); err != nil {
 		return err
 	}
@@ -48,7 +49,7 @@ func EnsureDNSAddon(cfg *kubeadmapi.MasterConfiguration, client clientset.Interf
 	dnsDeploymentBytes, err := kubeadmutil.ParseTemplate(KubeDNSDeployment, struct{ ImageRepository, Arch, Version, DNSDomain, MasterTaintKey string }{
 		ImageRepository: cfg.ImageRepository,
 		Arch:            runtime.GOARCH,
-		Version:         KubeDNSVersion,
+		Version:         kubeadmconstants.GetKubeDNSVersion(k8sVersion),
 		DNSDomain:       cfg.Networking.DNSDomain,
 		MasterTaintKey:  kubeadmconstants.LabelNodeRoleMaster,
 	})

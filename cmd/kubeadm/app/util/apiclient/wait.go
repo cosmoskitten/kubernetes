@@ -17,6 +17,8 @@ limitations under the License.
 package apiclient
 
 import (
+	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -87,4 +89,59 @@ func WaitForStaticPodToDisappear(client clientset.Interface, timeout time.Durati
 		}
 		return false, nil
 	})
+}
+
+// WaitForStaticPodControlPlaneHashes blocks until it timeouts or gets a hash map for all components and their Static Pods
+func WaitForStaticPodControlPlaneHashes(client clientset.Interface, timeout time.Duration, nodeName string) (map[string]string, error) {
+
+	var mirrorPodHashes map[string]string
+	err := wait.PollImmediate(constants.APICallRetryInterval, timeout, func() (bool, error) {
+
+		hashes, err := getStaticPodControlPlaneHashes(client, nodeName)
+		if err != nil {
+			return false, nil
+		}
+		mirrorPodHashes = hashes
+		return true, nil
+	})
+	return mirrorPodHashes, err
+}
+
+// WaitForStaticPodControlPlaneHashChange blocks until it timeouts or notices that the Mirror Pod (for the Static Pod, respectively) has changed
+// This implicitely means this function blocks until the kubelet has restarted the Static Pod in question
+func WaitForStaticPodControlPlaneHashChange(client clientset.Interface, timeout time.Duration, nodeName, component, previousHash string) error {
+	return wait.PollImmediate(constants.APICallRetryInterval, timeout, func() (bool, error) {
+
+		hashes, err := getStaticPodControlPlaneHashes(client, nodeName)
+		if err != nil {
+			return false, nil
+		}
+		// We should continue polling until the UID changes
+		if hashes[component] == previousHash {
+			return false, nil
+		}
+
+		return true, nil
+	})
+}
+
+// getStaticPodControlPlaneHashes computes hashes for all the control plane's Static Pod resources
+func getStaticPodControlPlaneHashes(client clientset.Interface, nodeName string) (map[string]string, error) {
+
+	mirrorPodHashes := map[string]string{}
+	for _, component := range constants.MasterComponents {
+		staticPodName := fmt.Sprintf("%s-%s", component, nodeName)
+		staticPod, err := client.CoreV1().Pods(metav1.NamespaceSystem).Get(staticPodName, metav1.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+
+		podBytes, err := json.Marshal(staticPod)
+		if err != nil {
+			return nil, err
+		}
+
+		mirrorPodHashes[component] = fmt.Sprintf("%x", sha256.Sum256(podBytes))
+	}
+	return mirrorPodHashes, nil
 }
