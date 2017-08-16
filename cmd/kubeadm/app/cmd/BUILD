@@ -23,6 +23,7 @@ go_library(
         "//cmd/kubeadm/app/apis/kubeadm/validation:go_default_library",
         "//cmd/kubeadm/app/cmd/features:go_default_library",
         "//cmd/kubeadm/app/cmd/phases:go_default_library",
+        "//cmd/kubeadm/app/cmd/upgrade:go_default_library",
         "//cmd/kubeadm/app/constants:go_default_library",
         "//cmd/kubeadm/app/discovery:go_default_library",
         "//cmd/kubeadm/app/phases/addons/dns:go_default_library",
@@ -93,6 +94,7 @@ filegroup(
         ":package-srcs",
         "//cmd/kubeadm/app/cmd/features:all-srcs",
         "//cmd/kubeadm/app/cmd/phases:all-srcs",
+        "//cmd/kubeadm/app/cmd/upgrade:all-srcs",
     ],
     tags = ["automanaged"],
 )
