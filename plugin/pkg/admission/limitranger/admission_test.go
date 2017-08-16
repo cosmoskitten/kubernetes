@@ -361,6 +361,56 @@ func TestPodLimitFunc(t *testing.T) {
 			pod:        validPod("pod-max-mem-ratio", 3, getResourceRequirements(getComputeResourceList("", "300Mi"), getComputeResourceList("", "450Mi"))),
 			limitRange: createLimitRange(api.LimitTypePod, api.ResourceList{}, getComputeResourceList("", "2Gi"), api.ResourceList{}, api.ResourceList{}, getComputeResourceList("", "1.5")),
 		},
+		{
+			pod:        validPod("ctr-min-scratch-request", 1, getResourceRequirements(getLocalStorageResourceList("60Mi"), getLocalStorageResourceList(""))),
+			limitRange: createLimitRange(api.LimitTypeContainer, getLocalStorageResourceList("50Mi"), api.ResourceList{}, api.ResourceList{}, api.ResourceList{}, api.ResourceList{}),
+		},
+		{
+			pod:        validPod("ctr-min-scratch-request-limit", 1, getResourceRequirements(getLocalStorageResourceList("60Mi"), getLocalStorageResourceList("100Mi"))),
+			limitRange: createLimitRange(api.LimitTypeContainer, getLocalStorageResourceList("50Mi"), api.ResourceList{}, api.ResourceList{}, api.ResourceList{}, api.ResourceList{}),
+		},
+		{
+			pod:        validPod("ctr-max-scratch-request-limit", 1, getResourceRequirements(getLocalStorageResourceList("250Mi"), getLocalStorageResourceList("500Mi"))),
+			limitRange: createLimitRange(api.LimitTypeContainer, api.ResourceList{}, getLocalStorageResourceList("1Gi"), api.ResourceList{}, api.ResourceList{}, api.ResourceList{}),
+		},
+		{
+			pod:        validPod("ctr-max-scratch-limit", 1, getResourceRequirements(getLocalStorageResourceList(""), getLocalStorageResourceList("500Mi"))),
+			limitRange: createLimitRange(api.LimitTypeContainer, api.ResourceList{}, getLocalStorageResourceList("1Gi"), api.ResourceList{}, api.ResourceList{}, api.ResourceList{}),
+		},
+		{
+			pod:        validPod("pod-min-scratch-request", 2, getResourceRequirements(getLocalStorageResourceList("60Mi"), getLocalStorageResourceList(""))),
+			limitRange: createLimitRange(api.LimitTypePod, getLocalStorageResourceList("100Mi"), api.ResourceList{}, api.ResourceList{}, api.ResourceList{}, api.ResourceList{}),
+		},
+		{
+			pod:        validPod("pod-min-scratch-request-limit", 2, getResourceRequirements(getLocalStorageResourceList("60Mi"), getLocalStorageResourceList("100Mi"))),
+			limitRange: createLimitRange(api.LimitTypePod, getLocalStorageResourceList("100Mi"), api.ResourceList{}, api.ResourceList{}, api.ResourceList{}, api.ResourceList{}),
+		},
+		{
+			pod: validPodInit(
+				validPod("pod-init-min-scratch-request", 2, getResourceRequirements(getLocalStorageResourceList("60Mi"), getLocalStorageResourceList(""))),
+				getResourceRequirements(getLocalStorageResourceList("100Mi"), getLocalStorageResourceList("")),
+			),
+			limitRange: createLimitRange(api.LimitTypePod, getLocalStorageResourceList("100Mi"), api.ResourceList{}, api.ResourceList{}, api.ResourceList{}, api.ResourceList{}),
+		},
+		{
+			pod: validPodInit(
+				validPod("pod-init-min-scratch-request-limit", 2, getResourceRequirements(getLocalStorageResourceList("60Mi"), getLocalStorageResourceList("100Mi"))),
+				getResourceRequirements(getLocalStorageResourceList("80Mi"), getLocalStorageResourceList("100Mi")),
+			),
+			limitRange: createLimitRange(api.LimitTypePod, getLocalStorageResourceList("100Mi"), api.ResourceList{}, api.ResourceList{}, api.ResourceList{}, api.ResourceList{}),
+		},
+		{
+			pod:        validPod("pod-max-scratch-request-limit", 2, getResourceRequirements(getLocalStorageResourceList("250Mi"), getLocalStorageResourceList("500Mi"))),
+			limitRange: createLimitRange(api.LimitTypePod, api.ResourceList{}, getLocalStorageResourceList("1Gi"), api.ResourceList{}, api.ResourceList{}, api.ResourceList{}),
+		},
+		{
+			pod:        validPod("pod-max-scratch-limit", 2, getResourceRequirements(getLocalStorageResourceList(""), getLocalStorageResourceList("500Mi"))),
+			limitRange: createLimitRange(api.LimitTypePod, api.ResourceList{}, getLocalStorageResourceList("1Gi"), api.ResourceList{}, api.ResourceList{}, api.ResourceList{}),
+		},
+		{
+			pod:        validPod("pod-max-scratch-ratio", 3, getResourceRequirements(getLocalStorageResourceList("300Mi"), getLocalStorageResourceList("450Mi"))),
+			limitRange: createLimitRange(api.LimitTypePod, api.ResourceList{}, getLocalStorageResourceList("2Gi"), api.ResourceList{}, api.ResourceList{}, getLocalStorageResourceList("1.5")),
+		},
 	}
 	for i := range successCases {
 		test := successCases[i]
@@ -466,6 +516,57 @@ func TestPodLimitFunc(t *testing.T) {
 			pod:        validPod("pod-max-mem-ratio", 3, getResourceRequirements(getComputeResourceList("", "250Mi"), getComputeResourceList("", "500Mi"))),
 			limitRange: createLimitRange(api.LimitTypePod, api.ResourceList{}, getComputeResourceList("", "2Gi"), api.ResourceList{}, api.ResourceList{}, getComputeResourceList("", "1.5")),
 		},
+		{
+			pod:        validPod("ctr-min-scratch-request", 1, getResourceRequirements(getLocalStorageResourceList("40Mi"), getLocalStorageResourceList(""))),
+			limitRange: createLimitRange(api.LimitTypeContainer, getLocalStorageResourceList("50Mi"), api.ResourceList{}, api.ResourceList{}, api.ResourceList{}, api.ResourceList{}),
+		},
+		{
+			pod:        validPod("ctr-min-scratch-request-limit", 1, getResourceRequirements(getLocalStorageResourceList("40Mi"), getLocalStorageResourceList("100Mi"))),
+			limitRange: createLimitRange(api.LimitTypeContainer, getLocalStorageResourceList("50Mi"), api.ResourceList{}, api.ResourceList{}, api.ResourceList{}, api.ResourceList{}),
+		},
+		{
+			pod:        validPod("ctr-min-scratch-no-request-limit", 1, getResourceRequirements(getLocalStorageResourceList(""), getLocalStorageResourceList(""))),
+			limitRange: createLimitRange(api.LimitTypeContainer, getLocalStorageResourceList("50Mi"), api.ResourceList{}, api.ResourceList{}, api.ResourceList{}, api.ResourceList{}),
+		},
+		{
+			pod:        validPod("ctr-max-scratch-request-limit", 1, getResourceRequirements(getLocalStorageResourceList("250Mi"), getLocalStorageResourceList("2Gi"))),
+			limitRange: createLimitRange(api.LimitTypeContainer, api.ResourceList{}, getLocalStorageResourceList("1Gi"), api.ResourceList{}, api.ResourceList{}, api.ResourceList{}),
+		},
+		{
+			pod:        validPod("ctr-max-scratch-limit", 1, getResourceRequirements(getLocalStorageResourceList(""), getLocalStorageResourceList("2Gi"))),
+			limitRange: createLimitRange(api.LimitTypeContainer, api.ResourceList{}, getLocalStorageResourceList("1Gi"), api.ResourceList{}, api.ResourceList{}, api.ResourceList{}),
+		},
+		{
+			pod:        validPod("ctr-max-scratch-no-request-limit", 1, getResourceRequirements(getLocalStorageResourceList(""), getLocalStorageResourceList(""))),
+			limitRange: createLimitRange(api.LimitTypeContainer, api.ResourceList{}, getLocalStorageResourceList("1Gi"), api.ResourceList{}, api.ResourceList{}, api.ResourceList{}),
+		},
+		{
+			pod:        validPod("pod-min-scratch-request", 1, getResourceRequirements(getLocalStorageResourceList("60Mi"), getLocalStorageResourceList(""))),
+			limitRange: createLimitRange(api.LimitTypePod, getLocalStorageResourceList("100Mi"), api.ResourceList{}, api.ResourceList{}, api.ResourceList{}, api.ResourceList{}),
+		},
+		{
+			pod:        validPod("pod-min-scratch-request-limit", 1, getResourceRequirements(getLocalStorageResourceList("60Mi"), getLocalStorageResourceList("100Mi"))),
+			limitRange: createLimitRange(api.LimitTypePod, getLocalStorageResourceList("100Mi"), api.ResourceList{}, api.ResourceList{}, api.ResourceList{}, api.ResourceList{}),
+		},
+		{
+			pod:        validPod("pod-max-scratch-request-limit", 3, getResourceRequirements(getLocalStorageResourceList("250Mi"), getLocalStorageResourceList("500Mi"))),
+			limitRange: createLimitRange(api.LimitTypePod, api.ResourceList{}, getLocalStorageResourceList("1Gi"), api.ResourceList{}, api.ResourceList{}, api.ResourceList{}),
+		},
+		{
+			pod:        validPod("pod-max-scratch-limit", 3, getResourceRequirements(getLocalStorageResourceList(""), getLocalStorageResourceList("500Mi"))),
+			limitRange: createLimitRange(api.LimitTypePod, api.ResourceList{}, getLocalStorageResourceList("1Gi"), api.ResourceList{}, api.ResourceList{}, api.ResourceList{}),
+		},
+		{
+			pod: validPodInit(
+				validPod("pod-init-max-scratch-limit", 1, getResourceRequirements(getLocalStorageResourceList(""), getLocalStorageResourceList("500Mi"))),
+				getResourceRequirements(getLocalStorageResourceList(""), getLocalStorageResourceList("1.5Gi")),
+			),
+			limitRange: createLimitRange(api.LimitTypePod, api.ResourceList{}, getLocalStorageResourceList("1Gi"), api.ResourceList{}, api.ResourceList{}, api.ResourceList{}),
+		},
+		{
+			pod:        validPod("pod-max-scratch-ratio", 3, getResourceRequirements(getLocalStorageResourceList("250Mi"), getLocalStorageResourceList("500Mi"))),
+			limitRange: createLimitRange(api.LimitTypePod, api.ResourceList{}, getLocalStorageResourceList("2Gi"), api.ResourceList{}, api.ResourceList{}, getLocalStorageResourceList("1.5")),
+		},
 	}
 	for i := range errorCases {
 		test := errorCases[i]
@@ -474,6 +575,14 @@ func TestPodLimitFunc(t *testing.T) {
 			t.Errorf("Expected error for pod: %s", test.pod.Name)
 		}
 	}
+}
+
+func getLocalStorageResourceList(scratch string) api.ResourceList {
+	res := api.ResourceList{}
+	if scratch != "" {
+		res[api.ResourceStorageScratch] = resource.MustParse(scratch)
+	}
+	return res
 }
 
 func TestPodLimitFuncApplyDefault(t *testing.T) {
