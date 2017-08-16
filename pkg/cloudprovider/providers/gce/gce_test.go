@@ -228,11 +228,46 @@ func TestSplitProviderID(t *testing.T) {
 			fail:       false,
 		},
 		{
-			providerID: ProviderName + "://project-example.164317/us-central1-f/kubernetes-node-fhx1",
-			project:    "project-example.164317",
+			providerID: ProviderName + "://project example \"!'/us-central1-f/kubernetes-node-fhx1",
+			project:    "project example \"!'",
 			zone:       "us-central1-f",
 			instance:   "kubernetes-node-fhx1",
 			fail:       false,
+		},
+		{
+			providerID: ProviderName + "://abcd/us-central1-f/kubernetes-node-fhx1",
+			project:    "abcd",
+			zone:       "us-central1-f",
+			instance:   "kubernetes-node-fhx1",
+			fail:       false,
+		},
+		{
+			providerID: ProviderName + "://abcdefghijklmnopqrstuvwxyz1234/us-central1-f/kubernetes-node-fhx1",
+			project:    "abcdefghijklmnopqrstuvwxyz1234",
+			zone:       "us-central1-f",
+			instance:   "kubernetes-node-fhx1",
+			fail:       false,
+		},
+		{
+			providerID: ProviderName + "://abc/us-central1-f/kubernetes-node-fhx1",
+			project:    "",
+			zone:       "",
+			instance:   "",
+			fail:       true,
+		},
+		{
+			providerID: ProviderName + "://abcdefghijklmnopqrstuvwxyz12345/us-central1-f/kubernetes-node-fhx1",
+			project:    "",
+			zone:       "",
+			instance:   "",
+			fail:       true,
+		},
+		{
+			providerID: ProviderName + "://project-example.164317/us-central1-f/kubernetes-node-fhx1",
+			project:    "",
+			zone:       "",
+			instance:   "",
+			fail:       true,
 		},
 		{
 			providerID: ProviderName + "://project-example-164317/us-central1-fkubernetes-node-fhx1",
@@ -263,14 +298,14 @@ func TestSplitProviderID(t *testing.T) {
 			fail:       true,
 		},
 		{
-			providerID: ProviderName + "://project-example.164317//kubernetes-node-fhx1",
+			providerID: ProviderName + "://project-example-164317//kubernetes-node-fhx1",
 			project:    "",
 			zone:       "",
 			instance:   "",
 			fail:       true,
 		},
 		{
-			providerID: ProviderName + "://project-example.164317/kubernetes-node-fhx1",
+			providerID: ProviderName + "://project-example-164317/us-central1-f/",
 			project:    "",
 			zone:       "",
 			instance:   "",
@@ -281,7 +316,7 @@ func TestSplitProviderID(t *testing.T) {
 	for _, test := range providers {
 		project, zone, instance, err := splitProviderID(test.providerID)
 		if (err != nil) != test.fail {
-			t.Errorf("Expected to failt=%t, with pattern %v", test.fail, test)
+			t.Errorf("Expected to fail=%t, with pattern %v", test.fail, test)
 		}
 
 		if test.fail {

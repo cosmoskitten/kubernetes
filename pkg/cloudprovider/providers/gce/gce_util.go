@@ -39,7 +39,7 @@ type gceInstance struct {
 	Type  string
 }
 
-var providerIdRE = regexp.MustCompile(`^` + ProviderName + `://([^/]+)/([^/]+)/([^/]+)$`)
+var providerIdRE = regexp.MustCompile(`^` + ProviderName + `://([A-Za-z0-9-\\"!' ]{4,30})/([^/]+)/([^/]+)$`)
 
 func getProjectAndZone() (string, string, error) {
 	result, err := metadata.Get("instance/zone")
@@ -121,7 +121,7 @@ func isInUsedByError(err error) bool {
 func splitProviderID(providerID string) (project, zone, instance string, err error) {
 	matches := providerIdRE.FindStringSubmatch(providerID)
 	if len(matches) != 4 {
-		return "", "", "", errors.New("error splitting providerID")
+		return "", "", "", errors.New(fmt.Sprintf("error splitting providerID %s", providerID))
 	}
 	return matches[1], matches[2], matches[3], nil
 }

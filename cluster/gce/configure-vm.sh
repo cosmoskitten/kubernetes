@@ -520,6 +520,11 @@ EOF
 docker_test_log_level: '$(echo "$DOCKER_TEST_LOG_LEVEL" | sed -e "s/'/''/g")'
 EOF
     fi
+    if [ -n "${CLOUD_CONTROLLER_MANAGER_TEST_ARGS:-}" ]; then
+      cat <<EOF >>/srv/salt-overlay/pillar/cluster-params.sls
+cloud_controller_manager_test_args: '$(echo "$CLOUD_CONTROLLER_MANAGER_TEST_ARGS" | sed -e "s/'/''/g")'
+EOF
+    fi
     if [ -n "${CONTROLLER_MANAGER_TEST_ARGS:-}" ]; then
       cat <<EOF >>/srv/salt-overlay/pillar/cluster-params.sls
 controller_manager_test_args: '$(echo "$CONTROLLER_MANAGER_TEST_ARGS" | sed -e "s/'/''/g")'
