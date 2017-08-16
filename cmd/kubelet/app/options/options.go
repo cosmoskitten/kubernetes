@@ -22,17 +22,17 @@ import (
 	_ "net/http/pprof"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/apiserver/pkg/util/flag"
 	utilflag "k8s.io/apiserver/pkg/util/flag"
-	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/apis/componentconfig"
 	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/kubelet/apis/kubeletconfig"
-	kubeletconfigvalidation "k8s.io/kubernetes/pkg/kubelet/apis/kubeletconfig/validation"
-	// Need to make sure the kubeletconfig api is installed so defaulting funcs work
-	_ "k8s.io/kubernetes/pkg/kubelet/apis/kubeletconfig/install"
+	kubeletapiutil "k8s.io/kubernetes/pkg/kubelet/apis/kubeletconfig/util"
 	"k8s.io/kubernetes/pkg/kubelet/apis/kubeletconfig/v1alpha1"
+	kubeletconfigvalidation "k8s.io/kubernetes/pkg/kubelet/apis/kubeletconfig/validation"
 	utiltaints "k8s.io/kubernetes/pkg/util/taints"
 
 	"github.com/spf13/pflag"
@@ -141,14 +141,19 @@ func ValidateKubeletFlags(f *KubeletFlags) error {
 }
 
 // NewKubeletConfiguration will create a new KubeletConfiguration with default values
-func NewKubeletConfiguration() (*kubeletconfig.KubeletConfiguration, error) {
+func NewKubeletConfiguration(scheme *runtime.Scheme) (*kubeletconfig.KubeletConfiguration, error) {
 	versioned := &v1alpha1.KubeletConfiguration{}
-	api.Scheme.Default(versioned)
+	scheme.Default(versioned)
 	config := &kubeletconfig.KubeletConfiguration{}
-	if err := api.Scheme.Convert(versioned, config, nil); err != nil {
+	if err := scheme.Convert(versioned, config, nil); err != nil {
 		return nil, err
 	}
 	return config, nil
+}
+
+// NewKubeletScheme creates a Scheme that understands the Kubelet's API types
+func NewKubeletSchemeAndCodecs() (*runtime.Scheme, *serializer.CodecFactory, error) {
+	return kubeletapiutil.NewSchemeAndCodecs()
 }
 
 // KubeletServer encapsulates all of the parameters necessary for starting up
@@ -156,17 +161,27 @@ func NewKubeletConfiguration() (*kubeletconfig.KubeletConfiguration, error) {
 type KubeletServer struct {
 	KubeletFlags
 	kubeletconfig.KubeletConfiguration
+	// KubeletScheme is a Scheme that understands the Kubelet's API types,
+	// as these types should not be registered with the core API Scheme.
+	KubeletScheme *runtime.Scheme
+	KubeletCodecs *serializer.CodecFactory
 }
 
 // NewKubeletServer will create a new KubeletServer with default values.
 func NewKubeletServer() (*KubeletServer, error) {
-	config, err := NewKubeletConfiguration()
+	scheme, codecs, err := NewKubeletSchemeAndCodecs()
+	if err != nil {
+		return nil, err
+	}
+	config, err := NewKubeletConfiguration(scheme)
 	if err != nil {
 		return nil, err
 	}
 	return &KubeletServer{
 		KubeletFlags:         *NewKubeletFlags(),
 		KubeletConfiguration: *config,
+		KubeletScheme:        scheme,
+		KubeletCodecs:        codecs,
 	}, nil
 }
 

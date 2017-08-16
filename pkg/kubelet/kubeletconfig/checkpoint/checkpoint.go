@@ -22,6 +22,7 @@ import (
 	apiv1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/kubelet/apis/kubeletconfig"
 )
@@ -30,8 +31,8 @@ import (
 type Checkpoint interface {
 	// UID returns the UID of the config source object behind the Checkpoint
 	UID() string
-	// Parse parses the checkpoint into the internal KubeletConfiguration type
-	Parse() (*kubeletconfig.KubeletConfiguration, error)
+	// Parse extracts the KubeletConfiguration from the checkpoint, applies defaults, and converts to the internal type
+	Parse(kubeletCodecs *serializer.CodecFactory) (*kubeletconfig.KubeletConfiguration, error)
 	// Encode returns a []byte representation of the config source object behind the Checkpoint
 	Encode() ([]byte, error)
 

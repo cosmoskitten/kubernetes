@@ -64,7 +64,7 @@ func (cc *Controller) lkgRollback(reason string) (*kubeletconfig.KubeletConfigur
 	}
 
 	// parse
-	lkg, err := checkpoint.Parse()
+	lkg, err := checkpoint.Parse(cc.kubeletCodecs)
 	if err != nil {
 		return nil, fmt.Errorf("%s, error: %v", fmt.Sprintf(status.LkgFailParseReasonFmt, lkgUID), err)
 	}

@@ -21,6 +21,7 @@ import (
 
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/kubernetes/pkg/kubelet/apis/kubeletconfig"
 	utilcodec "k8s.io/kubernetes/pkg/kubelet/kubeletconfig/util/codec"
 )
@@ -48,8 +49,8 @@ func (c *configMapCheckpoint) UID() string {
 	return string(c.configMap.UID)
 }
 
-// implements Parse for v1/ConfigMap checkpoints
-func (c *configMapCheckpoint) Parse() (*kubeletconfig.KubeletConfiguration, error) {
+// Parse extracts the KubeletConfiguration from v1/ConfigMap checkpoints, applies defaults, and converts to the internal type
+func (c *configMapCheckpoint) Parse(kubeletCodecs *serializer.CodecFactory) (*kubeletconfig.KubeletConfiguration, error) {
 	const emptyCfgErr = "config was empty, but some parameters are required"
 
 	cm := c.configMap
@@ -66,7 +67,7 @@ func (c *configMapCheckpoint) Parse() (*kubeletconfig.KubeletConfiguration, erro
 		return nil, fmt.Errorf(emptyCfgErr)
 	}
 
-	return utilcodec.DecodeKubeletConfiguration([]byte(config))
+	return utilcodec.DecodeKubeletConfiguration(kubeletCodecs, []byte(config))
 }
 
 // Encode encodes a configMapCheckpoint

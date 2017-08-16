@@ -26,8 +26,8 @@ import (
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/kubelet/apis/kubeletconfig"
+	kubeletapiutil "k8s.io/kubernetes/pkg/kubelet/apis/kubeletconfig/util"
 	kubeletconfigv1alpha1 "k8s.io/kubernetes/pkg/kubelet/apis/kubeletconfig/v1alpha1"
 	utiltest "k8s.io/kubernetes/pkg/kubelet/kubeletconfig/util/test"
 )
@@ -82,11 +82,13 @@ func TestConfigMapCheckpointUID(t *testing.T) {
 }
 
 func TestConfigMapCheckpointParse(t *testing.T) {
+	kubeletScheme, kubeletCodecs, err := kubeletapiutil.NewSchemeAndCodecs()
+
 	// get the built-in default configuration
 	external := &kubeletconfigv1alpha1.KubeletConfiguration{}
-	api.Scheme.Default(external)
+	kubeletScheme.Default(external)
 	defaultConfig := &kubeletconfig.KubeletConfiguration{}
-	err := api.Scheme.Convert(external, defaultConfig, nil)
+	err = kubeletScheme.Convert(external, defaultConfig, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -124,7 +126,7 @@ apiVersion: kubeletconfig/v1alpha1`}}, defaultConfig, ""},
 	}
 	for _, c := range cases {
 		cpt := &configMapCheckpoint{c.cm}
-		kc, err := cpt.Parse()
+		kc, err := cpt.Parse(kubeletCodecs)
 		if utiltest.SkipRest(t, c.desc, err, c.err) {
 			continue
 		}

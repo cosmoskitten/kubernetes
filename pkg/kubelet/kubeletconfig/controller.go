@@ -22,6 +22,7 @@ import (
 	"time"
 
 	apiv1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -53,7 +54,7 @@ const (
 // - validates configuration
 // - monitors for potential crash-loops caused by new configurations
 // - tracks the last-known-good configuration, and rolls-back to last-known-good when necessary
-// For more information, see the proposal: https://github.com/kubernetes/kubernetes/pull/29459
+// For more information, see the proposal: https://github.com/kubernetes/community/blob/master/contributors/design-proposals/dynamic-kubelet-configuration.md
 type Controller struct {
 	// dynamicConfig, if true, indicates that we should sync config from the API server
 	dynamicConfig bool
@@ -84,18 +85,24 @@ type Controller struct {
 
 	// startupTracker persists Kubelet startup records, used for crash-loop detection, to a storage layer
 	startupTracker startups.Tracker
+
+	// kubeletCodecs is the CodecFactory that understands the Kubelet's API types (for decoding KubeletConfiguration)
+	kubeletCodecs *serializer.CodecFactory
 }
 
 // NewController constructs a new Controller object and returns it. Directory paths must be absolute.
 // If the `initConfigDir` is an empty string, skips trying to load the init config.
 // If the `dynamicConfigDir` is an empty string, skips trying to load checkpoints or download new config,
 // but will still sync the ConfigOK condition if you call StartSync with a non-nil client.
-func NewController(initConfigDir string, dynamicConfigDir string, defaultConfig *kubeletconfig.KubeletConfiguration) *Controller {
+func NewController(kubeletCodecs *serializer.CodecFactory,
+	initConfigDir string,
+	dynamicConfigDir string,
+	defaultConfig *kubeletconfig.KubeletConfiguration) *Controller {
 	fs := utilfs.DefaultFs{}
 
 	var initLoader configfiles.Loader
 	if len(initConfigDir) > 0 {
-		initLoader = configfiles.NewFSLoader(fs, initConfigDir)
+		initLoader = configfiles.NewFSLoader(fs, kubeletCodecs, initConfigDir)
 	}
 	dynamicConfig := false
 	if len(dynamicConfigDir) > 0 {
@@ -120,6 +127,7 @@ func NewController(initConfigDir string, dynamicConfigDir string, defaultConfig 
 		badConfigTracker:    badconfig.NewFsTracker(fs, filepath.Join(dynamicConfigDir, badConfigTrackingDir, kubeletVersion)),
 		startupTracker:      startups.NewFsTracker(fs, filepath.Join(dynamicConfigDir, startupTrackingDir, kubeletVersion)),
 		initLoader:          initLoader,
+		kubeletCodecs:       kubeletCodecs,
 	}
 }
 
@@ -202,7 +210,7 @@ func (cc *Controller) Bootstrap() (*kubeletconfig.KubeletConfiguration, error) {
 	}
 
 	// parse the checkpoint into a KubeletConfiguration
-	cur, err := checkpoint.Parse()
+	cur, err := checkpoint.Parse(cc.kubeletCodecs)
 	if err != nil {
 		return cc.badRollback(curUID, fmt.Sprintf(status.CurFailParseReasonFmt, curUID), fmt.Sprintf("error: %v", err))
 	}
