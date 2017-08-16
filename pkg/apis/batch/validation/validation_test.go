@@ -239,17 +239,19 @@ func TestValidateJobUpdateStatus(t *testing.T) {
 			old: batch.Job{
 				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
 				Status: batch.JobStatus{
-					Active:    1,
-					Succeeded: 2,
-					Failed:    3,
+					Active:           1,
+					Succeeded:        2,
+					Failed:           3,
+					FailedAndDeleted: 1,
 				},
 			},
 			update: batch.Job{
 				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
 				Status: batch.JobStatus{
-					Active:    1,
-					Succeeded: 1,
-					Failed:    3,
+					Active:           1,
+					Succeeded:        1,
+					Failed:           3,
+					FailedAndDeleted: 1,
 				},
 			},
 		},
@@ -272,9 +274,10 @@ func TestValidateJobUpdateStatus(t *testing.T) {
 					ResourceVersion: "10",
 				},
 				Status: batch.JobStatus{
-					Active:    1,
-					Succeeded: 2,
-					Failed:    3,
+					Active:           1,
+					Succeeded:        2,
+					Failed:           3,
+					FailedAndDeleted: 1,
 				},
 			},
 			update: batch.Job{
@@ -284,9 +287,38 @@ func TestValidateJobUpdateStatus(t *testing.T) {
 					ResourceVersion: "10",
 				},
 				Status: batch.JobStatus{
-					Active:    -1,
-					Succeeded: -2,
-					Failed:    3,
+					Active:           -1,
+					Succeeded:        -2,
+					Failed:           3,
+					FailedAndDeleted: 1,
+				},
+			},
+		},
+		"[status.failed: Invalid value: -3: must be greater than or equal to 0, status.failedAndDeleted: Invalid value: -1: must be greater than or equal to 0]": {
+			old: batch.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            "abc",
+					Namespace:       metav1.NamespaceDefault,
+					ResourceVersion: "10",
+				},
+				Status: batch.JobStatus{
+					Active:           1,
+					Succeeded:        2,
+					Failed:           3,
+					FailedAndDeleted: 1,
+				},
+			},
+			update: batch.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            "abc",
+					Namespace:       metav1.NamespaceDefault,
+					ResourceVersion: "10",
+				},
+				Status: batch.JobStatus{
+					Active:           1,
+					Succeeded:        2,
+					Failed:           -3,
+					FailedAndDeleted: -1,
 				},
 			},
 		},

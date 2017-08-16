@@ -113,6 +113,12 @@ func validateJobSpec(spec *batch.JobSpec, fldPath *field.Path) field.ErrorList {
 	if spec.ActiveDeadlineSeconds != nil {
 		allErrs = append(allErrs, apivalidation.ValidateNonnegativeField(int64(*spec.ActiveDeadlineSeconds), fldPath.Child("activeDeadlineSeconds"))...)
 	}
+	if spec.BackoffDeadlineSeconds != nil {
+		allErrs = append(allErrs, apivalidation.ValidateNonnegativeField(int64(*spec.BackoffDeadlineSeconds), fldPath.Child("backoffDeadlineSeconds"))...)
+	}
+	if spec.FailedPodsLimit != nil {
+		allErrs = append(allErrs, apivalidation.ValidateNonnegativeField(int64(*spec.FailedPodsLimit), fldPath.Child("failedPodsLimit"))...)
+	}
 
 	allErrs = append(allErrs, apivalidation.ValidatePodTemplateSpec(&spec.Template, fldPath.Child("template"))...)
 	if spec.Template.Spec.RestartPolicy != api.RestartPolicyOnFailure &&
@@ -128,6 +134,7 @@ func ValidateJobStatus(status *batch.JobStatus, fldPath *field.Path) field.Error
 	allErrs = append(allErrs, apivalidation.ValidateNonnegativeField(int64(status.Active), fldPath.Child("active"))...)
 	allErrs = append(allErrs, apivalidation.ValidateNonnegativeField(int64(status.Succeeded), fldPath.Child("succeeded"))...)
 	allErrs = append(allErrs, apivalidation.ValidateNonnegativeField(int64(status.Failed), fldPath.Child("failed"))...)
+	allErrs = append(allErrs, apivalidation.ValidateNonnegativeField(int64(status.FailedAndDeleted), fldPath.Child("failedAndDeleted"))...)
 	return allErrs
 }
 

@@ -38,7 +38,7 @@ func TestSetDefaultJob(t *testing.T) {
 		expected     *batchv1.Job
 		expectLabels bool
 	}{
-		"both unspecified -> sets both to 1": {
+		"All unspecified -> sets all to 1": {
 			original: &batchv1.Job{
 				Spec: batchv1.JobSpec{
 					Template: v1.PodTemplateSpec{
@@ -48,13 +48,15 @@ func TestSetDefaultJob(t *testing.T) {
 			},
 			expected: &batchv1.Job{
 				Spec: batchv1.JobSpec{
-					Completions: newInt32(1),
-					Parallelism: newInt32(1),
+					Completions:     newInt32(1),
+					Parallelism:     newInt32(1),
+					BackoffLimit:    newInt32(1),
+					FailedPodsLimit: newInt32(1),
 				},
 			},
 			expectLabels: true,
 		},
-		"both unspecified -> sets both to 1 and no default labels": {
+		"All unspecified -> sets all to 1 and no default labels": {
 			original: &batchv1.Job{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{"mylabel": "myvalue"},
@@ -67,8 +69,10 @@ func TestSetDefaultJob(t *testing.T) {
 			},
 			expected: &batchv1.Job{
 				Spec: batchv1.JobSpec{
-					Completions: newInt32(1),
-					Parallelism: newInt32(1),
+					Completions:     newInt32(1),
+					Parallelism:     newInt32(1),
+					BackoffLimit:    newInt32(1),
+					FailedPodsLimit: newInt32(1),
 				},
 			},
 		},
@@ -83,7 +87,9 @@ func TestSetDefaultJob(t *testing.T) {
 			},
 			expected: &batchv1.Job{
 				Spec: batchv1.JobSpec{
-					Parallelism: newInt32(0),
+					Parallelism:     newInt32(0),
+					BackoffLimit:    newInt32(1),
+					FailedPodsLimit: newInt32(1),
 				},
 			},
 			expectLabels: true,
@@ -99,12 +105,14 @@ func TestSetDefaultJob(t *testing.T) {
 			},
 			expected: &batchv1.Job{
 				Spec: batchv1.JobSpec{
-					Parallelism: newInt32(2),
+					Parallelism:     newInt32(2),
+					BackoffLimit:    newInt32(1),
+					FailedPodsLimit: newInt32(1),
 				},
 			},
 			expectLabels: true,
 		},
-		"Completions explicitly 2 and parallelism unset -> parallelism is defaulted": {
+		"Completions explicitly 2 and others unset -> parallelism is defaulted": {
 			original: &batchv1.Job{
 				Spec: batchv1.JobSpec{
 					Completions: newInt32(2),
@@ -115,17 +123,18 @@ func TestSetDefaultJob(t *testing.T) {
 			},
 			expected: &batchv1.Job{
 				Spec: batchv1.JobSpec{
-					Completions: newInt32(2),
-					Parallelism: newInt32(1),
+					Completions:     newInt32(2),
+					Parallelism:     newInt32(1),
+					BackoffLimit:    newInt32(1),
+					FailedPodsLimit: newInt32(1),
 				},
 			},
 			expectLabels: true,
 		},
-		"Both set -> no change": {
+		"BackoffLimit explicitly 2 and others unset -> parallelism is defaulted": {
 			original: &batchv1.Job{
 				Spec: batchv1.JobSpec{
-					Completions: newInt32(10),
-					Parallelism: newInt32(11),
+					BackoffLimit: newInt32(2),
 					Template: v1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{Labels: defaultLabels},
 					},
@@ -133,20 +142,18 @@ func TestSetDefaultJob(t *testing.T) {
 			},
 			expected: &batchv1.Job{
 				Spec: batchv1.JobSpec{
-					Completions: newInt32(10),
-					Parallelism: newInt32(11),
-					Template: v1.PodTemplateSpec{
-						ObjectMeta: metav1.ObjectMeta{Labels: defaultLabels},
-					},
+					Completions:     newInt32(1),
+					Parallelism:     newInt32(1),
+					BackoffLimit:    newInt32(2),
+					FailedPodsLimit: newInt32(1),
 				},
 			},
 			expectLabels: true,
 		},
-		"Both set, flipped -> no change": {
+		"FailedPodsLimit explicitly 2 and others unset -> parallelism is defaulted": {
 			original: &batchv1.Job{
 				Spec: batchv1.JobSpec{
-					Completions: newInt32(11),
-					Parallelism: newInt32(10),
+					FailedPodsLimit: newInt32(2),
 					Template: v1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{Labels: defaultLabels},
 					},
@@ -154,8 +161,57 @@ func TestSetDefaultJob(t *testing.T) {
 			},
 			expected: &batchv1.Job{
 				Spec: batchv1.JobSpec{
-					Completions: newInt32(11),
-					Parallelism: newInt32(10),
+					Completions:     newInt32(1),
+					Parallelism:     newInt32(1),
+					BackoffLimit:    newInt32(2),
+					FailedPodsLimit: newInt32(1),
+				},
+			},
+			expectLabels: true,
+		},
+		"All set -> no change": {
+			original: &batchv1.Job{
+				Spec: batchv1.JobSpec{
+					Completions:     newInt32(10),
+					Parallelism:     newInt32(11),
+					BackoffLimit:    newInt32(12),
+					FailedPodsLimit: newInt32(13),
+					Template: v1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{Labels: defaultLabels},
+					},
+				},
+			},
+			expected: &batchv1.Job{
+				Spec: batchv1.JobSpec{
+					Completions:     newInt32(10),
+					Parallelism:     newInt32(11),
+					BackoffLimit:    newInt32(12),
+					FailedPodsLimit: newInt32(13),
+					Template: v1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{Labels: defaultLabels},
+					},
+				},
+			},
+			expectLabels: true,
+		},
+		"All set, flipped -> no change": {
+			original: &batchv1.Job{
+				Spec: batchv1.JobSpec{
+					Completions:     newInt32(11),
+					Parallelism:     newInt32(10),
+					FailedPodsLimit: newInt32(9),
+					BackoffLimit:    newInt32(8),
+					Template: v1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{Labels: defaultLabels},
+					},
+				},
+			},
+			expected: &batchv1.Job{
+				Spec: batchv1.JobSpec{
+					Completions:     newInt32(11),
+					Parallelism:     newInt32(10),
+					FailedPodsLimit: newInt32(9),
+					BackoffLimit:    newInt32(8),
 				},
 			},
 			expectLabels: true,

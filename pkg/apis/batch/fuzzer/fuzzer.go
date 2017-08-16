@@ -36,8 +36,12 @@ var Funcs = func(codecs runtimeserializer.CodecFactory) []interface{} {
 			c.FuzzNoCustom(j) // fuzz self without calling this function again
 			completions := int32(c.Rand.Int31())
 			parallelism := int32(c.Rand.Int31())
+			failedPodsLimit := int32(c.Rand.Int31())
+			backoffDeadlineSeconds := int64(c.Rand.Int63())
 			j.Completions = &completions
 			j.Parallelism = &parallelism
+			j.FailedPodsLimit = &failedPodsLimit
+			j.BackoffDeadlineSeconds = &backoffDeadlineSeconds
 			if c.Rand.Int31()%2 == 0 {
 				j.ManualSelector = newBool(true)
 			} else {

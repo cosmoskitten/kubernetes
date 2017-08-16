@@ -109,6 +109,19 @@ type JobSpec struct {
 	// +optional
 	ActiveDeadlineSeconds *int64
 
+	// Optional number of retries before marking this job failed.
+	// +optional
+	BackoffLimit *int32
+
+	// Optional time (in seconds) specifying how long a job should be retried before
+	// marking it failed.
+	// +optional
+	BackoffDeadlineSeconds *int64
+
+	// Optional number of failed pods to retain.
+	// +optional
+	FailedPodsLimit *int32
+
 	// A label query over pods that should match the pod count.
 	// Normally, the system sets this field for you.
 	// +optional
@@ -160,6 +173,10 @@ type JobStatus struct {
 	// The number of pods which reached phase Failed.
 	// +optional
 	Failed int32
+
+	// The number of pods which reached phase Failed and deleted.
+	// +optional
+	FailedAndDeleted int32
 }
 
 type JobConditionType string
