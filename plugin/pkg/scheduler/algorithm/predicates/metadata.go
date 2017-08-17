@@ -42,11 +42,12 @@ type matchingPodAntiAffinityTerm struct {
 // NOTE: When new fields are added/removed or logic is changed, please make sure
 // that RemovePod and AddPod functions are updated to work with the new changes.
 type predicateMetadata struct {
-	pod                                *v1.Pod
-	podBestEffort                      bool
-	podRequest                         *schedulercache.Resource
-	podPorts                           map[int]bool
-	matchingAntiAffinityTerms          map[types.UID][]matchingPodAntiAffinityTerm //key is a pod UID with the anti-affinity rule.
+	pod           *v1.Pod
+	podBestEffort bool
+	podRequest    *schedulercache.Resource
+	podPorts      map[int]bool
+	//key is a pod UID with the anti-affinity rules.
+	matchingAntiAffinityTerms          map[types.UID][]matchingPodAntiAffinityTerm
 	serviceAffinityInUse               bool
 	serviceAffinityMatchingPodList     []*v1.Pod
 	serviceAffinityMatchingPodServices []*v1.Service
@@ -109,15 +110,11 @@ func (meta *predicateMetadata) RemovePod(deletedPod *v1.Pod) error {
 	if meta.serviceAffinityInUse &&
 		len(meta.serviceAffinityMatchingPodList) > 0 &&
 		deletedPod.Namespace == meta.serviceAffinityMatchingPodList[0].Namespace {
-		deletedPodIndex := -1
 		for i, pod := range meta.serviceAffinityMatchingPodList {
 			if pod.GetUID() == deletedPod.GetUID() {
-				deletedPodIndex = i
+				meta.serviceAffinityMatchingPodList = append(meta.serviceAffinityMatchingPodList[:i], meta.serviceAffinityMatchingPodList[i+1:]...)
 				break
 			}
-		}
-		if deletedPodIndex >= 0 {
-			meta.serviceAffinityMatchingPodList = append(meta.serviceAffinityMatchingPodList[:deletedPodIndex], meta.serviceAffinityMatchingPodList[deletedPodIndex+1:]...)
 		}
 	}
 	return nil

@@ -29,7 +29,7 @@ import (
 // predicateMetadataEquivalent returns true if the two metadata are equivalent.
 // Note: this function does not compare podRequest.
 func predicateMetadataEquivalent(meta1, meta2 *predicateMetadata) error {
-	if meta1.pod != meta2.pod {
+	if !reflect.DeepEqual(meta1.pod, meta2.pod) {
 		return fmt.Errorf("pods are not the same.")
 	}
 	if meta1.podBestEffort != meta2.podBestEffort {
