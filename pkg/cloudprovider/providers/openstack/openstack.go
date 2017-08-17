@@ -85,7 +85,7 @@ type LoadBalancerOpts struct {
 	MonitorTimeout       MyDuration `gcfg:"monitor-timeout"`
 	MonitorMaxRetries    uint       `gcfg:"monitor-max-retries"`
 	ManageSecurityGroups bool       `gcfg:"manage-security-groups"`
-	NodeSecurityGroupID  string     `gcfg:"node-security-group"`
+	NodeSecurityGroupIDs []string   // Do not specify, get it automatically when enable manage-security-groups. TODO(FengyunPan): move it into cache
 }
 
 type BlockStorageOpts struct {
@@ -235,14 +235,6 @@ func checkOpenStackOpts(openstackOpts *OpenStack) error {
 			return fmt.Errorf("monitor-max-retries not set in cloud provider config")
 		}
 	}
-
-	// if enable ManageSecurityGroups, node-security-group should be set.
-	if lbOpts.ManageSecurityGroups {
-		if len(lbOpts.NodeSecurityGroupID) == 0 {
-			return fmt.Errorf("node-security-group not set in cloud provider config")
-		}
-	}
-
 	return nil
 }
 
