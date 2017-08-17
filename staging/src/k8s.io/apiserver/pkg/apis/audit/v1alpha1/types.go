@@ -220,6 +220,11 @@ type GroupResources struct {
 	// Any empty list implies every resource kind in the API group.
 	// +optional
 	Resources []string `json:"resources,omitempty" protobuf:"bytes,2,rep,name=resources"`
+	// ResourceNames is a list of resource instance names that the policy matches.
+	// Using this field requires Resources to be specified.
+	// An empty list implies that every instance of the resource is matched.
+	// +optional
+	ResourceNames []string `json:"resourceNames,omitempty" protobuf:"bytes,3,rep,name=resourceNames"`
 }
 
 // ObjectReference contains enough information to let you inspect or modify the referred object.
