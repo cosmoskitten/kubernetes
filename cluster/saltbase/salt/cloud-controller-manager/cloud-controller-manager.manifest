@@ -19,9 +19,6 @@
 {% elif pillar['allocate_node_cidrs'] is defined -%}
   {% set allocate_node_cidrs = "--allocate-node-cidrs=" + pillar['allocate_node_cidrs'] -%}
 {% endif -%}
-{% if pillar['terminated_pod_gc_threshold'] is defined -%}
-  {% set terminated_pod_gc = "--terminated-pod-gc-threshold=" + pillar['terminated_pod_gc_threshold'] -%}
-{% endif -%}
 
 {% set enable_garbage_collector = "" -%}
 {% if pillar['enable_garbage_collector'] is defined -%}

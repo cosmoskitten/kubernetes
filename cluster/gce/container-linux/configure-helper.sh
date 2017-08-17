@@ -1082,7 +1082,7 @@ function start-cloud-controller-manager {
   create-cloudcontrollermanager-kubeconfig
   prepare-log-file /var/log/cloud-controller-manager.log
   # Calculate variables and assemble the command line.
-  local params="${CONTROLLER_MANAGER_TEST_LOG_LEVEL:-"--v=2"} ${CONTROLLER_MANAGER_TEST_ARGS:-} ${CLOUD_CONFIG_OPT}"
+  local params="${CONTROLLER_MANAGER_TEST_LOG_LEVEL:-"--v=2"} ${CLOUD_CONTROLLER_MANAGER_TEST_ARGS:-} ${CLOUD_CONFIG_OPT}"
   params+=" --use-service-account-credentials"
   params+=" --cloud-provider=gce"
   params+=" --kubeconfig=/etc/srv/kubernetes/cloud-controller-manager/kubeconfig"
@@ -1097,9 +1097,6 @@ function start-cloud-controller-manager {
     params+=" --allocate-node-cidrs=true"
   elif [[ -n "${ALLOCATE_NODE_CIDRS:-}" ]]; then
     params+=" --allocate-node-cidrs=${ALLOCATE_NODE_CIDRS}"
-  fi
-  if [[ -n "${TERMINATED_POD_GC_THRESHOLD:-}" ]]; then
-    params+=" --terminated-pod-gc-threshold=${TERMINATED_POD_GC_THRESHOLD}"
   fi
   if [[ "${ENABLE_IP_ALIASES:-}" == 'true' ]]; then
     params+=" --cidr-allocator-type=CloudAllocator"
