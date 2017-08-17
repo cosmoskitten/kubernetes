@@ -1,0 +1,187 @@
+/*
+Copyright 2017 The Kubernetes Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package upgrade
+
+import (
+	"bufio"
+	"bytes"
+	"fmt"
+	"io"
+	"os"
+	"sort"
+	"text/tabwriter"
+
+	"github.com/ghodss/yaml"
+	"github.com/spf13/cobra"
+
+	clientset "k8s.io/client-go/kubernetes"
+	kubeadmapiext "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/v1alpha1"
+	"k8s.io/kubernetes/cmd/kubeadm/app/phases/upgrade"
+	kubeadmutil "k8s.io/kubernetes/cmd/kubeadm/app/util"
+	kubeconfigutil "k8s.io/kubernetes/cmd/kubeadm/app/util/kubeconfig"
+)
+
+// NewCmdPlan returns the cobra command for `kubeadm upgrade plan`
+func NewCmdPlan(parentFlags *cmdUpgradeFlags) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "plan",
+		Short: "Check which versions are available to upgrade to and validate whether your current cluster is upgradeable",
+		Run: func(_ *cobra.Command, _ []string) {
+			err := RunPlan(parentFlags)
+			kubeadmutil.CheckErr(err)
+		},
+	}
+
+	return cmd
+}
+
+// RunPlan takes care of outputting available versions to upgrade to for the user
+func RunPlan(parentFlags *cmdUpgradeFlags) error {
+
+	// Start with the basics, verify that the cluster is healthy and build a client. Always do this non-interactively for plan
+	client, _, err := EnforceRequirements(parentFlags.kubeConfigPath, parentFlags.cfgPath, parentFlags.printConfig, true)
+	if err != nil {
+		return err
+	}
+
+	versionGetterImpl := upgrade.NewKubeVersionGetter(client, os.Stdout)
+	availUpgrades, err := upgrade.GetAvailableUpgrades(versionGetterImpl, parentFlags.allowExperimentalUpgrades, parentFlags.allowRCUpgrades)
+	if err != nil {
+		return err
+	}
+
+	// Tell the user which upgrades are available
+	printAvailableUpgrades(availUpgrades, os.Stdout)
+	return nil
+}
+
+// EnforceRequirements verifies that it's okay to upgrade and returns the clientset and configuration needed
+func EnforceRequirements(kubeConfigPath, cfgPath string, printConfig, nonInteractively bool) (clientset.Interface, *kubeadmapiext.MasterConfiguration, error) {
+	client, err := kubeconfigutil.ClientSetFromFile(kubeConfigPath)
+	if err != nil {
+		return nil, nil, fmt.Errorf("couldn't create a Kubernetes client from file %q: %v", kubeConfigPath, err)
+	}
+
+	// Run healthchecks against the cluster
+	if err := upgrade.VerifyClusterHealth(client); err != nil {
+		return nil, nil, err
+	}
+
+	// Fetch the configuration from a file or ConfigMap and validate it
+	cfg, err := upgrade.FetchConfiguration(client, os.Stdout, cfgPath, nonInteractively)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// If the user told us to print this information out; do it!
+	if printConfig {
+		printConfiguration(cfg, os.Stdout)
+	}
+
+	return client, cfg, nil
+}
+
+// printAvailableUpgrades prints a UX-friendly overview of what versions are available to upgrade to
+func printAvailableUpgrades(upgrades []upgrade.Upgrade, w io.Writer) {
+
+	// Return quickly if no upgrades can be made
+	if len(upgrades) == 0 {
+		fmt.Fprintln(w, "Awesome, you're up-to-date! Enjoy!")
+		return
+	}
+	// The tab writer writes to the "real" writer w
+	tabw := tabwriter.NewWriter(w, 10, 4, 3, ' ', 0)
+
+	// Loop through the upgrade possibilities and output text to the command line
+	for _, upgrade := range upgrades {
+
+		if upgrade.CanUpgradeKubelets() {
+			fmt.Fprintln(w, "Components that must be upgraded manually after you've upgraded the control plane with 'kubeadm upgrade apply':")
+			fmt.Fprintln(tabw, "COMPONENT\tCURRENT\tAVAILABLE")
+			firstPrinted := false
+
+			// The map is of the form <old-version>:<node-count>. Here all the keys are put into a slice and sorted
+			// in order to always get the right order. Then the map value is extracted separately
+			for _, oldVersion := range sortedSliceFromStringIntMap(upgrade.Before.KubeletVersions) {
+				nodeCount := upgrade.Before.KubeletVersions[oldVersion]
+				if !firstPrinted {
+					// Output the Kubelet header only on the first version pair
+					fmt.Fprintf(tabw, "Kubelet\t%d x %s\t%s\n", nodeCount, oldVersion, upgrade.After.KubeletVersion)
+					firstPrinted = true
+					continue
+				}
+				fmt.Fprintf(tabw, "\t\t%d x %s\t%s\n", nodeCount, oldVersion, upgrade.After.KubeletVersion)
+			}
+			// We should flush the writer here at this stage; as the columns will now be of the right size, adjusted to the above content
+			tabw.Flush()
+			fmt.Fprintln(w, "")
+		}
+
+		fmt.Fprintf(w, "Upgrade to the latest %s:\n", upgrade.Description)
+		fmt.Fprintln(w, "")
+		fmt.Fprintln(tabw, "COMPONENT\tCURRENT\tAVAILABLE")
+		fmt.Fprintf(tabw, "API Server\t%s\t%s\n", upgrade.Before.KubeVersion, upgrade.After.KubeVersion)
+		fmt.Fprintf(tabw, "Controller Manager\t%s\t%s\n", upgrade.Before.KubeVersion, upgrade.After.KubeVersion)
+		fmt.Fprintf(tabw, "Scheduler\t%s\t%s\n", upgrade.Before.KubeVersion, upgrade.After.KubeVersion)
+		fmt.Fprintf(tabw, "Kube Proxy\t%s\t%s\n", upgrade.Before.KubeVersion, upgrade.After.KubeVersion)
+		fmt.Fprintf(tabw, "Kube DNS\t%s\t%s\n", upgrade.Before.DNSVersion, upgrade.After.DNSVersion)
+
+		// The tabwriter should be flushed at this stage as we have now put in all the required content for this time. This is required for the tabs' size to be correct.
+		tabw.Flush()
+		fmt.Fprintln(w, "")
+		fmt.Fprintln(w, "You can now apply the upgrade by executing the following command:")
+		fmt.Fprintln(w, "")
+		fmt.Fprintf(w, "\tkubeadm upgrade apply --version %s\n", upgrade.After.KubeVersion)
+		fmt.Fprintln(w, "")
+
+		if upgrade.Before.KubeadmVersion != upgrade.After.KubeadmVersion {
+			fmt.Fprintf(w, "Note: Before you do can perform this upgrade, you have to update kubeadm to %s\n", upgrade.After.KubeadmVersion)
+			fmt.Fprintln(w, "")
+		}
+
+		fmt.Fprintln(w, "_____________________________________________________________________")
+		fmt.Fprintln(w, "")
+	}
+}
+
+// printConfiguration prints the external version of the API to yaml
+func printConfiguration(cfg *kubeadmapiext.MasterConfiguration, w io.Writer) {
+	// Short-circuit if cfg is nil, so we can safely get the value of the pointer below
+	if cfg == nil {
+		return
+	}
+
+	cfgYaml, err := yaml.Marshal(*cfg)
+	if err == nil {
+		fmt.Fprintln(w, "[upgrade/config] Configuration used:")
+
+		scanner := bufio.NewScanner(bytes.NewReader(cfgYaml))
+		for scanner.Scan() {
+			fmt.Fprintf(w, "\t%s\n", scanner.Text())
+		}
+	}
+}
+
+// sortedSliceFromStringIntMap returns a slice of the keys in the map sorted alphabetically
+func sortedSliceFromStringIntMap(strMap map[string]uint16) []string {
+	strSlice := []string{}
+	for k := range strMap {
+		strSlice = append(strSlice, k)
+	}
+	sort.Strings(strSlice)
+	return strSlice
+}
