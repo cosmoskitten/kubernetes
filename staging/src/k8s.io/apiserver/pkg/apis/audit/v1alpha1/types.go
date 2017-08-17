@@ -216,10 +216,23 @@ type GroupResources struct {
 	// The empty string represents the core API group.
 	// +optional
 	Group string `json:"group,omitempty" protobuf:"bytes,1,opt,name=group"`
+
+	// NOTE: Servers that support v1beta1 also support subresource matching, but keep that
+	// undocumented since clients should explicitly switch to the new API group to get the
+	// new functionality.
+
 	// Resources is a list of resources within the API group.
 	// Any empty list implies every resource kind in the API group.
 	// +optional
 	Resources []string `json:"resources,omitempty" protobuf:"bytes,2,rep,name=resources"`
+	// The ResourceNames field was added for parody with the v1beta1 API group and is unsupported
+	// by servers that only support v1alpha1. Clients should switch to v1beta1 to use this field.
+	//
+	// ResourceNames is a list of resource instance names that the policy matches.
+	// Using this field requires Resources to be specified.
+	// An empty list implies that every instance of the resource is matched.
+	// +optional
+	ResourceNames []string `json:"resourceNames,omitempty" protobuf:"bytes,3,rep,name=resourceNames"`
 }
 
 // ObjectReference contains enough information to let you inspect or modify the referred object.
