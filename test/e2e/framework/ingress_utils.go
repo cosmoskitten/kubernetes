@@ -761,20 +761,20 @@ func (cont *GCEIngressController) deleteStaticIPs() error {
 func gcloudComputeResourceList(resource, regex, project string, out interface{}) {
 	// gcloud prints a message to stderr if it has an available update
 	// so we only look at stdout.
-	var regexFlag string
+	var filterFlag string
 
-	// --regex flag is deprecated for these resources:
+	// --regexp flag is deprecated for these resources:
 	switch resource {
 	case "disks", "disk-types", "instance-groups unmanaged", "instances", "machine-types", "target-instances",
 		"target-vpn-gateways", "target-pools", "vpn-tunnels", "commitments":
-		regexFlag = fmt.Sprintf("--filter='name ~ \"%q\"'", regex)
+		filterFlag = fmt.Sprintf("--filter='name ~ \"%q\"'", regex)
 	default:
-		regexFlag = fmt.Sprintf("--regexp=%q", regex)
+		filterFlag = fmt.Sprintf("--regexp=%q", regex)
 	}
 
 	command := []string{
 		"compute", resource, "list",
-		regexFlag,
+		filterFlag,
 		fmt.Sprintf("--project=%v", project),
 		"-q", "--format=json",
 	}
