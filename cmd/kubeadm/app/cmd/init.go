@@ -277,14 +277,19 @@ func (i *Init) Run(out io.Writer) error {
 
 	adminKubeConfigPath := filepath.Join(kubeConfigDir, kubeadmconstants.AdminKubeConfigFileName)
 
-	// PHASE 1: Generate certificates
-	if err := certsphase.CreatePKIAssets(i.cfg); err != nil {
-		return err
-	}
+	if !certsphase.UsingExternalCA(i.cfg) {
+		// PHASE 1: Generate certificates
+		if err := certsphase.CreatePKIAssets(i.cfg); err != nil {
+			return err
+		}
 
-	// PHASE 2: Generate kubeconfig files for the admin and the kubelet
-	if err := kubeconfigphase.CreateInitKubeConfigFiles(kubeConfigDir, i.cfg); err != nil {
-		return err
+		// PHASE 2: Generate kubeconfig files for the admin and the kubelet
+		if err := kubeconfigphase.CreateInitKubeConfigFiles(kubeConfigDir, i.cfg); err != nil {
+			return err
+		}
+
+	} else {
+		fmt.Printf("[externalca] No ca.key detected, assuming external CA.  Skipping certs and kubeconfig.\n")
 	}
 
 	// Temporarily set cfg.CertificatesDir to the "real value" when writing controlplane manifests
