@@ -122,8 +122,8 @@ func NewFrontProxyClientCertAndKey(frontProxyCACert *x509.Certificate, frontProx
 	return frontProxyClientCert, frontProxyClientKey, nil
 }
 
-// UsingExternalCA decides whether the user is relying on an external CA.  We currently implicitly determine this is the case when the CA Cert
-// is present but the CA Key is not. This allows us to, e.g. skip generating certs or not start the csr signing controller.
+// UsingExternalCA determines whether the user is relying on an external CA.  We currently implicitly determine this is the case when the CA Cert
+// is present but the CA Key is not. This allows us to, e.g., skip generating certs or not start the csr signing controller.
 func UsingExternalCA(cfg *kubeadmapi.MasterConfiguration) bool {
 
 	if !ValidateCACert(cfg.CertificatesDir, kubeadmconstants.CACertAndKeyBaseName, "CA") {
@@ -189,21 +189,21 @@ func ValidateCACertAndKey(pkiDir string, baseName string, UXName string) bool {
 }
 
 func ValidateSignedCert(pkiDir string, CABaseName string, baseName string, UXName string) bool {
-	// Try to load certificate authorithy .crt from the PKI directory
+	// Try to load CA
 	caCert, err := pkiutil.TryLoadCertFromDisk(pkiDir, CABaseName)
 	if err != nil {
 		fmt.Printf("failure loading certificate authorithy for %s: %v", UXName, err)
 		return false
 	}
 
-	// Try to key and signed certificate
+	// Try to load key and signed certificate
 	signedCert, _, err := pkiutil.TryLoadCertAndKeyFromDisk(pkiDir, baseName)
 	if err != nil {
 		fmt.Printf("failure loading certificate for %s: %v", UXName, err)
 		return false
 	}
 
-	// Check if the cert is signed by the given CA
+	// Check if the cert is signed by the CA
 	if err := signedCert.CheckSignatureFrom(caCert); err != nil {
 		fmt.Printf("certificate %s is not signed by corresponding CA", UXName)
 		return false
