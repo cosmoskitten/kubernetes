@@ -110,6 +110,12 @@ message GroupResources {
   // Any empty list implies every resource kind in the API group.
   // +optional
   repeated string resources = 2;
+
+  // ResourceNames is a list of resource instance names that the policy matches.
+  // Using this field requires Resources to be specified.
+  // An empty list implies that every instance of the resource is matched.
+  // +optional
+  repeated string resourceNames = 3;
 }
 
 // ObjectReference contains enough information to let you inspect or modify the referred object.
