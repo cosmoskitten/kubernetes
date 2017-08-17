@@ -81,6 +81,7 @@ go_library(
         "cluster.go",
         "clusterrolebinding.go",
         "configmap.go",
+        "daemonset.go",
         "delete.go",
         "deployment.go",
         "doc.go",

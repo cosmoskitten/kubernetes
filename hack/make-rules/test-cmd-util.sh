@@ -507,6 +507,11 @@ run_pod_tests() {
   ### Fail creating a pod disruption budget if both maxUnavailable and minAvailable specified
   ! kubectl create pdb test-pdb --selector=app=rails --min-available=2 --max-unavailable=3 --namespace=test-kubectl-describe-pod
 
+  ### Create a daemonset
+  kubectl create daemonset test-ds --image=test-image --namespace=test-kubectl-describe-pod
+  # Post-condition: daemonset exists and has expected values
+  kube::test::get_object_assert 'daemonset/test-ds --namespace=test-kubectl-describe-pod' "{{$id_field}}" 'test-ds'
+
   # Create a pod that consumes secret, configmap, and downward API keys as envs
   kube::test::get_object_assert 'pods --namespace=test-kubectl-describe-pod' "{{range.items}}{{$id_field}}:{{end}}" ''
   kubectl create -f hack/testdata/pod-with-api-env.yaml --namespace=test-kubectl-describe-pod
@@ -520,7 +525,9 @@ run_pod_tests() {
   kubectl delete secret test-secret --namespace=test-kubectl-describe-pod
   kubectl delete configmap test-configmap --namespace=test-kubectl-describe-pod
   kubectl delete pdb/test-pdb-1 pdb/test-pdb-2 pdb/test-pdb-3 pdb/test-pdb-4 --namespace=test-kubectl-describe-pod
+  kubectl delete daemonset test-ds --namespace=test-kubectl-describe-pod
   kubectl delete namespace test-kubectl-describe-pod
+
 
   ### Create two PODs
   # Pre-condition: no POD exists
