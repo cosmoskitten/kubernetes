@@ -39,8 +39,10 @@ go_library(
     ] + select({
         "@io_bazel_rules_go//go/platform:linux_amd64": [
             "//pkg/api:go_default_library",
+            "//pkg/api/v1/helper:go_default_library",
             "//pkg/api/v1/helper/qos:go_default_library",
             "//pkg/api/v1/resource:go_default_library",
+            "//pkg/features:go_default_library",
             "//pkg/kubelet/cm/util:go_default_library",
             "//pkg/kubelet/events:go_default_library",
             "//pkg/kubelet/metrics:go_default_library",
@@ -50,6 +52,7 @@ go_library(
             "//pkg/util/procfs:go_default_library",
             "//pkg/util/sysctl:go_default_library",
             "//pkg/util/version:go_default_library",
+            "//vendor/github.com/docker/go-units:go_default_library",
             "//vendor/github.com/opencontainers/runc/libcontainer/cgroups:go_default_library",
             "//vendor/github.com/opencontainers/runc/libcontainer/cgroups/fs:go_default_library",
             "//vendor/github.com/opencontainers/runc/libcontainer/cgroups/systemd:go_default_library",
@@ -57,6 +60,7 @@ go_library(
             "//vendor/k8s.io/apimachinery/pkg/api/resource:go_default_library",
             "//vendor/k8s.io/apimachinery/pkg/util/errors:go_default_library",
             "//vendor/k8s.io/apimachinery/pkg/util/wait:go_default_library",
+            "//vendor/k8s.io/apiserver/pkg/util/feature:go_default_library",
         ],
         "//conditions:default": [],
     }),
