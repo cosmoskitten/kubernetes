@@ -233,7 +233,7 @@ func (r *rangeAllocator) updateCIDRAllocation(data nodeAndCIDR) error {
 			continue
 		}
 		if node.Spec.PodCIDR != "" {
-			glog.Errorf("Node %v already has allocated CIDR %v. Releasing assigned one if different.", node.Name, node.Spec.PodCIDR)
+			glog.V(4).Infof("Node %v already has allocated CIDR %v. Releasing assigned one if different.", node.Name, node.Spec.PodCIDR)
 			if node.Spec.PodCIDR != data.cidr.String() {
 				if err := r.cidrs.Release(data.cidr); err != nil {
 					glog.Errorf("Error when releasing CIDR %v", data.cidr.String())
