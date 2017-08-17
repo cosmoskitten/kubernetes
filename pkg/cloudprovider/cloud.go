@@ -185,4 +185,14 @@ type Zone struct {
 type Zones interface {
 	// GetZone returns the Zone containing the current failure zone and locality region that the program is running in
 	GetZone() (Zone, error)
+
+	// GetZoneByProviderID returns the Zone containing the current zone and locality region of the node specified by providerId
+	// This method is particularly used in the context of external cloud providers where node initialization must be down
+	// outside the kubelets.
+	GetZoneByProviderID(providerID string) (Zone, error)
+
+	// GetZoneByNodeName returns the Zone containing the current zone and locality region of the node specified by node name
+	// This method is particularly used in the context of external cloud providers where node initialization must be down
+	// outside the kubelets.
+	GetZoneByNodeName(nodeName types.NodeName) (Zone, error)
 }

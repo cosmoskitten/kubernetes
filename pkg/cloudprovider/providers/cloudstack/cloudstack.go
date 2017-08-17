@@ -17,12 +17,15 @@ limitations under the License.
 package cloudstack
 
 import (
+	"errors"
 	"fmt"
 	"io"
 
 	"github.com/golang/glog"
 	"github.com/xanzy/go-cloudstack/cloudstack"
 	"gopkg.in/gcfg.v1"
+
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/kubernetes/pkg/cloudprovider"
 	"k8s.io/kubernetes/pkg/controller"
 )
@@ -129,4 +132,18 @@ func (cs *CSCloud) HasClusterID() bool {
 func (cs *CSCloud) GetZone() (cloudprovider.Zone, error) {
 	glog.V(2).Infof("Current zone is %v", cs.zone)
 	return cloudprovider.Zone{Region: cs.zone}, nil
+}
+
+// GetZoneByProviderID imlements Zones.GetZoneByProviderID
+// This is particularly useful in external cloud providers where we can't rely on
+// kubelet to initialize node data
+func (cs *CSCloud) GetZoneByProviderID(providerID string) (cloudprovider.Zone, error) {
+	return cloudprovider.Zone{}, errors.New("GetZoneByProviderID not implemented")
+}
+
+// GetZoneByProviderID imlements Zones.GetZoneByNodeName
+// This is particularly useful in external cloud providers where we can't rely on
+// kubelet to initialize node data
+func (cs *CSCloud) GetZoneByNodeName(nodeName types.NodeName) (cloudprovider.Zone, error) {
+	return cloudprovider.Zone{}, errors.New("GetZoneByNodeName not imeplemented")
 }
