@@ -17,43 +17,50 @@ limitations under the License.
 package selfhosting
 
 import (
+	"path/filepath"
+	"strings"
+
 	"k8s.io/api/core/v1"
-	kubeadmapi "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm"
 	kubeadmconstants "k8s.io/kubernetes/cmd/kubeadm/app/constants"
+	kubeadmutil "k8s.io/kubernetes/cmd/kubeadm/app/util"
 )
 
-// mutatePodSpec makes a Static Pod-hosted PodSpec suitable for self-hosting
-func mutatePodSpec(cfg *kubeadmapi.MasterConfiguration, name string, podSpec *v1.PodSpec) {
-	mutators := map[string][]func(*kubeadmapi.MasterConfiguration, *v1.PodSpec){
+const (
+	selfHostedKubeConfigDir = "/etc/kubernetes/kubeconfig"
+)
+
+// getDefaultMutators gets the mutator functions that alwasy should be used
+func getDefaultMutators() map[string][]func(*v1.PodSpec) {
+	return map[string][]func(*v1.PodSpec){
 		kubeadmconstants.KubeAPIServer: {
 			addNodeSelectorToPodSpec,
 			setMasterTolerationOnPodSpec,
 			setRightDNSPolicyOnPodSpec,
-			setVolumesOnKubeAPIServerPodSpec,
 		},
 		kubeadmconstants.KubeControllerManager: {
 			addNodeSelectorToPodSpec,
 			setMasterTolerationOnPodSpec,
 			setRightDNSPolicyOnPodSpec,
-			setVolumesOnKubeControllerManagerPodSpec,
 		},
 		kubeadmconstants.KubeScheduler: {
 			addNodeSelectorToPodSpec,
 			setMasterTolerationOnPodSpec,
 			setRightDNSPolicyOnPodSpec,
-			setVolumesOnKubeSchedulerPodSpec,
 		},
 	}
+}
 
+// mutatePodSpec makes a Static Pod-hosted PodSpec suitable for self-hosting
+func mutatePodSpec(mutators map[string][]func(*v1.PodSpec), name string, podSpec *v1.PodSpec) {
 	// Get the mutator functions for the component in question, then loop through and execute them
 	mutatorsForComponent := mutators[name]
 	for _, mutateFunc := range mutatorsForComponent {
-		mutateFunc(cfg, podSpec)
+		mutateFunc(podSpec)
 	}
 }
 
 // addNodeSelectorToPodSpec makes Pod require to be scheduled on a node marked with the master label
-func addNodeSelectorToPodSpec(cfg *kubeadmapi.MasterConfiguration, podSpec *v1.PodSpec) {
+func addNodeSelectorToPodSpec(podSpec *v1.PodSpec) {
 	if podSpec.NodeSelector == nil {
 		podSpec.NodeSelector = map[string]string{kubeadmconstants.LabelNodeRoleMaster: ""}
 		return
@@ -63,7 +70,7 @@ func addNodeSelectorToPodSpec(cfg *kubeadmapi.MasterConfiguration, podSpec *v1.P
 }
 
 // setMasterTolerationOnPodSpec makes the Pod tolerate the master taint
-func setMasterTolerationOnPodSpec(cfg *kubeadmapi.MasterConfiguration, podSpec *v1.PodSpec) {
+func setMasterTolerationOnPodSpec(podSpec *v1.PodSpec) {
 	if podSpec.Tolerations == nil {
 		podSpec.Tolerations = []v1.Toleration{kubeadmconstants.MasterToleration}
 		return
@@ -73,38 +80,75 @@ func setMasterTolerationOnPodSpec(cfg *kubeadmapi.MasterConfiguration, podSpec *
 }
 
 // setRightDNSPolicyOnPodSpec makes sure the self-hosted components can look up things via kube-dns if necessary
-func setRightDNSPolicyOnPodSpec(cfg *kubeadmapi.MasterConfiguration, podSpec *v1.PodSpec) {
+func setRightDNSPolicyOnPodSpec(podSpec *v1.PodSpec) {
 	podSpec.DNSPolicy = v1.DNSClusterFirstWithHostNet
 }
 
-// setVolumesOnKubeAPIServerPodSpec makes sure the self-hosted api server has the required files
-func setVolumesOnKubeAPIServerPodSpec(cfg *kubeadmapi.MasterConfiguration, podSpec *v1.PodSpec) {
-	setK8sVolume(apiServerVolume, cfg, podSpec)
-	for _, c := range podSpec.Containers {
-		c.VolumeMounts = append(c.VolumeMounts, k8sSelfHostedVolumeMount())
-	}
-}
-
-// setVolumesOnKubeControllerManagerPodSpec makes sure the self-hosted controller manager has the required files
-func setVolumesOnKubeControllerManagerPodSpec(cfg *kubeadmapi.MasterConfiguration, podSpec *v1.PodSpec) {
-	setK8sVolume(controllerManagerVolume, cfg, podSpec)
-	for _, c := range podSpec.Containers {
-		c.VolumeMounts = append(c.VolumeMounts, k8sSelfHostedVolumeMount())
-	}
-}
-
-// setVolumesOnKubeSchedulerPodSpec makes sure the self-hosted scheduler has the required files
-func setVolumesOnKubeSchedulerPodSpec(cfg *kubeadmapi.MasterConfiguration, podSpec *v1.PodSpec) {
-	setK8sVolume(schedulerVolume, cfg, podSpec)
-	for _, c := range podSpec.Containers {
-		c.VolumeMounts = append(c.VolumeMounts, k8sSelfHostedVolumeMount())
-	}
-}
-
-func setK8sVolume(cb func(cfg *kubeadmapi.MasterConfiguration) v1.Volume, cfg *kubeadmapi.MasterConfiguration, podSpec *v1.PodSpec) {
+// useSelfHostedVolumesForAPIServer makes sure the self-hosted api server has the right volume source coming from a self-hosted cluster
+func useSelfHostedVolumesForAPIServer(podSpec *v1.PodSpec) {
 	for i, v := range podSpec.Volumes {
-		if v.Name == "k8s" {
-			podSpec.Volumes[i] = cb(cfg)
+		// If the volume name matches the expected one; switch the volume source from hostPath to cluster-hosted
+		if v.Name == kubeadmconstants.KubeCertificatesVolumeName {
+			podSpec.Volumes[i].VolumeSource = apiServerCertificatesVolumeSource()
 		}
 	}
+}
+
+// useSelfHostedVolumesForControllerManager makes sure the self-hosted controller manager has the right volume source coming from a self-hosted cluster
+func useSelfHostedVolumesForControllerManager(podSpec *v1.PodSpec) {
+	for i, v := range podSpec.Volumes {
+		// If the volume name matches the expected one; switch the volume source from hostPath to cluster-hosted
+		if v.Name == kubeadmconstants.KubeCertificatesVolumeName {
+			podSpec.Volumes[i].VolumeSource = controllerManagerCertificatesVolumeSource()
+		} else if v.Name == kubeadmconstants.KubeConfigVolumeName {
+			podSpec.Volumes[i].VolumeSource = kubeConfigVolumeSource(kubeadmconstants.ControllerManagerKubeConfigFileName)
+		}
+	}
+
+	// Change directory for the kubeconfig directory to selfHostedKubeConfigDir
+	for i, vm := range podSpec.Containers[0].VolumeMounts {
+		if vm.Name == kubeadmconstants.KubeConfigVolumeName {
+			podSpec.Containers[0].VolumeMounts[i].MountPath = selfHostedKubeConfigDir
+		}
+	}
+
+	podSpec.Containers[0].Command = replaceArgument(podSpec.Containers[0].Command, func(argMap map[string]string) map[string]string {
+		argMap["kubeconfig"] = filepath.Join(selfHostedKubeConfigDir, kubeadmconstants.ControllerManagerKubeConfigFileName)
+		return argMap
+	})
+}
+
+// useSelfHostedVolumesForScheduler makes sure the self-hosted scheduler has the right volume source coming from a self-hosted cluster
+func useSelfHostedVolumesForScheduler(podSpec *v1.PodSpec) {
+	for i, v := range podSpec.Volumes {
+		// If the volume name matches the expected one; switch the volume source from hostPath to cluster-hosted
+		if v.Name == kubeadmconstants.KubeConfigVolumeName {
+			podSpec.Volumes[i].VolumeSource = kubeConfigVolumeSource(kubeadmconstants.SchedulerKubeConfigFileName)
+		}
+	}
+
+	// Change directory for the kubeconfig directory to selfHostedKubeConfigDir
+	for i, vm := range podSpec.Containers[0].VolumeMounts {
+		if vm.Name == kubeadmconstants.KubeConfigVolumeName {
+			podSpec.Containers[0].VolumeMounts[i].MountPath = selfHostedKubeConfigDir
+		}
+	}
+
+	podSpec.Containers[0].Command = replaceArgument(podSpec.Containers[0].Command, func(argMap map[string]string) map[string]string {
+		argMap["kubeconfig"] = filepath.Join(selfHostedKubeConfigDir, kubeadmconstants.SchedulerKubeConfigFileName)
+		return argMap
+	})
+}
+
+func replaceArgument(command []string, argMutateFunc func(map[string]string) map[string]string) []string {
+	argMap := kubeadmutil.ParseArgumentListToMap(command)
+
+	// Save the first command (the executable) if we're sure it's not an argument (i.e. no --)
+	var newCommand []string
+	if len(command) > 0 && !strings.HasPrefix(command[0], "--") {
+		newCommand = append(newCommand, command[0])
+	}
+	newArgMap := argMutateFunc(argMap)
+	newCommand = append(newCommand, kubeadmutil.BuildArgumentListFromMap(newArgMap, map[string]string{})...)
+	return newCommand
 }

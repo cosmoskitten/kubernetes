@@ -53,13 +53,23 @@ const (
 // 9. Do that for the kube-apiserver, kube-controller-manager and kube-scheduler in a loop
 func CreateSelfHostedControlPlane(cfg *kubeadmapi.MasterConfiguration, client clientset.Interface) error {
 
+	// Here the map of different mutators to use for the control plane's podspec is stored
+	mutators := getDefaultMutators()
+
+	// Some extra work to be done if we should store the control plane certificates in Secrets
 	if features.Enabled(cfg.FeatureFlags, features.StoreCertsInSecrets) {
-		if err := createTLSSecrets(cfg, client); err != nil {
+
+		// Upload the certificates and kubeconfig files from disk to the cluster as Secrets
+		if err := uploadTLSSecrets(client, cfg.CertificatesDir); err != nil {
 			return err
 		}
-		if err := createOpaqueSecrets(cfg, client); err != nil {
+		if err := uploadKubeConfigSecrets(client); err != nil {
 			return err
 		}
+		// Add the store-certs-in-secrets-specific mutators here so that the self-hosted component starts using them
+		mutators[kubeadmconstants.KubeAPIServer] = append(mutators[kubeadmconstants.KubeAPIServer], useSelfHostedVolumesForAPIServer)
+		mutators[kubeadmconstants.KubeControllerManager] = append(mutators[kubeadmconstants.KubeControllerManager], useSelfHostedVolumesForControllerManager)
+		mutators[kubeadmconstants.KubeScheduler] = append(mutators[kubeadmconstants.KubeScheduler], useSelfHostedVolumesForScheduler)
 	}
 
 	for _, componentName := range kubeadmconstants.MasterComponents {
@@ -78,8 +88,11 @@ func CreateSelfHostedControlPlane(cfg *kubeadmapi.MasterConfiguration, client cl
 			return err
 		}
 
+		// Mutate the PodSpec so it's suitable for self-hosting
+		mutatePodSpec(mutators, componentName, podSpec)
+
 		// Build a DaemonSet object from the loaded PodSpec
-		ds := buildDaemonSet(cfg, componentName, podSpec)
+		ds := buildDaemonSet(componentName, podSpec)
 
 		// Create the DaemonSet in the API Server
 		if err := apiclient.CreateOrUpdateDaemonSet(client, ds); err != nil {
@@ -115,11 +128,7 @@ func CreateSelfHostedControlPlane(cfg *kubeadmapi.MasterConfiguration, client cl
 }
 
 // buildDaemonSet is responsible for mutating the PodSpec and return a DaemonSet which is suitable for the self-hosting purporse
-func buildDaemonSet(cfg *kubeadmapi.MasterConfiguration, name string, podSpec *v1.PodSpec) *extensions.DaemonSet {
-
-	// Mutate the PodSpec so it's suitable for self-hosting
-	mutatePodSpec(cfg, name, podSpec)
-
+func buildDaemonSet(name string, podSpec *v1.PodSpec) *extensions.DaemonSet {
 	// Return a DaemonSet based on that Spec
 	return &extensions.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
