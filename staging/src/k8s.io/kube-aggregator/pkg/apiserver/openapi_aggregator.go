@@ -17,6 +17,7 @@ limitations under the License.
 package apiserver
 
 import (
+	"crypto/sha512"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -33,11 +34,16 @@ import (
 	"k8s.io/kube-openapi/pkg/builder"
 	"k8s.io/kube-openapi/pkg/common"
 	"k8s.io/kube-openapi/pkg/handler"
+	"strings"
 )
 
 const (
 	aggregatorUser      = "system:aggregator"
 	specDownloadTimeout = 60 * time.Second
+	localDelegateName   = ""
+
+	// A randomly generated UUID to differentiate local and remote eTags.
+	locallyGeneratedEtagPrefix = "\"6E8F849B434D4B98A569B9D7718876E9-"
 )
 
 type openAPIAggregator struct {
@@ -47,13 +53,21 @@ type openAPIAggregator struct {
 	// provided for dynamic OpenAPI spec
 	openAPIService *handler.OpenAPIService
 
-	// Aggregator's OpenAPI spec (holds apiregistration group).
-	aggregatorOpenAPISpec *spec.Swagger
-
-	// Local (in process) delegate's OpenAPI spec.
-	inProcessDelegatesOpenAPISpec *spec.Swagger
-
 	contextMapper request.RequestContextMapper
+
+	openAPIAggregationController *OpenAPIAggregationController
+}
+
+func (s *openAPIAggregator) addLocalSpec(spec *spec.Swagger, localHandler http.Handler, name, etag string) {
+	localApiService := apiregistration.APIService{}
+	localApiService.Name = name
+	localApiService.Spec.Service = nil
+	s.openAPISpecs[name] = &openAPISpecInfo{
+		etag:       etag,
+		apiService: localApiService,
+		handler:    localHandler,
+		spec:       spec,
+	}
 }
 
 func buildAndRegisterOpenAPIAggregator(delegateHandler http.Handler, webServices []*restful.WebService, config *common.Config, pathHandler common.PathHandler, contextMapper request.RequestContextMapper) (s *openAPIAggregator, err error) {
@@ -61,22 +75,25 @@ func buildAndRegisterOpenAPIAggregator(delegateHandler http.Handler, webServices
 		openAPISpecs:  map[string]*openAPISpecInfo{},
 		contextMapper: contextMapper,
 	}
+	s.openAPIAggregationController = NewOpenAPIAggregationController(s)
 
-	// Get Local delegate's Spec
-	s.inProcessDelegatesOpenAPISpec, err = s.downloadOpenAPISpec(delegateHandler)
+	delegateSpec, etag, _, err := s.downloadOpenAPISpec(delegateHandler, "")
 	if err != nil {
 		return nil, err
 	}
+	s.addLocalSpec(delegateSpec, delegateHandler, localDelegateName, etag)
 
 	// Build Aggregator's spec
-	s.aggregatorOpenAPISpec, err = builder.BuildOpenAPISpec(
+	aggregatorOpenAPISpec, err := builder.BuildOpenAPISpec(
 		webServices, config)
 	if err != nil {
 		return nil, err
 	}
 	// Remove any non-API endpoints from aggregator's spec. aggregatorOpenAPISpec
 	// is the source of truth for all non-api endpoints.
-	aggregator.FilterSpecByPaths(s.aggregatorOpenAPISpec, []string{"/apis/"})
+	aggregator.FilterSpecByPaths(aggregatorOpenAPISpec, []string{"/apis/"})
+
+	s.addLocalSpec(aggregatorOpenAPISpec, nil, "", "")
 
 	// Build initial spec to serve.
 	specToServe, err := s.buildOpenAPISpec()
@@ -99,6 +116,8 @@ func buildAndRegisterOpenAPIAggregator(delegateHandler http.Handler, webServices
 type openAPISpecInfo struct {
 	apiService apiregistration.APIService
 	spec       *spec.Swagger
+	handler    http.Handler
+	etag       string
 }
 
 // byPriority can be used in sort.Sort to sort specs with their priorities.
@@ -110,6 +129,10 @@ type byPriority struct {
 func (a byPriority) Len() int      { return len(a.specs) }
 func (a byPriority) Swap(i, j int) { a.specs[i], a.specs[j] = a.specs[j], a.specs[i] }
 func (a byPriority) Less(i, j int) bool {
+	// All local specs will come first
+	if a.specs[i].apiService.Spec.Service == nil {
+		return true
+	}
 	var iPriority, jPriority int32
 	if a.specs[i].apiService.Spec.Group == a.specs[j].apiService.Spec.Group {
 		iPriority = a.specs[i].apiService.Spec.VersionPriority
@@ -132,6 +155,9 @@ func sortByPriority(specs []openAPISpecInfo) {
 		groupPriorities: map[string]int32{},
 	}
 	for _, spec := range specs {
+		if spec.apiService.Spec.Service == nil {
+			continue
+		}
 		if pr, found := b.groupPriorities[spec.apiService.Spec.Group]; !found || spec.apiService.Spec.GroupPriorityMinimum > pr {
 			b.groupPriorities[spec.apiService.Spec.Group] = spec.apiService.Spec.GroupPriorityMinimum
 		}
@@ -141,16 +167,20 @@ func sortByPriority(specs []openAPISpecInfo) {
 
 // buildOpenAPISpec aggregates all OpenAPI specs.  It is not thread-safe.
 func (s *openAPIAggregator) buildOpenAPISpec() (specToReturn *spec.Swagger, err error) {
-	specToReturn, err = aggregator.CloneSpec(s.inProcessDelegatesOpenAPISpec)
+	localDelegateSpec, exists := s.openAPISpecs[localDelegateName]
+	if !exists {
+		return nil, fmt.Errorf("localDelegate spec is missing")
+	}
+	specToReturn, err = aggregator.CloneSpec(localDelegateSpec.spec)
 	if err != nil {
 		return nil, err
 	}
-	if err := aggregator.MergeSpecs(specToReturn, s.aggregatorOpenAPISpec); err != nil {
-		return nil, fmt.Errorf("cannot merge local delegate spec with aggregator spec: %s", err.Error())
-	}
 	specs := []openAPISpecInfo{}
-	for _, specInfo := range s.openAPISpecs {
-		specs = append(specs, openAPISpecInfo{specInfo.apiService, specInfo.spec})
+	for serviceName, specInfo := range s.openAPISpecs {
+		if serviceName == localDelegateName {
+			continue
+		}
+		specs = append(specs, openAPISpecInfo{specInfo.apiService, specInfo.spec, specInfo.handler, specInfo.etag})
 	}
 	sortByPriority(specs)
 	for _, specInfo := range specs {
@@ -175,9 +205,10 @@ func (s *openAPIAggregator) updateOpenAPISpec() error {
 
 // inMemoryResponseWriter is a http.Writer that keep the response in memory.
 type inMemoryResponseWriter struct {
-	header   http.Header
-	respCode int
-	data     []byte
+	writeHeaderCalled bool
+	header            http.Header
+	respCode          int
+	data              []byte
 }
 
 func newInMemoryResponseWriter() *inMemoryResponseWriter {
@@ -189,10 +220,14 @@ func (r *inMemoryResponseWriter) Header() http.Header {
 }
 
 func (r *inMemoryResponseWriter) WriteHeader(code int) {
+	r.writeHeaderCalled = true
 	r.respCode = code
 }
 
 func (r *inMemoryResponseWriter) Write(in []byte) (int, error) {
+	if !r.writeHeaderCalled {
+		r.WriteHeader(http.StatusOK)
+	}
 	r.data = append(r.data, in...)
 	return len(in), nil
 }
@@ -217,28 +252,60 @@ func (s *openAPIAggregator) handlerWithUser(handler http.Handler, info user.Info
 	})
 }
 
+func etagFor(data []byte) string {
+	return fmt.Sprintf("%s%X\"", locallyGeneratedEtagPrefix, sha512.Sum512(data))
+}
+
 // downloadOpenAPISpec downloads openAPI spec from /swagger.json endpoint of the given handler.
-func (s *openAPIAggregator) downloadOpenAPISpec(handler http.Handler) (*spec.Swagger, error) {
+// httpStatus is only valid if err == nil
+func (s *openAPIAggregator) downloadOpenAPISpec(handler http.Handler, etag string) (returnSpec *spec.Swagger, newEtag string, httpStatus int, err error) {
 	handler = s.handlerWithUser(handler, &user.DefaultInfo{Name: aggregatorUser})
 	handler = request.WithRequestContext(handler, s.contextMapper)
 	handler = http.TimeoutHandler(handler, specDownloadTimeout, "request timed out")
 
 	req, err := http.NewRequest("GET", "/swagger.json", nil)
 	if err != nil {
-		return nil, err
+		return nil, "", 0, err
 	}
+
+	// Only pass eTag if it is not generated locally
+	if len(etag) > 0 && !strings.HasPrefix(etag, locallyGeneratedEtagPrefix) {
+		req.Header.Add("If-None-Match", etag)
+	}
+
 	writer := newInMemoryResponseWriter()
 	handler.ServeHTTP(writer, req)
 
 	switch writer.respCode {
+	case http.StatusNotModified:
+		if len(etag) == 0 {
+			return nil, etag, http.StatusNotModified, fmt.Errorf("http.StatusNotModified is not allowed in absense of etag")
+		}
+		return nil, etag, http.StatusNotModified, nil
+	case http.StatusNotFound:
+		// Gracefully skip 404, assuming the server won't provide any spec
+		return nil, "", http.StatusNotFound, nil
 	case http.StatusOK:
 		openApiSpec := &spec.Swagger{}
 		if err := json.Unmarshal(writer.data, openApiSpec); err != nil {
-			return nil, err
+			return nil, "", 0, err
 		}
-		return openApiSpec, nil
+		newEtag = writer.Header().Get("Etag")
+		if len(newEtag) == 0 {
+			newEtag = etagFor(writer.data)
+			if len(etag) > 0 && strings.HasPrefix(etag, locallyGeneratedEtagPrefix) {
+				// The function call with an etag and server does not report an etag.
+				// That means this server does not support etag and the etag that passed
+				// to the function generated previously by us. Just compare etags and
+				// return StatusNotModified if they are the same.
+				if etag == newEtag {
+					return nil, etag, http.StatusNotModified, nil
+				}
+			}
+		}
+		return openApiSpec, etag, http.StatusOK, nil
 	default:
-		return nil, fmt.Errorf("failed to retrive openAPI spec, http error: %s", writer.String())
+		return nil, "", 0, fmt.Errorf("failed to retrive openAPI spec, http error: %s", writer.String())
 	}
 }
 
@@ -250,15 +317,22 @@ func (s *openAPIAggregator) loadApiServiceSpec(handler http.Handler, apiService 
 		return nil
 	}
 
-	openApiSpec, err := s.downloadOpenAPISpec(handler)
+	openApiSpec, etag, _, err := s.downloadOpenAPISpec(handler, "")
 	if err != nil {
 		return err
 	}
+	if openApiSpec == nil {
+		// API service does not provide an OpenAPI spec, ignore it.
+		return nil
+	}
 	aggregator.FilterSpecByPaths(openApiSpec, []string{"/apis/" + apiService.Spec.Group + "/"})
 
+	_, existingService := s.openAPISpecs[apiService.Name]
 	s.openAPISpecs[apiService.Name] = &openAPISpecInfo{
 		apiService: *apiService,
 		spec:       openApiSpec,
+		handler:    handler,
+		etag:       etag,
 	}
 
 	err = s.updateOpenAPISpec()
@@ -266,5 +340,48 @@ func (s *openAPIAggregator) loadApiServiceSpec(handler http.Handler, apiService 
 		delete(s.openAPISpecs, apiService.Name)
 		return err
 	}
+	if !existingService {
+		s.openAPIAggregationController.enqueue(apiService.Name)
+	}
+
 	return nil
+}
+
+func (s *openAPIAggregator) RemoveApiServiceSpec(apiServiceName string) error {
+	if _, existingService := s.openAPISpecs[apiServiceName]; existingService {
+		oldSpecs := s.openAPISpecs
+		delete(s.openAPISpecs, apiServiceName)
+		err := s.updateOpenAPISpec()
+		if err != nil {
+			s.openAPISpecs = oldSpecs
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *openAPIAggregator) UpdateApiServiceSpec(apiServiceName string) (changed, deleted bool, err error) {
+	specInfo, existingService := s.openAPISpecs[apiServiceName]
+	if !existingService {
+		return false, true, nil
+	}
+	// If this is a local spec with no handler, that means it is a static spec.
+	if specInfo.handler == nil {
+		return false, false, nil
+	}
+	spec, etag, err := s.downloadOpenAPISpec(specInfo.handler, specInfo.etag)
+	if err != nil {
+		return false, false, err
+	}
+	if spec == nil {
+		return false, false, nil
+	}
+	oldSpec := specInfo.spec
+	specInfo.spec = spec
+	if err := s.updateOpenAPISpec(); err != nil {
+		specInfo.spec = oldSpec
+		return false, false, err
+	}
+	specInfo.etag = etag
+	return true, false, nil
 }

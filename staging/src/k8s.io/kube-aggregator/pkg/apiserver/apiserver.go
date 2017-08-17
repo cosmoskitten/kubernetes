@@ -231,6 +231,10 @@ func (c completedConfig) NewWithDelegate(delegationTarget genericapiserver.Deleg
 		if err != nil {
 			return nil, err
 		}
+		s.GenericAPIServer.AddPostStartHook("apiservice-openapi-controller", func(context genericapiserver.PostStartHookContext) error {
+			go s.openAPIAggregator.openAPIAggregationController.Run(context.StopCh)
+			return nil
+		})
 	}
 
 	return s, nil
@@ -307,6 +311,7 @@ func (s *APIAggregator) RemoveAPIService(apiServiceName string) {
 	}
 	s.GenericAPIServer.Handler.NonGoRestfulMux.Unregister(proxyPath)
 	s.GenericAPIServer.Handler.NonGoRestfulMux.Unregister(proxyPath + "/")
+	s.openAPIAggregator.RemoveApiServiceSpec(apiServiceName)
 	delete(s.proxyHandlers, apiServiceName)
 
 	// TODO unregister group level discovery when there are no more versions for the group
