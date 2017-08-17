@@ -38,6 +38,7 @@ import (
 	apiconfigphase "k8s.io/kubernetes/cmd/kubeadm/app/phases/apiconfig"
 	clusterinfophase "k8s.io/kubernetes/cmd/kubeadm/app/phases/bootstraptoken/clusterinfo"
 	nodebootstraptokenphase "k8s.io/kubernetes/cmd/kubeadm/app/phases/bootstraptoken/node"
+	certphase "k8s.io/kubernetes/cmd/kubeadm/app/phases/certs"
 	"k8s.io/kubernetes/cmd/kubeadm/app/phases/certs/pkiutil"
 	controlplanephase "k8s.io/kubernetes/cmd/kubeadm/app/phases/controlplane"
 	etcdphase "k8s.io/kubernetes/cmd/kubeadm/app/phases/etcd"
@@ -233,14 +234,19 @@ func (i *Init) Run(out io.Writer) error {
 		return fmt.Errorf("couldn't parse kubernetes version %q: %v", i.cfg.KubernetesVersion, err)
 	}
 
-	// PHASE 1: Generate certificates
-	if err := cmdphases.CreatePKIAssets(i.cfg); err != nil {
-		return err
-	}
+	if !certphase.UsingExternalCA(i.cfg) {
+		// PHASE 1: Generate certificates
+		if err := cmdphases.CreatePKIAssets(i.cfg); err != nil {
+			return err
+		}
 
-	// PHASE 2: Generate kubeconfig files for the admin and the kubelet
-	if err := kubeconfigphase.CreateInitKubeConfigFiles(kubeadmconstants.KubernetesDir, i.cfg); err != nil {
-		return err
+		// PHASE 2: Generate kubeconfig files for the admin and the kubelet
+		if err := kubeconfigphase.CreateInitKubeConfigFiles(kubeadmconstants.KubernetesDir, i.cfg); err != nil {
+			return err
+		}
+
+	} else {
+		fmt.Printf("[externalca] No ca.key detected, assuming external CA.  Skipping certs and kubeconfig.\n")
 	}
 
 	// PHASE 3: Bootstrap the control plane

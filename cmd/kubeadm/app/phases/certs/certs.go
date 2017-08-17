@@ -21,6 +21,8 @@ import (
 	"crypto/x509"
 	"fmt"
 	"net"
+	"os"
+	"path/filepath"
 
 	"k8s.io/apimachinery/pkg/util/validation"
 	certutil "k8s.io/client-go/util/cert"
@@ -118,6 +120,105 @@ func NewFrontProxyClientCertAndKey(frontProxyCACert *x509.Certificate, frontProx
 	}
 
 	return frontProxyClientCert, frontProxyClientKey, nil
+}
+
+// UsingExternalCA decides whether the user is relying on an external CA.  We currently implicitly determine this is the case when the CA Cert
+// is present but the CA Key is not. This allows us to, e.g. skip generating certs or not start the csr signing controller.
+func UsingExternalCA(cfg *kubeadmapi.MasterConfiguration) bool {
+
+	if !ValidateCACert(cfg.CertificatesDir, kubeadmconstants.CACertAndKeyBaseName, "CA") {
+		return false
+	}
+
+	// Check CA Key is not present
+	caKeyPath := filepath.Join(cfg.CertificatesDir, kubeadmconstants.CAKeyName)
+	if _, err := os.Stat(caKeyPath); !os.IsNotExist(err) {
+		return false
+	}
+
+	if !ValidateSignedCert(cfg.CertificatesDir, kubeadmconstants.CACertAndKeyBaseName, kubeadmconstants.APIServerCertAndKeyBaseName, "API server") {
+		return false
+	}
+
+	if !ValidateSignedCert(cfg.CertificatesDir, kubeadmconstants.CACertAndKeyBaseName, kubeadmconstants.APIServerKubeletClientCertAndKeyBaseName, "API server kubelet client") {
+		return false
+	}
+
+	if !ValidatePrivateKey(cfg.CertificatesDir, kubeadmconstants.ServiceAccountKeyBaseName, "service account") {
+		return false
+	}
+
+	if !ValidateCACertAndKey(cfg.CertificatesDir, kubeadmconstants.FrontProxyCACertAndKeyBaseName, "front-proxy CA") {
+		return false
+	}
+
+	if !ValidateSignedCert(cfg.CertificatesDir, kubeadmconstants.FrontProxyCACertAndKeyBaseName, kubeadmconstants.FrontProxyClientCertAndKeyBaseName, "front-proxy client") {
+		return false
+	}
+
+	return true
+}
+
+func ValidateCACert(pkiDir string, baseName string, UXName string) bool {
+	// Check CA Cert
+	caCert, err := pkiutil.TryLoadCertFromDisk(pkiDir, baseName)
+	if err != nil {
+		fmt.Printf("failure loading certificate for %s: %v", UXName, err)
+		return false
+	}
+
+	// Check if cert is a CA
+	if !caCert.IsCA {
+		fmt.Printf("certificate %s is not a CA", UXName)
+		return false
+	}
+	return true
+}
+
+func ValidateCACertAndKey(pkiDir string, baseName string, UXName string) bool {
+	if !ValidateCACert(pkiDir, baseName, UXName) {
+		return false
+	}
+
+	_, err := pkiutil.TryLoadKeyFromDisk(pkiDir, baseName)
+	if err != nil {
+		fmt.Printf("failure loading key for %s: %v", UXName, err)
+		return false
+	}
+	return true
+}
+
+func ValidateSignedCert(pkiDir string, CABaseName string, baseName string, UXName string) bool {
+	// Try to load certificate authorithy .crt from the PKI directory
+	caCert, err := pkiutil.TryLoadCertFromDisk(pkiDir, CABaseName)
+	if err != nil {
+		fmt.Printf("failure loading certificate authorithy for %s: %v", UXName, err)
+		return false
+	}
+
+	// Try to key and signed certificate
+	signedCert, _, err := pkiutil.TryLoadCertAndKeyFromDisk(pkiDir, baseName)
+	if err != nil {
+		fmt.Printf("failure loading certificate for %s: %v", UXName, err)
+		return false
+	}
+
+	// Check if the cert is signed by the given CA
+	if err := signedCert.CheckSignatureFrom(caCert); err != nil {
+		fmt.Printf("certificate %s is not signed by corresponding CA", UXName)
+		return false
+	}
+	return true
+}
+
+func ValidatePrivateKey(pkiDir string, baseName string, UXName string) bool {
+	// Try to load key
+	_, err := pkiutil.TryLoadKeyFromDisk(pkiDir, baseName)
+	if err != nil {
+		fmt.Printf("failure loading key for %s: %v", UXName, err)
+		return false
+	}
+	return true
 }
 
 // getAltNames builds an AltNames object for to be used when generating apiserver certificate
