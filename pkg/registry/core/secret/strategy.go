@@ -30,6 +30,7 @@ import (
 	apistorage "k8s.io/apiserver/pkg/storage"
 	"k8s.io/apiserver/pkg/storage/names"
 	"k8s.io/kubernetes/pkg/api"
+	apiv1 "k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/api/validation"
 )
 
@@ -102,7 +103,7 @@ func GetAttrs(obj runtime.Object) (labels.Set, fields.Set, bool, error) {
 	if !ok {
 		return nil, nil, false, fmt.Errorf("not a secret")
 	}
-	return labels.Set(secret.Labels), SelectableFields(secret), secret.Initializers != nil, nil
+	return labels.Set(secret.Labels), apiv1.SecretToSelectableFields(secret), secret.Initializers != nil, nil
 }
 
 // Matcher returns a generic matcher for a given label and field selector.
