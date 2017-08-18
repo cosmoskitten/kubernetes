@@ -51,7 +51,7 @@ func TestSecretGenerate(t *testing.T) {
 			},
 			expected: &api.Secret{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "foo-82ab14f2be",
+					Name: "foo-82mbh4f2bt",
 				},
 				Data: map[string][]byte{},
 			},
@@ -79,7 +79,7 @@ func TestSecretGenerate(t *testing.T) {
 			},
 			expected: &api.Secret{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "foo-21ff395ca2",
+					Name: "foo-2hffk95cm2",
 				},
 				Data: map[string][]byte{},
 				Type: "my-type",
@@ -110,7 +110,7 @@ func TestSecretGenerate(t *testing.T) {
 			},
 			expected: &api.Secret{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "foo-960caee2f6",
+					Name: "foo-96gcmtt2f6",
 				},
 				Data: map[string][]byte{
 					"key1": []byte("value1"),
@@ -163,7 +163,7 @@ func TestSecretGenerate(t *testing.T) {
 			},
 			expected: &api.Secret{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "foo-d3a5ed6d55",
+					Name: "foo-dkm5td6d55",
 				},
 				Data: map[string][]byte{
 					"key1": []byte("=value1"),
@@ -197,7 +197,7 @@ func TestSecretGenerate(t *testing.T) {
 			},
 			expected: &api.Secret{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "valid_env-960caee2f6",
+					Name: "valid_env-96gcmtt2f6",
 				},
 				Data: map[string][]byte{
 					"key1": []byte("value1"),
@@ -240,7 +240,7 @@ func TestSecretGenerate(t *testing.T) {
 			},
 			expected: &api.Secret{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "getenv-45ecceef20",
+					Name: "getenv-45tccttf2g",
 				},
 				Data: map[string][]byte{
 					"g_key1": []byte("1"),
@@ -290,7 +290,7 @@ func TestSecretGenerate(t *testing.T) {
 			},
 			expected: &api.Secret{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "with_spaces-4bde1a9434",
+					Name: "with_spaces-4bdthm94k4",
 				},
 				Data: map[string][]byte{
 					"key1": []byte("  value1"),
