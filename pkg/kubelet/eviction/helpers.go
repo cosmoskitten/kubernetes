@@ -727,7 +727,7 @@ func makeSignalObservations(summaryProvider stats.SummaryProvider, capacityProvi
 		}
 	}
 
-	storageScratchCapacity, storageScratchAllocatable, exist := getResourceAllocatable(nodeCapacity, allocatableReservation, v1.ResourceStorageScratch)
+	ephemeralStorageCapacity, ephemeralStorageAllocatable, exist := getResourceAllocatable(nodeCapacity, allocatableReservation, v1.ResourceEphemeralStorage)
 	if exist {
 		for _, pod := range pods {
 			podStat, ok := statsFunc(pod)
@@ -746,14 +746,14 @@ func makeSignalObservations(summaryProvider stats.SummaryProvider, capacityProvi
 				diskUsageP := &diskUsage
 				diskUsagep := diskUsageP.Copy()
 				diskUsagep.Sub(usage[resourceOverlay])
-				storageScratchAllocatable.Sub(*diskUsagep)
+				ephemeralStorageAllocatable.Sub(*diskUsagep)
 			} else {
-				storageScratchAllocatable.Sub(usage[resourceDisk])
+				ephemeralStorageAllocatable.Sub(usage[resourceDisk])
 			}
 		}
 		result[evictionapi.SignalAllocatableNodeFsAvailable] = signalObservation{
-			available: storageScratchAllocatable,
-			capacity:  storageScratchCapacity,
+			available: ephemeralStorageAllocatable,
+			capacity:  ephemeralStorageCapacity,
 		}
 	}
 
