@@ -47,8 +47,9 @@ func TestSelectorImmutability(t *testing.T) {
 		expectedAPIVersion     string
 		expectedSelectorLabels map[string]string
 	}{
-		{"/apis/apps/v1beta2/namespaces/default/daemonset/test-daemonset", map[string]string{"a": "b"}, map[string]string{"c": "d"}, "apps", "v1beta2", map[string]string{"a": "b"}},
-		{"/apis/extensions/v1beta1/namespaces/default/daemonset/test-daemonset", map[string]string{"a": "b"}, map[string]string{"c": "d"}, "extensions", "v1beta1", map[string]string{"c": "d"}},
+		{"/apis/apps/v1beta2/namespaces/default/daemonsets/test-daemonset", map[string]string{"a": "b"}, map[string]string{"c": "d"}, "apps", "v1beta2", map[string]string{"a": "b"}},
+		{"/apis/apps/v1/namespaces/default/daemonsets/test-daemonset", map[string]string{"a": "b"}, map[string]string{"c": "d"}, "apps", "v1", map[string]string{"a": "b"}},
+		{"/apis/extensions/v1beta1/namespaces/default/daemonsets/test-daemonset", map[string]string{"a": "b"}, map[string]string{"c": "d"}, "extensions", "v1beta1", map[string]string{"c": "d"}},
 	}
 
 	resolver := newTestRequestInfoResolver()

@@ -70,11 +70,13 @@ func (daemonSetStrategy) PrepareForUpdate(ctx genericapirequest.Context, obj, ol
 	// update is not allowed to set TemplateGeneration
 	newDaemonSet.Spec.TemplateGeneration = oldDaemonSet.Spec.TemplateGeneration
 
-	// update is not allowed to set Spec.Selector for v1beta2
-	// we assume it is not v1beta2 if no API group and/or version is found in RequestInfo
+	// Update is not allowed to set Spec.Selector for all groups/versions except extensions/v1beta1.
+	// RequestInfo will not be nil in default namespace, but we still have to check for it to prevent
+	// breaking storage registry TestUpdate() and TestScaleUpdate() unit tests. Refer this link for more info:
+	// https://github.com/kubernetes/kubernetes/pull/50719#issuecomment-323449792
 	// TODO(#50791): after v1beta1 is retired, move selector immutability check to validation codes
 	requestInfo, found := genericapirequest.RequestInfoFrom(ctx)
-	if found && requestInfo.APIGroup == "apps" && requestInfo.APIVersion == "v1beta2" {
+	if found && !(requestInfo.APIGroup == "extensions" && requestInfo.APIVersion == "v1beta1") {
 		newDaemonSet.Spec.Selector = oldDaemonSet.Spec.Selector
 	}
 
