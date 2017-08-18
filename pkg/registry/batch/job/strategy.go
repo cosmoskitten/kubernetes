@@ -18,7 +18,6 @@ package job
 
 import (
 	"fmt"
-	"strconv"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -26,12 +25,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
-	"k8s.io/apiserver/pkg/registry/generic"
 	"k8s.io/apiserver/pkg/registry/rest"
 	"k8s.io/apiserver/pkg/storage"
 	"k8s.io/apiserver/pkg/storage/names"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/pod"
+	apiv1 "k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/apis/batch"
 	"k8s.io/kubernetes/pkg/apis/batch/validation"
 )
@@ -170,22 +169,13 @@ func (jobStatusStrategy) ValidateUpdate(ctx genericapirequest.Context, obj, old 
 	return validation.ValidateJobUpdateStatus(obj.(*batch.Job), old.(*batch.Job))
 }
 
-// JobSelectableFields returns a field set that represents the object for matching purposes.
-func JobToSelectableFields(job *batch.Job) fields.Set {
-	objectMetaFieldsSet := generic.ObjectMetaFieldsSet(&job.ObjectMeta, true)
-	specificFieldsSet := fields.Set{
-		"status.successful": strconv.Itoa(int(job.Status.Succeeded)),
-	}
-	return generic.MergeFieldsSets(objectMetaFieldsSet, specificFieldsSet)
-}
-
 // GetAttrs returns labels and fields of a given object for filtering purposes.
 func GetAttrs(obj runtime.Object) (labels.Set, fields.Set, bool, error) {
 	job, ok := obj.(*batch.Job)
 	if !ok {
 		return nil, nil, false, fmt.Errorf("given object is not a job.")
 	}
-	return labels.Set(job.ObjectMeta.Labels), JobToSelectableFields(job), job.Initializers != nil, nil
+	return labels.Set(job.ObjectMeta.Labels), apiv1.JobToSelectableFields(job), job.Initializers != nil, nil
 }
 
 // MatchJob is the filter used by the generic etcd backend to route

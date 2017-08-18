@@ -229,12 +229,3 @@ func TestJobStatusStrategy(t *testing.T) {
 		t.Errorf("Incoming resource version on update should not be mutated")
 	}
 }
-
-func TestSelectableFieldLabelConversions(t *testing.T) {
-	apitesting.TestSelectableFieldLabelConversionsOfKind(t,
-		testapi.Batch.GroupVersion().String(),
-		"Job",
-		JobToSelectableFields(&batch.Job{}),
-		nil,
-	)
-}

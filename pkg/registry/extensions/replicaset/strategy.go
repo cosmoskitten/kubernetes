@@ -20,7 +20,6 @@ package replicaset
 
 import (
 	"fmt"
-	"strconv"
 
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
@@ -32,12 +31,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
-	"k8s.io/apiserver/pkg/registry/generic"
 	"k8s.io/apiserver/pkg/registry/rest"
 	apistorage "k8s.io/apiserver/pkg/storage"
 	"k8s.io/apiserver/pkg/storage/names"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/pod"
+	apiv1 "k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/apis/extensions/validation"
 )
@@ -142,22 +141,13 @@ func (rsStrategy) AllowUnconditionalUpdate() bool {
 	return true
 }
 
-// ReplicaSetToSelectableFields returns a field set that represents the object.
-func ReplicaSetToSelectableFields(rs *extensions.ReplicaSet) fields.Set {
-	objectMetaFieldsSet := generic.ObjectMetaFieldsSet(&rs.ObjectMeta, true)
-	rsSpecificFieldsSet := fields.Set{
-		"status.replicas": strconv.Itoa(int(rs.Status.Replicas)),
-	}
-	return generic.MergeFieldsSets(objectMetaFieldsSet, rsSpecificFieldsSet)
-}
-
 // GetAttrs returns labels and fields of a given object for filtering purposes.
 func GetAttrs(obj runtime.Object) (labels.Set, fields.Set, bool, error) {
 	rs, ok := obj.(*extensions.ReplicaSet)
 	if !ok {
 		return nil, nil, false, fmt.Errorf("given object is not a ReplicaSet.")
 	}
-	return labels.Set(rs.ObjectMeta.Labels), ReplicaSetToSelectableFields(rs), rs.Initializers != nil, nil
+	return labels.Set(rs.ObjectMeta.Labels), apiv1.ReplicaSetToSelectableFields(rs), rs.Initializers != nil, nil
 }
 
 // MatchReplicaSet is the filter used by the generic etcd backend to route
