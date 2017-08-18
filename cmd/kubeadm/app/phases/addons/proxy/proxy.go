@@ -18,6 +18,7 @@ package proxy
 
 import (
 	"fmt"
+	"net"
 	"runtime"
 
 	"k8s.io/api/core/v1"
@@ -55,9 +56,20 @@ func EnsureProxyAddon(cfg *kubeadmapi.MasterConfiguration, client clientset.Inte
 		return err
 	}
 
-	proxyConfigMapBytes, err := kubeadmutil.ParseTemplate(KubeProxyConfigMap, struct{ MasterEndpoint string }{
-		// Fetch this value from the kubeconfig file
-		MasterEndpoint: masterEndpoint})
+	// Validate the kube-proxy bind address
+	bindAddress := cfg.KubeProxy.BindAddress
+	if net.ParseIP(bindAddress) == nil {
+		return fmt.Errorf("kube-proxy bind address '%s' is not a valid IP address", bindAddress)
+	}
+
+	proxyConfigMapBytes, err := kubeadmutil.ParseTemplate(KubeProxyConfigMap,
+		struct {
+			MasterEndpoint string
+			BindAddress    string
+		}{
+			MasterEndpoint: masterEndpoint,
+			BindAddress:    bindAddress,
+		})
 	if err != nil {
 		return fmt.Errorf("error when parsing kube-proxy configmap template: %v", err)
 	}
