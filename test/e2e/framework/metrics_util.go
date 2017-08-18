@@ -53,7 +53,7 @@ const (
 
 	// We set a higher threshold for list apicalls as they can take more time when
 	// the list is really big. For eg. list nodes in a 5000-node cluster.
-	apiListCallLatencyThreshold time.Duration = 2 * time.Second
+	apiListCallLatencyThreshold time.Duration = 5 * time.Second
 
 	// Cluster Autoscaler metrics names
 	caFunctionMetric      = "cluster_autoscaler_function_duration_seconds_bucket"
