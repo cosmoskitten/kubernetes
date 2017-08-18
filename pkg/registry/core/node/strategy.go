@@ -35,6 +35,7 @@ import (
 	pkgstorage "k8s.io/apiserver/pkg/storage"
 	"k8s.io/apiserver/pkg/storage/names"
 	"k8s.io/kubernetes/pkg/api"
+	apiv1 "k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/api/validation"
 	"k8s.io/kubernetes/pkg/kubelet/client"
 )
@@ -153,7 +154,7 @@ func GetAttrs(obj runtime.Object) (labels.Set, fields.Set, bool, error) {
 	if !ok {
 		return nil, nil, false, fmt.Errorf("not a node")
 	}
-	return labels.Set(nodeObj.ObjectMeta.Labels), NodeToSelectableFields(nodeObj), nodeObj.Initializers != nil, nil
+	return labels.Set(nodeObj.ObjectMeta.Labels), apiv1.NodeToSelectableFields(nodeObj), nodeObj.Initializers != nil, nil
 }
 
 // MatchNode returns a generic matcher for a given label and field selector.
