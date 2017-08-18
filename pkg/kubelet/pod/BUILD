@@ -13,6 +13,7 @@ go_library(
         "pod_manager.go",
     ],
     deps = [
+        "//pkg/kubelet/checkpoint:go_default_library",
         "//pkg/kubelet/configmap:go_default_library",
         "//pkg/kubelet/container:go_default_library",
         "//pkg/kubelet/secret:go_default_library",
