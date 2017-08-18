@@ -77,3 +77,38 @@ func PersistentVolumeToSelectableFields(persistentvolume *api.PersistentVolume) 
 	}
 	return generic.MergeFieldsSets(objectMetaFieldsSet, specificFieldsSet)
 }
+
+// EventToSelectableFields returns a field set that represents the object
+func EventToSelectableFields(event *api.Event) fields.Set {
+	specificFieldsSet := fields.Set{
+		"involvedObject.kind":            event.InvolvedObject.Kind,
+		"involvedObject.namespace":       event.InvolvedObject.Namespace,
+		"involvedObject.name":            event.InvolvedObject.Name,
+		"involvedObject.uid":             string(event.InvolvedObject.UID),
+		"involvedObject.apiVersion":      event.InvolvedObject.APIVersion,
+		"involvedObject.resourceVersion": event.InvolvedObject.ResourceVersion,
+		"involvedObject.fieldPath":       event.InvolvedObject.FieldPath,
+		"reason":                         event.Reason,
+		"source":                         event.Source.Component,
+		"type":                           event.Type,
+	}
+	return generic.AddObjectMetaFieldsSet(specificFieldsSet, &event.ObjectMeta, true)
+}
+
+// NamespaceToSelectableFields returns a field set that represents the object
+func NamespaceToSelectableFields(namespace *api.Namespace) fields.Set {
+	specificFieldsSet := fields.Set{
+		"status.phase": string(namespace.Status.Phase),
+		// This is a bug, but we need to support it for backward compatibility.
+		"name": namespace.Name,
+	}
+	return generic.AddObjectMetaFieldsSet(specificFieldsSet, &namespace.ObjectMeta, false)
+}
+
+// SecretToSelectableFields returns a field set that represents the object
+func SecretToSelectableFields(secret *api.Secret) fields.Set {
+	specificFieldsSet := fields.Set{
+		"type": string(secret.Type),
+	}
+	return generic.AddObjectMetaFieldsSet(specificFieldsSet, &secret.ObjectMeta, false)
+}
