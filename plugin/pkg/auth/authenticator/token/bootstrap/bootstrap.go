@@ -23,6 +23,7 @@ import (
 	"crypto/subtle"
 	"fmt"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/golang/glog"
@@ -79,6 +80,7 @@ func tokenErrorf(s *api.Secret, format string, i ...interface{}) {
 //       token-id: ( token id )
 //       # Required key usage.
 //       usage-bootstrap-authentication: true
+//       auth-groups: "group1,group2"
 //       # May also contain an expiry.
 //
 // Tokens are expected to be of the form:
@@ -134,9 +136,15 @@ func (t *TokenAuthenticator) AuthenticateToken(token string) (user.Info, bool, e
 		return nil, false, nil
 	}
 
+	groups, err := getGroups(secret)
+	if err != nil {
+		tokenErrorf(secret, "has invalid value for key %s: %v.", bootstrapapi.BootstrapTokenGroupsKey, err)
+		return nil, false, nil
+	}
+
 	return &user.DefaultInfo{
 		Name:   bootstrapapi.BootstrapUserPrefix + string(id),
-		Groups: []string{bootstrapapi.BootstrapGroup},
+		Groups: groups,
 	}, true, nil
 }
 
@@ -183,4 +191,29 @@ func parseToken(s string) (string, string, error) {
 		return "", "", fmt.Errorf("token [%q] was not of form [%q]", s, tokenRegexpString)
 	}
 	return split[1], split[2], nil
+}
+
+// getGroups loads and validates the bootstrapapi.BootstrapTokenGroupsKey key
+// from the bootstrap token secret, returning a list of group names or an error
+// if any of the group names are invalid.
+func getGroups(secret *api.Secret) ([]string, error) {
+	groupsString := getSecretString(secret, bootstrapapi.BootstrapTokenGroupsKey)
+	if groupsString == "" {
+		return []string{bootstrapapi.BootstrapDefaultGroup}, nil
+	}
+
+	// split on commas amd validate the prefix on each group name
+	groups := strings.Split(groupsString, ",")
+	for _, group := range groups {
+		if group == bootstrapapi.BootstrapDefaultGroup {
+			// allow the default group even though it doesn't strictly match the prefix
+			continue
+		}
+
+		if !strings.HasPrefix(group, bootstrapapi.BootstrapGroupPrefix) {
+			return nil, fmt.Errorf("group does not start with %q", bootstrapapi.BootstrapGroupPrefix)
+		}
+	}
+
+	return groups, nil
 }

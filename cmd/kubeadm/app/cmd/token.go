@@ -88,6 +88,7 @@ func NewCmdToken(out io.Writer, errW io.Writer) *cobra.Command {
 		"kubeconfig", "/etc/kubernetes/admin.conf", "The KubeConfig file to use for talking to the cluster")
 
 	var usages []string
+	var groups []string
 	var tokenDuration time.Duration
 	var description string
 	createCmd := &cobra.Command{
@@ -115,7 +116,7 @@ func NewCmdToken(out io.Writer, errW io.Writer) *cobra.Command {
 				fmt.Fprintln(errW, "[kubeadm] WARNING: starting in 1.8, tokens expire after 24 hours by default (if you require a non-expiring token use --ttl 0)")
 			}
 
-			err = RunCreateToken(out, client, token, tokenDuration, usages, description)
+			err = RunCreateToken(out, client, token, tokenDuration, usages, groups, description)
 			kubeadmutil.CheckErr(err)
 		},
 	}
@@ -123,6 +124,9 @@ func NewCmdToken(out io.Writer, errW io.Writer) *cobra.Command {
 		"ttl", kubeadmconstants.DefaultTokenDuration, "The duration before the token is automatically deleted (e.g. 1s, 2m, 3h). 0 means 'never expires'.")
 	createCmd.Flags().StringSliceVar(&usages,
 		"usages", kubeadmconstants.DefaultTokenUsages, "The ways in which this token can be used. Valid options: [signing,authentication].")
+	createCmd.Flags().StringSliceVar(&groups,
+		"groups", kubeadmconstants.DefaultTokenGroups,
+		fmt.Sprintf("The groups that this token will authenticate as when used for authentication. Must begin with %q.", bootstrapapi.BootstrapGroupPrefix))
 	createCmd.Flags().StringVar(&description,
 		"description", "", "A human friendly description of how this token is used.")
 	tokenCmd.AddCommand(createCmd)
@@ -193,7 +197,7 @@ func NewCmdTokenGenerate(out io.Writer) *cobra.Command {
 }
 
 // RunCreateToken generates a new bootstrap token and stores it as a secret on the server.
-func RunCreateToken(out io.Writer, client clientset.Interface, token string, tokenDuration time.Duration, usages []string, description string) error {
+func RunCreateToken(out io.Writer, client clientset.Interface, token string, tokenDuration time.Duration, usages []string, groups []string, description string) error {
 
 	if len(token) == 0 {
 		var err error
@@ -208,8 +212,18 @@ func RunCreateToken(out io.Writer, client clientset.Interface, token string, tok
 		}
 	}
 
+	// validate groups
+	for _, group := range groups {
+		if group == bootstrapapi.BootstrapDefaultGroup {
+			continue
+		}
+		if !strings.HasPrefix(group, bootstrapapi.BootstrapGroupPrefix) {
+			return fmt.Errorf("group %q must have prefix %q", group, bootstrapapi.BootstrapGroupPrefix)
+		}
+	}
+
 	// TODO: Validate usages here so we don't allow something unsupported
-	err := tokenphase.CreateNewToken(client, token, tokenDuration, usages, description)
+	err := tokenphase.CreateNewToken(client, token, tokenDuration, usages, groups, description)
 	if err != nil {
 		return err
 	}

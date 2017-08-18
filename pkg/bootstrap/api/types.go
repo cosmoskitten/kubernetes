@@ -51,6 +51,13 @@ const (
 	// describes what the bootstrap token is used for. Optional.
 	BootstrapTokenDescriptionKey = "description"
 
+	// BootstrapTokenGroupsKey is a comma-separated list of groups that the
+	// bootstrap token will authenticate as. If not specified, a default group
+	// BootstrapTokenDefaultGroup will be assigned. If specifed, each group
+	// name *must* begin with the BootstrapGroupPrefix or be equal to
+	// BootstrapDefaultGroup.
+	BootstrapTokenGroupsKey = "auth-groups"
+
 	// BootstrapTokenUsagePrefix is the prefix for the other usage constants that specifies different
 	// functions of a bootstrap token
 	BootstrapTokenUsagePrefix = "usage-bootstrap-"
@@ -63,7 +70,8 @@ const (
 	// BootstrapTokenUsageAuthentication signals that this token should be used
 	// as a bearer token to authenticate against the Kubernetes API. The bearer
 	// token takes the form "<token-id>.<token-secret>" and authenticates as the
-	// user "system:bootstrap:<token-id>" in the group "system:bootstrappers".
+	// user "system:bootstrap:<token-id>" in the groups specified by the
+	// BootstrapTokenGroupsKey key (or "system:bootstrappers" by default).
 	// Value must be "true". Any other value is assumed to be false. Optional.
 	BootstrapTokenUsageAuthentication = "usage-bootstrap-authentication"
 
@@ -80,6 +88,11 @@ const (
 	// authenticate as. The full username given is "system:bootstrap:<token-id>".
 	BootstrapUserPrefix = "system:bootstrap:"
 
-	// BootstrapGroup is the group bootstrapping bearer tokens authenticate in.
-	BootstrapGroup = "system:bootstrappers"
+	// BootstrapGroupPrefix is the group name prefix required for all groups
+	// assigned to a bootstrap token by BootstrapTokenGroupsKey.
+	BootstrapGroupPrefix = "system:bootstrappers:"
+
+	// BootstrapDefaultGroup is the default group for bootstrapping bearer
+	// tokens when no BootstrapTokenGroupsKey key is set.
+	BootstrapDefaultGroup = "system:bootstrappers"
 )

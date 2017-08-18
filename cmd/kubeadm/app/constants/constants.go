@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"k8s.io/api/core/v1"
+	bootstrapapi "k8s.io/kubernetes/pkg/bootstrap/api"
 	"k8s.io/kubernetes/pkg/util/version"
 )
 
@@ -137,6 +138,9 @@ var (
 
 	// DefaultTokenUsages specifies the default functions a token will get
 	DefaultTokenUsages = []string{"signing", "authentication"}
+
+	// DefaultTokenGroups specifies the default groups a token will get
+	DefaultTokenGroups = []string{bootstrapapi.BootstrapDefaultGroup}
 
 	// MasterComponents defines the master component names
 	MasterComponents = []string{KubeAPIServer, KubeControllerManager, KubeScheduler}
