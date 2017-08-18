@@ -61,3 +61,10 @@ func (self *ResourceList) StorageOverlay() *resource.Quantity {
 	}
 	return &resource.Quantity{}
 }
+
+func (self *ResourceList) StorageScratch() *resource.Quantity {
+	if val, ok := (*self)[ResourceStorageScratch]; ok {
+		return &val
+	}
+	return &resource.Quantity{}
+}

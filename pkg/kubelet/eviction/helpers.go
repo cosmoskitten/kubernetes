@@ -54,8 +54,6 @@ const (
 	resourceNodeFs v1.ResourceName = "nodefs"
 	// nodefs inodes, number.  internal to this module, used to account for local node root filesystem inodes.
 	resourceNodeFsInodes v1.ResourceName = "nodefsInodes"
-	// container overlay storage, in bytes.  internal to this module, used to account for local disk usage for container overlay.
-	resourceOverlay v1.ResourceName = "overlay"
 )
 
 var (
@@ -400,12 +398,10 @@ func localVolumeNames(pod *v1.Pod) []string {
 func podDiskUsage(podStats statsapi.PodStats, pod *v1.Pod, statsToMeasure []fsStatsType) (v1.ResourceList, error) {
 	disk := resource.Quantity{Format: resource.BinarySI}
 	inodes := resource.Quantity{Format: resource.BinarySI}
-	overlay := resource.Quantity{Format: resource.BinarySI}
 	for _, container := range podStats.Containers {
 		if hasFsStatsType(statsToMeasure, fsStatsRoot) {
 			disk.Add(*diskUsage(container.Rootfs))
 			inodes.Add(*inodeUsage(container.Rootfs))
-			overlay.Add(*diskUsage(container.Rootfs))
 		}
 		if hasFsStatsType(statsToMeasure, fsStatsLogs) {
 			disk.Add(*diskUsage(container.Logs))
@@ -425,9 +421,8 @@ func podDiskUsage(podStats statsapi.PodStats, pod *v1.Pod, statsToMeasure []fsSt
 		}
 	}
 	return v1.ResourceList{
-		resourceDisk:    disk,
-		resourceInodes:  inodes,
-		resourceOverlay: overlay,
+		resourceDisk:   disk,
+		resourceInodes: inodes,
 	}, nil
 }
 
@@ -658,7 +653,7 @@ func (a byEvictionPriority) Less(i, j int) bool {
 }
 
 // makeSignalObservations derives observations using the specified summary provider.
-func makeSignalObservations(summaryProvider stats.SummaryProvider, capacityProvider CapacityProvider, pods []*v1.Pod, withImageFs bool) (signalObservations, statsFunc, error) {
+func makeSignalObservations(summaryProvider stats.SummaryProvider, capacityProvider CapacityProvider, pods []*v1.Pod) (signalObservations, statsFunc, error) {
 	summary, err := summaryProvider.Get()
 	if err != nil {
 		return nil, nil, err
@@ -740,16 +735,7 @@ func makeSignalObservations(summaryProvider stats.SummaryProvider, capacityProvi
 				glog.Warningf("eviction manager: error getting pod disk usage %v", err)
 				continue
 			}
-			// If there is a seperate imagefs set up for container runtimes, the scratch disk usage from nodefs should exclude the overlay usage
-			if withImageFs {
-				diskUsage := usage[resourceDisk]
-				diskUsageP := &diskUsage
-				diskUsagep := diskUsageP.Copy()
-				diskUsagep.Sub(usage[resourceOverlay])
-				storageScratchAllocatable.Sub(*diskUsagep)
-			} else {
-				storageScratchAllocatable.Sub(usage[resourceDisk])
-			}
+			storageScratchAllocatable.Sub(usage[resourceDisk])
 		}
 		result[evictionapi.SignalAllocatableNodeFsAvailable] = signalObservation{
 			available: storageScratchAllocatable,
@@ -1001,26 +987,15 @@ func isHardEvictionThreshold(threshold evictionapi.Threshold) bool {
 }
 
 // buildResourceToRankFunc returns ranking functions associated with resources
-func buildResourceToRankFunc(withImageFs bool) map[v1.ResourceName]rankFunc {
+func buildResourceToRankFunc() map[v1.ResourceName]rankFunc {
 	resourceToRankFunc := map[v1.ResourceName]rankFunc{
 		v1.ResourceMemory: rankMemoryPressure,
 	}
-	// usage of an imagefs is optional
-	if withImageFs {
-		// with an imagefs, nodefs pod rank func for eviction only includes logs and local volumes
-		resourceToRankFunc[resourceNodeFs] = rankDiskPressureFunc([]fsStatsType{fsStatsLogs, fsStatsLocalVolumeSource}, resourceDisk)
-		resourceToRankFunc[resourceNodeFsInodes] = rankDiskPressureFunc([]fsStatsType{fsStatsLogs, fsStatsLocalVolumeSource}, resourceInodes)
-		// with an imagefs, imagefs pod rank func for eviction only includes rootfs
-		resourceToRankFunc[resourceImageFs] = rankDiskPressureFunc([]fsStatsType{fsStatsRoot}, resourceDisk)
-		resourceToRankFunc[resourceImageFsInodes] = rankDiskPressureFunc([]fsStatsType{fsStatsRoot}, resourceInodes)
-	} else {
-		// without an imagefs, nodefs pod rank func for eviction looks at all fs stats.
-		// since imagefs and nodefs share a common device, they share common ranking functions.
-		resourceToRankFunc[resourceNodeFs] = rankDiskPressureFunc([]fsStatsType{fsStatsRoot, fsStatsLogs, fsStatsLocalVolumeSource}, resourceDisk)
-		resourceToRankFunc[resourceNodeFsInodes] = rankDiskPressureFunc([]fsStatsType{fsStatsRoot, fsStatsLogs, fsStatsLocalVolumeSource}, resourceInodes)
-		resourceToRankFunc[resourceImageFs] = rankDiskPressureFunc([]fsStatsType{fsStatsRoot, fsStatsLogs, fsStatsLocalVolumeSource}, resourceDisk)
-		resourceToRankFunc[resourceImageFsInodes] = rankDiskPressureFunc([]fsStatsType{fsStatsRoot, fsStatsLogs, fsStatsLocalVolumeSource}, resourceInodes)
-	}
+	// nodefs pod rank func for eviction looks at all fs stats.
+	resourceToRankFunc[resourceNodeFs] = rankDiskPressureFunc([]fsStatsType{fsStatsRoot, fsStatsLogs, fsStatsLocalVolumeSource}, resourceDisk)
+	resourceToRankFunc[resourceNodeFsInodes] = rankDiskPressureFunc([]fsStatsType{fsStatsRoot, fsStatsLogs, fsStatsLocalVolumeSource}, resourceInodes)
+	resourceToRankFunc[resourceImageFs] = rankDiskPressureFunc([]fsStatsType{fsStatsRoot, fsStatsLogs, fsStatsLocalVolumeSource}, resourceDisk)
+	resourceToRankFunc[resourceImageFsInodes] = rankDiskPressureFunc([]fsStatsType{fsStatsRoot, fsStatsLogs, fsStatsLocalVolumeSource}, resourceInodes)
 	return resourceToRankFunc
 }
 
@@ -1030,24 +1005,13 @@ func PodIsEvicted(podStatus v1.PodStatus) bool {
 }
 
 // buildResourceToNodeReclaimFuncs returns reclaim functions associated with resources.
-func buildResourceToNodeReclaimFuncs(imageGC ImageGC, containerGC ContainerGC, withImageFs bool) map[v1.ResourceName]nodeReclaimFuncs {
+func buildResourceToNodeReclaimFuncs(imageGC ImageGC, containerGC ContainerGC) map[v1.ResourceName]nodeReclaimFuncs {
 	resourceToReclaimFunc := map[v1.ResourceName]nodeReclaimFuncs{}
-	// usage of an imagefs is optional
-	if withImageFs {
-		// with an imagefs, nodefs pressure should just delete logs
-		resourceToReclaimFunc[resourceNodeFs] = nodeReclaimFuncs{}
-		resourceToReclaimFunc[resourceNodeFsInodes] = nodeReclaimFuncs{}
-		// with an imagefs, imagefs pressure should delete unused images
-		resourceToReclaimFunc[resourceImageFs] = nodeReclaimFuncs{deleteTerminatedContainers(containerGC), deleteImages(imageGC, true)}
-		resourceToReclaimFunc[resourceImageFsInodes] = nodeReclaimFuncs{deleteTerminatedContainers(containerGC), deleteImages(imageGC, false)}
-	} else {
-		// without an imagefs, nodefs pressure should delete logs, and unused images
-		// since imagefs and nodefs share a common device, they share common reclaim functions
-		resourceToReclaimFunc[resourceNodeFs] = nodeReclaimFuncs{deleteTerminatedContainers(containerGC), deleteImages(imageGC, true)}
-		resourceToReclaimFunc[resourceNodeFsInodes] = nodeReclaimFuncs{deleteTerminatedContainers(containerGC), deleteImages(imageGC, false)}
-		resourceToReclaimFunc[resourceImageFs] = nodeReclaimFuncs{deleteTerminatedContainers(containerGC), deleteImages(imageGC, true)}
-		resourceToReclaimFunc[resourceImageFsInodes] = nodeReclaimFuncs{deleteTerminatedContainers(containerGC), deleteImages(imageGC, false)}
-	}
+	// nodefs pressure should delete logs, and unused images
+	resourceToReclaimFunc[resourceNodeFs] = nodeReclaimFuncs{deleteTerminatedContainers(containerGC), deleteImages(imageGC, true)}
+	resourceToReclaimFunc[resourceNodeFsInodes] = nodeReclaimFuncs{deleteTerminatedContainers(containerGC), deleteImages(imageGC, false)}
+	resourceToReclaimFunc[resourceImageFs] = nodeReclaimFuncs{deleteTerminatedContainers(containerGC), deleteImages(imageGC, true)}
+	resourceToReclaimFunc[resourceImageFsInodes] = nodeReclaimFuncs{deleteTerminatedContainers(containerGC), deleteImages(imageGC, false)}
 	return resourceToReclaimFunc
 }
 
