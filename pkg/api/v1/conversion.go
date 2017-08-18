@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/conversion"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/apiserver/pkg/registry/generic"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/apis/extensions"
 )
@@ -164,88 +165,23 @@ func addConversionFuncs(scheme *runtime.Scheme) error {
 		"ConfigMap",
 	} {
 		kind := k // don't close over range variables
-		err = scheme.AddFieldLabelConversionFunc("v1", kind,
-			func(label, value string) (string, string, error) {
-				switch label {
-				case "metadata.namespace",
-					"metadata.name":
-					return label, value, nil
-				default:
-					return "", "", fmt.Errorf("field label %q not supported for %q", label, kind)
-				}
-			},
-		)
-		if err != nil {
-			return err
-		}
+		err = scheme.AddFieldLabelConversionFunc("v1", kind, GenericFieldLabelConversionFunc)
 	}
 
 	// Add field conversion funcs.
-	err = scheme.AddFieldLabelConversionFunc("v1", "Pod",
-		func(label, value string) (string, string, error) {
-			switch label {
-			case "metadata.annotations",
-				"metadata.labels",
-				"metadata.name",
-				"metadata.namespace",
-				"metadata.uid",
-				"spec.nodeName",
-				"spec.restartPolicy",
-				"spec.serviceAccountName",
-				"status.phase",
-				"status.hostIP",
-				"status.podIP":
-				return label, value, nil
-				// This is for backwards compatibility with old v1 clients which send spec.host
-			case "spec.host":
-				return "spec.nodeName", value, nil
-			default:
-				return "", "", fmt.Errorf("field label not supported: %s", label)
-			}
-		},
-	)
+	err = scheme.AddFieldLabelConversionFunc("v1", "Pod", PodFieldLabelConversionFunc)
 	if err != nil {
 		return err
 	}
-	err = scheme.AddFieldLabelConversionFunc("v1", "Node",
-		func(label, value string) (string, string, error) {
-			switch label {
-			case "metadata.name":
-				return label, value, nil
-			case "spec.unschedulable":
-				return label, value, nil
-			default:
-				return "", "", fmt.Errorf("field label not supported: %s", label)
-			}
-		},
-	)
+	err = scheme.AddFieldLabelConversionFunc("v1", "Node", NodeFieldLabelConversionFunc)
 	if err != nil {
 		return err
 	}
-	err = scheme.AddFieldLabelConversionFunc("v1", "ReplicationController",
-		func(label, value string) (string, string, error) {
-			switch label {
-			case "metadata.name",
-				"metadata.namespace",
-				"status.replicas":
-				return label, value, nil
-			default:
-				return "", "", fmt.Errorf("field label not supported: %s", label)
-			}
-		})
+	err = scheme.AddFieldLabelConversionFunc("v1", "ReplicationController", ReplicationControllerFieldLabelConversionFunc)
 	if err != nil {
 		return err
 	}
-	err = scheme.AddFieldLabelConversionFunc("v1", "PersistentVolume",
-		func(label, value string) (string, string, error) {
-			switch label {
-			case "metadata.name":
-				return label, value, nil
-			default:
-				return "", "", fmt.Errorf("field label not supported: %s", label)
-			}
-		},
-	)
+	err = scheme.AddFieldLabelConversionFunc("v1", "PersistentVolume", PersistentVolumeFieldLabelConversionFunc)
 	if err != nil {
 		return err
 	}
@@ -800,4 +736,63 @@ func AddFieldLabelConversionsForSecret(scheme *runtime.Scheme) error {
 				return "", "", fmt.Errorf("field label not supported: %s", label)
 			}
 		})
+}
+
+// FieldLabelConversionFunc converts a field selector to internal representation.
+// Return error for unsupported field selector.
+func GenericFieldLabelConversionFunc(label, value string) (string, string, error) {
+	objectMeta := metav1.ObjectMeta{}
+	objectMetaFieldsSet := generic.ObjectMetaFieldsSet(&objectMeta, true)
+	if objectMetaFieldsSet.Has(label) {
+		return label, value, nil
+	}
+	return "", "", fmt.Errorf("field label %q not supported", label)
+}
+
+// PodFieldLabelConversionFunc converts a field selector to internal representation.
+// Return error for unsupported field selector.
+func PodFieldLabelConversionFunc(label, value string) (string, string, error) {
+	// This is for backwards compatibility with old v1 clients which send spec.host
+	if label == "spec.host" {
+		label = "spec.nodeName"
+	}
+	apiPod := api.Pod{}
+	podFieldSet := PodToSelectableFields(&apiPod)
+	if podFieldSet.Has(label) {
+		return label, value, nil
+	}
+	return "", "", fmt.Errorf("field label %q not supported for %q", label, "Pod")
+}
+
+// NodeFieldLabelConversionFunc converts a field selector to internal representation.
+// Return error for unsupported field selector.
+func NodeFieldLabelConversionFunc(label, value string) (string, string, error) {
+	apiNode := api.Node{}
+	nodeFieldSet := NodeToSelectableFields(&apiNode)
+	if nodeFieldSet.Has(label) {
+		return label, value, nil
+	}
+	return "", "", fmt.Errorf("field label %q not supported for %q", label, "Node")
+}
+
+// ReplicationControllerFieldLabelConversionFunc converts a field selector to internal representation.
+// Return error for unsupported field selector.
+func ReplicationControllerFieldLabelConversionFunc(label, value string) (string, string, error) {
+	apiRC := api.ReplicationController{}
+	rcFieldSet := ControllerToSelectableFields(&apiRC)
+	if rcFieldSet.Has(label) {
+		return label, value, nil
+	}
+	return "", "", fmt.Errorf("field label %q not supported for %q", label, "ReplicationController")
+}
+
+// PersistentVolumeFieldLabelConversionFunc converts a field selector to internal representation.
+// Return error for unsupported field selector.
+func PersistentVolumeFieldLabelConversionFunc(label, value string) (string, string, error) {
+	apiPersistentVolume := api.PersistentVolume{}
+	pvFieldSet := PersistentVolumeToSelectableFields(&apiPersistentVolume)
+	if pvFieldSet.Has(label) {
+		return label, value, nil
+	}
+	return "", "", fmt.Errorf("field label %q not supported for %q", label, "PersistentVolume")
 }
