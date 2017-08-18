@@ -367,22 +367,6 @@ func Convert_v1_ReplicationControllerSpec_To_api_ReplicationControllerSpec(in *v
 	return nil
 }
 
-func Convert_api_PodTemplateSpec_To_v1_PodTemplateSpec(in *api.PodTemplateSpec, out *v1.PodTemplateSpec, s conversion.Scope) error {
-	if err := autoConvert_api_PodTemplateSpec_To_v1_PodTemplateSpec(in, out, s); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func Convert_v1_PodTemplateSpec_To_api_PodTemplateSpec(in *v1.PodTemplateSpec, out *api.PodTemplateSpec, s conversion.Scope) error {
-	if err := autoConvert_v1_PodTemplateSpec_To_api_PodTemplateSpec(in, out, s); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // The following two v1.PodSpec conversions are done here to support v1.ServiceAccount
 // as an alias for ServiceAccountName.
 func Convert_api_PodSpec_To_v1_PodSpec(in *api.PodSpec, out *v1.PodSpec, s conversion.Scope) error {
@@ -423,22 +407,6 @@ func Convert_v1_PodSpec_To_api_PodSpec(in *v1.PodSpec, out *api.PodSpec, s conve
 	out.SecurityContext.HostNetwork = in.HostNetwork
 	out.SecurityContext.HostPID = in.HostPID
 	out.SecurityContext.HostIPC = in.HostIPC
-
-	return nil
-}
-
-func Convert_api_Pod_To_v1_Pod(in *api.Pod, out *v1.Pod, s conversion.Scope) error {
-	if err := autoConvert_api_Pod_To_v1_Pod(in, out, s); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func Convert_v1_Pod_To_api_Pod(in *v1.Pod, out *api.Pod, s conversion.Scope) error {
-	if err := autoConvert_v1_Pod_To_api_Pod(in, out, s); err != nil {
-		return err
-	}
 
 	return nil
 }
