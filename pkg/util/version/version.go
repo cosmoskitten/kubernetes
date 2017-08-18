@@ -126,6 +126,16 @@ func (v *Version) BuildMetadata() string {
 	return v.buildMetadata
 }
 
+// PreRelease returns the prerelease metadata, if v is a Semantic Version, or ""
+func (v *Version) PreRelease() string {
+	return v.preRelease
+}
+
+// Components returns the version number components
+func (v *Version) Components() []uint {
+	return v.components
+}
+
 // String converts a Version back to a string; note that for versions parsed with
 // ParseGeneric, this will not include the trailing uninterpreted portion of the version
 // number.
