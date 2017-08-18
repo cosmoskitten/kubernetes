@@ -112,3 +112,12 @@ func SecretToSelectableFields(secret *api.Secret) fields.Set {
 	}
 	return generic.AddObjectMetaFieldsSet(specificFieldsSet, &secret.ObjectMeta, false)
 }
+
+// PersistentVolumeClaimToSelectableFields returns a field set that represents the object
+func PersistentVolumeClaimToSelectableFields(pvClaim *api.PersistentVolumeClaim) fields.Set {
+	specificFieldsSet := fields.Set{
+		// This is a bug, but we need to support it for backward compatibility.
+		"name": pvClaim.Name,
+	}
+	return generic.AddObjectMetaFieldsSet(specificFieldsSet, &pvClaim.ObjectMeta, false)
+}
