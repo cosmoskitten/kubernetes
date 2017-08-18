@@ -313,6 +313,28 @@ var _ = framework.KubeDescribe("Cluster size autoscaler scalability [Slow]", fun
 		Expect(len(nodes.Items)).Should(Equal(totalNodes))
 	})
 
+	It("should do nothing when pending pods are unschedulable [Feature:ClusterAutoscalerScalability6]", func() {
+		// Start a number of pods saturating existing nodes.
+		initialPodReplicas := nodeCount * 2
+		perNodeReservation := int(float64(memCapacityMb) * 0.20)
+		initialPodsTotalMemory := nodeCount * perNodeReservation
+		reservationCleanup := ReserveMemory(f, "initial-pod", initialPodReplicas, initialPodsTotalMemory, true /* wait for pods to run */, scaleUpTimeout)
+		defer reservationCleanup()
+		framework.ExpectNoError(waitForAllCaPodsReadyInNamespace(f, c))
+
+		// Configure a number of unschedulable pods.
+		unschedulableMemReservation := memCapacityMb * 2
+		unschedulablePodReplicas := 10
+		totalMemReservation := unschedulableMemReservation * unschedulablePodReplicas
+		timeToWait := 5 * time.Minute
+		podsConfig := reserveMemoryRCConfig(f, "unschedulable-pod", unschedulablePodReplicas, totalMemReservation, timeToWait)
+		framework.RunRC(*podsConfig) // Ignore error (it will occur because pods are unschedulable)
+		defer framework.DeleteRCAndPods(f.ClientSet, f.InternalClientset, f.Namespace.Name, podsConfig.Name)
+
+		// Ensure that no new nodes have been added.
+		Expect(framework.ClusterSize(f.ClientSet)).To(Equal(nodeCount))
+	})
+
 })
 
 func makeUnschedulable(f *framework.Framework, nodes []v1.Node) error {
