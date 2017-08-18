@@ -31,11 +31,11 @@ func TestConfigMapHash(t *testing.T) {
 		hash string
 	}{
 		// empty map
-		{"empty data", &api.ConfigMap{Data: map[string]string{}}, "d4342785ca"},
+		{"empty data", &api.ConfigMap{Data: map[string]string{}}, "d4k42785cm"},
 		// one key
-		{"one key", &api.ConfigMap{Data: map[string]string{"one": ""}}, "8f6fda7fe0"},
+		{"one key", &api.ConfigMap{Data: map[string]string{"one": ""}}, "8f6fdm7ftg"},
 		// three keys (tests sorting order)
-		{"three keys", &api.ConfigMap{Data: map[string]string{"two": "2", "one": "", "three": "3"}}, "c4307e626d"},
+		{"three keys", &api.ConfigMap{Data: map[string]string{"two": "2", "one": "", "three": "3"}}, "c4kg7t626d"},
 	}
 
 	for _, c := range cases {
@@ -53,11 +53,11 @@ func TestSecretHash(t *testing.T) {
 		hash   string
 	}{
 		// empty map
-		{"empty data", &api.Secret{Type: "my-type", Data: map[string][]byte{}}, "21ff395ca2"},
+		{"empty data", &api.Secret{Type: "my-type", Data: map[string][]byte{}}, "2hffk95cm2"},
 		// one key
-		{"one key", &api.Secret{Type: "my-type", Data: map[string][]byte{"one": []byte("")}}, "19b9479e31"},
+		{"one key", &api.Secret{Type: "my-type", Data: map[string][]byte{"one": []byte("")}}, "h9b9479tkh"},
 		// three keys (tests sorting order)
-		{"three keys", &api.Secret{Type: "my-type", Data: map[string][]byte{"two": []byte("2"), "one": []byte(""), "three": []byte("3")}}, "e0f9e37293"},
+		{"three keys", &api.Secret{Type: "my-type", Data: map[string][]byte{"two": []byte("2"), "one": []byte(""), "three": []byte("3")}}, "tgf9tk729k"},
 	}
 
 	for _, c := range cases {

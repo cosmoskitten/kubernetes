@@ -52,7 +52,7 @@ func TestConfigMapGenerate(t *testing.T) {
 			},
 			expected: &api.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "foo-d4342785ca",
+					Name: "foo-d4k42785cm",
 				},
 				Data: map[string]string{},
 			},
@@ -79,7 +79,7 @@ func TestConfigMapGenerate(t *testing.T) {
 			},
 			expected: &api.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "foo-d4342785ca",
+					Name: "foo-d4k42785cm",
 				},
 				Data: map[string]string{},
 			},
@@ -109,7 +109,7 @@ func TestConfigMapGenerate(t *testing.T) {
 			},
 			expected: &api.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "foo-eed7d5dc3c",
+					Name: "foo-ttd7d5dckc",
 				},
 				Data: map[string]string{
 					"key1": "value1",
@@ -162,7 +162,7 @@ func TestConfigMapGenerate(t *testing.T) {
 			},
 			expected: &api.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "foo-829679f6d0",
+					Name: "foo-829679f6dg",
 				},
 				Data: map[string]string{
 					"key1": "=value1",
@@ -196,7 +196,7 @@ func TestConfigMapGenerate(t *testing.T) {
 			},
 			expected: &api.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "valid_env-eed7d5dc3c",
+					Name: "valid_env-ttd7d5dckc",
 				},
 				Data: map[string]string{
 					"key1": "value1",
@@ -239,7 +239,7 @@ func TestConfigMapGenerate(t *testing.T) {
 			},
 			expected: &api.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "getenv-a1a1ebc3a8",
+					Name: "getenv-mhmhtbckm8",
 				},
 				Data: map[string]string{
 					"g_key1": "1",
@@ -289,7 +289,7 @@ func TestConfigMapGenerate(t *testing.T) {
 			},
 			expected: &api.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "with_spaces-c687c5a7b6",
+					Name: "with_spaces-c687c5m7b6",
 				},
 				Data: map[string]string{
 					"key1": "  value1",

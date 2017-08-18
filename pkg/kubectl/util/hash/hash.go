@@ -78,13 +78,32 @@ func encodeMapStringBytes(mb map[string][]byte) string {
 	return encodeMapStringString(m)
 }
 
-// encodeHash keeps it simple and just extracts the first 40 bits of the hash from
-// the hex string representation (1 hex char represents 4 bits)
+// encodeHash extracts the first 40 bits of the hash from the hex string
+// (1 hex char represents 4 bits), and then maps vowels and vowel-like hex
+// characters to consonants to prevent bad words from being formed (the theory
+// is that no vowels makes it really hard to make bad words). Since the string
+// is hex, the only vowels it can contain are 'a' and 'e'.
+// We picked some arbitrary consonants to map to.
 func encodeHash(hex string) string {
-	return hex[:10]
+	enc := []rune(hex[:10])
+	for i := range enc {
+		switch enc[i] {
+		case '0':
+			enc[i] = 'g'
+		case '1':
+			enc[i] = 'h'
+		case '3':
+			enc[i] = 'k'
+		case 'a':
+			enc[i] = 'm'
+		case 'e':
+			enc[i] = 't'
+		}
+	}
+	return string(enc)
 }
 
-// hash hashes `data` with sha256
+// hash hashes `data` with sha256 and returns the hex string
 func hash(data string) string {
 	return fmt.Sprintf("%x", sha256.Sum256([]byte(data)))
 }
