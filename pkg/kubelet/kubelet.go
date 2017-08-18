@@ -243,7 +243,7 @@ type Dependencies struct {
 	Recorder                record.EventRecorder
 	Writer                  kubeio.Writer
 	VolumePlugins           []volume.VolumePlugin
-DynamicPluginProber volume.DynamicPluginProber
+	DynamicPluginProber     volume.DynamicPluginProber
 	TLSOptions              *server.TLSOptions
 	KubeletConfigController *kubeletconfig.Controller
 }

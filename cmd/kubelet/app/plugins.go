@@ -103,7 +103,7 @@ func ProbeVolumePlugins() []volume.VolumePlugin {
 // for kubelet.
 // Currently only Flexvolume plugins are dynamically discoverable.
 func GetDynamicPluginProber(pluginDir string) volume.DynamicPluginProber {
-	return flexvolume.NewFlexVolumeProber(pluginDir)
+	return flexvolume.GetDynamicPluginProber(pluginDir)
 }
 
 // ProbeNetworkPlugins collects all compiled-in plugins

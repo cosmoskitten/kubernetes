@@ -34,14 +34,22 @@ import (
 )
 
 type flexVolumeProber struct {
-	mutex       sync.Mutex
-	pluginDir   string // Flexvolume driver directory
-	watcher     *fsnotify.Watcher
-	probeNeeded bool      // Must only read and write this through testAndSetProbeNeeded.
-	lastUpdated time.Time // Last time probeNeeded was updated.
+	mutex           sync.Mutex
+	pluginDir       string // Flexvolume driver directory
+	watcher         *fsnotify.Watcher
+	probeNeeded     bool      // Must only read and write this through testAndSetProbeNeeded.
+	lastUpdated     time.Time // Last time probeNeeded was updated.
+	watchEventCount int
 }
 
-func NewFlexVolumeProber(pluginDir string) volume.DynamicPluginProber {
+const (
+	// TODO (cxing) Tune these params based on test results.
+	// watchEventLimit is the max allowable number of processed watches within watchEventInterval.
+	watchEventInterval = 5 * time.Second
+	watchEventLimit    = 20
+)
+
+func GetDynamicPluginProber(pluginDir string) volume.DynamicPluginProber {
 	return &flexVolumeProber{pluginDir: pluginDir}
 }
 
@@ -94,12 +102,12 @@ func (prober *flexVolumeProber) Probe() (updated bool, plugins []volume.VolumePl
 	plugins = []volume.VolumePlugin{}
 	allErrs := []error{}
 	for _, f := range files {
-		// only directories are counted as plugins
+		// only directories with names that do not begin with '.' are counted as plugins
 		// and pluginDir/dirname/dirname should be an executable
 		// unless dirname contains '~' for escaping namespace
 		// e.g. dirname = vendor~cifs
 		// then, executable will be pluginDir/dirname/cifs
-		if f.IsDir() {
+		if f.IsDir() && filepath.Base(f.Name())[0] != '.' {
 			plugin, pluginErr := NewFlexVolumePlugin(prober.pluginDir, f.Name())
 			if pluginErr != nil {
 				pluginErr = fmt.Errorf(
@@ -117,6 +125,12 @@ func (prober *flexVolumeProber) Probe() (updated bool, plugins []volume.VolumePl
 }
 
 func (prober *flexVolumeProber) handleWatchEvent(event fsnotify.Event) error {
+	// event.Name is the watched path.
+	if filepath.Base(event.Name)[0] == '.' {
+		// Ignore files beginning with '.'
+		return nil
+	}
+
 	eventPathAbs, err := filepath.Abs(event.Name)
 	if err != nil {
 		return err
@@ -127,8 +141,10 @@ func (prober *flexVolumeProber) handleWatchEvent(event fsnotify.Event) error {
 		return err
 	}
 
+	// If the Flexvolume plugin directory is removed, need to recreate it
+	// in order to keep it under watch.
 	if eventOpIs(event, fsnotify.Remove) && eventPathAbs == pluginDirAbs {
-		// pluginDir needs to exist in order to be watched.
+		glog.Warningf("Flexvolume plugin directory at %s is removed. Recreating.", pluginDirAbs)
 		if err := prober.createPluginDir(); err != nil {
 			return err
 		}
@@ -141,17 +157,32 @@ func (prober *flexVolumeProber) handleWatchEvent(event fsnotify.Event) error {
 		}
 	}
 
-	if time.Since(prober.lastUpdated) > time.Second { // Reduce the frequency of probes.
-		prober.testAndSetProbeNeeded(true)
-		prober.lastUpdated = time.Now()
-	}
+	prober.updateProbeNeeded()
 
 	return nil
 }
 
+func (prober *flexVolumeProber) updateProbeNeeded() {
+	// Within 'watchEventInterval' seconds, a max of 'watchEventLimit' watch events is processed.
+	// The watch event will not be registered if the limit is reached.
+	// This prevents increased disk usage from Probe() being triggered too frequently (either
+	// accidentally or maliciously).
+	if time.Since(prober.lastUpdated) > watchEventInterval {
+		// Update, then reset the timer and watch count.
+		prober.testAndSetProbeNeeded(true)
+		prober.lastUpdated = time.Now()
+		prober.watchEventCount = 1
+	} else if prober.watchEventCount < watchEventLimit {
+		prober.testAndSetProbeNeeded(true)
+		prober.watchEventCount++
+	}
+}
+
 // Recursively adds to watch all directories inside and including the file specified by the given filename.
-// If the file is a symlink to a directory, it will watch the symlink but not any of the
-// subdirectories.
+// If the file is a symlink to a directory, it will watch the symlink but not any of the subdirectories.
+//
+// Each file or directory change triggers two events: one from the watch on itself, another from the watch
+// on its parent directory.
 func (prober *flexVolumeProber) addWatchRecursive(filename string) error {
 	addWatch := func(path string, info os.FileInfo, err error) error {
 		if info.IsDir() {
@@ -161,6 +192,7 @@ func (prober *flexVolumeProber) addWatchRecursive(filename string) error {
 		}
 		return nil
 	}
+
 	return filepath.Walk(filename, addWatch)
 }
 
