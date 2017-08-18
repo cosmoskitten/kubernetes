@@ -742,9 +742,9 @@ func parseResourceList(m kubeletconfiginternal.ConfigurationMap) (v1.ResourceLis
 			if q.Sign() == -1 {
 				return nil, fmt.Errorf("resource quantity for %q cannot be negative: %v", k, v)
 			}
-			// storage specified in configuration map is mapped to ResourceStorageScratch API
+			// storage specified in configuration map is mapped to ResourceEphemeralStorage API
 			if v1.ResourceName(k) == v1.ResourceStorage {
-				rl[v1.ResourceStorageScratch] = q
+				rl[v1.ResourceEphemeralStorage] = q
 			} else {
 				rl[v1.ResourceName(k)] = q
 			}

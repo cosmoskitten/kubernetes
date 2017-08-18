@@ -727,7 +727,7 @@ func makeSignalObservations(summaryProvider stats.SummaryProvider, capacityProvi
 		}
 	}
 
-	storageScratchCapacity, storageScratchAllocatable, exist := getResourceAllocatable(nodeCapacity, allocatableReservation, v1.ResourceStorageScratch)
+	ephemeralStorageCapacity, ephemeralStorageAllocatable, exist := getResourceAllocatable(nodeCapacity, allocatableReservation, v1.ResourceEphemeralStorage)
 	if exist {
 		for _, pod := range pods {
 			podStat, ok := statsFunc(pod)
@@ -746,14 +746,14 @@ func makeSignalObservations(summaryProvider stats.SummaryProvider, capacityProvi
 				diskUsageP := &diskUsage
 				diskUsagep := diskUsageP.Copy()
 				diskUsagep.Sub(usage[resourceOverlay])
-				storageScratchAllocatable.Sub(*diskUsagep)
+				ephemeralStorageAllocatable.Sub(*diskUsagep)
 			} else {
-				storageScratchAllocatable.Sub(usage[resourceDisk])
+				ephemeralStorageAllocatable.Sub(usage[resourceDisk])
 			}
 		}
 		result[evictionapi.SignalAllocatableNodeFsAvailable] = signalObservation{
-			available: storageScratchAllocatable,
-			capacity:  storageScratchCapacity,
+			available: ephemeralStorageAllocatable,
+			capacity:  ephemeralStorageCapacity,
 		}
 	}
 
@@ -1072,4 +1072,33 @@ func deleteImages(imageGC ImageGC, reportBytesFreed bool) nodeReclaimFunc {
 		}
 		return resource.NewQuantity(reclaimed, resource.BinarySI), err
 	}
+}
+
+// getTotalEmptyDirUsed will get the total usage of emptydirs of the pod
+func getTotalEmptyDirUsed(podStats statsapi.PodStats, pod *v1.Pod) *resource.Quantity {
+	emptyDirTotalUsed := &resource.Quantity{Format: resource.BinarySI}
+	podVolumeUsed := make(map[string]*resource.Quantity)
+	for _, volume := range podStats.VolumeStats {
+		podVolumeUsed[volume.Name] = resource.NewQuantity(int64(*volume.UsedBytes), resource.BinarySI)
+	}
+	for _, vol := range pod.Spec.Volumes {
+		if vol.EmptyDir != nil && vol.EmptyDir.Medium != v1.StorageMediumMemory && vol.EmptyDir.SizeLimit.Sign() == 1 {
+			used := podVolumeUsed[vol.Name]
+			if used != nil {
+				emptyDirTotalUsed.Add(*used)
+			}
+		}
+	}
+	return emptyDirTotalUsed
+}
+
+// getTotalContainerEphemeralStorageUsed will get the total usage of container ephemeral storage resource of the pod
+func getTotalContainerEphemeralStorageUsed(podStats statsapi.PodStats) *resource.Quantity {
+	containerTotalUsed := &resource.Quantity{Format: resource.BinarySI}
+	for _, containerStat := range podStats.Containers {
+		containerTotalUsed.Add(*diskUsage(containerStat.Rootfs))
+		containerTotalUsed.Add(*diskUsage(containerStat.Logs))
+
+	}
+	return containerTotalUsed
 }
