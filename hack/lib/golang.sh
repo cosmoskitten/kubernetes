@@ -305,7 +305,8 @@ kube::golang::unset_platform_envs() {
 
 # Create the GOPATH tree under $KUBE_OUTPUT
 kube::golang::create_gopath_tree() {
-  local go_pkg_dir="${KUBE_GOPATH}/src/${KUBE_GO_PACKAGE}"
+  local target_dir=${1:-${KUBE_GOPATH}}
+  local go_pkg_dir="${target_dir}/src/${KUBE_GO_PACKAGE}"
   local go_pkg_basedir=$(dirname "${go_pkg_dir}")
 
   mkdir -p "${go_pkg_basedir}"
@@ -315,7 +316,7 @@ kube::golang::create_gopath_tree() {
     ln -snf "${KUBE_ROOT}" "${go_pkg_dir}"
   fi
 
-  cat >"${KUBE_GOPATH}/BUILD" <<EOF
+  cat >"${target_dir}/BUILD" <<EOF
 # This dummy BUILD file prevents Bazel from trying to descend through the
 # infinite loop created by the symlink at
 # ${go_pkg_dir}
@@ -351,6 +352,8 @@ EOF
 # Kubernetes build.
 #
 # Inputs:
+#   $1 - If set, overrides KUBE_GOPATH as the target directory to setup the
+#        gopath in
 #   KUBE_EXTRA_GOPATH - If set, this is included in created GOPATH
 #
 # Outputs:
@@ -359,11 +362,13 @@ EOF
 #   env-var GO15VENDOREXPERIMENT=1
 #   current directory is within GOPATH
 kube::golang::setup_env() {
+  local target_dir=${1:-${KUBE_GOPATH}}
+
   kube::golang::verify_go_version
 
-  kube::golang::create_gopath_tree
+  kube::golang::create_gopath_tree "${target_dir}"
 
-  export GOPATH=${KUBE_GOPATH}
+  export GOPATH=${target_dir}
 
   # Append KUBE_EXTRA_GOPATH to the GOPATH if it is defined.
   if [[ -n ${KUBE_EXTRA_GOPATH:-} ]]; then
@@ -376,7 +381,7 @@ kube::golang::setup_env() {
   # cross-compiling, and `go install -o <file>` only works for a single pkg.
   local subdir
   subdir=$(kube::realpath . | sed "s|$KUBE_ROOT||")
-  cd "${KUBE_GOPATH}/src/${KUBE_GO_PACKAGE}/${subdir}"
+  cd "${target_dir}/src/${KUBE_GO_PACKAGE}/${subdir}"
 
   # Set GOROOT so binaries that parse code can work properly.
   export GOROOT=$(go env GOROOT)
