@@ -11,7 +11,10 @@ go_library(
     srcs = ["util.go"],
     deps = [
         "//pkg/api:go_default_library",
+        "//pkg/features:go_default_library",
+        "//vendor/k8s.io/apimachinery/pkg/api/resource:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
+        "//vendor/k8s.io/apiserver/pkg/util/feature:go_default_library",
     ],
 )
 
