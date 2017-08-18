@@ -15,22 +15,3 @@ limitations under the License.
 */
 
 package persistentvolumeclaim
-
-import (
-	"testing"
-
-	"k8s.io/kubernetes/pkg/api"
-	apitesting "k8s.io/kubernetes/pkg/api/testing"
-
-	// install all api groups for testing
-	_ "k8s.io/kubernetes/pkg/api/testapi"
-)
-
-func TestSelectableFieldLabelConversions(t *testing.T) {
-	apitesting.TestSelectableFieldLabelConversionsOfKind(t,
-		api.Registry.GroupOrDie(api.GroupName).GroupVersion.String(),
-		"PersistentVolumeClaim",
-		PersistentVolumeClaimToSelectableFields(&api.PersistentVolumeClaim{}),
-		map[string]string{"name": "metadata.name"},
-	)
-}
