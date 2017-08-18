@@ -2781,24 +2781,23 @@ func describeNodeResource(nodeNonTerminatedPodsList *api.PodList, node *api.Node
 		cpuReqs.String(), int64(fractionCpuReqs), cpuLimits.String(), int64(fractionCpuLimits),
 		memoryReqs.String(), int64(fractionMemoryReqs), memoryLimits.String(), int64(fractionMemoryLimits))
 
-	oirResource := make([]string, 0, len(allocatable))
+	extResources := make([]string, 0, len(allocatable))
 	for resource := range allocatable {
-		if helper.IsOpaqueIntResourceName(resource) {
-			oirResource = append(oirResource, string(resource))
+		if helper.IsExtendedResourceName(resource) {
+			extResources = append(extResources, string(resource))
 		}
 	}
-	sort.Strings(oirResource)
-	for _, oir := range oirResource {
-		shortOirName := strings.Replace(oir, api.ResourceOpaqueIntPrefix, "OIR-", -1)
-		shortOirRequests := shortOirName + " Requests"
-		shortOirLimits := shortOirName + " Limits"
-		shortOirRequestsDash := string(bytes.Repeat([]byte("-"), len(shortOirRequests)))
-		shortOirLimitsDash := string(bytes.Repeat([]byte("-"), len(shortOirLimits)))
+	sort.Strings(extResources)
+	for _, ext := range extResources {
+		extRequestsHead := ext + " Requests"
+		extLimitsHead := ext + " Limits"
+		extRequestsDash := string(bytes.Repeat([]byte("-"), len(extRequestsHead)))
+		extLimitsDash := string(bytes.Repeat([]byte("-"), len(extLimitsHead)))
 
-		w.Write(LEVEL_1, "%s\t%s\n", shortOirRequests, shortOirLimits)
-		w.Write(LEVEL_1, "%s\t%s\n", shortOirRequestsDash, shortOirLimitsDash)
-		oirReqs, oirLimits := reqs[api.ResourceName(oir)], limits[api.ResourceName(oir)]
-		w.Write(LEVEL_1, "%s\t%s\n", oirReqs.String(), oirLimits.String())
+		w.Write(LEVEL_1, "%s\t%s\n", extRequestsHead, extLimitsHead)
+		w.Write(LEVEL_1, "%s\t%s\n", extRequestsDash, extLimitsDash)
+		extRequests, extLimits := reqs[api.ResourceName(ext)], limits[api.ResourceName(ext)]
+		w.Write(LEVEL_1, "%s\t%s\n", extRequests.String(), extLimits.String())
 	}
 	return nil
 }
