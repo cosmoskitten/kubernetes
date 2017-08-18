@@ -1141,13 +1141,16 @@ func (lbaas *LbaasV2) EnsureLoadBalancerDeleted(clusterName string, service *v1.
 	var monitorIDs []string
 	for _, listener := range listenerList {
 		pool, err := getPoolByListenerID(lbaas.network, loadbalancer.ID, listener.ID)
-		if err != nil && err != ErrNotFound {
-			return fmt.Errorf("Error getting pool for listener %s: %v", listener.ID, err)
-		}
-		poolIDs = append(poolIDs, pool.ID)
-		// If create-monitor of cloud-config is false, pool has not monitor.
-		if pool.MonitorID != "" {
-			monitorIDs = append(monitorIDs, pool.MonitorID)
+		if err != nil {
+			if err != ErrNotFound {
+				return fmt.Errorf("Error getting pool for listener %s: %v", listener.ID, err)
+			}
+		} else {
+			poolIDs = append(poolIDs, pool.ID)
+			// If create-monitor of cloud-config is false, pool has not monitor.
+			if pool.MonitorID != "" {
+				monitorIDs = append(monitorIDs, pool.MonitorID)
+			}
 		}
 	}
 
