@@ -28,7 +28,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	corelisters "k8s.io/client-go/listers/core/v1"
@@ -1033,7 +1032,7 @@ func getPodAntiAffinityTerms(podAntiAffinity *v1.PodAntiAffinity) (terms []v1.Po
 	return terms
 }
 
-func getMatchingAntiAffinityTerms(pod *v1.Pod, nodeInfoMap map[string]*schedulercache.NodeInfo) (map[types.UID][]matchingPodAntiAffinityTerm, error) {
+func getMatchingAntiAffinityTerms(pod *v1.Pod, nodeInfoMap map[string]*schedulercache.NodeInfo) (map[string][]matchingPodAntiAffinityTerm, error) {
 	allNodeNames := make([]string, 0, len(nodeInfoMap))
 	for name := range nodeInfoMap {
 		allNodeNames = append(allNodeNames, name)
@@ -1041,8 +1040,8 @@ func getMatchingAntiAffinityTerms(pod *v1.Pod, nodeInfoMap map[string]*scheduler
 
 	var lock sync.Mutex
 	var firstError error
-	result := make(map[types.UID][]matchingPodAntiAffinityTerm)
-	appendResult := func(toAppend map[types.UID][]matchingPodAntiAffinityTerm) {
+	result := make(map[string][]matchingPodAntiAffinityTerm)
+	appendResult := func(toAppend map[string][]matchingPodAntiAffinityTerm) {
 		lock.Lock()
 		defer lock.Unlock()
 		for uid, terms := range toAppend {
@@ -1064,7 +1063,7 @@ func getMatchingAntiAffinityTerms(pod *v1.Pod, nodeInfoMap map[string]*scheduler
 			catchError(fmt.Errorf("node not found"))
 			return
 		}
-		nodeResult := make(map[types.UID][]matchingPodAntiAffinityTerm)
+		nodeResult := make(map[string][]matchingPodAntiAffinityTerm)
 		for _, existingPod := range nodeInfo.PodsWithAffinity() {
 			affinity := existingPod.Spec.Affinity
 			if affinity == nil {
@@ -1078,7 +1077,8 @@ func getMatchingAntiAffinityTerms(pod *v1.Pod, nodeInfoMap map[string]*scheduler
 					return
 				}
 				if priorityutil.PodMatchesTermsNamespaceAndSelector(pod, namespaces, selector) {
-					nodeResult[existingPod.UID] = append(nodeResult[existingPod.UID], matchingPodAntiAffinityTerm{term: &term, node: node})
+					existingPodFullName := schedutil.GetPodFullName(existingPod)
+					nodeResult[existingPodFullName] = append(nodeResult[existingPodFullName], matchingPodAntiAffinityTerm{term: &term, node: node})
 				}
 			}
 		}
@@ -1108,8 +1108,8 @@ func getMatchingAntiAffinityTermsOfExistingPod(newPod *v1.Pod, existingPod *v1.P
 	return result, nil
 }
 
-func (c *PodAffinityChecker) getMatchingAntiAffinityTerms(pod *v1.Pod, allPods []*v1.Pod) (map[types.UID][]matchingPodAntiAffinityTerm, error) {
-	result := make(map[types.UID][]matchingPodAntiAffinityTerm)
+func (c *PodAffinityChecker) getMatchingAntiAffinityTerms(pod *v1.Pod, allPods []*v1.Pod) (map[string][]matchingPodAntiAffinityTerm, error) {
+	result := make(map[string][]matchingPodAntiAffinityTerm)
 	for _, existingPod := range allPods {
 		existingPodNode, err := c.info.GetNodeInfo(existingPod.Spec.NodeName)
 		if err != nil {
@@ -1119,7 +1119,8 @@ func (c *PodAffinityChecker) getMatchingAntiAffinityTerms(pod *v1.Pod, allPods [
 		if err != nil {
 			return nil, err
 		}
-		result[existingPod.UID] = append(result[existingPod.UID], existingPodMatchingTerms...)
+		existingPodFullName := schedutil.GetPodFullName(existingPod)
+		result[existingPodFullName] = append(result[existingPodFullName], existingPodMatchingTerms...)
 	}
 	return result, nil
 }
@@ -1131,7 +1132,7 @@ func (c *PodAffinityChecker) satisfiesExistingPodsAntiAffinity(pod *v1.Pod, meta
 	if node == nil {
 		return false
 	}
-	var matchingTerms map[types.UID][]matchingPodAntiAffinityTerm
+	var matchingTerms map[string][]matchingPodAntiAffinityTerm
 	if predicateMeta, ok := meta.(*predicateMetadata); ok {
 		matchingTerms = predicateMeta.matchingAntiAffinityTerms
 	} else {

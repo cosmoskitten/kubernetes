@@ -170,18 +170,18 @@ func TestPredicateMetadata_AddRemovePod(t *testing.T) {
 		{
 			description: "no anti-affinity or service affinity exist",
 			pendingPod: &v1.Pod{
-				ObjectMeta: metav1.ObjectMeta{UID: "pending", Labels: selector1},
+				ObjectMeta: metav1.ObjectMeta{Name: "pending", Labels: selector1},
 			},
 			existingPods: []*v1.Pod{
-				{ObjectMeta: metav1.ObjectMeta{UID: "p1", Labels: selector1},
+				{ObjectMeta: metav1.ObjectMeta{Name: "p1", Labels: selector1},
 					Spec: v1.PodSpec{NodeName: "nodeA"},
 				},
-				{ObjectMeta: metav1.ObjectMeta{UID: "p2"},
+				{ObjectMeta: metav1.ObjectMeta{Name: "p2"},
 					Spec: v1.PodSpec{NodeName: "nodeC"},
 				},
 			},
 			addedPod: &v1.Pod{
-				ObjectMeta: metav1.ObjectMeta{UID: "addedPod", Labels: selector1},
+				ObjectMeta: metav1.ObjectMeta{Name: "addedPod", Labels: selector1},
 				Spec:       v1.PodSpec{NodeName: "nodeB"},
 			},
 			nodes: []v1.Node{
@@ -193,13 +193,13 @@ func TestPredicateMetadata_AddRemovePod(t *testing.T) {
 		{
 			description: "metadata anti-affinity terms are updated correctly after adding and removing a pod",
 			pendingPod: &v1.Pod{
-				ObjectMeta: metav1.ObjectMeta{UID: "pending", Labels: selector1},
+				ObjectMeta: metav1.ObjectMeta{Name: "pending", Labels: selector1},
 			},
 			existingPods: []*v1.Pod{
-				{ObjectMeta: metav1.ObjectMeta{UID: "p1", Labels: selector1},
+				{ObjectMeta: metav1.ObjectMeta{Name: "p1", Labels: selector1},
 					Spec: v1.PodSpec{NodeName: "nodeA"},
 				},
-				{ObjectMeta: metav1.ObjectMeta{UID: "p2"},
+				{ObjectMeta: metav1.ObjectMeta{Name: "p2"},
 					Spec: v1.PodSpec{
 						NodeName: "nodeC",
 						Affinity: &v1.Affinity{
@@ -209,7 +209,7 @@ func TestPredicateMetadata_AddRemovePod(t *testing.T) {
 				},
 			},
 			addedPod: &v1.Pod{
-				ObjectMeta: metav1.ObjectMeta{UID: "addedPod", Labels: selector1},
+				ObjectMeta: metav1.ObjectMeta{Name: "addedPod", Labels: selector1},
 				Spec: v1.PodSpec{
 					NodeName: "nodeB",
 					Affinity: &v1.Affinity{
@@ -226,18 +226,18 @@ func TestPredicateMetadata_AddRemovePod(t *testing.T) {
 		{
 			description: "metadata service-affinity data are updated correctly after adding and removing a pod",
 			pendingPod: &v1.Pod{
-				ObjectMeta: metav1.ObjectMeta{UID: "pending", Labels: selector1},
+				ObjectMeta: metav1.ObjectMeta{Name: "pending", Labels: selector1},
 			},
 			existingPods: []*v1.Pod{
-				{ObjectMeta: metav1.ObjectMeta{UID: "p1", Labels: selector1},
+				{ObjectMeta: metav1.ObjectMeta{Name: "p1", Labels: selector1},
 					Spec: v1.PodSpec{NodeName: "nodeA"},
 				},
-				{ObjectMeta: metav1.ObjectMeta{UID: "p2"},
+				{ObjectMeta: metav1.ObjectMeta{Name: "p2"},
 					Spec: v1.PodSpec{NodeName: "nodeC"},
 				},
 			},
 			addedPod: &v1.Pod{
-				ObjectMeta: metav1.ObjectMeta{UID: "addedPod", Labels: selector1},
+				ObjectMeta: metav1.ObjectMeta{Name: "addedPod", Labels: selector1},
 				Spec:       v1.PodSpec{NodeName: "nodeB"},
 			},
 			services: []*v1.Service{{Spec: v1.ServiceSpec{Selector: selector1}}},
@@ -250,13 +250,13 @@ func TestPredicateMetadata_AddRemovePod(t *testing.T) {
 		{
 			description: "metadata anti-affinity terms and service affinity data are updated correctly after adding and removing a pod",
 			pendingPod: &v1.Pod{
-				ObjectMeta: metav1.ObjectMeta{UID: "pending", Labels: selector1},
+				ObjectMeta: metav1.ObjectMeta{Name: "pending", Labels: selector1},
 			},
 			existingPods: []*v1.Pod{
-				{ObjectMeta: metav1.ObjectMeta{UID: "p1", Labels: selector1},
+				{ObjectMeta: metav1.ObjectMeta{Name: "p1", Labels: selector1},
 					Spec: v1.PodSpec{NodeName: "nodeA"},
 				},
-				{ObjectMeta: metav1.ObjectMeta{UID: "p2"},
+				{ObjectMeta: metav1.ObjectMeta{Name: "p2"},
 					Spec: v1.PodSpec{
 						NodeName: "nodeC",
 						Affinity: &v1.Affinity{
@@ -266,7 +266,7 @@ func TestPredicateMetadata_AddRemovePod(t *testing.T) {
 				},
 			},
 			addedPod: &v1.Pod{
-				ObjectMeta: metav1.ObjectMeta{UID: "addedPod", Labels: selector1},
+				ObjectMeta: metav1.ObjectMeta{Name: "addedPod", Labels: selector1},
 				Spec: v1.PodSpec{
 					NodeName: "nodeA",
 					Affinity: &v1.Affinity{

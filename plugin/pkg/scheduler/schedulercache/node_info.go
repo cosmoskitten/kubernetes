@@ -26,6 +26,7 @@ import (
 	clientcache "k8s.io/client-go/tools/cache"
 	v1helper "k8s.io/kubernetes/pkg/api/v1/helper"
 	priorityutil "k8s.io/kubernetes/plugin/pkg/scheduler/algorithm/priorities/util"
+	"k8s.io/kubernetes/plugin/pkg/scheduler/util"
 )
 
 var emptyResource = Resource{}
@@ -463,12 +464,12 @@ func getPodKey(pod *v1.Pod) (string, error) {
 // matches NodeInfo.node and the pod is found in the pods list. Otherwise,
 // returns true.
 func (n *NodeInfo) Filter(pod *v1.Pod) bool {
-	pUID := pod.GetUID()
+	pFullName := util.GetPodFullName(pod)
 	if pod.Spec.NodeName != n.node.Name {
 		return true
 	}
 	for _, p := range n.pods {
-		if p.GetUID() == pUID {
+		if util.GetPodFullName(p) == pFullName {
 			return true
 		}
 	}
