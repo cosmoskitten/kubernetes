@@ -34,6 +34,10 @@ func (c *FakeAuthorizationV1) SelfSubjectAccessReviews() v1.SelfSubjectAccessRev
 	return &FakeSelfSubjectAccessReviews{c}
 }
 
+func (c *FakeAuthorizationV1) SelfSubjectRulesReviews(namespace string) v1.SelfSubjectRulesReviewInterface {
+	return &FakeSelfSubjectRulesReviews{c, namespace}
+}
+
 func (c *FakeAuthorizationV1) SubjectAccessReviews() v1.SubjectAccessReviewInterface {
 	return &FakeSubjectAccessReviews{c}
 }
