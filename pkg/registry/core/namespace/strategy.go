@@ -24,10 +24,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
-	"k8s.io/apiserver/pkg/registry/generic"
 	apistorage "k8s.io/apiserver/pkg/storage"
 	"k8s.io/apiserver/pkg/storage/names"
 	"k8s.io/kubernetes/pkg/api"
+	apiv1 "k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/api/validation"
 )
 
@@ -143,7 +143,7 @@ func GetAttrs(obj runtime.Object) (labels.Set, fields.Set, bool, error) {
 	if !ok {
 		return nil, nil, false, fmt.Errorf("not a namespace")
 	}
-	return labels.Set(namespaceObj.Labels), NamespaceToSelectableFields(namespaceObj), namespaceObj.Initializers != nil, nil
+	return labels.Set(namespaceObj.Labels), apiv1.NamespaceToSelectableFields(namespaceObj), namespaceObj.Initializers != nil, nil
 }
 
 // MatchNamespace returns a generic matcher for a given label and field selector.
@@ -153,15 +153,4 @@ func MatchNamespace(label labels.Selector, field fields.Selector) apistorage.Sel
 		Field:    field,
 		GetAttrs: GetAttrs,
 	}
-}
-
-// NamespaceToSelectableFields returns a field set that represents the object
-func NamespaceToSelectableFields(namespace *api.Namespace) fields.Set {
-	objectMetaFieldsSet := generic.ObjectMetaFieldsSet(&namespace.ObjectMeta, false)
-	specificFieldsSet := fields.Set{
-		"status.phase": string(namespace.Status.Phase),
-		// This is a bug, but we need to support it for backward compatibility.
-		"name": namespace.Name,
-	}
-	return generic.MergeFieldsSets(objectMetaFieldsSet, specificFieldsSet)
 }

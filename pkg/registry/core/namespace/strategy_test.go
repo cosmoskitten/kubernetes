@@ -22,7 +22,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/kubernetes/pkg/api"
-	apitesting "k8s.io/kubernetes/pkg/api/testing"
 
 	// install all api groups for testing
 	_ "k8s.io/kubernetes/pkg/api/testapi"
@@ -134,13 +133,4 @@ func TestNamespaceFinalizeStrategy(t *testing.T) {
 	if namespace.ResourceVersion != "9" {
 		t.Errorf("Incoming resource version on update should not be mutated")
 	}
-}
-
-func TestSelectableFieldLabelConversions(t *testing.T) {
-	apitesting.TestSelectableFieldLabelConversionsOfKind(t,
-		api.Registry.GroupOrDie(api.GroupName).GroupVersion.String(),
-		"Namespace",
-		NamespaceToSelectableFields(&api.Namespace{}),
-		map[string]string{"name": "metadata.name"},
-	)
 }

@@ -689,53 +689,15 @@ func Convert_v1_ResourceList_To_api_ResourceList(in *v1.ResourceList, out *api.R
 }
 
 func AddFieldLabelConversionsForEvent(scheme *runtime.Scheme) error {
-	return scheme.AddFieldLabelConversionFunc("v1", "Event",
-		func(label, value string) (string, string, error) {
-			switch label {
-			case "involvedObject.kind",
-				"involvedObject.namespace",
-				"involvedObject.name",
-				"involvedObject.uid",
-				"involvedObject.apiVersion",
-				"involvedObject.resourceVersion",
-				"involvedObject.fieldPath",
-				"reason",
-				"source",
-				"type",
-				"metadata.namespace",
-				"metadata.name":
-				return label, value, nil
-			default:
-				return "", "", fmt.Errorf("field label not supported: %s", label)
-			}
-		})
+	return scheme.AddFieldLabelConversionFunc("v1", "Event", EventFieldLabelConversionFunc)
 }
 
 func AddFieldLabelConversionsForNamespace(scheme *runtime.Scheme) error {
-	return scheme.AddFieldLabelConversionFunc("v1", "Namespace",
-		func(label, value string) (string, string, error) {
-			switch label {
-			case "status.phase",
-				"metadata.name":
-				return label, value, nil
-			default:
-				return "", "", fmt.Errorf("field label not supported: %s", label)
-			}
-		})
+	return scheme.AddFieldLabelConversionFunc("v1", "Namespace", NamespaceFieldLabelConversionFunc)
 }
 
 func AddFieldLabelConversionsForSecret(scheme *runtime.Scheme) error {
-	return scheme.AddFieldLabelConversionFunc("v1", "Secret",
-		func(label, value string) (string, string, error) {
-			switch label {
-			case "type",
-				"metadata.namespace",
-				"metadata.name":
-				return label, value, nil
-			default:
-				return "", "", fmt.Errorf("field label not supported: %s", label)
-			}
-		})
+	return scheme.AddFieldLabelConversionFunc("v1", "Secret", SecretFieldLabelConversionFunc)
 }
 
 // FieldLabelConversionFunc converts a field selector to internal representation.
@@ -795,4 +757,37 @@ func PersistentVolumeFieldLabelConversionFunc(label, value string) (string, stri
 		return label, value, nil
 	}
 	return "", "", fmt.Errorf("field label %q not supported for %q", label, "PersistentVolume")
+}
+
+// EventFieldLabelConversionFunc converts a field selector to internal representation.
+// Return error for unsupported field selector.
+func EventFieldLabelConversionFunc(label, value string) (string, string, error) {
+	apiEvent := api.Event{}
+	eventFieldSet := EventToSelectableFields(&apiEvent)
+	if eventFieldSet.Has(label) {
+		return label, value, nil
+	}
+	return "", "", fmt.Errorf("field label %q not supported for %q", label, "Event")
+}
+
+// NamespaceFieldLabelConversionFunc converts a field selector to internal representation.
+// Return error for unsupported field selector.
+func NamespaceFieldLabelConversionFunc(label, value string) (string, string, error) {
+	apiNamespace := api.Namespace{}
+	namespaceFieldSet := NamespaceToSelectableFields(&apiNamespace)
+	if namespaceFieldSet.Has(label) {
+		return label, value, nil
+	}
+	return "", "", fmt.Errorf("field label %q not supported for %q", label, "Namespace")
+}
+
+// SecretFieldLabelConversionFunc converts a field selector to internal representation.
+// Return error for unsupported field selector.
+func SecretFieldLabelConversionFunc(label, value string) (string, string, error) {
+	apiSecret := api.Secret{}
+	secretFieldSet := SecretToSelectableFields(&apiSecret)
+	if secretFieldSet.Has(label) {
+		return label, value, nil
+	}
+	return "", "", fmt.Errorf("field label %q not supported for %q", label, "Secret")
 }

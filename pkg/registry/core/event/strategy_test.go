@@ -24,24 +24,11 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/util/diff"
 	"k8s.io/kubernetes/pkg/api"
-	apitesting "k8s.io/kubernetes/pkg/api/testing"
+	apiv1 "k8s.io/kubernetes/pkg/api/v1"
 
 	// install all api groups for testing
 	_ "k8s.io/kubernetes/pkg/api/testapi"
 )
-
-func testEvent(name string) *api.Event {
-	return &api.Event{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: "default",
-		},
-		InvolvedObject: api.ObjectReference{
-			Namespace: "default",
-		},
-		Reason: "forTesting",
-	}
-}
 
 func TestGetAttrs(t *testing.T) {
 	eventA := &api.Event{
@@ -62,7 +49,7 @@ func TestGetAttrs(t *testing.T) {
 		Source: api.EventSource{Component: "test"},
 		Type:   api.EventTypeNormal,
 	}
-	field := EventToSelectableFields(eventA)
+	field := apiv1.EventToSelectableFields(eventA)
 	expect := fields.Set{
 		"metadata.name":                  "f0118",
 		"metadata.namespace":             "default",
@@ -80,14 +67,4 @@ func TestGetAttrs(t *testing.T) {
 	if e, a := expect, field; !reflect.DeepEqual(e, a) {
 		t.Errorf("diff: %s", diff.ObjectDiff(e, a))
 	}
-}
-
-func TestSelectableFieldLabelConversions(t *testing.T) {
-	fset := EventToSelectableFields(&api.Event{})
-	apitesting.TestSelectableFieldLabelConversionsOfKind(t,
-		api.Registry.GroupOrDie(api.GroupName).GroupVersion.String(),
-		"Event",
-		fset,
-		nil,
-	)
 }
