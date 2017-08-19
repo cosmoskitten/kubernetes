@@ -21,6 +21,7 @@ REGISTRY?=gcr.io/google-containers
 ARCH?=amd64
 HYPERKUBE_BIN?=_output/dockerized/bin/linux/$(ARCH)/hyperkube
 
+# TODO(dixudx): update the tag to 0.2 when the image get pushed
 BASEIMAGE=gcr.io/google-containers/debian-hyperkube-base-$(ARCH):0.1
 TEMP_DIR:=$(shell mktemp -d -t hyperkubeXXXXXX)
 

@@ -1,3 +1,4 @@
+# TODO(dixudx): update the tag to 0.2 when the image get pushed
 amd64=gcr.io/google-containers/debian-base-amd64:0.1
 arm=gcr.io/google-containers/debian-base-arm:0.1
 arm64=gcr.io/google-containers/debian-base-arm64:0.1
