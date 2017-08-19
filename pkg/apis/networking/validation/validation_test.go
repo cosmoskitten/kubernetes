@@ -122,6 +122,26 @@ func TestValidateNetworkPolicy(t *testing.T) {
 				},
 			},
 		},
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+			Spec: networking.NetworkPolicySpec{
+				PodSelector: metav1.LabelSelector{
+					MatchLabels: map[string]string{"a": "b"},
+				},
+				Ingress: []networking.NetworkPolicyIngressRule{
+					{
+						From: []networking.NetworkPolicyPeer{
+							{
+								IPBlockSelector: &networking.IPBlock{
+									CIDR:   "192.168.0.0/16",
+									Except: []string{"192.168.8.0/24", "192.168.9.0/24"},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	// Success cases are expected to pass validation.
@@ -249,6 +269,63 @@ func TestValidateNetworkPolicy(t *testing.T) {
 							{
 								NamespaceSelector: &metav1.LabelSelector{
 									MatchLabels: invalidSelector,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		"missing cidr field": {
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+			Spec: networking.NetworkPolicySpec{
+				PodSelector: metav1.LabelSelector{},
+				Ingress: []networking.NetworkPolicyIngressRule{
+					{
+						From: []networking.NetworkPolicyPeer{
+							{
+								IPBlockSelector: &networking.IPBlock{
+									Except: []string{"192.168.8.0/24", "192.168.9.0/24"},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		"invalid cidr format": {
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+			Spec: networking.NetworkPolicySpec{
+				PodSelector: metav1.LabelSelector{
+					MatchLabels: map[string]string{"a": "b"},
+				},
+				Ingress: []networking.NetworkPolicyIngressRule{
+					{
+						From: []networking.NetworkPolicyPeer{
+							{
+								IPBlockSelector: &networking.IPBlock{
+									CIDR:   "192.168.5.6",
+									Except: []string{"192.168.8.0/24", "192.168.9.0/24"},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		"except field is an empty string": {
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+			Spec: networking.NetworkPolicySpec{
+				PodSelector: metav1.LabelSelector{
+					MatchLabels: map[string]string{"a": "b"},
+				},
+				Ingress: []networking.NetworkPolicyIngressRule{
+					{
+						From: []networking.NetworkPolicyPeer{
+							{
+								IPBlockSelector: &networking.IPBlock{
+									CIDR:   "192.168.8.0/24",
+									Except: []string{"", " "},
 								},
 							},
 						},

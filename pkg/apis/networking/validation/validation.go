@@ -17,6 +17,8 @@ limitations under the License.
 package validation
 
 import (
+	"net"
+
 	unversionedvalidation "k8s.io/apimachinery/pkg/apis/meta/v1/validation"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -68,7 +70,10 @@ func ValidateNetworkPolicySpec(spec *networking.NetworkPolicySpec, fldPath *fiel
 				numFroms++
 				allErrs = append(allErrs, unversionedvalidation.ValidateLabelSelector(from.NamespaceSelector, fromPath.Child("namespaceSelector"))...)
 			}
-
+			if from.IPBlockSelector != nil {
+				numFroms++
+				allErrs = append(allErrs, ValidateIPBlock(from.IPBlockSelector, fromPath.Child("ipBlock"))...)
+			}
 			if numFroms == 0 {
 				allErrs = append(allErrs, field.Required(fromPath, "must specify a from type"))
 			} else if numFroms > 1 {
@@ -92,4 +97,32 @@ func ValidateNetworkPolicyUpdate(update, old *networking.NetworkPolicy) field.Er
 	allErrs = append(allErrs, apivalidation.ValidateObjectMetaUpdate(&update.ObjectMeta, &old.ObjectMeta, field.NewPath("metadata"))...)
 	allErrs = append(allErrs, ValidateNetworkPolicySpec(&update.Spec, field.NewPath("spec"))...)
 	return allErrs
+}
+
+// ValidateIPBlock validates a cidr and the except fields of an IpBlock NetworkPolicyPeer
+func ValidateIPBlock(br *networking.IPBlock, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	if len(br.CIDR) == 0 {
+		allErrs = append(allErrs, field.Required(fldPath.Child("cidr"), "ipBlock must specify a CIDR"))
+	}
+	if !IsValidCIDR(br.CIDR) {
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("cidr"), br.CIDR, "value is not a valid CIDR"))
+	}
+
+	for i, exceptIP := range br.Except {
+		exceptPath := fldPath.Child("except").Index(i)
+		if !IsValidCIDR(exceptIP) {
+			allErrs = append(allErrs, field.Invalid(exceptPath.Child("except"), exceptIP, "value cannot be an empty string"))
+		}
+	}
+	return allErrs
+}
+
+// IsValidCIDR validates whether a CIDR matches the conventions expected by net.ParseCIDR
+func IsValidCIDR(cidr string) bool {
+	_, _, err := net.ParseCIDR(cidr)
+	if err != nil {
+		return false
+	}
+	return true
 }
