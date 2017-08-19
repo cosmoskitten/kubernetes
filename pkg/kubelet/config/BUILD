@@ -49,10 +49,10 @@ go_library(
         "//vendor/k8s.io/client-go/kubernetes:go_default_library",
         "//vendor/k8s.io/client-go/tools/cache:go_default_library",
         "//vendor/k8s.io/client-go/tools/record:go_default_library",
-        "//vendor/k8s.io/client-go/util/flowcontrol:go_default_library",
     ] + select({
         "@io_bazel_rules_go//go/platform:linux_amd64": [
             "//vendor/golang.org/x/exp/inotify:go_default_library",
+            "//vendor/k8s.io/client-go/util/flowcontrol:go_default_library",
         ],
         "//conditions:default": [],
     }),
@@ -64,7 +64,6 @@ go_test(
         "apiserver_test.go",
         "common_test.go",
         "config_test.go",
-        "file_linux_test.go",
         "file_test.go",
         "http_test.go",
     ] + select({
