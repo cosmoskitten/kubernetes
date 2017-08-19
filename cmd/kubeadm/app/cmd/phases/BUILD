@@ -59,11 +59,13 @@ go_test(
     deps = [
         "//cmd/kubeadm/app/apis/kubeadm:go_default_library",
         "//cmd/kubeadm/app/apis/kubeadm/install:go_default_library",
+        "//cmd/kubeadm/app/apis/kubeadm/v1alpha1:go_default_library",
         "//cmd/kubeadm/app/constants:go_default_library",
         "//cmd/kubeadm/app/phases/certs/pkiutil:go_default_library",
         "//cmd/kubeadm/test:go_default_library",
         "//cmd/kubeadm/test/cmd:go_default_library",
         "//cmd/kubeadm/test/kubeconfig:go_default_library",
+        "//pkg/api:go_default_library",
         "//pkg/util/node:go_default_library",
         "//vendor/k8s.io/client-go/tools/clientcmd:go_default_library",
     ],

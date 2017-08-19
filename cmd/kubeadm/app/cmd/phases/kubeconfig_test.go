@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
+	"strings"
 	"testing"
 
 	// required for triggering api machinery startup when running unit tests
@@ -28,12 +30,14 @@ import (
 
 	"k8s.io/client-go/tools/clientcmd"
 	kubeadmapi "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm"
+	kubeadmapiext "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/v1alpha1"
 	kubeadmconstants "k8s.io/kubernetes/cmd/kubeadm/app/constants"
 	"k8s.io/kubernetes/cmd/kubeadm/app/phases/certs/pkiutil"
 
 	testutil "k8s.io/kubernetes/cmd/kubeadm/test"
 	cmdtestutil "k8s.io/kubernetes/cmd/kubeadm/test/cmd"
 	kubeconfigtestutil "k8s.io/kubernetes/cmd/kubeadm/test/kubeconfig"
+	"k8s.io/kubernetes/pkg/api"
 )
 
 func TestKubeConfigCSubCommandsHasFlags(t *testing.T) {
@@ -379,5 +383,63 @@ func TestKubeConfigSubCommandsThatWritesToOut(t *testing.T) {
 			// checks that kubeconfig files have expected token
 			kubeconfigtestutil.AssertKubeConfigCurrentAuthInfoWithToken(t, config, "myUser", "123456")
 		}
+	}
+}
+
+func TestKubeConfigDefaults(t *testing.T) {
+	// Create a master configuration
+	cfg := &kubeadmapiext.MasterConfiguration{}
+
+	// Set default configuration values
+	api.Scheme.Default(cfg)
+
+	// Check default string fields
+	testStrings := []struct {
+		name       string
+		valPtr     *string
+		expDefault string
+	}{
+		{
+			name:       "DNSDomain",
+			valPtr:     &cfg.Networking.DNSDomain,
+			expDefault: kubeadmapiext.DefaultServiceDNSDomain,
+		},{
+			name:       "ServiceSubnet",
+			valPtr:     &cfg.Networking.ServiceSubnet,
+			expDefault: kubeadmapiext.DefaultServicesSubnet,
+		},{
+			name:       "KubernetesVersion",
+			valPtr:     &cfg.KubernetesVersion,
+			expDefault: kubeadmapiext.DefaultKubernetesVersion,
+		},{
+			name:       "CertificatesDir",
+			valPtr:     &cfg.CertificatesDir,
+			expDefault: kubeadmapiext.DefaultCertificatesDir,
+		},{
+			name:       "EtcdDataDir",
+			valPtr:     &cfg.Etcd.DataDir,
+			expDefault: kubeadmapiext.DefaultEtcdDataDir,
+		},{
+			name:       "ImageRepository",
+			valPtr:     &cfg.ImageRepository,
+			expDefault: kubeadmapiext.DefaultImageRepository,
+		},
+	}
+	for _, ts := range testStrings {
+		val := *ts.valPtr
+		if *ts.valPtr != ts.expDefault {
+			t.Errorf("Wrong default for %s, got: '%s', expected: '%s'", ts.name, val, ts.expDefault)
+		}
+	}
+
+	// Check default API bind port
+	if cfg.API.BindPort != kubeadmapiext.DefaultAPIBindPort {
+		t.Errorf("Wrong default for APIBindPort, got: '%s', expected: '%s'", cfg.API.BindPort, kubeadmapiext.DefaultAPIBindPort)
+	}
+
+	// Check default AuthorizationModes
+	expModes := strings.Split(kubeadmapiext.DefaultAuthorizationModes, ",")
+	if !reflect.DeepEqual(cfg.AuthorizationModes, expModes) {
+		t.Errorf("Wrong default for AuthorizationModes, got: %v, expected: %v", cfg.AuthorizationModes, expModes)
 	}
 }
