@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"strings"
 	"text/template"
 	"time"
 
@@ -85,11 +86,18 @@ func NewCmdInit(out io.Writer) *cobra.Command {
 	var cfgPath string
 	var skipPreFlight bool
 	var skipTokenPrint bool
+	var featureFlagsString string
 	cmd := &cobra.Command{
 		Use:   "init",
 		Short: "Run this in order to set up the Kubernetes master",
 		Run: func(cmd *cobra.Command, args []string) {
 			api.Scheme.Default(cfg)
+			featureGate, err := features.NewFeatureGate(&features.InitFeatureGates, featureFlagsString)
+			if err != nil {
+				kubeadmutil.CheckErr(err)
+			}
+			cfg.FeatureFlags = featureGate
+
 			internalcfg := &kubeadmapi.MasterConfiguration{}
 			api.Scheme.Convert(cfg, internalcfg, nil)
 
@@ -163,6 +171,9 @@ func NewCmdInit(out io.Writer) *cobra.Command {
 	cmd.PersistentFlags().DurationVar(
 		&cfg.TokenTTL, "token-ttl", cfg.TokenTTL,
 		"The duration before the bootstrap token is automatically deleted. 0 means 'never expires'.")
+
+	cmd.Flags().StringVar(&featureFlagsString, "feature-gates", featureFlagsString, "A set of key=value pairs that describe feature gates for alpha/experimental features. "+
+		"Options are:\n"+strings.Join(features.KnownFeatures(&features.InitFeatureGates), "\n"))
 
 	return cmd
 }
