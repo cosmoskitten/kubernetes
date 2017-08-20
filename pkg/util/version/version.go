@@ -121,6 +121,24 @@ func MustParseSemantic(str string) *Version {
 	return v
 }
 
+// Major returns the major release number
+func (v *Version) Major() uint {
+	return v.components[0]
+}
+
+// Minor returns the minor release number
+func (v *Version) Minor() uint {
+	return v.components[1]
+}
+
+// Patch returns the patch release number if v is a Semantic Version, or 0
+func (v *Version) Patch() uint {
+	if len(v.components) < 3 {
+		return 0
+	}
+	return v.components[2]
+}
+
 // BuildMetadata returns the build metadata, if v is a Semantic Version, or ""
 func (v *Version) BuildMetadata() string {
 	return v.buildMetadata

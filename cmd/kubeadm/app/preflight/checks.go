@@ -423,7 +423,7 @@ func (kubever KubernetesVersionCheck) Check() (warnings, errors []error) {
 	// that is major.minor+1 (all patch and pre-releases versions included)
 	// NB. in semver patches number is a numeric, while prerelease is a string where numeric identifiers always have lower precedence than non-numeric identifiers.
 	//     thus setting the value to x.y.0-0 we are defining the very first patch - prereleases within x.y minor release.
-	firstUnsupportedVersion := versionutil.MustParseSemantic(fmt.Sprintf("%d.%d.%s", kadmVersion.Components()[0], kadmVersion.Components()[1]+1, "0-0"))
+	firstUnsupportedVersion := versionutil.MustParseSemantic(fmt.Sprintf("%d.%d.%s", kadmVersion.Major(), kadmVersion.Minor()+1, "0-0"))
 	if k8sVersion.AtLeast(firstUnsupportedVersion) {
 		return []error{fmt.Errorf("kubernetes version is greater than kubeadm version. Please consider to upgrade kubeadm. kubernetes version: %s. Kubeadm version: %d.%d.x", k8sVersion, kadmVersion.Components()[0], kadmVersion.Components()[1])}, nil
 	}
