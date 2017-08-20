@@ -215,6 +215,35 @@ func podToEndpointAddress(pod *v1.Pod) *v1.EndpointAddress {
 		}}
 }
 
+func podAddressChanged(oldPod, newPod *v1.Pod) bool {
+	// Convert the pod to an EndpointAddress, clear inert fields,
+	// and see if they are the same.
+	newEndpointAddress := podToEndpointAddress(newPod)
+	oldEndpointAddress := podToEndpointAddress(oldPod)
+	newEndpointAddress.TargetRef.ResourceVersion = ""
+	oldEndpointAddress.TargetRef.ResourceVersion = ""
+	newEndpointAddress.NodeName = nil
+	oldEndpointAddress.NodeName = nil
+	if reflect.DeepEqual(newEndpointAddress, oldEndpointAddress) {
+		// The pod has not changed in any way that impacts the endpoints
+		return false
+	}
+	return true
+}
+
+func determineNeededServiceUpdates(oldServices, services sets.String, podChanged bool) sets.String {
+	if podChanged {
+		// if the labels and pod changed, all services need to be updated
+		services = services.Union(oldServices)
+	} else {
+		// if only the labels changed, services not common to
+		// both the new and old service set (i.e the disjunctive union)
+		// need to be updated
+		services = services.Difference(oldServices).Union(oldServices.Difference(services))
+	}
+	return services
+}
+
 // When a pod is updated, figure out what services it used to be a member of
 // and what services it will be a member of, and enqueue the union of these.
 // old and cur must be *v1.Pod types.
@@ -227,19 +256,7 @@ func (e *EndpointController) updatePod(old, cur interface{}) {
 		return
 	}
 
-	// Convert the pod to an EndpointAddress, clear inert fields,
-	// and see if they are the same.
-	podChanged := false
-	newEndpointAddress := podToEndpointAddress(newPod)
-	oldEndpointAddress := podToEndpointAddress(oldPod)
-	newEndpointAddress.TargetRef.ResourceVersion = ""
-	oldEndpointAddress.TargetRef.ResourceVersion = ""
-	newEndpointAddress.NodeName = nil
-	oldEndpointAddress.NodeName = nil
-	if !reflect.DeepEqual(newEndpointAddress, oldEndpointAddress) {
-		// The pod has not changed in any way that impacts the endpoints
-		podChanged = true
-	}
+	podChanged := podAddressChanged(oldPod, newPod)
 
 	// Check if the pod labels have changed, indicating a possibe
 	// change in the service membership
@@ -266,15 +283,7 @@ func (e *EndpointController) updatePod(old, cur interface{}) {
 			utilruntime.HandleError(fmt.Errorf("Unable to get pod %v/%v's service memberships: %v", oldPod.Namespace, oldPod.Name, err))
 			return
 		}
-		if podChanged {
-			// if the labels and pod changed, all services need to be updated
-			services = services.Union(oldServices)
-		} else {
-			// if only the labels changed, services not common to
-			// both the new and old service set (i.e the disjunctive union)
-			// need to be updated
-			services = services.Difference(oldServices).Union(oldServices.Difference(services))
-		}
+		services = determineNeededServiceUpdates(oldServices, services, podChanged)
 	}
 
 	for key := range services {
