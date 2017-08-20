@@ -705,3 +705,71 @@ func TestAuditLevelNone(t *testing.T) {
 		t.Errorf("Generated events, but should not have: %#v", sink.events)
 	}
 }
+
+func TestAuditIDHttpHeader(t *testing.T) {
+	for _, test := range []struct {
+		desc           string
+		requestHeader  string
+		level          auditinternal.Level
+		expectedHeader bool
+	}{
+		{
+			"no http header when there is no audit",
+			"",
+			auditinternal.LevelNone,
+			false,
+		},
+		{
+			"no http header when there is no audit even the request header specified",
+			uuid.NewRandom().String(),
+			auditinternal.LevelNone,
+			false,
+		},
+		{
+			"server generated header",
+			"",
+			auditinternal.LevelRequestResponse,
+			true,
+		},
+		{
+			"user provided header",
+			uuid.NewRandom().String(),
+			auditinternal.LevelRequestResponse,
+			true,
+		},
+	} {
+		sink := &fakeAuditSink{}
+		var handler http.Handler
+		handler = http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(200)
+		})
+		policyChecker := policy.FakeChecker(test.level)
+		handler = WithAudit(handler, &fakeRequestContextMapper{
+			user: &user.DefaultInfo{Name: "admin"},
+		}, sink, policyChecker, nil)
+
+		req, _ := http.NewRequest("GET", "/api/v1/namespaces/default/pods", nil)
+		req.RemoteAddr = "127.0.0.1"
+		if test.requestHeader != "" {
+			req.Header.Add("Audit-ID", test.requestHeader)
+		}
+
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, req)
+		resp := w.Result()
+		if test.expectedHeader {
+			if resp.Header.Get("Audit-ID") == "" {
+				t.Errorf("[%s] expected Audit-ID http header returned, but not returned", test.desc)
+				continue
+			}
+			// if get Audit-ID returned, it should be the same same with the requested one
+			if test.requestHeader != "" && resp.Header.Get("Audit-ID") != test.requestHeader {
+				t.Errorf("[%s] returned audit http header is not the same with the requested http header, expected: %s, get %s", test.desc, test.requestHeader, resp.Header.Get("Audit-ID"))
+			}
+		} else {
+			if resp.Header.Get("Audit-ID") != "" {
+				t.Errorf("[%s] expected no Audit-ID http header returned, but got %p", test.desc, resp.Header.Get("Audit-ID"))
+			}
+		}
+	}
+}
