@@ -14,7 +14,12 @@ go_library(
         "endpoint.go",
         "fake_image_service.go",
         "fake_runtime.go",
-    ],
+    ] + select({
+        "@io_bazel_rules_go//go/platform:windows_amd64": [
+            "endpoint_windows.go",
+        ],
+        "//conditions:default": [],
+    }),
     tags = ["automanaged"],
     deps = [
         "//pkg/kubelet/apis/cri/testing:go_default_library",
