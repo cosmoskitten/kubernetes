@@ -33,11 +33,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/apiserver/pkg/authentication/serviceaccount"
+	"k8s.io/apiserver/pkg/authentication/user"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/util/cert"
 	apiregistrationv1beta1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1beta1"
 	rbacapi "k8s.io/kubernetes/pkg/apis/rbac"
+	utilversion "k8s.io/kubernetes/pkg/util/version"
 	"k8s.io/kubernetes/test/e2e/framework"
 	samplev1alpha1 "k8s.io/sample-apiserver/pkg/apis/wardle/v1alpha1"
 
@@ -50,6 +51,8 @@ type aggregatorContext struct {
 	apiserverSigningCert []byte
 }
 
+var serverAggregatorVersion = utilversion.MustParseSemantic("v1.7.0")
+
 var _ = SIGDescribe("Aggregator", func() {
 	f := framework.NewDefaultFramework("aggregator")
 	framework.AddCleanupAction(func() {
@@ -58,6 +61,7 @@ var _ = SIGDescribe("Aggregator", func() {
 
 	It("Should be able to support the 1.7 Sample API Server using the current Aggregator", func() {
 		// Make sure the relevant provider supports Agggregator
+		framework.SkipUnlessServerVersionGTE(serverAggregatorVersion, f.ClientSet.Discovery())
 		framework.SkipUnlessProviderIs("gce", "gke")
 
 		// Testing a 1.7 version of the sample-apiserver
@@ -161,12 +165,10 @@ func TestSampleAPIServer(f *framework.Framework, image, namespaceName string) {
 	ns := f.Namespace.Name
 	if framework.ProviderIs("gke") {
 		// kubectl create clusterrolebinding user-cluster-admin-binding --clusterrole=cluster-admin --user=user@domain.com
-		framework.BindClusterRole(client.RbacV1beta1(), "cluster-admin", ns,
-			rbacv1beta1.Subject{Kind: rbacv1beta1.ServiceAccountKind, Namespace: ns, Name: "default"})
-		err := framework.WaitForAuthorizationUpdate(client.AuthorizationV1beta1(),
-			serviceaccount.MakeUsername(ns, "default"),
-			"", "get", schema.GroupResource{Group: "storage.k8s.io", Resource: "storageclasses"}, true)
-		framework.ExpectNoError(err, "Failed to update authorization: %v", err)
+		authenticated := rbacv1beta1.Subject{Kind: rbacv1beta1.GroupKind, Name: user.AllAuthenticated}
+		framework.BindClusterRole(client.RbacV1beta1(), "cluster-admin", ns, authenticated)
+		// TODO: cheftako - Get this working with whoami/ClientSubject & WaitForAuthorizationUpdate
+		time.Sleep(10 * time.Second)
 	}
 
 	// kubectl create -f namespace.yaml
