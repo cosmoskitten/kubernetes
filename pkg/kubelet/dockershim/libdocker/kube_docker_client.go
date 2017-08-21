@@ -122,6 +122,19 @@ func (d *kubeDockerClient) InspectContainer(id string) (*dockertypes.ContainerJS
 	return &containerJSON, nil
 }
 
+func (d *kubeDockerClient) InspectContainerWithSize(id string) (*dockertypes.ContainerJSON, error) {
+	ctx, cancel := d.getTimeoutContext()
+	defer cancel()
+	containerJSON, _, err := d.client.ContainerInspectWithRaw(ctx, id, true)
+	if ctxErr := contextError(ctx); ctxErr != nil {
+		return nil, ctxErr
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &containerJSON, nil
+}
+
 func (d *kubeDockerClient) CreateContainer(opts dockertypes.ContainerCreateConfig) (*dockercontainer.ContainerCreateCreatedBody, error) {
 	ctx, cancel := d.getTimeoutContext()
 	defer cancel()
@@ -519,6 +532,28 @@ func (d *kubeDockerClient) ResizeContainerTTY(id string, height, width uint) err
 		Height: height,
 		Width:  width,
 	})
+}
+
+func (d *kubeDockerClient) GetContainerStats(id string) (*dockertypes.StatsJSON, error) {
+	ctx, cancel := d.getCancelableContext()
+	defer cancel()
+
+	response, err := d.client.ContainerStats(ctx, id, false)
+
+	if err != nil {
+		return nil, err
+	}
+
+	dec := json.NewDecoder(response.Body)
+	var stats dockertypes.StatsJSON
+	err = dec.Decode(&stats)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer response.Body.Close()
+	return &stats, nil
 }
 
 // redirectResponseToOutputStream redirect the response stream to stdout and stderr. When tty is true, all stream will

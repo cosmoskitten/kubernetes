@@ -407,9 +407,17 @@ func (r *FakeRuntimeService) UpdateRuntimeConfig(runtimeCOnfig *runtimeapi.Runti
 }
 
 func (r *FakeRuntimeService) ContainerStats(req *runtimeapi.ContainerStatsRequest) (*runtimeapi.ContainerStatsResponse, error) {
-	return nil, fmt.Errorf("Not implemented")
+	r.Lock()
+	defer r.Unlock()
+
+	r.Called = append(r.Called, "ContainerStats")
+	return &runtimeapi.ContainerStatsResponse{}, nil
 }
 
 func (r *FakeRuntimeService) ListContainerStats(req *runtimeapi.ListContainerStatsRequest) (*runtimeapi.ListContainerStatsResponse, error) {
-	return nil, fmt.Errorf("Not implemented")
+	r.Lock()
+	defer r.Unlock()
+
+	r.Called = append(r.Called, "ListContainerStats")
+	return &runtimeapi.ListContainerStatsResponse{}, nil
 }
