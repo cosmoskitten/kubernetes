@@ -444,10 +444,29 @@ func (r *RemoteRuntimeService) Status() (*runtimeapi.RuntimeStatus, error) {
 	return resp.Status, nil
 }
 
+// ContainerStats requests the stats for a given container and returns them.
 func (r *RemoteRuntimeService) ContainerStats(req *runtimeapi.ContainerStatsRequest) (*runtimeapi.ContainerStatsResponse, error) {
-	return nil, fmt.Errorf("Not implemented")
+	ctx, cancel := getContextWithTimeout(r.timeout)
+	defer cancel()
+
+	resp, err := r.runtimeClient.ContainerStats(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
 }
 
+// ListContainerStats requests the stats for all containers based on the filter in req and returns them.
 func (r *RemoteRuntimeService) ListContainerStats(req *runtimeapi.ListContainerStatsRequest) (*runtimeapi.ListContainerStatsResponse, error) {
-	return nil, fmt.Errorf("Not implemented")
+	ctx, cancel := getContextWithTimeout(r.timeout)
+	defer cancel()
+
+	resp, err := r.runtimeClient.ListContainerStats(ctx, req)
+	if err != nil {
+		glog.Errorf("ListContainersStats with filter %q from runtime service failed: %v", req.Filter, err)
+		return nil, err
+	}
+
+	return resp, nil
 }

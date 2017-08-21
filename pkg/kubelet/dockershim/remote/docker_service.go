@@ -230,9 +230,9 @@ func (d *dockerService) ImageFsInfo(ctx context.Context, r *runtimeapi.ImageFsIn
 }
 
 func (d *dockerService) ContainerStats(ctx context.Context, r *runtimeapi.ContainerStatsRequest) (*runtimeapi.ContainerStatsResponse, error) {
-	return nil, fmt.Errorf("not implemented")
+	return d.runtimeService.ContainerStats(r)
 }
 
 func (d *dockerService) ListContainerStats(ctx context.Context, r *runtimeapi.ListContainerStatsRequest) (*runtimeapi.ListContainerStatsResponse, error) {
-	return nil, fmt.Errorf("not implemented")
+	return d.runtimeService.ListContainerStats(r)
 }
