@@ -245,17 +245,17 @@ func (kl *Kubelet) initialNode() (*v1.Node, error) {
 			node.Annotations = make(map[string]string)
 		}
 
-		glog.Infof("Setting node annotation to enable volume controller attach/detach")
+		glog.V(3).Infof("Setting node annotation to enable volume controller attach/detach")
 		node.Annotations[volumehelper.ControllerManagedAttachAnnotation] = "true"
 	} else {
-		glog.Infof("Controller attach/detach is disabled for this node; Kubelet will attach and detach volumes")
+		glog.V(3).Infof("Controller attach/detach is disabled for this node; Kubelet will attach and detach volumes")
 	}
 
 	if kl.kubeletConfiguration.KeepTerminatedPodVolumes {
 		if node.Annotations == nil {
 			node.Annotations = make(map[string]string)
 		}
-		glog.Infof("Setting node annotation to keep pod volumes of terminated pods attached to the node")
+		glog.V(3).Infof("Setting node annotation to keep pod volumes of terminated pods attached to the node")
 		node.Annotations[volumehelper.KeepTerminatedPodVolumesAnnotation] = "true"
 	}
 
@@ -301,7 +301,7 @@ func (kl *Kubelet) initialNode() (*v1.Node, error) {
 			return nil, err
 		}
 		if instanceType != "" {
-			glog.Infof("Adding node label from cloud provider: %s=%s", kubeletapis.LabelInstanceType, instanceType)
+			glog.V(3).Infof("Adding node label from cloud provider: %s=%s", kubeletapis.LabelInstanceType, instanceType)
 			node.ObjectMeta.Labels[kubeletapis.LabelInstanceType] = instanceType
 		}
 		// If the cloud has zone information, label the node with the zone information
@@ -312,11 +312,11 @@ func (kl *Kubelet) initialNode() (*v1.Node, error) {
 				return nil, fmt.Errorf("failed to get zone from cloud provider: %v", err)
 			}
 			if zone.FailureDomain != "" {
-				glog.Infof("Adding node label from cloud provider: %s=%s", kubeletapis.LabelZoneFailureDomain, zone.FailureDomain)
+				glog.V(3).Infof("Adding node label from cloud provider: %s=%s", kubeletapis.LabelZoneFailureDomain, zone.FailureDomain)
 				node.ObjectMeta.Labels[kubeletapis.LabelZoneFailureDomain] = zone.FailureDomain
 			}
 			if zone.Region != "" {
-				glog.Infof("Adding node label from cloud provider: %s=%s", kubeletapis.LabelZoneRegion, zone.Region)
+				glog.V(3).Infof("Adding node label from cloud provider: %s=%s", kubeletapis.LabelZoneRegion, zone.Region)
 				node.ObjectMeta.Labels[kubeletapis.LabelZoneRegion] = zone.Region
 			}
 		}
