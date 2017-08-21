@@ -18,13 +18,14 @@ package apis
 
 const (
 	LabelHostname          = "kubernetes.io/hostname"
-	LabelZoneFailureDomain = "failure-domain.beta.kubernetes.io/zone"
-	LabelZoneRegion        = "failure-domain.beta.kubernetes.io/region"
+	LabelZoneFailureDomain = "failure-domain.kubernetes.io/zone"
+	LabelZoneRegion        = "failure-domain.kubernetes.io/region"
 
-	LabelInstanceType = "beta.kubernetes.io/instance-type"
+	LabelInstanceType = "kubernetes.io/instance-type"
 
-	LabelOS   = "beta.kubernetes.io/os"
-	LabelArch = "beta.kubernetes.io/arch"
+	LabelOS            = "kubernetes.io/os"
+	LabelArch          = "kubernetes.io/arch"
+	LabelKernelVersion = "kubernetes.io/kernel-version"
 )
 
 // When the --failure-domains scheduler flag is not specified,
