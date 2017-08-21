@@ -67,10 +67,42 @@ func Funcs(codecs runtimeserializer.CodecFactory) []interface{} {
 				obj.Default = `{"some": {"json": "test"}, "string": 42}` // some valid json
 			}
 			if c.RandBool() {
-				obj.Enum = []interface{}{c.Uint64(), c.RandString(), c.RandBool()}
+				obj.Enum = []interface{}{c.Float64(), c.RandString(), c.RandBool()}
 			}
 			if c.RandBool() {
 				obj.Example = "foobarbaz"
+			}
+		},
+		func(obj *apiextensions.JSONSchemaPropsOrBool, c fuzz.Continue) {
+			if c.RandBool() {
+				c.Fuzz(obj.Schema)
+			} else {
+				obj.Allows = c.RandBool()
+			}
+		},
+		func(obj *apiextensions.JSONSchemaPropsOrArray, c fuzz.Continue) {
+			// disallow both Schema and JSONSchemas to be nil.
+			c.Fuzz(obj.Schema)
+			if obj.Schema == nil {
+				c.Fuzz(&obj.JSONSchemas)
+				if len(obj.JSONSchemas) == 0 {
+					obj.JSONSchemas = []apiextensions.JSONSchemaProps{
+						{
+							Type: c.RandString(),
+							Enum: []interface{}{c.Float64(), c.RandString(), c.RandBool()},
+							AdditionalProperties: &apiextensions.JSONSchemaPropsOrBool{
+								Allows: true,
+							},
+						},
+					}
+				}
+			}
+		},
+		func(obj *apiextensions.JSONSchemaPropsOrStringArray, c fuzz.Continue) {
+			if c.RandBool() {
+				c.Fuzz(obj.Schema)
+			} else {
+				c.Fuzz(&obj.Property)
 			}
 		},
 	}

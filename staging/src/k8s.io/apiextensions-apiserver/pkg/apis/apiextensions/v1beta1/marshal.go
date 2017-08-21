@@ -16,7 +16,11 @@ limitations under the License.
 
 package v1beta1
 
-import "encoding/json"
+import (
+	"errors"
+
+	"k8s.io/apimachinery/pkg/util/json"
+)
 
 var jsTrue = []byte("true")
 var jsFalse = []byte("false")
@@ -36,15 +40,20 @@ func (s JSONSchemaPropsOrBool) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON converts this bool or schema object from a JSON structure
 func (s *JSONSchemaPropsOrBool) UnmarshalJSON(data []byte) error {
 	var nw JSONSchemaPropsOrBool
-	if len(data) >= 4 {
-		if data[0] == '{' {
-			var sch JSONSchemaProps
-			if err := json.Unmarshal(data, &sch); err != nil {
-				return err
-			}
-			nw.Schema = &sch
+	switch {
+	case len(data) == 0:
+	case data[0] == '{':
+		var sch JSONSchemaProps
+		if err := json.Unmarshal(data, &sch); err != nil {
+			return err
 		}
-		nw.Allows = !(data[0] == 'f' && data[1] == 'a' && data[2] == 'l' && data[3] == 's' && data[4] == 'e')
+		nw.Schema = &sch
+	case len(data) == 4 && string(data) == "true":
+		nw.Allows = true
+	case len(data) == 5 && string(data) == "false":
+		nw.Allows = false
+	default:
+		return errors.New("boolean or JSON schema expected")
 	}
 	*s = nw
 	return nil
@@ -58,7 +67,7 @@ func (s JSONSchemaPropsOrStringArray) MarshalJSON() ([]byte, error) {
 	if s.Schema != nil {
 		return json.Marshal(s.Schema)
 	}
-	return nil, nil
+	return []byte("null"), nil
 }
 
 // UnmarshalJSON converts this schema object or array from a JSON structure

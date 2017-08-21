@@ -104,10 +104,6 @@ func newNoxuValidationCRD(scope apiextensionsv1beta1.ResourceScope) *apiextensio
 					Required: []string{"alpha", "beta"},
 					AdditionalProperties: &apiextensionsv1beta1.JSONSchemaPropsOrBool{
 						Allows: true,
-						Schema: &apiextensionsv1beta1.JSONSchemaProps{
-							Type:   "integer",
-							Format: "int64",
-						},
 					},
 					Properties: map[string]apiextensionsv1beta1.JSONSchemaProps{
 						"alpha": {
