@@ -431,6 +431,11 @@ var _ = SIGDescribe("Kubectl client", func() {
 		})
 
 		It("should support exec through kubectl proxy", func() {
+			// TODO(kubernetes/kubernetes#50466): This test
+			// fails in GKE because of the Transport layer
+			// used.
+			framework.SkipIfProviderIs("gke")
+
 			// Fail if the variable isn't set
 			if framework.TestContext.Host == "" {
 				framework.Failf("--host variable must be set to the full URI to the api server on e2e run.")
