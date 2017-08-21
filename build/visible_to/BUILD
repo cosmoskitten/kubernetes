@@ -240,6 +240,7 @@ package_group(
     packages = [
         "//pkg/kubectl/cmd",
         "//pkg/kubectl/cmd/auth",
+        "//pkg/kubectl/cmd/rollout",
         "//pkg/kubectl/cmd/set",
     ],
 )
