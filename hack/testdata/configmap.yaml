@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysecret
+type: Opaque
+data:
+  password: dmFsdWUtMg0K
+  username: dmFsdWUtMQ0K
+admindeMacBook-Pro-2:kubectl admin$ cat ls
+apiVersion: v1
+data:
+  key-1: value-1
+  key-2: value-2
+kind: ConfigMap
+metadata:
+  name: test-set-env-config
