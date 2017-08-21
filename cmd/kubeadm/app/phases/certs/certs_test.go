@@ -19,14 +19,16 @@ package certs
 import (
 	"crypto/rsa"
 	"crypto/x509"
+	"io/ioutil"
 	"net"
 	"os"
 	"testing"
 
+	"path/filepath"
+
 	kubeadmapi "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm"
 	kubeadmconstants "k8s.io/kubernetes/cmd/kubeadm/app/constants"
 	"k8s.io/kubernetes/cmd/kubeadm/app/phases/certs/pkiutil"
-
 	testutil "k8s.io/kubernetes/cmd/kubeadm/test"
 	certstestutil "k8s.io/kubernetes/cmd/kubeadm/test/certs"
 )
@@ -379,6 +381,188 @@ func TestNewFrontProxyClientCertAndKey(t *testing.T) {
 
 	certstestutil.AssertCertificateIsSignedByCa(t, frontProxyClientCert, frontProxyCACert)
 	certstestutil.AssertCertificateHasClientAuthUsage(t, frontProxyClientCert)
+}
+
+func TestUsingExternalCA(t *testing.T) {
+	dir, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatalf("Couldn't create tempdir")
+	}
+	defer os.RemoveAll(dir)
+
+	cfg := &kubeadmapi.MasterConfiguration{
+		API:             kubeadmapi.API{AdvertiseAddress: "1.2.3.4"},
+		Networking:      kubeadmapi.Networking{ServiceSubnet: "10.96.0.0/12", DNSDomain: "cluster.local"},
+		NodeName:        "valid-hostname",
+		CertificatesDir: dir,
+	}
+
+	caCert, caKey, err := NewCACertAndKey()
+	if err != nil {
+		t.Fatalf("failed creation of CA cert and key: %v", err)
+	}
+	if err := pkiutil.WriteCertAndKey(dir, "ca", caCert, caKey); err != nil {
+		t.Fatalf("failed creation of CA cert and key: %v", err)
+	}
+
+	apiCert, apiKey, err := NewAPIServerCertAndKey(cfg, caCert, caKey)
+	if err != nil {
+		t.Fatalf("failed creation of API server cert and key: %v", err)
+	}
+	if err := pkiutil.WriteCertAndKey(dir, "apiserver", apiCert, apiKey); err != nil {
+		t.Fatalf("failed creation of API server cert and key: %v", err)
+	}
+
+	apiKubeletCert, apiKubeletKey, err := NewAPIServerKubeletClientCertAndKey(caCert, caKey)
+	if err != nil {
+		t.Fatalf("failed creation of API server kubelet client cert and key: %v", err)
+	}
+	if err := pkiutil.WriteCertAndKey(dir, "apiserver-kubelet-client", apiKubeletCert, apiKubeletKey); err != nil {
+		t.Fatalf("failed creation of API server cert and key: %v", err)
+	}
+
+	saKey, err := NewServiceAccountSigningKey()
+	if err != nil {
+		t.Fatalf("failed creation of service account signing key: %v", err)
+	}
+	if err := pkiutil.WriteKey(dir, "sa", saKey); err != nil {
+		t.Fatalf("failed creation of service account signing key: %v", err)
+	}
+	saPub := saKey.Public()
+	if p, ok := saPub.(*rsa.PublicKey); ok {
+		if err = pkiutil.WritePublicKey(dir, "sa", p); err != nil {
+			t.Fatalf("failed creation of service account public key: %v", err)
+		}
+	} else {
+		t.Fatalf("failed creation of service account public key: not rsa")
+	}
+
+	fpCACert, fpCAKey, err := NewFrontProxyCACertAndKey()
+	if err != nil {
+		t.Fatalf("failed creation of front proxy CA cert and key: %v", err)
+	}
+	if err := pkiutil.WriteCertAndKey(dir, "front-proxy-ca", fpCACert, fpCAKey); err != nil {
+		t.Fatalf("failed creation of front proxy CA cert and key: %v", err)
+	}
+
+	fpClientCert, fpClientKey, err := NewFrontProxyClientCertAndKey(fpCACert, fpCAKey)
+	if err != nil {
+		t.Fatalf("failed creation of front proxy client cert and key: %v", err)
+	}
+	if err := pkiutil.WriteCertAndKey(dir, "front-proxy-client", fpClientCert, fpClientKey); err != nil {
+		t.Fatalf("failed creation of front proxy client cert and key: %v", err)
+	}
+
+	if res, _ := UsingExternalCA(cfg); res {
+		t.Errorf("external CA mode was triggered when ca.key was present")
+	}
+
+	if err := os.Remove(filepath.Join(dir, "ca.key")); err != nil {
+		t.Fatalf("failed removing ca.key: %v", err)
+	}
+
+	if res, _ := UsingExternalCA(cfg); !res {
+		t.Errorf("external CA mode was not triggered when all certs except ca.key were present")
+	}
+}
+
+func TestValidateCACert(t *testing.T) {
+	dir, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatalf("Couldn't create tempdir")
+	}
+	defer os.RemoveAll(dir)
+
+	if err := ValidateCACert(dir, "ca", "ca"); err == nil {
+		t.Errorf("CA cert not present but ValidateCACert() returned nil")
+	}
+	caCert, caKey, err := NewCACertAndKey()
+	if err != nil {
+		t.Fatalf("failed creation of CA cert and key: %v", err)
+	}
+	if err := pkiutil.WriteCertAndKey(dir, "ca", caCert, caKey); err != nil {
+		t.Fatalf("failed creation of CA cert and key: %v", err)
+	}
+	if err := ValidateCACert(dir, "ca", "ca"); err != nil {
+		t.Errorf("CA cert present and ValidateCACert() returned error")
+	}
+}
+
+func TestValidateCACertAndKey(t *testing.T) {
+	dir, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatalf("Couldn't create tempdir")
+	}
+	defer os.RemoveAll(dir)
+
+	if err := ValidateCACertAndKey(dir, "ca", "ca"); err == nil {
+		t.Errorf("CA cert and key not present but ValidateCACert() returned nil")
+	}
+	caCert, caKey, err := NewCACertAndKey()
+	if err != nil {
+		t.Fatalf("failed creation of CA cert and key: %v", err)
+	}
+	if err := pkiutil.WriteCertAndKey(dir, "ca", caCert, caKey); err != nil {
+		t.Fatalf("failed creation of CA cert and key: %v", err)
+	}
+	if err := ValidateCACertAndKey(dir, "ca", "ca"); err != nil {
+		t.Errorf("CA cert and key present and ValidateCACert() returned error")
+	}
+}
+
+func TestValidateSignedCert(t *testing.T) {
+	dir, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatalf("Couldn't create tempdir")
+	}
+	defer os.RemoveAll(dir)
+
+	cfg := &kubeadmapi.MasterConfiguration{
+		API:             kubeadmapi.API{AdvertiseAddress: "1.2.3.4"},
+		Networking:      kubeadmapi.Networking{ServiceSubnet: "10.96.0.0/12", DNSDomain: "cluster.local"},
+		NodeName:        "valid-hostname",
+		CertificatesDir: dir,
+	}
+
+	if err := ValidateSignedCert(dir, "ca", "apiserver", "apiserver"); err == nil {
+		t.Errorf("Signed cert is not present but ValidateSignedCert() returned nil")
+	}
+
+	caCert, caKey, err := NewCACertAndKey()
+	if err != nil {
+		t.Fatalf("failed creation of CA cert and key: %v", err)
+	}
+	if err := pkiutil.WriteCertAndKey(dir, "ca", caCert, caKey); err != nil {
+		t.Fatalf("failed creation of CA cert and key: %v", err)
+	}
+
+	apiCert, apiKey, err := NewAPIServerCertAndKey(cfg, caCert, caKey)
+	if err != nil {
+		t.Fatalf("failed creation of API server cert and key: %v", err)
+	}
+	if err := pkiutil.WriteCertAndKey(dir, "apiserver", apiCert, apiKey); err != nil {
+		t.Fatalf("failed creation of API server cert and key: %v", err)
+	}
+
+	if err := ValidateSignedCert(dir, "ca", "apiserver", "apiserver"); err != nil {
+		t.Errorf("Signed cert is present but ValidateSignedCert() returned false")
+	}
+}
+
+func TestValidatePrivatePublicKey(t *testing.T) {
+	dir, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatalf("Couldn't create tempdir")
+	}
+	defer os.RemoveAll(dir)
+
+	ValidatePrivatePublicKey(dir, "foo", "foo")
+}
+
+func assertIsCa(t *testing.T, cert *x509.Certificate) {
+	if !cert.IsCA {
+		t.Error("cert is not a valida CA")
+	}
 }
 
 func TestCreateCertificateFilesMethods(t *testing.T) {

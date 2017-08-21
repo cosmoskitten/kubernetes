@@ -402,101 +402,99 @@ func writeKeyFilesIfNotExist(pkiDir string, baseName string, key *rsa.PrivateKey
 
 // UsingExternalCA determines whether the user is relying on an external CA.  We currently implicitly determine this is the case when the CA Cert
 // is present but the CA Key is not. This allows us to, e.g., skip generating certs or not start the csr signing controller.
-func UsingExternalCA(cfg *kubeadmapi.MasterConfiguration) bool {
+func UsingExternalCA(cfg *kubeadmapi.MasterConfiguration) (bool, error) {
 
-	if !ValidateCACert(cfg.CertificatesDir, kubeadmconstants.CACertAndKeyBaseName, "CA") {
-		return false
+	if err := ValidateCACert(cfg.CertificatesDir, kubeadmconstants.CACertAndKeyBaseName, "CA"); err != nil {
+		return false, err
 	}
 
-	// Check CA Key is not present
 	caKeyPath := filepath.Join(cfg.CertificatesDir, kubeadmconstants.CAKeyName)
 	if _, err := os.Stat(caKeyPath); !os.IsNotExist(err) {
-		return false
+		return false, fmt.Errorf("ca.key exists")
 	}
 
-	if !ValidateSignedCert(cfg.CertificatesDir, kubeadmconstants.CACertAndKeyBaseName, kubeadmconstants.APIServerCertAndKeyBaseName, "API server") {
-		return false
+	if err := ValidateSignedCert(cfg.CertificatesDir, kubeadmconstants.CACertAndKeyBaseName, kubeadmconstants.APIServerCertAndKeyBaseName, "API server"); err != nil {
+		return false, err
 	}
 
-	if !ValidateSignedCert(cfg.CertificatesDir, kubeadmconstants.CACertAndKeyBaseName, kubeadmconstants.APIServerKubeletClientCertAndKeyBaseName, "API server kubelet client") {
-		return false
+	if err := ValidateSignedCert(cfg.CertificatesDir, kubeadmconstants.CACertAndKeyBaseName, kubeadmconstants.APIServerKubeletClientCertAndKeyBaseName, "API server kubelet client"); err != nil {
+		return false, err
 	}
 
-	if !ValidatePrivateKey(cfg.CertificatesDir, kubeadmconstants.ServiceAccountKeyBaseName, "service account") {
-		return false
+	if err := ValidatePrivatePublicKey(cfg.CertificatesDir, kubeadmconstants.ServiceAccountKeyBaseName, "service account"); err != nil {
+		return false, err
 	}
 
-	if !ValidateCACertAndKey(cfg.CertificatesDir, kubeadmconstants.FrontProxyCACertAndKeyBaseName, "front-proxy CA") {
-		return false
+	if err := ValidateCACertAndKey(cfg.CertificatesDir, kubeadmconstants.FrontProxyCACertAndKeyBaseName, "front-proxy CA"); err != nil {
+		return false, err
 	}
 
-	if !ValidateSignedCert(cfg.CertificatesDir, kubeadmconstants.FrontProxyCACertAndKeyBaseName, kubeadmconstants.FrontProxyClientCertAndKeyBaseName, "front-proxy client") {
-		return false
+	if err := ValidateSignedCert(cfg.CertificatesDir, kubeadmconstants.FrontProxyCACertAndKeyBaseName, kubeadmconstants.FrontProxyClientCertAndKeyBaseName, "front-proxy client"); err != nil {
+		return false, err
 	}
 
-	return true
+	return true, nil
 }
 
-func ValidateCACert(pkiDir string, baseName string, UXName string) bool {
+// ValidateCACert tries to load a x509 certificate from pkiDir and validates that it is a CA
+func ValidateCACert(pkiDir string, baseName string, uxName string) error {
 	// Check CA Cert
 	caCert, err := pkiutil.TryLoadCertFromDisk(pkiDir, baseName)
 	if err != nil {
-		fmt.Printf("failure loading certificate for %s: %v", UXName, err)
-		return false
+		return fmt.Errorf("failure loading certificate for %s: %v\n", uxName, err)
 	}
 
 	// Check if cert is a CA
 	if !caCert.IsCA {
-		fmt.Printf("certificate %s is not a CA", UXName)
-		return false
+		return fmt.Errorf("certificate %s is not a CA\n", uxName)
 	}
-	return true
+	return nil
 }
 
-func ValidateCACertAndKey(pkiDir string, baseName string, UXName string) bool {
-	if !ValidateCACert(pkiDir, baseName, UXName) {
-		return false
+// ValidateCACertAndKey tries to load a x509 certificate and private key from pkiDir,
+// and validates that the cert is a CA
+func ValidateCACertAndKey(pkiDir string, baseName string, uxName string) error {
+	if err := ValidateCACert(pkiDir, baseName, uxName); err != nil {
+		return err
 	}
 
 	_, err := pkiutil.TryLoadKeyFromDisk(pkiDir, baseName)
 	if err != nil {
-		fmt.Printf("failure loading key for %s: %v", UXName, err)
-		return false
+		return fmt.Errorf("failure loading key for %s: %v\n", uxName, err)
 	}
-	return true
+	return nil
 }
 
-func ValidateSignedCert(pkiDir string, CABaseName string, baseName string, UXName string) bool {
+// ValidateSignedCert tries to load a x509 certificate and private key from pkiDir and validates
+// that the cert is signed by a given CA
+func ValidateSignedCert(pkiDir string, caBaseName string, baseName string, uxName string) error {
 	// Try to load CA
-	caCert, err := pkiutil.TryLoadCertFromDisk(pkiDir, CABaseName)
+	caCert, err := pkiutil.TryLoadCertFromDisk(pkiDir, caBaseName)
 	if err != nil {
-		fmt.Printf("failure loading certificate authorithy for %s: %v", UXName, err)
-		return false
+		return fmt.Errorf("failure loading certificate authorithy for %s: %v\n", uxName, err)
 	}
 
 	// Try to load key and signed certificate
 	signedCert, _, err := pkiutil.TryLoadCertAndKeyFromDisk(pkiDir, baseName)
 	if err != nil {
-		fmt.Printf("failure loading certificate for %s: %v", UXName, err)
-		return false
+		return fmt.Errorf("failure loading certificate for %s: %v\n", uxName, err)
 	}
 
 	// Check if the cert is signed by the CA
 	if err := signedCert.CheckSignatureFrom(caCert); err != nil {
-		fmt.Printf("certificate %s is not signed by corresponding CA", UXName)
-		return false
+		return fmt.Errorf("certificate %s is not signed by corresponding CA\n", uxName)
 	}
-	return true
+	return nil
 }
 
-func ValidatePrivateKey(pkiDir string, baseName string, UXName string) bool {
+// ValidatePrivatePublicKey tries to load a private key from pkiDir
+func ValidatePrivatePublicKey(pkiDir string, baseName string, uxName string) error {
 	// Try to load key
-	_, err := pkiutil.TryLoadKeyFromDisk(pkiDir, baseName)
+	_, _, err := pkiutil.TryLoadPrivatePublicKeyFromDisk(pkiDir, baseName)
 	if err != nil {
-		fmt.Printf("failure loading key for %s: %v", UXName, err)
-		return false
+		return fmt.Errorf("failure loading key for %s: %v\n", uxName, err)
 	}
-	return true
+	return nil
 }
 
 // getAltNames builds an AltNames object for to be used when generating apiserver certificate

@@ -212,15 +212,16 @@ func getControllerManagerCommand(cfg *kubeadmapi.MasterConfiguration, k8sVersion
 		"root-ca-file":                     filepath.Join(cfg.CertificatesDir, kubeadmconstants.CACertName),
 		"service-account-private-key-file": filepath.Join(cfg.CertificatesDir, kubeadmconstants.ServiceAccountPrivateKeyName),
 		"cluster-signing-cert-file":        filepath.Join(cfg.CertificatesDir, kubeadmconstants.CACertName),
+		"cluster-signing-key-file":         filepath.Join(cfg.CertificatesDir, kubeadmconstants.CAKeyName),
 		"use-service-account-credentials":  "true",
 		"controllers":                      "*,bootstrapsigner,tokencleaner",
 	}
 
-	// If using external CA, pass empty string to controller manager instead of ca.key path, so that the csrsigning controller fails to start
-	if certphase.UsingExternalCA(cfg) {
+	// If using external CA, pass empty string to controller manager instead of ca.key/ca.crt path,
+	// so that the csrsigning controller fails to start
+	if res, _ := certphase.UsingExternalCA(cfg); res {
 		defaultArguments["cluster-signing-key-file"] = ""
-	} else {
-		defaultArguments["cluster-signing-key-file"] = filepath.Join(cfg.CertificatesDir, kubeadmconstants.CAKeyName)
+		defaultArguments["cluster-signing-cert-file"] = ""
 	}
 
 	command := []string{"kube-controller-manager"}

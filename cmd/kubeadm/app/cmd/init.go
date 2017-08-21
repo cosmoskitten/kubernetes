@@ -277,7 +277,9 @@ func (i *Init) Run(out io.Writer) error {
 
 	adminKubeConfigPath := filepath.Join(kubeConfigDir, kubeadmconstants.AdminKubeConfigFileName)
 
-	if !certsphase.UsingExternalCA(i.cfg) {
+	if res, err := certsphase.UsingExternalCA(i.cfg); !res {
+		fmt.Println("[externalca] Not using external CA mode: %v", err)
+
 		// PHASE 1: Generate certificates
 		if err := certsphase.CreatePKIAssets(i.cfg); err != nil {
 			return err
@@ -289,7 +291,7 @@ func (i *Init) Run(out io.Writer) error {
 		}
 
 	} else {
-		fmt.Printf("[externalca] No ca.key detected, assuming external CA.  Skipping certs and kubeconfig.\n")
+		fmt.Println("[externalca] No ca.key detected, but all other certificates are available, so using external CA mode.  Will not generate certs or kubeconfig.")
 	}
 
 	// Temporarily set cfg.CertificatesDir to the "real value" when writing controlplane manifests
