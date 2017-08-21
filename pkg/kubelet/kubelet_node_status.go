@@ -198,9 +198,10 @@ func (kl *Kubelet) initialNode() (*v1.Node, error) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: string(kl.nodeName),
 			Labels: map[string]string{
-				kubeletapis.LabelHostname: kl.hostname,
-				kubeletapis.LabelOS:       goruntime.GOOS,
-				kubeletapis.LabelArch:     goruntime.GOARCH,
+				kubeletapis.LabelHostname:      kl.hostname,
+				kubeletapis.LabelOS:            goruntime.GOOS,
+				kubeletapis.LabelArch:          goruntime.GOARCH,
+				kubeletapis.LabelKernelVersion: kl.getKernelVersion(),
 			},
 		},
 		Spec: v1.NodeSpec{
@@ -333,6 +334,16 @@ func (kl *Kubelet) initialNode() (*v1.Node, error) {
 	kl.setNodeStatus(node)
 
 	return node, nil
+}
+
+// get kernel version for the node label.
+func (kl *Kubelet) getKernelVersion() string {
+	verinfo, err := kl.cadvisor.VersionInfo()
+	if err != nil {
+		return ""
+	}
+
+	return verinfo.KernelVersion
 }
 
 // syncNodeStatus should be called periodically from a goroutine.
