@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path"
 	"reflect"
 	"strings"
@@ -29,6 +30,7 @@ import (
 	"time"
 
 	"k8s.io/api/core/v1"
+	rbacv1beta1 "k8s.io/api/rbac/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -69,6 +71,7 @@ type Framework struct {
 	// ClientSet uses internal objects, you should use ClientSet where possible.
 	ClientSet                        clientset.Interface
 	KubemarkExternalClusterClientSet clientset.Interface
+	ClientSubject                    *rbacv1beta1.Subject
 
 	InternalClientset *internalclientset.Clientset
 	StagingClient     *staging.Clientset
@@ -176,6 +179,25 @@ func getClientRepoConfig(src *restclient.Config) (dst *clientreporestclient.Conf
 	return dst
 }
 
+func (f *Framework) whoAmI() (*rbacv1beta1.Subject, error) {
+	if ProviderIs("gke") {
+		out, err := exec.Command("gcloud", "auth", "list", "--filter=status:ACTIVE", "--format=value(account)").CombinedOutput()
+		Logf("WRF:whoAmi error %v", err)
+		Logf("WRF:whoAmi %s", string(out))
+		if err != nil {
+			return nil, err
+		}
+		name := string(out)
+		if strings.HasSuffix(name, ".iam.gserviceaccount.com") {
+			sa := strings.Split(name, "@")[0]
+			return &rbacv1beta1.Subject{Kind: rbacv1beta1.ServiceAccountKind, Name: sa}, nil
+		}
+		return &rbacv1beta1.Subject{Kind: rbacv1beta1.UserKind, Name: name}, nil
+	} else {
+		return &rbacv1beta1.Subject{Kind: rbacv1beta1.ServiceAccountKind, Name: "default"}, nil
+	}
+}
+
 // BeforeEach gets a client and makes a namespace.
 func (f *Framework) BeforeEach() {
 	// The fact that we need this feels like a bug in ginkgo.
@@ -281,6 +303,10 @@ func (f *Framework) BeforeEach() {
 		}
 
 	}
+
+	var err error
+	f.ClientSubject, err = f.whoAmI()
+	Expect(err).NotTo(HaveOccurred())
 }
 
 // AfterEach deletes the namespace, after reading its events.
