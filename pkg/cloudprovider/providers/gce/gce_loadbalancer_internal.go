@@ -88,10 +88,26 @@ func (gce *GCECloud) ensureInternalLoadBalancer(clusterName, clusterID string, s
 		}
 	}
 
+	// Determine IP which will be used for the expected forwading rule
+	targetIP := determineTargetIP(svc, existingFwdRule)
+
+	var addrMgr *addressManager
+	if targetIP != "" {
+		addrMgr = newAddressManager(gce, nm.String(), gce.Region(), loadBalancerName, targetIP, schemeInternal)
+		if err = addrMgr.HoldAddress(); err != nil {
+			return nil, err
+		}
+		defer func() {
+			if err := addrMgr.ReleaseAddress(); err != nil {
+				glog.Errorf("ensureInternalLoadBalancer: failed to release address reservation, possibly causing an orphan: %v", err)
+			}
+		}()
+	}
+
 	expectedFwdRule := &compute.ForwardingRule{
 		Name:                loadBalancerName,
 		Description:         fmt.Sprintf(`{"kubernetes.io/service-name":"%s"}`, nm.String()),
-		IPAddress:           svc.Spec.LoadBalancerIP,
+		IPAddress:           targetIP,
 		BackendService:      backendServiceLink,
 		Ports:               ports,
 		IPProtocol:          string(protocol),
@@ -639,4 +655,16 @@ func getNameFromLink(link string) string {
 
 	fields := strings.Split(link, "/")
 	return fields[len(fields)-1]
+}
+
+func determineTargetIP(svc *v1.Service, fwdRule *compute.ForwardingRule) string {
+	if svc.Spec.LoadBalancerIP != "" {
+		return svc.Spec.LoadBalancerIP
+	}
+
+	if fwdRule != nil {
+		return fwdRule.IPAddress
+	}
+
+	return ""
 }

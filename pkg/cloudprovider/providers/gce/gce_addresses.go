@@ -71,6 +71,16 @@ func (gce *GCECloud) ReserveRegionAddress(addr *compute.Address, region string) 
 	return gce.waitForRegionOp(op, region, mc)
 }
 
+// // ReserveRegionAddress creates a region address
+// func (gce *GCECloud) ReserveBetaRegionAddress(addr *computebeta.Address, region string) error {
+// 	mc := newAddressMetricContext("reserve", region)
+// 	op, err := gce.serviceBeta.Addresses.Insert(gce.projectID, region, addr).Do()
+// 	if err != nil {
+// 		return mc.Observe(err)
+// 	}
+// 	return gce.waitForRegionOp(op, region, mc)
+// }
+
 // DeleteRegionAddress deletes a region address by name.
 func (gce *GCECloud) DeleteRegionAddress(name, region string) error {
 	mc := newAddressMetricContext("delete", region)

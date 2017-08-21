@@ -20,9 +20,10 @@ import compute "google.golang.org/api/compute/v1"
 
 // CloudAddressService is an interface for managing addresses
 type CloudAddressService interface {
-	ReserveRegionAddress(*compute.Address, string) error
-	GetRegionAddress(string, string) (*compute.Address, error)
+	ReserveRegionAddress(address *compute.Address, region string) error
+	GetRegionAddress(name string, region string) (*compute.Address, error)
 	GetRegionAddressByIP(region, ipAddress string) (*compute.Address, error)
-	// TODO: Mock `DeleteRegionAddress(name, region string) endpoint
+	DeleteRegionAddress(name, region string) error
+
 	// TODO: Mock Global endpoints
 }

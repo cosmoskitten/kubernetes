@@ -103,3 +103,25 @@ func (cas *FakeCloudAddressService) GetRegionAddressByIP(region, ipAddress strin
 	}
 	return nil, makeGoogleAPINotFoundError("")
 }
+
+func (cas *FakeCloudAddressService) DeleteRegionAddress(name, region string) error {
+	if _, exists := cas.addrsByRegionAndName[region]; !exists {
+		return makeGoogleAPINotFoundError("")
+	}
+
+	if _, exists := cas.addrsByRegionAndName[region][name]; !exists {
+		return makeGoogleAPINotFoundError("")
+	}
+
+	delete(cas.addrsByRegionAndName[region], name)
+	return nil
+}
+
+func (cas *FakeCloudAddressService) Print() {
+	for region, regAddresses := range cas.addrsByRegionAndName {
+		fmt.Printf("%v:\n", region)
+		for name, addr := range regAddresses {
+			fmt.Printf(" %v:  %v\n", name, addr.Address)
+		}
+	}
+}
