@@ -226,6 +226,7 @@ func defaultPriorities() sets.String {
 		factory.RegisterPriorityFunction2("NodeAffinityPriority", priorities.CalculateNodeAffinityPriorityMap, priorities.CalculateNodeAffinityPriorityReduce, 1),
 
 		// TODO: explain what it does.
+		//Taints are some restricts added to Nodes,only pod tolerates it can be schedule onto those Nodes.
 		factory.RegisterPriorityFunction2("TaintTolerationPriority", priorities.ComputeTaintTolerationPriorityMap, priorities.ComputeTaintTolerationPriorityReduce, 1),
 	)
 }
