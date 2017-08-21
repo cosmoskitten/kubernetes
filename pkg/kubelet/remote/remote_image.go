@@ -136,5 +136,14 @@ func (r *RemoteImageService) RemoveImage(image *runtimeapi.ImageSpec) error {
 
 // ImageFsInfo returns information of the filesystem that is used to store images.
 func (r *RemoteImageService) ImageFsInfo(req *runtimeapi.ImageFsInfoRequest) (*runtimeapi.ImageFsInfoResponse, error) {
-	return nil, fmt.Errorf("not implemented")
+	ctx, cancel := getContextWithTimeout(r.timeout)
+	defer cancel()
+
+	response, err := r.imageClient.ImageFsInfo(ctx, &runtimeapi.ImageFsInfoRequest{})
+	if err != nil {
+		glog.Errorf("ImageFSInfo failed: %v", err)
+		return nil, err
+	}
+
+	return response, nil
 }
