@@ -2703,6 +2703,16 @@ func ValidatePodUpdate(newPod, oldPod *api.Pod) field.ErrorList {
 
 	// handle updateable fields by munging those fields prior to deep equal comparison.
 	mungedPod := *newPod
+
+	// allow hostname and subdomain to be updated if they are empty. This allows for migration between the beta
+	// annotations and the GA field
+	if oldPod.Spec.Hostname == "" && oldPod.Spec.Hostname != newPod.Spec.Hostname {
+		mungedPod.Spec.Hostname = oldPod.Spec.Hostname
+	}
+	if oldPod.Spec.Subdomain == "" && oldPod.Spec.Subdomain != newPod.Spec.Subdomain {
+		mungedPod.Spec.Subdomain = oldPod.Spec.Subdomain
+	}
+
 	// munge spec.containers[*].image
 	var newContainers []api.Container
 	for ix, container := range mungedPod.Spec.Containers {
