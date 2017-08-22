@@ -539,7 +539,7 @@ kube::util::go_install_from_commit() {
 
   kube::util::ensure-temp-dir
   mkdir -p "${KUBE_TEMP}/go/src"
-  GOPATH="${KUBE_TEMP}/go" go get -d -u "${pkg}" 2>/dev/null
+  GOPATH="${KUBE_TEMP}/go" go get -d -u "${pkg}"
   (
     cd "${KUBE_TEMP}/go/src/${pkg}"
     git checkout -q "${commit}"
