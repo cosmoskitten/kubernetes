@@ -30,6 +30,7 @@ go_library(
         "gce_loadbalancer_external.go",
         "gce_loadbalancer_internal.go",
         "gce_loadbalancer_naming.go",
+        "gce_networkendpointgroup.go",
         "gce_op.go",
         "gce_routes.go",
         "gce_targetpool.go",
@@ -108,6 +109,9 @@ filegroup(
 
 filegroup(
     name = "all-srcs",
-    srcs = [":package-srcs"],
+    srcs = [
+        ":package-srcs",
+        "//pkg/cloudprovider/providers/gce/main:all-srcs",
+    ],
     tags = ["automanaged"],
 )

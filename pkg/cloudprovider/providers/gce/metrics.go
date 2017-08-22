@@ -17,6 +17,7 @@ limitations under the License.
 package gce
 
 import (
+	"strings"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -67,6 +68,12 @@ func (mc *metricContext) Observe(err error) error {
 }
 
 func newGenericMetricContext(prefix, request, region, zone, version string) *metricContext {
+	if len(strings.TrimSpace(zone)) == 0 {
+		zone = unusedMetricLabel
+	}
+	if len(strings.TrimSpace(region)) == 0 {
+		region = unusedMetricLabel
+	}
 	return &metricContext{
 		start:      time.Now(),
 		attributes: []string{prefix + "_" + request, region, zone, version},
