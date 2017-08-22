@@ -21,10 +21,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/golang/glog"
+
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
-
-	"github.com/golang/glog"
 	"k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
