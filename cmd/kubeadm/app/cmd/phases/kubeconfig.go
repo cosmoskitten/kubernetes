@@ -57,29 +57,39 @@ func getKubeConfigSubCommands(out io.Writer, outDir string) []*cobra.Command {
 		cmdFunc func(outDir string, cfg *kubeadmapi.MasterConfiguration) error
 	}{
 		{
-			use:     "all",
-			short:   "Generate all kubeconfig files necessary to establish the control plane and the admin kubeconfig file.",
-			cmdFunc: kubeconfigphase.CreateInitKubeConfigFiles,
+			use:   "all",
+			short: "Generate all kubeconfig files necessary to establish the control plane and the admin kubeconfig file.",
+			cmdFunc: func(outDir string, cfg *kubeadmapi.MasterConfiguration) error {
+				return kubeconfigphase.CreateInitKubeConfigFiles(outDir, cfg.CertificatesDir, cfg)
+			},
 		},
 		{
-			use:     "admin",
-			short:   "Generate a kubeconfig file for the admin to use and for kubeadm itself.",
-			cmdFunc: kubeconfigphase.CreateAdminKubeConfigFile,
+			use:   "admin",
+			short: "Generate a kubeconfig file for the admin to use and for kubeadm itself.",
+			cmdFunc: func(outDir string, cfg *kubeadmapi.MasterConfiguration) error {
+				return kubeconfigphase.CreateAdminKubeConfigFile(outDir, cfg.CertificatesDir, cfg)
+			},
 		},
 		{
-			use:     "kubelet",
-			short:   "Generate a kubeconfig file for the Kubelet to use. Please note that this should *only* be used for bootstrapping purposes. After your control plane is up, you should request all kubelet credentials from the CSR API.",
-			cmdFunc: kubeconfigphase.CreateKubeletKubeConfigFile,
+			use:   "kubelet",
+			short: "Generate a kubeconfig file for the Kubelet to use. Please note that this should *only* be used for bootstrapping purposes. After your control plane is up, you should request all kubelet credentials from the CSR API.",
+			cmdFunc: func(outDir string, cfg *kubeadmapi.MasterConfiguration) error {
+				return kubeconfigphase.CreateKubeletKubeConfigFile(outDir, cfg.CertificatesDir, cfg)
+			},
 		},
 		{
-			use:     "controller-manager",
-			short:   "Generate a kubeconfig file for the Controller Manager to use.",
-			cmdFunc: kubeconfigphase.CreateControllerManagerKubeConfigFile,
+			use:   "controller-manager",
+			short: "Generate a kubeconfig file for the Controller Manager to use.",
+			cmdFunc: func(outDir string, cfg *kubeadmapi.MasterConfiguration) error {
+				return kubeconfigphase.CreateControllerManagerKubeConfigFile(outDir, cfg.CertificatesDir, cfg)
+			},
 		},
 		{
-			use:     "scheduler",
-			short:   "Generate a kubeconfig file for the Scheduler to use.",
-			cmdFunc: kubeconfigphase.CreateSchedulerKubeConfigFile,
+			use:   "scheduler",
+			short: "Generate a kubeconfig file for the Scheduler to use.",
+			cmdFunc: func(outDir string, cfg *kubeadmapi.MasterConfiguration) error {
+				return kubeconfigphase.CreateSchedulerKubeConfigFile(outDir, cfg.CertificatesDir, cfg)
+			},
 		},
 		{
 			use:   "user",
@@ -91,11 +101,11 @@ func getKubeConfigSubCommands(out io.Writer, outDir string) []*cobra.Command {
 
 				// if the kubeconfig file for an additional user has to use a token, use it
 				if token != "" {
-					return kubeconfigphase.WriteKubeConfigWithToken(out, cfg, clientName, token)
+					return kubeconfigphase.WriteKubeConfigWithToken(out, cfg.CertificatesDir, cfg, clientName, token)
 				}
 
 				// Otherwise, write a kubeconfig file with a generate client cert
-				return kubeconfigphase.WriteKubeConfigWithClientCert(out, cfg, clientName)
+				return kubeconfigphase.WriteKubeConfigWithClientCert(out, cfg.CertificatesDir, cfg, clientName)
 			},
 		},
 	}

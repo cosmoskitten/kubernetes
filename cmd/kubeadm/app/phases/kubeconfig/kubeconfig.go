@@ -59,9 +59,10 @@ type kubeConfigSpec struct {
 // CreateInitKubeConfigFiles will create and write to disk all kubeconfig files necessary in the kubeadm init phase
 // to establish the control plane, including also the admin kubeconfig file.
 // If kubeconfig files already exists, they are used only if evaluated equal; otherwise an error is returned.
-func CreateInitKubeConfigFiles(outDir string, cfg *kubeadmapi.MasterConfiguration) error {
+func CreateInitKubeConfigFiles(outDir, certDir string, cfg *kubeadmapi.MasterConfiguration) error {
 	return createKubeConfigFiles(
 		outDir,
+		certDir,
 		cfg,
 		kubeadmconstants.AdminKubeConfigFileName,
 		kubeadmconstants.KubeletKubeConfigFileName,
@@ -72,34 +73,34 @@ func CreateInitKubeConfigFiles(outDir string, cfg *kubeadmapi.MasterConfiguratio
 
 // CreateAdminKubeConfigFile create a kubeconfig file for the admin to use and for kubeadm itself.
 // If the kubeconfig file already exists, it is used only if evaluated equal; otherwise an error is returned.
-func CreateAdminKubeConfigFile(outDir string, cfg *kubeadmapi.MasterConfiguration) error {
-	return createKubeConfigFiles(outDir, cfg, kubeadmconstants.AdminKubeConfigFileName)
+func CreateAdminKubeConfigFile(outDir string, certDir string, cfg *kubeadmapi.MasterConfiguration) error {
+	return createKubeConfigFiles(outDir, certDir, cfg, kubeadmconstants.AdminKubeConfigFileName)
 }
 
 // CreateKubeletKubeConfigFile create a kubeconfig file for the Kubelet to use.
 // If the kubeconfig file already exists, it is used only if evaluated equal; otherwise an error is returned.
-func CreateKubeletKubeConfigFile(outDir string, cfg *kubeadmapi.MasterConfiguration) error {
-	return createKubeConfigFiles(outDir, cfg, kubeadmconstants.KubeletKubeConfigFileName)
+func CreateKubeletKubeConfigFile(outDir string, certDir string, cfg *kubeadmapi.MasterConfiguration) error {
+	return createKubeConfigFiles(outDir, certDir, cfg, kubeadmconstants.KubeletKubeConfigFileName)
 }
 
 // CreateControllerManagerKubeConfigFile create a kubeconfig file for the ControllerManager to use.
 // If the kubeconfig file already exists, it is used only if evaluated equal; otherwise an error is returned.
-func CreateControllerManagerKubeConfigFile(outDir string, cfg *kubeadmapi.MasterConfiguration) error {
-	return createKubeConfigFiles(outDir, cfg, kubeadmconstants.ControllerManagerKubeConfigFileName)
+func CreateControllerManagerKubeConfigFile(outDir string, certDir string, cfg *kubeadmapi.MasterConfiguration) error {
+	return createKubeConfigFiles(outDir, certDir, cfg, kubeadmconstants.ControllerManagerKubeConfigFileName)
 }
 
 // CreateSchedulerKubeConfigFile create a create a kubeconfig file for the Scheduler to use.
 // If the kubeconfig file already exists, it is used only if evaluated equal; otherwise an error is returned.
-func CreateSchedulerKubeConfigFile(outDir string, cfg *kubeadmapi.MasterConfiguration) error {
-	return createKubeConfigFiles(outDir, cfg, kubeadmconstants.SchedulerKubeConfigFileName)
+func CreateSchedulerKubeConfigFile(outDir string, certDir string, cfg *kubeadmapi.MasterConfiguration) error {
+	return createKubeConfigFiles(outDir, certDir, cfg, kubeadmconstants.SchedulerKubeConfigFileName)
 }
 
 // createKubeConfigFiles creates all the requested kubeconfig files.
 // If kubeconfig files already exists, they are used only if evaluated equal; otherwise an error is returned.
-func createKubeConfigFiles(outDir string, cfg *kubeadmapi.MasterConfiguration, kubeConfigFileNames ...string) error {
+func createKubeConfigFiles(outDir string, certDir string, cfg *kubeadmapi.MasterConfiguration, kubeConfigFileNames ...string) error {
 
 	// gets the KubeConfigSpecs, actualized for the current MasterConfiguration
-	specs, err := getKubeConfigSpecs(cfg)
+	specs, err := getKubeConfigSpecs(certDir, cfg)
 	if err != nil {
 		return err
 	}
@@ -128,9 +129,9 @@ func createKubeConfigFiles(outDir string, cfg *kubeadmapi.MasterConfiguration, k
 
 // getKubeConfigSpecs returns all KubeConfigSpecs actualized to the context of the current MasterConfiguration
 // NB. this methods holds the information about how kubeadm creates kubeconfig files.
-func getKubeConfigSpecs(cfg *kubeadmapi.MasterConfiguration) (map[string]*kubeConfigSpec, error) {
+func getKubeConfigSpecs(certDir string, cfg *kubeadmapi.MasterConfiguration) (map[string]*kubeConfigSpec, error) {
 
-	caCert, caKey, err := pkiutil.TryLoadCertAndKeyFromDisk(cfg.CertificatesDir, kubeadmconstants.CACertAndKeyBaseName)
+	caCert, caKey, err := pkiutil.TryLoadCertAndKeyFromDisk(certDir, kubeadmconstants.CACertAndKeyBaseName)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't create a kubeconfig; the CA files couldn't be loaded: %v", err)
 	}
@@ -264,10 +265,10 @@ func createKubeConfigFileIfNotExists(outDir, filename string, config *clientcmda
 }
 
 // WriteKubeConfigWithClientCert writes a kubeconfig file - with a client certificate as authentication info  - to the given writer.
-func WriteKubeConfigWithClientCert(out io.Writer, cfg *kubeadmapi.MasterConfiguration, clientName string) error {
+func WriteKubeConfigWithClientCert(out io.Writer, certDir string, cfg *kubeadmapi.MasterConfiguration, clientName string) error {
 
 	// creates the KubeConfigSpecs, actualized for the current MasterConfiguration
-	caCert, caKey, err := pkiutil.TryLoadCertAndKeyFromDisk(cfg.CertificatesDir, kubeadmconstants.CACertAndKeyBaseName)
+	caCert, caKey, err := pkiutil.TryLoadCertAndKeyFromDisk(certDir, kubeadmconstants.CACertAndKeyBaseName)
 	if err != nil {
 		return fmt.Errorf("couldn't create a kubeconfig; the CA files couldn't be loaded: %v", err)
 	}
@@ -290,10 +291,10 @@ func WriteKubeConfigWithClientCert(out io.Writer, cfg *kubeadmapi.MasterConfigur
 }
 
 // WriteKubeConfigWithToken writes a kubeconfig file - with a token as client authentication info - to the given writer.
-func WriteKubeConfigWithToken(out io.Writer, cfg *kubeadmapi.MasterConfiguration, clientName, token string) error {
+func WriteKubeConfigWithToken(out io.Writer, certDir string, cfg *kubeadmapi.MasterConfiguration, clientName, token string) error {
 
 	// creates the KubeConfigSpecs, actualized for the current MasterConfiguration
-	caCert, _, err := pkiutil.TryLoadCertAndKeyFromDisk(cfg.CertificatesDir, kubeadmconstants.CACertAndKeyBaseName)
+	caCert, _, err := pkiutil.TryLoadCertAndKeyFromDisk(certDir, kubeadmconstants.CACertAndKeyBaseName)
 	if err != nil {
 		return fmt.Errorf("couldn't create a kubeconfig; the CA files couldn't be loaded: %v", err)
 	}

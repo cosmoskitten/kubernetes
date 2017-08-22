@@ -51,7 +51,7 @@ func TestGetKubeConfigSpecsFailsIfCADoesntExists(t *testing.T) {
 	}
 
 	// Executes getKubeConfigSpecs
-	if _, err := getKubeConfigSpecs(cfg); err == nil {
+	if _, err := getKubeConfigSpecs(cfg.CertificatesDir, cfg); err == nil {
 		t.Error("getKubeConfigSpecs didnt failed when expected")
 	}
 }
@@ -72,7 +72,7 @@ func TestGetKubeConfigSpecs(t *testing.T) {
 	}
 
 	// Executes getKubeConfigSpecs
-	specs, err := getKubeConfigSpecs(cfg)
+	specs, err := getKubeConfigSpecs(cfg.CertificatesDir, cfg)
 	if err != nil {
 		t.Fatal("getKubeConfigSpecs failed!")
 	}
@@ -226,13 +226,13 @@ func TestCreateKubeConfigFileIfNotExists(t *testing.T) {
 
 func TestCreateKubeconfigFilesAndWrappers(t *testing.T) {
 	var tests = []struct {
-		createKubeConfigFunction func(outDir string, cfg *kubeadmapi.MasterConfiguration) error
+		createKubeConfigFunction func(outDir, certDir string, cfg *kubeadmapi.MasterConfiguration) error
 		expectedFiles            []string
 		expectedError            bool
 	}{
 		{ // Test createKubeConfigFiles fails for unknown kubeconfig is requested
-			createKubeConfigFunction: func(outDir string, cfg *kubeadmapi.MasterConfiguration) error {
-				return createKubeConfigFiles(outDir, cfg, "unknown.conf")
+			createKubeConfigFunction: func(outDir, certDir string, cfg *kubeadmapi.MasterConfiguration) error {
+				return createKubeConfigFiles(outDir, certDir, cfg, "unknown.conf")
 			},
 			expectedError: true,
 		},
@@ -278,7 +278,7 @@ func TestCreateKubeconfigFilesAndWrappers(t *testing.T) {
 		}
 
 		// Execs the createKubeConfigFunction
-		err := test.createKubeConfigFunction(tmpdir, cfg)
+		err := test.createKubeConfigFunction(tmpdir, cfg.CertificatesDir, cfg)
 		if test.expectedError && err == nil {
 			t.Errorf("createKubeConfigFunction didn't failed when expected to fail")
 			continue
@@ -309,12 +309,12 @@ func TestWriteKubeConfigFailsIfCADoesntExists(t *testing.T) {
 	}{
 		{ // Test WriteKubeConfigWithClientCert
 			writeKubeConfigFunction: func(out io.Writer) error {
-				return WriteKubeConfigWithClientCert(out, cfg, "myUser")
+				return WriteKubeConfigWithClientCert(out, cfg.CertificatesDir, cfg, "myUser")
 			},
 		},
 		{ // Test WriteKubeConfigWithToken
 			writeKubeConfigFunction: func(out io.Writer) error {
-				return WriteKubeConfigWithToken(out, cfg, "myUser", "12345")
+				return WriteKubeConfigWithToken(out, cfg.CertificatesDir, cfg, "myUser", "12345")
 			},
 		},
 	}
@@ -357,13 +357,13 @@ func TestWriteKubeConfig(t *testing.T) {
 	}{
 		{ // Test WriteKubeConfigWithClientCert
 			writeKubeConfigFunction: func(out io.Writer) error {
-				return WriteKubeConfigWithClientCert(out, cfg, "myUser")
+				return WriteKubeConfigWithClientCert(out, cfg.CertificatesDir, cfg, "myUser")
 			},
 			withClientCert: true,
 		},
 		{ // Test WriteKubeConfigWithToken
 			writeKubeConfigFunction: func(out io.Writer) error {
-				return WriteKubeConfigWithToken(out, cfg, "myUser", "12345")
+				return WriteKubeConfigWithToken(out, cfg.CertificatesDir, cfg, "myUser", "12345")
 			},
 			withToken: true,
 		},
