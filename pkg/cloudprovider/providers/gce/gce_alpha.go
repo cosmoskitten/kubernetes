@@ -22,8 +22,14 @@ import (
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 )
 
+const (
+	AlphaFeatureNetworkEndpointGroup = "NetworkEndpointGroup"
+)
+
 // All known alpha features
-var knownAlphaFeatures = map[string]bool{}
+var knownAlphaFeatures = map[string]bool{
+	AlphaFeatureNetworkEndpointGroup: true,
+}
 
 type AlphaFeatureGate struct {
 	features map[string]bool
@@ -44,4 +50,11 @@ func NewAlphaFeatureGate(features []string) (*AlphaFeatureGate, error) {
 		}
 	}
 	return &AlphaFeatureGate{featureMap}, utilerrors.NewAggregate(errList)
+}
+
+func (gce *GCECloud) alphaFeatureEnabled(feature string) error {
+	if !gce.AlphaFeatureGate.Enabled(feature) {
+		return fmt.Errorf("alpha feature %q is not enabled.", feature)
+	}
+	return nil
 }
