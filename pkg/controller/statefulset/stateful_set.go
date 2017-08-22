@@ -21,19 +21,19 @@ import (
 	"reflect"
 	"time"
 
-	apps "k8s.io/api/apps/v1beta1"
+	apps "k8s.io/api/apps/v1beta2"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
-	appsinformers "k8s.io/client-go/informers/apps/v1beta1"
+	appsinformers "k8s.io/client-go/informers/apps/v1beta2"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
-	appslisters "k8s.io/client-go/listers/apps/v1beta1"
+	appslisters "k8s.io/client-go/listers/apps/v1beta2"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
@@ -77,13 +77,9 @@ type StatefulSetController struct {
 }
 
 // NewStatefulSetController creates a new statefulset controller.
-func NewStatefulSetController(
-	podInformer coreinformers.PodInformer,
-	setInformer appsinformers.StatefulSetInformer,
-	pvcInformer coreinformers.PersistentVolumeClaimInformer,
-	revInformer appsinformers.ControllerRevisionInformer,
-	kubeClient clientset.Interface,
-) *StatefulSetController {
+func NewStatefulSetController(podInformer coreinformers.PodInformer, setInformer appsinformers.StatefulSetInformer,
+	pvcInformer coreinformers.PersistentVolumeClaimInformer, revInformer appsinformers.ControllerRevisionInformer,
+	kubeClient clientset.Interface) *StatefulSetController {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(glog.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: v1core.New(kubeClient.Core().RESTClient()).Events("")})
@@ -92,12 +88,7 @@ func NewStatefulSetController(
 	ssc := &StatefulSetController{
 		kubeClient: kubeClient,
 		control: NewDefaultStatefulSetControl(
-			NewRealStatefulPodControl(
-				kubeClient,
-				setInformer.Lister(),
-				podInformer.Lister(),
-				pvcInformer.Lister(),
-				recorder),
+			NewRealStatefulPodControl(kubeClient, setInformer.Lister(), podInformer.Lister(), pvcInformer.Lister(), recorder),
 			NewRealStatefulSetStatusUpdater(kubeClient, setInformer.Lister()),
 			history.NewHistory(kubeClient, revInformer.Lister()),
 		),
