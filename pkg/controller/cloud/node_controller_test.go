@@ -686,6 +686,96 @@ func TestNodeAddresses(t *testing.T) {
 }
 
 // This test checks that a node with the external cloud provider taint is cloudprovider initialized and
+// and node addresses will not be updated when node isn't present according to the cloudprovider
+func TestNodeAddressesNotUpdate(t *testing.T) {
+	fnh := &testutil.FakeNodeHandler{
+		Existing: []*v1.Node{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "node0",
+					CreationTimestamp: metav1.Date(2012, 1, 1, 0, 0, 0, 0, time.UTC),
+					Labels:            map[string]string{},
+				},
+				Status: v1.NodeStatus{
+					Conditions: []v1.NodeCondition{
+						{
+							Type:               v1.NodeReady,
+							Status:             v1.ConditionUnknown,
+							LastHeartbeatTime:  metav1.Date(2015, 1, 1, 12, 0, 0, 0, time.UTC),
+							LastTransitionTime: metav1.Date(2015, 1, 1, 12, 0, 0, 0, time.UTC),
+						},
+					},
+				},
+				Spec: v1.NodeSpec{
+					Taints: []v1.Taint{
+						{
+							Key:    "ImproveCoverageTaint",
+							Value:  "true",
+							Effect: v1.TaintEffectNoSchedule,
+						},
+						{
+							Key:    algorithm.TaintExternalCloudProvider,
+							Value:  "true",
+							Effect: v1.TaintEffectNoSchedule,
+						},
+					},
+				},
+			},
+		},
+		Clientset:      fake.NewSimpleClientset(&v1.PodList{}),
+		DeleteWaitChan: make(chan struct{}),
+	}
+
+	factory := informers.NewSharedInformerFactory(fnh, controller.NoResyncPeriodFunc())
+
+	fakeCloud := &fakecloud.FakeCloud{
+		InstanceTypes: map[types.NodeName]string{},
+		Addresses: []v1.NodeAddress{
+			{
+				Type:    v1.NodeHostName,
+				Address: "node0.cloud.internal",
+			},
+			{
+				Type:    v1.NodeInternalIP,
+				Address: "10.0.0.1",
+			},
+			{
+				Type:    v1.NodeExternalIP,
+				Address: "132.143.154.163",
+			},
+		},
+		Provider: "aws",
+		Zone: cloudprovider.Zone{
+			FailureDomain: "us-west-1a",
+			Region:        "us-west",
+		},
+		ExistsByProviderID: false,
+		Err:                nil,
+	}
+
+	eventBroadcaster := record.NewBroadcaster()
+	cloudNodeController := &CloudNodeController{
+		kubeClient:                fnh,
+		nodeInformer:              factory.Core().V1().Nodes(),
+		cloud:                     fakeCloud,
+		nodeMonitorPeriod:         5 * time.Second,
+		nodeStatusUpdateFrequency: 1 * time.Second,
+		recorder:                  eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "cloud-controller-manager"}),
+	}
+	eventBroadcaster.StartLogging(glog.Infof)
+
+	cloudNodeController.AddCloudNode(fnh.Existing[0])
+
+	if len(fnh.UpdatedNodes) != 1 && fnh.UpdatedNodes[0].Name != "node0" {
+		t.Errorf("Node was not updated")
+	}
+
+	if len(fnh.UpdatedNodes[0].Status.Addresses) != 0 {
+		t.Errorf("Node addresses need not updated when node isn't present according to the cloud provider")
+	}
+}
+
+// This test checks that a node with the external cloud provider taint is cloudprovider initialized and
 // and the provided node ip is validated with the cloudprovider and nodeAddresses are updated from the cloudprovider
 func TestNodeProvidedIPAddresses(t *testing.T) {
 	fnh := &testutil.FakeNodeHandler{
