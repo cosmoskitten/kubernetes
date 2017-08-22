@@ -22,6 +22,7 @@ import (
 	"io/ioutil"
 	"os"
 	"text/template"
+	"path/filepath"
 	"time"
 
 	"github.com/renstrom/dedent"
@@ -55,6 +56,7 @@ import (
 	"k8s.io/kubernetes/cmd/kubeadm/app/util/pubkeypin"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/util/version"
+	dryrunutil "k8s.io/kubernetes/cmd/kubeadm/app/util/dryrun"
 )
 
 var (
@@ -242,26 +244,38 @@ func (i *Init) Run(out io.Writer) error {
 		return fmt.Errorf("couldn't parse kubernetes version %q: %v", i.cfg.KubernetesVersion, err)
 	}
 
+	// Get directories to write files to; can be faked if we're dry-running
+	pkiDir, kubeConfigDir, manifestDir, err := getDirectoriesToUse(i.dryRun, i.cfg.CertificatesDir)
+	if err != nil {
+		return err
+	}
+
+	adminKubeConfigPath := filepath.Join(kubeConfigDir, kubeadmconstants.AdminKubeConfigFileName)
+
 	// PHASE 1: Generate certificates
-	if err := certsphase.CreatePKIAssets(i.cfg); err != nil {
+	if err := certsphase.CreatePKIAssets(pkiDir, i.cfg); err != nil {
 		return err
 	}
 
 	// PHASE 2: Generate kubeconfig files for the admin and the kubelet
-	if err := kubeconfigphase.CreateInitKubeConfigFiles(kubeadmconstants.KubernetesDir, i.cfg); err != nil {
+	if err := kubeconfigphase.CreateInitKubeConfigFiles(kubeConfigDir, pkiDir, i.cfg); err != nil {
 		return err
 	}
 
 	// PHASE 3: Bootstrap the control plane
-	manifestPath := kubeadmconstants.GetStaticPodDirectory()
-	if err := controlplanephase.CreateInitStaticPodManifestFiles(manifestPath, i.cfg); err != nil {
+	if err := controlplanephase.CreateInitStaticPodManifestFiles(manifestDir, i.cfg); err != nil {
 		return err
 	}
 	// Add etcd static pod spec only if external etcd is not configured
 	if len(i.cfg.Etcd.Endpoints) == 0 {
-		if err := etcdphase.CreateLocalEtcdStaticPodManifestFile(manifestPath, i.cfg); err != nil {
+		if err := etcdphase.CreateLocalEtcdStaticPodManifestFile(manifestDir, i.cfg); err != nil {
 			return err
 		}
+	}
+
+	// If we're dry-running, print the generated manifests
+	if err := printFilesIfDryRunning(i.dryRun, manifestDir); err != nil {
+		return err
 	}
 
 	client, err := createClientsetAndOptionallyWaitForReady(i.cfg, i.dryRun)
@@ -294,7 +308,7 @@ func (i *Init) Run(out io.Writer) error {
 	}
 
 	// Create the cluster-info ConfigMap with the associated RBAC rules
-	if err := clusterinfophase.CreateBootstrapConfigMapIfNotExists(client, kubeadmconstants.GetAdminKubeConfigPath()); err != nil {
+	if err := clusterinfophase.CreateBootstrapConfigMapIfNotExists(client, adminKubeConfigPath); err != nil {
 		return err
 	}
 	if err := clusterinfophase.CreateClusterInfoRBACRules(client); err != nil {
@@ -331,7 +345,7 @@ func (i *Init) Run(out io.Writer) error {
 	}
 
 	// Load the CA certificate from so we can pin its public key
-	caCert, err := pkiutil.TryLoadCertFromDisk(i.cfg.CertificatesDir, kubeadmconstants.CACertAndKeyBaseName)
+	caCert, err := pkiutil.TryLoadCertFromDisk(pkiDir, kubeadmconstants.CACertAndKeyBaseName)
 
 	// Generate the Master host/port pair used by initDoneTempl
 	masterHostPort, err := kubeadmutil.GetMasterHostPort(i.cfg)
@@ -340,8 +354,7 @@ func (i *Init) Run(out io.Writer) error {
 	}
 
 	ctx := map[string]string{
-		"KubeConfigPath": kubeadmconstants.GetAdminKubeConfigPath(),
-		"KubeConfigName": kubeadmconstants.AdminKubeConfigFileName,
+		"KubeConfigPath": adminKubeConfigPath,
 		"Token":          i.cfg.Token,
 		"CAPubKeyPin":    pubkeypin.Hash(caCert),
 		"MasterHostPort": masterHostPort,
@@ -373,4 +386,38 @@ func createClientsetAndOptionallyWaitForReady(cfg *kubeadmapi.MasterConfiguratio
 		return nil, err
 	}
 	return client, nil
+}
+
+func getDirectoriesToUse(dryRun bool, defaultPkiDir string) (string, string, string, error) {
+
+	if dryRun {
+		dryRunDir, err := ioutil.TempDir("", "kubeadm-init-dryrun")
+		if err != nil {
+			return "", "", "", fmt.Errorf("couldn't create a temporary directory for the upgrade: %v")
+		}
+		// Use the same temp dir for all
+		return dryRunDir, dryRunDir, dryRunDir, nil
+	}
+
+	return defaultPkiDir, kubeadmconstants.KubernetesDir, kubeadmconstants.GetStaticPodDirectory(), nil
+}
+
+func printFilesIfDryRunning(dryRun bool, manifestDir string) error {
+	if !dryRun {
+		return nil
+	}
+
+	fmt.Printf("[dryrun] Wrote certificates, kubeconfig files and control plane manifests to %q\n", manifestDir)
+	fmt.Println("[dryrun] Won't print certificates or kubeconfig files due to the sensitive nature of them")
+	fmt.Println("[dryrun] Please go an examine the %q directory for details about what would be written\n", manifestDir)
+
+	// Print the contents of the upgraded manifests and pretend like they were in /etc/kubernetes/manifests
+	files := []dryrunutil.DryRunFile{}
+	for _, component := range kubeadmconstants.MasterComponents {
+		realPath := kubeadmconstants.GetStaticPodFilepath(component, manifestDir)
+		outputPath := kubeadmconstants.GetStaticPodFilepath(component, kubeadmconstants.GetStaticPodDirectory())
+		files = append(files, dryrunutil.NewDryRunFile(realPath, outputPath))
+	}
+
+	return dryrunutil.DryRunPrintFileContents(files, os.Stdout)
 }

@@ -23,11 +23,13 @@ import (
 	"io"
 	"strings"
 
-	"github.com/ghodss/yaml"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientset "k8s.io/client-go/kubernetes"
 	fakeclientset "k8s.io/client-go/kubernetes/fake"
 	core "k8s.io/client-go/testing"
+	dryrunutil "k8s.io/kubernetes/cmd/kubeadm/app/util/dryrun"
+	clientsetscheme "k8s.io/client-go/kubernetes/scheme"
 )
 
 // DryRunGetter is an interface that must be supplied to the NewDryRunClient function in order to contstruct a fully functional fake dryrun clientset
@@ -37,12 +39,19 @@ type DryRunGetter interface {
 }
 
 // MarshalFunc takes care of converting any object to a byte array for displaying the object to the user
-type MarshalFunc func(runtime.Object) ([]byte, error)
+type MarshalFunc func(runtime.Object, schema.GroupVersion) ([]byte, error)
 
 // DefaultMarshalFunc is the default MarshalFunc used; uses YAML to print objects to the user
-func DefaultMarshalFunc(obj runtime.Object) ([]byte, error) {
-	b, err := yaml.Marshal(obj)
-	return b, err
+func DefaultMarshalFunc(obj runtime.Object, gv schema.GroupVersion) ([]byte, error) {
+
+	mediaType := "application/yaml"
+	info, ok := runtime.SerializerInfoForMediaType(clientsetscheme.Codecs.SupportedMediaTypes(), mediaType)
+	if !ok {
+		return []byte{}, fmt.Errorf("unsupported media type %q", mediaType)
+	}
+
+	encoder := clientsetscheme.Codecs.EncoderForVersion(info.Serializer, gv)
+	return runtime.Encode(encoder, obj)
 }
 
 // DryRunClientOptions specifies options to pass to NewDryRunClientWithOpts in order to get a dryrun clientset
@@ -115,10 +124,10 @@ func NewDryRunClientWithOpts(opts DryRunClientOptions) clientset.Interface {
 
 				if opts.PrintGETAndLIST {
 					// Print the marshalled object format with one tab indentation
-					objBytes, err := opts.MarshalFunc(obj)
+					objBytes, err := opts.MarshalFunc(obj, action.GetResource().GroupVersion())
 					if err == nil {
 						fmt.Println("[dryrun] Returning faked GET response:")
-						printBytesWithLinePrefix(opts.Writer, objBytes, "\t")
+						dryrunutil.PrintBytesWithLinePrefix(opts.Writer, objBytes, "\t")
 					}
 				}
 
@@ -140,10 +149,10 @@ func NewDryRunClientWithOpts(opts DryRunClientOptions) clientset.Interface {
 
 				if opts.PrintGETAndLIST {
 					// Print the marshalled object format with one tab indentation
-					objBytes, err := opts.MarshalFunc(objs)
+					objBytes, err := opts.MarshalFunc(objs, action.GetResource().GroupVersion())
 					if err == nil {
 						fmt.Println("[dryrun] Returning faked LIST response:")
-						printBytesWithLinePrefix(opts.Writer, objBytes, "\t")
+						dryrunutil.PrintBytesWithLinePrefix(opts.Writer, objBytes, "\t")
 					}
 				}
 
@@ -214,10 +223,10 @@ func logDryRunAction(action core.Action, w io.Writer, marshalFunc MarshalFunc) {
 	objAction, ok := action.(actionWithObject)
 	if ok && objAction.GetObject() != nil {
 		// Print the marshalled object with a tab indentation
-		objBytes, err := marshalFunc(objAction.GetObject())
+		objBytes, err := marshalFunc(objAction.GetObject(), action.GetResource().GroupVersion())
 		if err == nil {
 			fmt.Println("[dryrun] Attached object:")
-			printBytesWithLinePrefix(w, objBytes, "\t")
+			dryrunutil.PrintBytesWithLinePrefix(w, objBytes, "\t")
 		}
 	}
 

@@ -54,7 +54,7 @@ func getKubeConfigSubCommands(out io.Writer, outDir string) []*cobra.Command {
 	subCmdProperties := []struct {
 		use     string
 		short   string
-		cmdFunc func(outDir string, cfg *kubeadmapi.MasterConfiguration) error
+		cmdFunc func(outDir, certDir string, cfg *kubeadmapi.MasterConfiguration) error
 	}{
 		{
 			use:     "all",
@@ -84,18 +84,18 @@ func getKubeConfigSubCommands(out io.Writer, outDir string) []*cobra.Command {
 		{
 			use:   "user",
 			short: "Outputs a kubeconfig file for an additional user.",
-			cmdFunc: func(outDir string, cfg *kubeadmapi.MasterConfiguration) error {
+			cmdFunc: func(outDir, certDir string, cfg *kubeadmapi.MasterConfiguration) error {
 				if clientName == "" {
 					return fmt.Errorf("missing required argument client-name")
 				}
 
 				// if the kubeconfig file for an additional user has to use a token, use it
 				if token != "" {
-					return kubeconfigphase.WriteKubeConfigWithToken(out, cfg, clientName, token)
+					return kubeconfigphase.WriteKubeConfigWithToken(out, certDir, cfg, clientName, token)
 				}
 
 				// Otherwise, write a kubeconfig file with a generate client cert
-				return kubeconfigphase.WriteKubeConfigWithClientCert(out, cfg, clientName)
+				return kubeconfigphase.WriteKubeConfigWithClientCert(out, certDir, cfg, clientName)
 			},
 		},
 	}
@@ -105,7 +105,9 @@ func getKubeConfigSubCommands(out io.Writer, outDir string) []*cobra.Command {
 		cmd := &cobra.Command{
 			Use:   properties.use,
 			Short: properties.short,
-			Run:   runCmdPhase(properties.cmdFunc, &outDir, &cfgPath, cfg),
+			Run:   runCmdPhase(func(outDir string, cfg *kubeadmapi.MasterConfiguration) error {
+				return properties.cmdFunc(outDir, cfg.CertificatesDir, cfg)
+			}, &outDir, &cfgPath, cfg),
 		}
 
 		// Add flags to the command

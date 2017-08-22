@@ -54,7 +54,7 @@ func getCertsSubCommands() []*cobra.Command {
 	subCmdProperties := []struct {
 		use     string
 		short   string
-		cmdFunc func(cfg *kubeadmapi.MasterConfiguration) error
+		cmdFunc func(pkiDir string, cfg *kubeadmapi.MasterConfiguration) error
 	}{
 		{
 			use:     "all",
@@ -64,7 +64,7 @@ func getCertsSubCommands() []*cobra.Command {
 		{
 			use:     "ca",
 			short:   "Generate CA certificate and key for a Kubernetes cluster.",
-			cmdFunc: certsphase.CreateCACertAndKeyfiles,
+			cmdFunc: certsphase.CreateCACertAndKeyFiles,
 		},
 		{
 			use:     "apiserver",
@@ -118,7 +118,7 @@ func getCertsSubCommands() []*cobra.Command {
 }
 
 // runCmdFunc creates a cobra.Command Run function, by composing the call to the given cmdFunc with necessary additional steps (e.g preparation of input parameters)
-func runCmdFunc(cmdFunc func(cfg *kubeadmapi.MasterConfiguration) error, cfgPath *string, cfg *kubeadmapiext.MasterConfiguration) func(cmd *cobra.Command, args []string) {
+func runCmdFunc(cmdFunc func(pkiDir string, cfg *kubeadmapi.MasterConfiguration) error, cfgPath *string, cfg *kubeadmapiext.MasterConfiguration) func(cmd *cobra.Command, args []string) {
 
 	// the following statement build a clousure that wraps a call to a cmdFunc, binding
 	// the function itself with the specific parameters of each sub command.
@@ -135,7 +135,7 @@ func runCmdFunc(cmdFunc func(cfg *kubeadmapi.MasterConfiguration) error, cfgPath
 		kubeadmutil.CheckErr(err)
 
 		// Execute the cmdFunc
-		err = cmdFunc(internalcfg)
+		err = cmdFunc(internalcfg.CertificatesDir, internalcfg)
 		kubeadmutil.CheckErr(err)
 	}
 }
