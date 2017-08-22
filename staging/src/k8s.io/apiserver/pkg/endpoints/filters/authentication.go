@@ -51,7 +51,7 @@ func init() {
 // stores any such user found onto the provided context for the request. If authentication fails or returns an error
 // the failed handler is used. On success, "Authorization" header is removed from the request and handler
 // is invoked to serve the request.
-func WithAuthentication(handler http.Handler, mapper genericapirequest.RequestContextMapper, auth authenticator.Request, failed http.Handler) http.Handler {
+func WithAuthentication(handler http.Handler, mapper genericapirequest.RequestContextMapper, auth authenticator.Request, failed http.Handler, auditFailedAuthn FailedAuthenticationDecorator) http.Handler {
 	if auth == nil {
 		glog.Warningf("Authentication is disabled")
 		return handler
@@ -62,6 +62,9 @@ func WithAuthentication(handler http.Handler, mapper genericapirequest.RequestCo
 			if err != nil || !ok {
 				if err != nil {
 					glog.Errorf("Unable to authenticate the request due to an error: %v", err)
+				}
+				if auditFailedAuthn != nil {
+					w = auditFailedAuthn.Decorate(w, user, req)
 				}
 				failed.ServeHTTP(w, req)
 				return

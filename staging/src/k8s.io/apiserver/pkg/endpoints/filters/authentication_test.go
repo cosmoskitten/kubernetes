@@ -55,6 +55,7 @@ func TestAuthenticateRequest(t *testing.T) {
 		http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
 			t.Errorf("unexpected call to failed")
 		}),
+		nil,
 	)
 
 	auth.ServeHTTP(httptest.NewRecorder(), &http.Request{Header: map[string][]string{"Authorization": {"Something"}}})
@@ -83,6 +84,7 @@ func TestAuthenticateRequestFailed(t *testing.T) {
 		http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
 			close(failed)
 		}),
+		nil,
 	)
 
 	auth.ServeHTTP(httptest.NewRecorder(), &http.Request{})
@@ -111,6 +113,7 @@ func TestAuthenticateRequestError(t *testing.T) {
 		http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
 			close(failed)
 		}),
+		nil,
 	)
 
 	auth.ServeHTTP(httptest.NewRecorder(), &http.Request{})
