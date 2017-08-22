@@ -109,7 +109,7 @@ func TestWriteCertificateAuthorithyFilesIfNotExist(t *testing.T) {
 
 func TestWriteCertificateFilesIfNotExist(t *testing.T) {
 
-	caCert, caKey, _ := NewFrontProxyCACertAndKey()
+	caCert, caKey, _ := NewCACertAndKey()
 	setupCert, setupKey, _ := NewFrontProxyClientCertAndKey(caCert, caKey)
 	cert, key, _ := NewFrontProxyClientCertAndKey(caCert, caKey)
 
@@ -136,7 +136,7 @@ func TestWriteCertificateFilesIfNotExist(t *testing.T) {
 		},
 		{ // cert exists, is signed by another ca > err
 			setupFunc: func(pkiDir string) error {
-				anotherCaCert, anotherCaKey, _ := NewFrontProxyCACertAndKey()
+				anotherCaCert, anotherCaKey, _ := NewCACertAndKey()
 				anotherCert, anotherKey, _ := NewFrontProxyClientCertAndKey(anotherCaCert, anotherCaKey)
 
 				return writeCertificateFilesIfNotExist(pkiDir, "dummy", anotherCaCert, anotherCert, anotherKey)
@@ -360,17 +360,8 @@ func TestNewNewServiceAccountSigningKey(t *testing.T) {
 	}
 }
 
-func TestNewFrontProxyCACertAndKey(t *testing.T) {
-	frontProxyCACert, _, err := NewFrontProxyCACertAndKey()
-	if err != nil {
-		t.Fatalf("failed creation of cert and key: %v", err)
-	}
-
-	certstestutil.AssertCertificateIsCa(t, frontProxyCACert)
-}
-
 func TestNewFrontProxyClientCertAndKey(t *testing.T) {
-	frontProxyCACert, frontProxyCAKey, err := NewFrontProxyCACertAndKey()
+	frontProxyCACert, frontProxyCAKey, err := NewCACertAndKey()
 
 	frontProxyClientCert, _, err := NewFrontProxyClientCertAndKey(frontProxyCACert, frontProxyCAKey)
 	if err != nil {
@@ -384,8 +375,8 @@ func TestNewFrontProxyClientCertAndKey(t *testing.T) {
 func TestCreateCertificateFilesMethods(t *testing.T) {
 
 	var tests = []struct {
-		setupFunc     func(cfg *kubeadmapi.MasterConfiguration) error
-		createFunc    func(cfg *kubeadmapi.MasterConfiguration) error
+		setupFunc     func(certsDir string, cfg *kubeadmapi.MasterConfiguration) error
+		createFunc    func(certsDir string, cfg *kubeadmapi.MasterConfiguration) error
 		expectedFiles []string
 	}{
 		{
@@ -400,16 +391,16 @@ func TestCreateCertificateFilesMethods(t *testing.T) {
 			},
 		},
 		{
-			createFunc:    CreateCACertAndKeyfiles,
+			createFunc:    CreateCACertAndKeyFiles,
 			expectedFiles: []string{kubeadmconstants.CACertName, kubeadmconstants.CAKeyName},
 		},
 		{
-			setupFunc:     CreateCACertAndKeyfiles,
+			setupFunc:     CreateCACertAndKeyFiles,
 			createFunc:    CreateAPIServerCertAndKeyFiles,
 			expectedFiles: []string{kubeadmconstants.APIServerCertName, kubeadmconstants.APIServerKeyName},
 		},
 		{
-			setupFunc:     CreateCACertAndKeyfiles,
+			setupFunc:     CreateCACertAndKeyFiles,
 			createFunc:    CreateAPIServerKubeletClientCertAndKeyFiles,
 			expectedFiles: []string{kubeadmconstants.APIServerKubeletClientCertName, kubeadmconstants.APIServerKubeletClientKeyName},
 		},
@@ -442,14 +433,14 @@ func TestCreateCertificateFilesMethods(t *testing.T) {
 
 		// executes setup func (if necessary)
 		if test.setupFunc != nil {
-			if err := test.setupFunc(cfg); err != nil {
+			if err := test.setupFunc(cfg.CertificatesDir, cfg); err != nil {
 				t.Errorf("error executing setupFunc: %v", err)
 				continue
 			}
 		}
 
 		// executes create func
-		if err := test.createFunc(cfg); err != nil {
+		if err := test.createFunc(cfg.CertificatesDir, cfg); err != nil {
 			t.Errorf("error executing createFunc: %v", err)
 			continue
 		}

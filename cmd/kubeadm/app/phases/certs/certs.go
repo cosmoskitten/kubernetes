@@ -32,10 +32,10 @@ import (
 
 // CreatePKIAssets will create and write to disk all PKI assets necessary to establish the control plane.
 // If the PKI assets already exists in the target folder, they are used only if evaluated equal; otherwise an error is returned.
-func CreatePKIAssets(cfg *kubeadmapi.MasterConfiguration) error {
+func CreatePKIAssets(pkiDir string, cfg *kubeadmapi.MasterConfiguration) error {
 
-	certActions := []func(cfg *kubeadmapi.MasterConfiguration) error{
-		CreateCACertAndKeyfiles,
+	certActions := []func(pkiDir string, cfg *kubeadmapi.MasterConfiguration) error{
+		CreateCACertAndKeyFiles,
 		CreateAPIServerCertAndKeyFiles,
 		CreateAPIServerKubeletClientCertAndKeyFiles,
 		CreateServiceAccountKeyAndPublicKeyFiles,
@@ -44,20 +44,20 @@ func CreatePKIAssets(cfg *kubeadmapi.MasterConfiguration) error {
 	}
 
 	for _, action := range certActions {
-		err := action(cfg)
+		err := action(pkiDir, cfg)
 		if err != nil {
 			return err
 		}
 	}
 
-	fmt.Printf("[certificates] Valid certificates and keys now exist in %q\n", cfg.CertificatesDir)
+	fmt.Printf("[certificates] Valid certificates and keys now exist in %q\n", pkiDir)
 
 	return nil
 }
 
-// CreateCACertAndKeyfiles create a new self signed CA certificate and key files.
+// CreateCACertAndKeyFiles create a new self signed CA certificate and key files.
 // If the CA certificate and key files already exists in the target folder, they are used only if evaluated equal; otherwise an error is returned.
-func CreateCACertAndKeyfiles(cfg *kubeadmapi.MasterConfiguration) error {
+func CreateCACertAndKeyFiles(pkiDir string, cfg *kubeadmapi.MasterConfiguration) error {
 
 	caCert, caKey, err := NewCACertAndKey()
 	if err != nil {
@@ -65,7 +65,7 @@ func CreateCACertAndKeyfiles(cfg *kubeadmapi.MasterConfiguration) error {
 	}
 
 	return writeCertificateAuthorithyFilesIfNotExist(
-		cfg.CertificatesDir,
+		pkiDir,
 		kubeadmconstants.CACertAndKeyBaseName,
 		caCert,
 		caKey,
@@ -75,9 +75,9 @@ func CreateCACertAndKeyfiles(cfg *kubeadmapi.MasterConfiguration) error {
 // CreateAPIServerCertAndKeyFiles create a new certificate and key files for the apiserver.
 // If the apiserver certificate and key files already exists in the target folder, they are used only if evaluated equal; otherwise an error is returned.
 // It assumes the cluster CA certificate and key files should exists into the CertificatesDir
-func CreateAPIServerCertAndKeyFiles(cfg *kubeadmapi.MasterConfiguration) error {
+func CreateAPIServerCertAndKeyFiles(pkiDir string, cfg *kubeadmapi.MasterConfiguration) error {
 
-	caCert, caKey, err := loadCertificateAuthorithy(cfg.CertificatesDir, kubeadmconstants.CACertAndKeyBaseName)
+	caCert, caKey, err := loadCertificateAuthorithy(pkiDir, kubeadmconstants.CACertAndKeyBaseName)
 	if err != nil {
 		return err
 	}
@@ -88,7 +88,7 @@ func CreateAPIServerCertAndKeyFiles(cfg *kubeadmapi.MasterConfiguration) error {
 	}
 
 	return writeCertificateFilesIfNotExist(
-		cfg.CertificatesDir,
+		pkiDir,
 		kubeadmconstants.APIServerCertAndKeyBaseName,
 		caCert,
 		apiCert,
@@ -99,9 +99,9 @@ func CreateAPIServerCertAndKeyFiles(cfg *kubeadmapi.MasterConfiguration) error {
 // CreateAPIServerKubeletClientCertAndKeyFiles create a new CA certificate for kubelets calling apiserver
 // If the apiserver-kubelet-client certificate and key files already exists in the target folder, they are used only if evaluated equals; otherwise an error is returned.
 // It assumes the cluster CA certificate and key files should exists into the CertificatesDir
-func CreateAPIServerKubeletClientCertAndKeyFiles(cfg *kubeadmapi.MasterConfiguration) error {
+func CreateAPIServerKubeletClientCertAndKeyFiles(pkiDir string, cfg *kubeadmapi.MasterConfiguration) error {
 
-	caCert, caKey, err := loadCertificateAuthorithy(cfg.CertificatesDir, kubeadmconstants.CACertAndKeyBaseName)
+	caCert, caKey, err := loadCertificateAuthorithy(pkiDir, kubeadmconstants.CACertAndKeyBaseName)
 	if err != nil {
 		return err
 	}
@@ -112,7 +112,7 @@ func CreateAPIServerKubeletClientCertAndKeyFiles(cfg *kubeadmapi.MasterConfigura
 	}
 
 	return writeCertificateFilesIfNotExist(
-		cfg.CertificatesDir,
+		pkiDir,
 		kubeadmconstants.APIServerKubeletClientCertAndKeyBaseName,
 		caCert,
 		apiClientCert,
@@ -122,7 +122,7 @@ func CreateAPIServerKubeletClientCertAndKeyFiles(cfg *kubeadmapi.MasterConfigura
 
 // CreateServiceAccountKeyAndPublicKeyFiles create a new public/private key files for signing service account users.
 // If the sa public/private key files already exists in the target folder, they are used only if evaluated equals; otherwise an error is returned.
-func CreateServiceAccountKeyAndPublicKeyFiles(cfg *kubeadmapi.MasterConfiguration) error {
+func CreateServiceAccountKeyAndPublicKeyFiles(pkiDir string, cfg *kubeadmapi.MasterConfiguration) error {
 
 	saSigningKey, err := NewServiceAccountSigningKey()
 	if err != nil {
@@ -130,7 +130,7 @@ func CreateServiceAccountKeyAndPublicKeyFiles(cfg *kubeadmapi.MasterConfiguratio
 	}
 
 	return writeKeyFilesIfNotExist(
-		cfg.CertificatesDir,
+		pkiDir,
 		kubeadmconstants.ServiceAccountKeyBaseName,
 		saSigningKey,
 	)
@@ -141,15 +141,15 @@ func CreateServiceAccountKeyAndPublicKeyFiles(cfg *kubeadmapi.MasterConfiguratio
 // without the client cert; This is a separte CA, so that front proxy identities cannot hit the API and normal client certs cannot be used
 // as front proxies.
 // If the front proxy CA certificate and key files already exists in the target folder, they are used only if evaluated equals; otherwise an error is returned.
-func CreateFrontProxyCACertAndKeyFiles(cfg *kubeadmapi.MasterConfiguration) error {
+func CreateFrontProxyCACertAndKeyFiles(pkiDir string, cfg *kubeadmapi.MasterConfiguration) error {
 
-	frontProxyCACert, frontProxyCAKey, err := NewFrontProxyCACertAndKey()
+	frontProxyCACert, frontProxyCAKey, err := NewCACertAndKey()
 	if err != nil {
 		return err
 	}
 
 	return writeCertificateAuthorithyFilesIfNotExist(
-		cfg.CertificatesDir,
+		pkiDir,
 		kubeadmconstants.FrontProxyCACertAndKeyBaseName,
 		frontProxyCACert,
 		frontProxyCAKey,
@@ -159,9 +159,9 @@ func CreateFrontProxyCACertAndKeyFiles(cfg *kubeadmapi.MasterConfiguration) erro
 // CreateFrontProxyClientCertAndKeyFiles create a new certificate for proxy server client.
 // If the front-proxy-client certificate and key files already exists in the target folder, they are used only if evaluated equals; otherwise an error is returned.
 // It assumes the front proxy CAA certificate and key files should exists into the CertificatesDir
-func CreateFrontProxyClientCertAndKeyFiles(cfg *kubeadmapi.MasterConfiguration) error {
+func CreateFrontProxyClientCertAndKeyFiles(pkiDir string, cfg *kubeadmapi.MasterConfiguration) error {
 
-	frontProxyCACert, frontProxyCAKey, err := loadCertificateAuthorithy(cfg.CertificatesDir, kubeadmconstants.FrontProxyCACertAndKeyBaseName)
+	frontProxyCACert, frontProxyCAKey, err := loadCertificateAuthorithy(pkiDir, kubeadmconstants.FrontProxyCACertAndKeyBaseName)
 	if err != nil {
 		return err
 	}
@@ -172,7 +172,7 @@ func CreateFrontProxyClientCertAndKeyFiles(cfg *kubeadmapi.MasterConfiguration) 
 	}
 
 	return writeCertificateFilesIfNotExist(
-		cfg.CertificatesDir,
+		pkiDir,
 		kubeadmconstants.FrontProxyClientCertAndKeyBaseName,
 		frontProxyCACert,
 		frontProxyClientCert,
@@ -238,17 +238,6 @@ func NewServiceAccountSigningKey() (*rsa.PrivateKey, error) {
 	}
 
 	return saSigningKey, nil
-}
-
-// NewFrontProxyCACertAndKey generate a self signed front proxy CA.
-func NewFrontProxyCACertAndKey() (*x509.Certificate, *rsa.PrivateKey, error) {
-
-	frontProxyCACert, frontProxyCAKey, err := pkiutil.NewCertificateAuthority()
-	if err != nil {
-		return nil, nil, fmt.Errorf("failure while generating front-proxy CA certificate and key: %v", err)
-	}
-
-	return frontProxyCACert, frontProxyCAKey, nil
 }
 
 // NewFrontProxyClientCertAndKey generate CA certificate for proxy server client, signed by the given front proxy CA.
