@@ -751,6 +751,21 @@ items:
     verbs:
     - update
   - apiGroups:
+    - apps
+    resources:
+    - replicasets
+    verbs:
+    - get
+    - list
+    - update
+    - watch
+  - apiGroups:
+    - apps
+    resources:
+    - replicasets/status
+    verbs:
+    - update
+  - apiGroups:
     - ""
     resources:
     - pods

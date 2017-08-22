@@ -25,6 +25,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	apps "k8s.io/api/apps/v1beta2"
 	"k8s.io/api/core/v1"
 	extensions "k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -288,7 +289,7 @@ func testRollingUpdateDeployment(f *framework.Framework) {
 	rsRevision := "3546343826724305832"
 	annotations := make(map[string]string)
 	annotations[deploymentutil.RevisionAnnotation] = rsRevision
-	rs := newRS(rsName, replicas, rsPodLabels, NginxImageName, NginxImage)
+	rs := newExtensionsV1beta1RS(rsName, replicas, rsPodLabels, NginxImageName, NginxImage)
 	rs.Annotations = annotations
 	framework.Logf("Creating replica set %q (going to be adopted)", rs.Name)
 	_, err := c.Extensions().ReplicaSets(ns).Create(rs)
@@ -370,7 +371,7 @@ func testDeploymentCleanUpPolicy(f *framework.Framework) {
 	rsName := "test-cleanup-controller"
 	replicas := int32(1)
 	revisionHistoryLimit := utilpointer.Int32Ptr(0)
-	_, err := c.Extensions().ReplicaSets(ns).Create(newRS(rsName, replicas, rsPodLabels, NginxImageName, NginxImage))
+	_, err := c.Extensions().ReplicaSets(ns).Create(newExtensionsV1beta1RS(rsName, replicas, rsPodLabels, NginxImageName, NginxImage))
 	Expect(err).NotTo(HaveOccurred())
 
 	// Verify that the required pods have come up.
@@ -441,7 +442,7 @@ func testRolloverDeployment(f *framework.Framework) {
 
 	rsName := "test-rollover-controller"
 	rsReplicas := int32(1)
-	_, err := c.Extensions().ReplicaSets(ns).Create(newRS(rsName, rsReplicas, rsPodLabels, NginxImageName, NginxImage))
+	_, err := c.Extensions().ReplicaSets(ns).Create(newExtensionsV1beta1RS(rsName, rsReplicas, rsPodLabels, NginxImageName, NginxImage))
 	Expect(err).NotTo(HaveOccurred())
 	// Verify that the required pods have come up.
 	err = framework.VerifyPodsRunning(c, ns, podName, false, rsReplicas)
@@ -733,7 +734,7 @@ func testRollbackDeploymentRSNoRevision(f *framework.Framework) {
 	// Create an old RS without revision
 	rsName := "test-rollback-no-revision-controller"
 	rsReplicas := int32(0)
-	rs := newRS(rsName, rsReplicas, rsPodLabels, NginxImageName, NginxImage)
+	rs := newExtensionsV1beta1RS(rsName, rsReplicas, rsPodLabels, NginxImageName, NginxImage)
 	rs.Annotations = make(map[string]string)
 	rs.Annotations["make"] = "difference"
 	_, err := c.Extensions().ReplicaSets(ns).Create(rs)
@@ -863,7 +864,7 @@ func testDeploymentLabelAdopted(f *framework.Framework) {
 	rsName := "test-adopted-controller"
 	replicas := int32(1)
 	image := NginxImage
-	_, err := c.Extensions().ReplicaSets(ns).Create(newRS(rsName, replicas, podLabels, podName, image))
+	_, err := c.Extensions().ReplicaSets(ns).Create(newExtensionsV1beta1RS(rsName, replicas, podLabels, podName, image))
 	Expect(err).NotTo(HaveOccurred())
 	// Verify that the required pods have come up.
 	err = framework.VerifyPodsRunning(c, ns, podName, false, replicas)
@@ -1436,7 +1437,7 @@ func testDeploymentHashCollisionAvoidance(f *framework.Framework) {
 	Expect(err).NotTo(HaveOccurred())
 	var nilRs *extensions.ReplicaSet
 	Expect(newRS).NotTo(Equal(nilRs))
-	_, err = framework.UpdateReplicaSetWithRetries(c, ns, newRS.Name, func(update *extensions.ReplicaSet) {
+	_, err = framework.UpdateReplicaSetWithRetries(c, ns, newRS.Name, func(update *apps.ReplicaSet) {
 		*update.Spec.Template.Spec.TerminationGracePeriodSeconds = int64(5)
 	})
 	Expect(err).NotTo(HaveOccurred())
