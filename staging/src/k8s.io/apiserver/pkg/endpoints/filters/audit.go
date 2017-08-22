@@ -48,37 +48,17 @@ func WithAudit(handler http.Handler, requestContextMapper request.RequestContext
 			return
 		}
 
-		attribs, err := GetAuthorizerAttributes(ctx)
+		ev, err := createAuditEvent(ctx, policy, requestContextMapper, req, w)
 		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("failed to GetAuthorizerAttributes: %v", err))
-			responsewriters.InternalError(w, req, errors.New("failed to parse request"))
 			return
 		}
-
-		level := policy.Level(attribs)
-		audit.ObservePolicyLevel(level)
-		if level == auditinternal.LevelNone {
-			// Don't audit.
+		if ev == nil {
 			handler.ServeHTTP(w, req)
 			return
 		}
 
-		ev, err := audit.NewEventFromRequest(req, level, attribs)
-		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("failed to complete audit event from request: %v", err))
-			responsewriters.InternalError(w, req, errors.New("failed to update context"))
-			return
-		}
-
-		ctx = request.WithAuditEvent(ctx, ev)
-		if err := requestContextMapper.Update(req, ctx); err != nil {
-			utilruntime.HandleError(fmt.Errorf("failed to attach audit event to the context: %v", err))
-			responsewriters.InternalError(w, req, errors.New("failed to update context"))
-			return
-		}
-
 		ev.Stage = auditinternal.StageRequestReceived
-		processEvent(sink, ev)
+		processAuditEvent(sink, ev)
 
 		// intercept the status code
 		var longRunningSink audit.Sink
@@ -102,7 +82,7 @@ func WithAudit(handler http.Handler, requestContextMapper request.RequestContext
 					Reason:  metav1.StatusReasonInternalError,
 					Message: fmt.Sprintf("APIServer panic'd: %v", r),
 				}
-				processEvent(sink, ev)
+				processAuditEvent(sink, ev)
 				return
 			}
 
@@ -116,20 +96,52 @@ func WithAudit(handler http.Handler, requestContextMapper request.RequestContext
 			if ev.ResponseStatus == nil && longRunningSink != nil {
 				ev.ResponseStatus = fakedSuccessStatus
 				ev.Stage = auditinternal.StageResponseStarted
-				processEvent(longRunningSink, ev)
+				processAuditEvent(longRunningSink, ev)
 			}
 
 			ev.Stage = auditinternal.StageResponseComplete
 			if ev.ResponseStatus == nil {
 				ev.ResponseStatus = fakedSuccessStatus
 			}
-			processEvent(sink, ev)
+			processAuditEvent(sink, ev)
 		}()
 		handler.ServeHTTP(respWriter, req)
 	})
 }
 
-func processEvent(sink audit.Sink, ev *auditinternal.Event) {
+func createAuditEvent(ctx request.Context, policy policy.Checker, requestContextMapper request.RequestContextMapper, req *http.Request, w http.ResponseWriter) (*auditinternal.Event, error) {
+	attribs, err := GetAuthorizerAttributes(ctx)
+	if err != nil {
+		utilruntime.HandleError(fmt.Errorf("failed to GetAuthorizerAttributes: %v", err))
+		responsewriters.InternalError(w, req, errors.New("failed to parse request"))
+		return nil, err
+	}
+
+	level := policy.Level(attribs)
+	audit.ObservePolicyLevel(level)
+	if level == auditinternal.LevelNone {
+		// Don't audit.
+		return nil, nil
+	}
+
+	ev, err := audit.NewEventFromRequest(req, level, attribs)
+	if err != nil {
+		utilruntime.HandleError(fmt.Errorf("failed to complete audit event from request: %v", err))
+		responsewriters.InternalError(w, req, errors.New("failed to update context"))
+		return nil, err
+	}
+
+	ctx = request.WithAuditEvent(ctx, ev)
+	if err := requestContextMapper.Update(req, ctx); err != nil {
+		utilruntime.HandleError(fmt.Errorf("failed to attach audit event to the context: %v", err))
+		responsewriters.InternalError(w, req, errors.New("failed to update context"))
+		return nil, err
+	}
+
+	return ev, nil
+}
+
+func processAuditEvent(sink audit.Sink, ev *auditinternal.Event) {
 	audit.ObserveEvent()
 	sink.ProcessEvents(ev)
 }
@@ -176,7 +188,7 @@ func (a *auditResponseWriter) processCode(code int) {
 		a.event.Stage = auditinternal.StageResponseStarted
 
 		if a.sink != nil {
-			processEvent(a.sink, a.event)
+			processAuditEvent(a.sink, a.event)
 		}
 	})
 }
@@ -185,7 +197,6 @@ func (a *auditResponseWriter) Write(bs []byte) (int, error) {
 	// the Go library calls WriteHeader internally if no code was written yet. But this will go unnoticed for us
 	a.processCode(http.StatusOK)
 	a.setHttpHeader()
-
 	return a.ResponseWriter.Write(bs)
 }
 
