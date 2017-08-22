@@ -96,12 +96,14 @@ func init() {
 	factory.RegisterPriorityConfigFactory(
 		"ServiceSpreadingPriority",
 		factory.PriorityConfigFactory{
-			Function: func(args factory.PluginFactoryArgs) algorithm.PriorityFunction {
+			MapReduceFunction: func(args factory.PluginFactoryArgs) (algorithm.PriorityMapFunction, algorithm.PriorityReduceFunction) {
 				return priorities.NewSelectorSpreadPriority(args.ServiceLister, algorithm.EmptyControllerLister{}, algorithm.EmptyReplicaSetLister{}, algorithm.EmptyStatefulSetLister{})
 			},
 			Weight: 1,
 		},
 	)
+	//
+	//factory.RegisterPriorityFunction2("ServiceSpreadingPriority", priorities.CalculateSpreadPriorityMap, priorities.CalculateSpreadPriorityReduce, 1)
 
 	// EqualPriority is a prioritizer function that gives an equal weight of one to all nodes
 	// Register the priority function so that its available
@@ -191,12 +193,13 @@ func defaultPriorities() sets.String {
 		factory.RegisterPriorityConfigFactory(
 			"SelectorSpreadPriority",
 			factory.PriorityConfigFactory{
-				Function: func(args factory.PluginFactoryArgs) algorithm.PriorityFunction {
+				MapReduceFunction: func(args factory.PluginFactoryArgs) (algorithm.PriorityMapFunction, algorithm.PriorityReduceFunction) {
 					return priorities.NewSelectorSpreadPriority(args.ServiceLister, args.ControllerLister, args.ReplicaSetLister, args.StatefulSetLister)
 				},
 				Weight: 1,
 			},
 		),
+
 		// pods should be placed in the same topological domain (e.g. same node, same rack, same zone, same power domain, etc.)
 		// as some other pods, or, conversely, should not be placed in the same topological domain as some other pods.
 		factory.RegisterPriorityConfigFactory(
