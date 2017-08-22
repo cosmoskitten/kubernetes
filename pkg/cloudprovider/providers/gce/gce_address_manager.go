@@ -21,7 +21,7 @@ import (
 	"net/http"
 
 	"github.com/golang/glog"
-	compute "google.golang.org/api/compute/v1"
+	computebeta "google.golang.org/api/compute/v0.beta"
 )
 
 type addressManager struct {
@@ -102,18 +102,19 @@ func (am *addressManager) ReleaseAddress() error {
 
 func (am *addressManager) ensureAddressReservation() error {
 	// Try reserving the IP with controller-owned address name
-	addr := &compute.Address{
+	newAddr := &computebeta.Address{
 		Name:        am.lbName,
 		Description: fmt.Sprintf(`{"kubernetes.io/service-name":"%s"}`, am.serviceName),
 		Address:     am.requestedIP,
+		AddressType: string(am.addressType),
 	}
 
-	if err := am.svc.ReserveRegionAddress(addr, am.region); err != nil {
+	if err := am.svc.ReserveBetaRegionAddress(newAddr, am.region); err != nil {
 		if !isHTTPErrorCode(err, http.StatusConflict) {
 			return err
 		}
 	} else {
-		glog.V(3).Infof("AddressManager(%q): Successfully reserved IP %q with name %q", am.lbName, am.requestedIP, addr.Name)
+		glog.V(3).Infof("AddressManager(%q): Successfully reserved IP %q with name %q", am.lbName, am.requestedIP, newAddr.Name)
 		return nil
 	}
 
