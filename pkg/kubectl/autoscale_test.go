@@ -20,9 +20,8 @@ import (
 	"reflect"
 	"testing"
 
+	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/apis/autoscaling"
 )
 
 func TestHPAGenerate(t *testing.T) {
@@ -31,7 +30,7 @@ func TestHPAGenerate(t *testing.T) {
 		min        int32
 		cpuPercent int32
 		params     map[string]interface{}
-		expected   *autoscaling.HorizontalPodAutoscaler
+		expected   *autoscalingv1.HorizontalPodAutoscaler
 		expectErr  bool
 	}{
 		{
@@ -45,21 +44,13 @@ func TestHPAGenerate(t *testing.T) {
 				"scaleRef-name":       "name",
 				"scaleRef-apiVersion": "apiVersion",
 			},
-			expected: &autoscaling.HorizontalPodAutoscaler{
+			expected: &autoscalingv1.HorizontalPodAutoscaler{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "foo",
 				},
-				Spec: autoscaling.HorizontalPodAutoscalerSpec{
-					Metrics: []autoscaling.MetricSpec{
-						{
-							Type: autoscaling.ResourceMetricSourceType,
-							Resource: &autoscaling.ResourceMetricSource{
-								Name: api.ResourceCPU,
-								TargetAverageUtilization: newInt32(80),
-							},
-						},
-					},
-					ScaleTargetRef: autoscaling.CrossVersionObjectReference{
+				Spec: autoscalingv1.HorizontalPodAutoscalerSpec{
+					TargetCPUUtilizationPercentage: newInt32(80),
+					ScaleTargetRef: autoscalingv1.CrossVersionObjectReference{
 						Kind:       "kind",
 						Name:       "name",
 						APIVersion: "apiVersion",
@@ -153,9 +144,8 @@ func TestHPAGenerate(t *testing.T) {
 		if test.expectErr && err == nil {
 			t.Errorf("[%s] expect error, got nil", test.name)
 		}
-
-		if !reflect.DeepEqual(obj.(*autoscaling.HorizontalPodAutoscaler), test.expected) {
-			t.Errorf("[%s] want:\n%#v\ngot:\n%#v", test.name, test.expected, obj.(*autoscaling.HorizontalPodAutoscaler))
+		if !reflect.DeepEqual(obj.(*autoscalingv1.HorizontalPodAutoscaler), test.expected) {
+			t.Errorf("[%s] want:\n%#v\ngot:\n%#v", test.name, test.expected, obj.(*autoscalingv1.HorizontalPodAutoscaler))
 		}
 	}
 }
