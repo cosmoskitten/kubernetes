@@ -21,7 +21,8 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	compute "google.golang.org/api/compute/v1"
+	computealpha "google.golang.org/api/compute/v0.alpha"
+	computev1 "google.golang.org/api/compute/v1"
 )
 
 func newAddressMetricContext(request, region string) *metricContext {
@@ -35,7 +36,7 @@ func newAddressMetricContext(request, region string) *metricContext {
 // Caller is allocated a random IP if they do not specify an ipAddress. If an
 // ipAddress is specified, it must belong to the current project, eg: an
 // ephemeral IP associated with a global forwarding rule.
-func (gce *GCECloud) ReserveGlobalAddress(addr *compute.Address) error {
+func (gce *GCECloud) ReserveGlobalAddress(addr *computev1.Address) error {
 	mc := newAddressMetricContext("reserve", "")
 	op, err := gce.service.GlobalAddresses.Insert(gce.projectID, addr).Do()
 	if err != nil {
@@ -55,16 +56,26 @@ func (gce *GCECloud) DeleteGlobalAddress(name string) error {
 }
 
 // GetGlobalAddress returns the global address by name.
-func (gce *GCECloud) GetGlobalAddress(name string) (*compute.Address, error) {
+func (gce *GCECloud) GetGlobalAddress(name string) (*computev1.Address, error) {
 	mc := newAddressMetricContext("get", "")
 	v, err := gce.service.GlobalAddresses.Get(gce.projectID, name).Do()
 	return v, mc.Observe(err)
 }
 
 // ReserveRegionAddress creates a region address
-func (gce *GCECloud) ReserveRegionAddress(addr *compute.Address, region string) error {
+func (gce *GCECloud) ReserveRegionAddress(addr *computev1.Address, region string) error {
 	mc := newAddressMetricContext("reserve", region)
 	op, err := gce.service.Addresses.Insert(gce.projectID, region, addr).Do()
+	if err != nil {
+		return mc.Observe(err)
+	}
+	return gce.waitForRegionOp(op, region, mc)
+}
+
+// ReserveAlphaRegionAddress creates an Alpha, regional address.
+func (gce *GCECloud) ReserveAlphaRegionAddress(addr *computealpha.Address, region string) error {
+	mc := newAddressMetricContext("reserve", region)
+	op, err := gce.serviceAlpha.Addresses.Insert(gce.projectID, region, addr).Do()
 	if err != nil {
 		return mc.Observe(err)
 	}
@@ -82,15 +93,22 @@ func (gce *GCECloud) DeleteRegionAddress(name, region string) error {
 }
 
 // GetRegionAddress returns the region address by name
-func (gce *GCECloud) GetRegionAddress(name, region string) (*compute.Address, error) {
+func (gce *GCECloud) GetRegionAddress(name, region string) (*computev1.Address, error) {
 	mc := newAddressMetricContext("get", region)
 	v, err := gce.service.Addresses.Get(gce.projectID, region, name).Do()
 	return v, mc.Observe(err)
 }
 
+// GetAlphaRegionAddress returns the Alpha, regional address by name.
+func (gce *GCECloud) GetAlphaRegionAddress(name, region string) (*computealpha.Address, error) {
+	mc := newAddressMetricContext("get", region)
+	v, err := gce.serviceAlpha.Addresses.Get(gce.projectID, region, name).Do()
+	return v, mc.Observe(err)
+}
+
 // GetRegionAddressByIP returns the regional address matching the given IP
 // address.
-func (gce *GCECloud) GetRegionAddressByIP(region, ipAddress string) (*compute.Address, error) {
+func (gce *GCECloud) GetRegionAddressByIP(region, ipAddress string) (*computev1.Address, error) {
 	mc := newAddressMetricContext("list", region)
 	addrs, err := gce.service.Addresses.List(gce.projectID, region).Filter("address eq " + ipAddress).Do()
 	// Record the metrics for the call.
@@ -101,7 +119,7 @@ func (gce *GCECloud) GetRegionAddressByIP(region, ipAddress string) (*compute.Ad
 
 	if len(addrs.Items) > 1 {
 		// We don't expect more than one match.
-		addrsToPrint := []compute.Address{}
+		addrsToPrint := []computev1.Address{}
 		for _, addr := range addrs.Items {
 			addrsToPrint = append(addrsToPrint, *addr)
 		}
