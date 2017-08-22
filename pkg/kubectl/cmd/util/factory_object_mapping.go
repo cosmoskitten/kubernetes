@@ -26,6 +26,7 @@ import (
 	"sort"
 	"sync"
 	"time"
+	"strings"
 
 	swagger "github.com/emicklei/go-restful-swagger12"
 	"github.com/golang/glog"
@@ -53,6 +54,7 @@ import (
 	"k8s.io/kubernetes/pkg/kubectl/validation"
 	"k8s.io/kubernetes/pkg/printers"
 	printersinternal "k8s.io/kubernetes/pkg/printers/internalversion"
+	"github.com/davecgh/go-spew/spew"
 )
 
 type ring1Factory struct {
@@ -489,3 +491,96 @@ func (f *ring1Factory) OpenAPISchema(cacheDir string) (openapi.Resources, error)
 	// Delegate to the OpenAPIGetter
 	return f.openAPIGetter.getter.Get()
 }
+
+func (f *ring1Factory) ValidResourcesFromDiscoveryClient() string {
+	resourceMap := make(map[string]metav1.APIResource)
+	var keys []string
+	discoveryClient, err := f.clientAccessFactory.DiscoveryClient()
+	if err == nil {
+		apiResList, err := discoveryClient.ServerResources()
+		if err == nil {
+			for _, apiResources := range apiResList {
+				for _, apiRes := range apiResources.APIResources {
+					if !strings.Contains(apiRes.Name, "/") && apiRes.Name != "apiservices" {
+						if _, ok := resourceMap[apiRes.Name]; !ok {
+							resourceMap[apiRes.Name] = apiRes
+							keys = append(keys, apiRes.Name)
+						}
+					}
+				}
+			}
+			keys = append(keys, "clusters")
+			sort.Strings(keys)
+			row := "Valid resource types include:\n\n  * all\n"
+			for _, k := range keys {
+				if k == "clusters" {
+					row = row + "  * clusters (valid only for federation apiservers)\n"
+					continue
+				}
+				//add resource name
+				row = row + fmt.Sprintf("  * %s ", resourceMap[k].Name)
+				//concatenate shortnames
+				if len(resourceMap[k].ShortNames) > 0 {
+					row = row + " (aka "
+					for i, shortName := range resourceMap[k].ShortNames {
+						row = row + "'" + shortName + "'"
+						if i < len(resourceMap[k].ShortNames)-1 {
+							row = row + ","
+						}
+					}
+					row = row + ")"
+				}
+				//add newline
+				row = row + "\n"
+			}
+			spew.Dump(row)
+			return row
+		}
+	}
+	return validResources
+}
+
+
+// If you add a resource to this list, please also take a look at pkg/kubectl/kubectl.go
+// and add a short forms entry in expandResourceShortcut() when appropriate.
+const validResources = `Valid resource types include:
+
+    * all
+    * certificatesigningrequests (aka 'csr')
+    * clusterrolebindings
+    * clusterroles
+    * clusters (valid only for federation apiservers)
+    * componentstatuses (aka 'cs')
+    * configmaps (aka 'cm')
+    * controllerrevisions
+    * cronjobs
+    * customresourcedefinition (aka 'crd')
+    * daemonsets (aka 'ds')
+    * deployments (aka 'deploy')
+    * endpoints (aka 'ep')
+    * events (aka 'ev')
+    * horizontalpodautoscalers (aka 'hpa')
+    * ingresses (aka 'ing')
+    * jobs
+    * limitranges (aka 'limits')
+    * namespaces (aka 'ns')
+    * networkpolicies (aka 'netpol')
+    * nodes (aka 'no')
+    * persistentvolumeclaims (aka 'pvc')
+    * persistentvolumes (aka 'pv')
+    * poddisruptionbudgets (aka 'pdb')
+    * podpreset
+    * pods (aka 'po')
+    * podsecuritypolicies (aka 'psp')
+    * podtemplates
+    * replicasets (aka 'rs')
+    * replicationcontrollers (aka 'rc')
+    * resourcequotas (aka 'quota')
+    * rolebindings
+    * roles
+    * secrets
+    * serviceaccounts (aka 'sa')
+    * services (aka 'svc')
+    * statefulsets
+    * storageclasses
+`
