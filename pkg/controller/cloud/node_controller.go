@@ -148,6 +148,14 @@ func (cnc *CloudNodeController) updateNodeAddress(node *v1.Node, instances cloud
 		return
 	}
 
+	//Node not present according the cloud provider, no need to update node address.
+	if _, err := instances.ExternalID(types.NodeName(node.Name)); err != nil {
+		if err == cloudprovider.InstanceNotFound {
+			glog.V(2).Infof("this node %s no longer present in cloud provider, and no process.", node.Name)
+			return
+		}
+	}
+
 	nodeAddresses, err := getNodeAddressesByProviderIDOrName(instances, node)
 	if err != nil {
 		glog.Errorf("%v", err)
