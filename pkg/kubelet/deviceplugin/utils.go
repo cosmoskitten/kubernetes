@@ -18,8 +18,9 @@ package deviceplugin
 
 import (
 	"fmt"
-	"strings"
 
+	"k8s.io/api/core/v1"
+	v1helper "k8s.io/kubernetes/pkg/api/v1/helper"
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha1"
 )
 
@@ -62,11 +63,9 @@ func IsResourceNameValid(resourceName string) error {
 	if resourceName == "" {
 		return fmt.Errorf(pluginapi.ErrEmptyResourceName)
 	}
-
-	if strings.ContainsAny(resourceName, pluginapi.InvalidChars) {
+	if !IsDeviceName(v1.ResourceName(resourceName)) {
 		return fmt.Errorf(pluginapi.ErrInvalidResourceName)
 	}
-
 	return nil
 }
 
@@ -74,3 +73,9 @@ func IsResourceNameValid(resourceName string) error {
 func DeviceKey(d *pluginapi.Device) string {
 	return d.ID
 }
+
+// Returns whether the ResourceName points to a device plugin name.
+func IsDeviceName(k v1.ResourceName) bool {
+       return v1helper.IsExtendedResourceName(k)
+}
+
