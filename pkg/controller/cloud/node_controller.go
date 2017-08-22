@@ -382,6 +382,7 @@ func excludeTaintFromList(taints []v1.Taint, toExclude v1.Taint) []v1.Taint {
 	return newTaints
 }
 
+// ensureNodeExistsByProviderIDOrName first checks if the instance exists by the provider id and then by node name
 func ensureNodeExistsByProviderIDOrName(instances cloudprovider.Instances, node *v1.Node) (bool, error) {
 	exists, err := instances.InstanceExistsByProviderID(node.Spec.ProviderID)
 	if err != nil {
