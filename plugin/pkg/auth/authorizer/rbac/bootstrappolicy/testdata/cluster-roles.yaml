@@ -122,6 +122,7 @@ items:
     - update
     - watch
   - apiGroups:
+    - apps
     - extensions
     resources:
     - daemonsets
@@ -303,6 +304,7 @@ items:
     - update
     - watch
   - apiGroups:
+    - apps
     - extensions
     resources:
     - daemonsets
@@ -608,6 +610,7 @@ items:
     - list
     - watch
   - apiGroups:
+    - apps
     - extensions
     resources:
     - replicasets
@@ -960,6 +963,7 @@ items:
     - list
     - watch
   - apiGroups:
+    - apps
     - extensions
     resources:
     - daemonsets
