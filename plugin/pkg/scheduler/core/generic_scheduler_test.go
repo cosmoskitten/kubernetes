@@ -666,7 +666,7 @@ func TestSelectNodesForPreemption(t *testing.T) {
 			pods: []*v1.Pod{
 				{ObjectMeta: metav1.ObjectMeta{Name: "a"}, Spec: v1.PodSpec{Priority: &midPriority, NodeName: "machine1"}},
 				{ObjectMeta: metav1.ObjectMeta{Name: "b"}, Spec: v1.PodSpec{Priority: &midPriority, NodeName: "machine2"}}},
-			expected: map[string]map[string]bool{},
+			expected: map[string]map[string]bool{"machine1": {}, "machine2": {}},
 		},
 		{
 			name:       "a pod that fits on one machine with no preemption",
@@ -676,7 +676,7 @@ func TestSelectNodesForPreemption(t *testing.T) {
 			pods: []*v1.Pod{
 				{ObjectMeta: metav1.ObjectMeta{Name: "a"}, Spec: v1.PodSpec{Priority: &midPriority, NodeName: "machine1"}},
 				{ObjectMeta: metav1.ObjectMeta{Name: "b"}, Spec: v1.PodSpec{Priority: &midPriority, NodeName: "machine2"}}},
-			expected: map[string]map[string]bool{},
+			expected: map[string]map[string]bool{"machine1": {}},
 		},
 		{
 			name:       "a pod that fits on both machines when lower priority pods are preempted",
@@ -815,13 +815,11 @@ func TestPickOneNodeForPreemption(t *testing.T) {
 		{
 			name:       "No node needs preemption",
 			predicates: map[string]algorithm.FitPredicate{"matches": algorithmpredicates.PodFitsResources},
-			nodes:      []string{"machine1", "machine2"},
+			nodes:      []string{"machine1"},
 			pod:        &v1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "machine1"}, Spec: v1.PodSpec{Containers: largeContainers, Priority: &highPriority}},
 			pods: []*v1.Pod{
-				{ObjectMeta: metav1.ObjectMeta{Name: "m1.1"}, Spec: v1.PodSpec{Containers: smallContainers, Priority: &midPriority, NodeName: "machine1"}},
-
-				{ObjectMeta: metav1.ObjectMeta{Name: "m2.1"}, Spec: v1.PodSpec{Containers: smallContainers, Priority: &midPriority, NodeName: "machine2"}}},
-			expected: []string{""},
+				{ObjectMeta: metav1.ObjectMeta{Name: "m1.1"}, Spec: v1.PodSpec{Containers: smallContainers, Priority: &midPriority, NodeName: "machine1"}}},
+			expected: []string{"machine1"},
 		},
 		{
 			name:       "a pod that fits on both machines when lower priority pods are preempted",
@@ -833,6 +831,17 @@ func TestPickOneNodeForPreemption(t *testing.T) {
 
 				{ObjectMeta: metav1.ObjectMeta{Name: "m2.1"}, Spec: v1.PodSpec{Containers: largeContainers, Priority: &midPriority, NodeName: "machine2"}}},
 			expected: []string{"machine1", "machine2"},
+		},
+		{
+			name:       "a pod that fits on a machine with no preemption",
+			predicates: map[string]algorithm.FitPredicate{"matches": algorithmpredicates.PodFitsResources},
+			nodes:      []string{"machine1", "machine2", "machine3"},
+			pod:        &v1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "machine1"}, Spec: v1.PodSpec{Containers: largeContainers, Priority: &highPriority}},
+			pods: []*v1.Pod{
+				{ObjectMeta: metav1.ObjectMeta{Name: "m1.1"}, Spec: v1.PodSpec{Containers: largeContainers, Priority: &midPriority, NodeName: "machine1"}},
+
+				{ObjectMeta: metav1.ObjectMeta{Name: "m2.1"}, Spec: v1.PodSpec{Containers: largeContainers, Priority: &midPriority, NodeName: "machine2"}}},
+			expected: []string{"machine3"},
 		},
 		{
 			name:       "machine with min highest priority pod is picked",

@@ -467,6 +467,10 @@ func pickOneNodeForPreemption(nodesToPods map[string][]*v1.Pod) string {
 	minHighestPriority := int32(math.MaxInt32)
 	nodeScores := []*nodeScore{}
 	for nodeName, pods := range nodesToPods {
+		if len(pods) == 0 {
+			// We found a node that doesn't need any preemption. Return it!
+			return nodeName
+		}
 		// highestPodPriority is the highest priority among the victims on this node.
 		highestPodPriority := util.GetPodPriority(pods[0])
 		if highestPodPriority < minHighestPriority {
@@ -540,7 +544,7 @@ func selectNodesForPreemption(pod *v1.Pod,
 	checkNode := func(i int) {
 		nodeName := nodes[i].Name
 		pods, fits := selectVictimsOnNode(pod, meta.ShallowCopy(), nodeNameToInfo[nodeName], predicates)
-		if fits && len(pods) != 0 {
+		if fits {
 			resultLock.Lock()
 			nodeNameToPods[nodeName] = pods
 			resultLock.Unlock()
