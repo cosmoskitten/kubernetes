@@ -24,8 +24,8 @@ import (
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha1"
 )
 
-func TestCloneDevice(t *testing.T) {
-	d := CloneDevice(&pluginapi.Device{ID: "ADeviceId", Health: pluginapi.Healthy})
+func TestcloneDevice(t *testing.T) {
+	d := cloneDevice(&pluginapi.Device{ID: "ADeviceId", Health: pluginapi.Healthy})
 
 	require.Equal(t, d.ID, "ADeviceId")
 	require.Equal(t, d.Health, pluginapi.Healthy)
@@ -40,15 +40,15 @@ func TestCopyDevices(t *testing.T) {
 	require.Len(t, devs, 1)
 }
 
-func TestGetDevice(t *testing.T) {
+func TestgetDevice(t *testing.T) {
 	devs := []*pluginapi.Device{
 		{ID: "ADeviceId", Health: pluginapi.Healthy},
 	}
 
-	_, ok := GetDevice(&pluginapi.Device{ID: "AnotherDeviceId"}, devs)
+	_, ok := getDevice(&pluginapi.Device{ID: "AnotherDeviceId"}, devs)
 	require.False(t, ok)
 
-	d, ok := GetDevice(&pluginapi.Device{ID: "ADeviceId"}, devs)
+	d, ok := getDevice(&pluginapi.Device{ID: "ADeviceId"}, devs)
 	require.True(t, ok)
 	require.Equal(t, d, devs[0])
 }

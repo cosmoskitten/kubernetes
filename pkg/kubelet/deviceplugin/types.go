@@ -24,28 +24,28 @@ import (
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha1"
 )
 
-// MonitorCallback is the function called when a device becomes
-// unhealthy (or healthy again)
-// Updated contains the most recent state of the Device
+// MonitorCallback is the function called when a device's health state changes,
+// or new devices are reported, or old devices are deleted.
+// Updated contains the most recent state of the Device.
 type MonitorCallback func(resourceName string, added, updated, deleted []*pluginapi.Device)
 
-// Manager manages the Device Plugins running on a machine
+// Manager manages all the Device Plugins running on a node.
 type Manager interface {
-	// Start starts the gRPC service
+	// Start starts the gRPC Registration service.
 	Start() error
 	// Devices is the map of devices that have registered themselves
 	// against the manager.
-	// The map key is the ResourceName of the device plugins
+	// The map key is the ResourceName of the device plugins.
 	Devices() map[string][]*pluginapi.Device
 
-	// Allocate is calls the gRPC Allocate on the device plugin
-	Allocate(string, []*pluginapi.Device) (*pluginapi.AllocateResponse, error)
+	// Allocate calls the gRPC Allocate on the device plugin.
+	Allocate(string, []string) (*pluginapi.AllocateResponse, error)
 
-	// Stop stops the manager
+	// Stop stops the manager.
 	Stop() error
 }
 
-// ManagerImpl is the structure in charge of managing Device Plugins
+// ManagerImpl is the structure in charge of managing Device Plugins.
 type ManagerImpl struct {
 	socketname string
 	socketdir  string
