@@ -17,6 +17,8 @@ limitations under the License.
 package cloud
 
 import (
+	"errors"
+	"reflect"
 	"testing"
 	"time"
 
@@ -38,6 +40,115 @@ import (
 	kubeletapis "k8s.io/kubernetes/pkg/kubelet/apis"
 	"k8s.io/kubernetes/plugin/pkg/scheduler/algorithm"
 )
+
+func TestEnsureNodeExistsByProviderIDOrNodeName(t *testing.T) {
+
+	testCases := []struct {
+		testName           string
+		node               *v1.Node
+		expectedCalls      []string
+		existsByNodeName   bool
+		existsByProviderID bool
+		nodeNameErr        error
+		providerIDErr      error
+	}{
+		{
+			testName:           "node exists by provider id",
+			existsByProviderID: true,
+			providerIDErr:      nil,
+			existsByNodeName:   false,
+			nodeNameErr:        errors.New("unimplemented"),
+			expectedCalls:      []string{"instance-exists-by-provider-id"},
+			node: &v1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node0",
+				},
+				Spec: v1.NodeSpec{
+					ProviderID: "node0",
+				},
+			},
+		},
+		{
+			testName:           "does not exist by provider id",
+			existsByProviderID: false,
+			providerIDErr:      nil,
+			existsByNodeName:   false,
+			nodeNameErr:        errors.New("unimplemented"),
+			expectedCalls:      []string{"instance-exists-by-provider-id"},
+			node: &v1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node0",
+				},
+				Spec: v1.NodeSpec{
+					ProviderID: "node0",
+				},
+			},
+		},
+		{
+			testName:           "node exists by node name",
+			existsByProviderID: false,
+			providerIDErr:      errors.New("unimplemented"),
+			existsByNodeName:   true,
+			nodeNameErr:        nil,
+			expectedCalls:      []string{"instance-exists-by-provider-id", "instance-exists"},
+			node: &v1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node0",
+				},
+				Spec: v1.NodeSpec{
+					ProviderID: "node0",
+				},
+			},
+		},
+		{
+			testName:           "does not exist by node name",
+			existsByProviderID: false,
+			providerIDErr:      errors.New("unimplemented"),
+			existsByNodeName:   false,
+			nodeNameErr:        nil,
+			expectedCalls:      []string{"instance-exists-by-provider-id", "instance-exists"},
+			node: &v1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node0",
+				},
+				Spec: v1.NodeSpec{
+					ProviderID: "node0",
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.testName, func(t *testing.T) {
+			fc := &fakecloud.FakeCloud{
+				ExistsByNodeName:   tc.existsByNodeName,
+				ExistsByProviderID: tc.existsByProviderID,
+				ErrByNodeName:      tc.nodeNameErr,
+				ErrByProviderID:    tc.providerIDErr,
+			}
+
+			instances, _ := fc.Instances()
+			exists, err := ensureNodeExistsByProviderIDOrName(instances, tc.node)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if !reflect.DeepEqual(fc.Calls, tc.expectedCalls) {
+				t.Fatalf("expected cloud provider methods `%v` to be called but `%v` was called ", tc.expectedCalls, fc.Calls)
+			}
+
+			if tc.existsByProviderID && tc.existsByProviderID != exists {
+				t.Fatalf("expected exist by provider id to be `%t` but got `%t`", tc.existsByProviderID, exists)
+			}
+
+			if tc.existsByNodeName && tc.existsByNodeName != exists {
+				t.Fatalf("expected exist by node name to be `%t` but got `%t`", tc.existsByNodeName, exists)
+			}
+
+		})
+	}
+
+}
 
 // This test checks that the node is deleted when kubelet stops reporting
 // and cloud provider says node is gone
@@ -108,8 +219,8 @@ func TestNodeDeleted(t *testing.T) {
 		kubeClient:   fnh,
 		nodeInformer: factory.Core().V1().Nodes(),
 		cloud: &fakecloud.FakeCloud{
-			Exists: false,
-			Err:    nil,
+			ExistsByProviderID: false,
+			Err:                nil,
 		},
 		nodeMonitorPeriod:         1 * time.Second,
 		recorder:                  eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "cloud-controller-manager"}),
@@ -523,8 +634,8 @@ func TestNodeAddresses(t *testing.T) {
 			FailureDomain: "us-west-1a",
 			Region:        "us-west",
 		},
-		Exists: true,
-		Err:    nil,
+		ExistsByProviderID: true,
+		Err:                nil,
 	}
 
 	eventBroadcaster := record.NewBroadcaster()
@@ -643,8 +754,8 @@ func TestNodeProvidedIPAddresses(t *testing.T) {
 			FailureDomain: "us-west-1a",
 			Region:        "us-west",
 		},
-		Exists: true,
-		Err:    nil,
+		ExistsByProviderID: true,
+		Err:                nil,
 	}
 
 	eventBroadcaster := record.NewBroadcaster()
