@@ -72,15 +72,6 @@ func (cm *unsupportedContainerManager) NewPodContainerManager() PodContainerMana
 	return &unsupportedPodContainerManager{}
 }
 
-// GetDevicePluginHandler returns the DevicePluginHandler
-func (m *containerManagerStub) GetDevicePluginHandler() DevicePluginHandler {
-	return nil
-}
-
-// SetDevicePluginHandler sets the DevicePluginHandler
-func (m *containerManagerStub) SetDevicePluginHandler(d DevicePluginHandler) {
-}
-
-func NewContainerManager(_ mount.Interface, _ cadvisor.Interface, _ NodeConfig, failSwapOn bool, recorder record.EventRecorder) (ContainerManager, error) {
+func NewContainerManager(_ mount.Interface, _ cadvisor.Interface, _ NodeConfig, failSwapOn bool, devicePluginEnabled bool, recorder record.EventRecorder) (ContainerManager, error) {
 	return &unsupportedContainerManager{}, nil
 }

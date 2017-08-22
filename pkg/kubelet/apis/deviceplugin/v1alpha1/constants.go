@@ -31,9 +31,6 @@ const (
 	// KubeletSocket is the path of the Kubelet registry socket
 	KubeletSocket = DevicePluginPath + "kubelet.sock"
 
-	// InvalidChars are the characters that may not appear in a Vendor or Kind field
-	InvalidChars = "/ "
-
 	// ErrFailedToDialDevicePlugin is the error raised when the device plugin could not be
 	// reached on the registered socket
 	ErrFailedToDialDevicePlugin = "Failed to dial device plugin:"
