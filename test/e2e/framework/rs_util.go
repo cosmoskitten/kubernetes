@@ -22,7 +22,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 
-	extensions "k8s.io/api/extensions/v1beta1"
+	apps "k8s.io/api/apps/v1beta2"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -32,19 +32,19 @@ import (
 	testutils "k8s.io/kubernetes/test/utils"
 )
 
-type updateRsFunc func(d *extensions.ReplicaSet)
+type updateRsFunc func(d *apps.ReplicaSet)
 
-func UpdateReplicaSetWithRetries(c clientset.Interface, namespace, name string, applyUpdate updateRsFunc) (*extensions.ReplicaSet, error) {
-	var rs *extensions.ReplicaSet
+func UpdateReplicaSetWithRetries(c clientset.Interface, namespace, name string, applyUpdate updateRsFunc) (*apps.ReplicaSet, error) {
+	var rs *apps.ReplicaSet
 	var updateErr error
 	pollErr := wait.PollImmediate(1*time.Second, 1*time.Minute, func() (bool, error) {
 		var err error
-		if rs, err = c.Extensions().ReplicaSets(namespace).Get(name, metav1.GetOptions{}); err != nil {
+		if rs, err = c.AppsV1beta2().ReplicaSets(namespace).Get(name, metav1.GetOptions{}); err != nil {
 			return false, err
 		}
 		// Apply the update, then attempt to push it to the apiserver.
 		applyUpdate(rs)
-		if rs, err = c.Extensions().ReplicaSets(namespace).Update(rs); err == nil {
+		if rs, err = c.AppsV1beta2().ReplicaSets(namespace).Update(rs); err == nil {
 			Logf("Updating replica set %q", name)
 			return true, nil
 		}
@@ -79,7 +79,7 @@ func CheckNewRSAnnotations(c clientset.Interface, ns, deploymentName string, exp
 // Delete a ReplicaSet and all pods it spawned
 func DeleteReplicaSet(clientset clientset.Interface, internalClientset internalclientset.Interface, ns, name string) error {
 	By(fmt.Sprintf("deleting ReplicaSet %s in namespace %s", name, ns))
-	rs, err := clientset.Extensions().ReplicaSets(ns).Get(name, metav1.GetOptions{})
+	rs, err := clientset.AppsV1beta2().ReplicaSets(ns).Get(name, metav1.GetOptions{})
 	if err != nil {
 		if apierrs.IsNotFound(err) {
 			Logf("ReplicaSet %s was already deleted: %v", name, err)
@@ -88,7 +88,7 @@ func DeleteReplicaSet(clientset clientset.Interface, internalClientset internalc
 		return err
 	}
 	startTime := time.Now()
-	err = clientset.ExtensionsV1beta1().ReplicaSets(ns).Delete(name, &metav1.DeleteOptions{})
+	err = clientset.AppsV1beta2().ReplicaSets(ns).Delete(name, &metav1.DeleteOptions{})
 	if apierrs.IsNotFound(err) {
 		Logf("ReplicaSet %s was already deleted: %v", name, err)
 		return nil
@@ -105,7 +105,7 @@ func DeleteReplicaSet(clientset clientset.Interface, internalClientset internalc
 
 // waitForReplicaSetPodsGone waits until there are no pods reported under a
 // ReplicaSet selector (because the pods have completed termination).
-func waitForReplicaSetPodsGone(c clientset.Interface, rs *extensions.ReplicaSet) error {
+func waitForReplicaSetPodsGone(c clientset.Interface, rs *apps.ReplicaSet) error {
 	return wait.PollImmediate(Poll, 2*time.Minute, func() (bool, error) {
 		selector, err := metav1.LabelSelectorAsSelector(rs.Spec.Selector)
 		ExpectNoError(err)
@@ -120,7 +120,7 @@ func waitForReplicaSetPodsGone(c clientset.Interface, rs *extensions.ReplicaSet)
 // WaitForReadyReplicaSet waits until the replica set has all of its replicas ready.
 func WaitForReadyReplicaSet(c clientset.Interface, ns, name string) error {
 	err := wait.Poll(Poll, pollShortTimeout, func() (bool, error) {
-		rs, err := c.Extensions().ReplicaSets(ns).Get(name, metav1.GetOptions{})
+		rs, err := c.AppsV1beta2().ReplicaSets(ns).Get(name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
