@@ -16,7 +16,11 @@ limitations under the License.
 
 package gce
 
-import compute "google.golang.org/api/compute/v1"
+import (
+	compute "google.golang.org/api/compute/v1"
+
+	computebeta "google.golang.org/api/compute/v0.beta"
+)
 
 // CloudAddressService is an interface for managing addresses
 type CloudAddressService interface {
@@ -25,5 +29,8 @@ type CloudAddressService interface {
 	GetRegionAddressByIP(region, ipAddress string) (*compute.Address, error)
 	DeleteRegionAddress(name, region string) error
 
-	// TODO: Mock Global endpoints
+	// Beta API
+	ReserveBetaRegionAddress(address *computebeta.Address, region string) error
+	GetBetaRegionAddress(name string, region string) (*computebeta.Address, error)
+	DeleteBetaRegionAddress(name, region string) error
 }

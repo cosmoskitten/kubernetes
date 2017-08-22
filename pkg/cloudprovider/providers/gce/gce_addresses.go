@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	computebeta "google.golang.org/api/compute/v0.beta"
 	compute "google.golang.org/api/compute/v1"
 )
 
@@ -71,15 +72,15 @@ func (gce *GCECloud) ReserveRegionAddress(addr *compute.Address, region string) 
 	return gce.waitForRegionOp(op, region, mc)
 }
 
-// // ReserveRegionAddress creates a region address
-// func (gce *GCECloud) ReserveBetaRegionAddress(addr *computebeta.Address, region string) error {
-// 	mc := newAddressMetricContext("reserve", region)
-// 	op, err := gce.serviceBeta.Addresses.Insert(gce.projectID, region, addr).Do()
-// 	if err != nil {
-// 		return mc.Observe(err)
-// 	}
-// 	return gce.waitForRegionOp(op, region, mc)
-// }
+// ReserveBetaRegionAddress creates a beta region address
+func (gce *GCECloud) ReserveBetaRegionAddress(addr *computebeta.Address, region string) error {
+	mc := newAddressMetricContext("beta_reserve", region)
+	op, err := gce.serviceBeta.Addresses.Insert(gce.projectID, region, addr).Do()
+	if err != nil {
+		return mc.Observe(err)
+	}
+	return gce.waitForRegionOp(op, region, mc)
+}
 
 // DeleteRegionAddress deletes a region address by name.
 func (gce *GCECloud) DeleteRegionAddress(name, region string) error {
@@ -91,10 +92,27 @@ func (gce *GCECloud) DeleteRegionAddress(name, region string) error {
 	return gce.waitForRegionOp(op, region, mc)
 }
 
+// DeleteBetaRegionAddress deletes a beta region address by name.
+func (gce *GCECloud) DeleteBetaRegionAddress(name, region string) error {
+	mc := newAddressMetricContext("beta_delete", region)
+	op, err := gce.serviceBeta.Addresses.Delete(gce.projectID, region, name).Do()
+	if err != nil {
+		return mc.Observe(err)
+	}
+	return gce.waitForRegionOp(op, region, mc)
+}
+
 // GetRegionAddress returns the region address by name
 func (gce *GCECloud) GetRegionAddress(name, region string) (*compute.Address, error) {
 	mc := newAddressMetricContext("get", region)
 	v, err := gce.service.Addresses.Get(gce.projectID, region, name).Do()
+	return v, mc.Observe(err)
+}
+
+// GetBetaRegionAddress returns the beta region address by name
+func (gce *GCECloud) GetBetaRegionAddress(name, region string) (*computebeta.Address, error) {
+	mc := newAddressMetricContext("beta_get", region)
+	v, err := gce.serviceBeta.Addresses.Get(gce.projectID, region, name).Do()
 	return v, mc.Observe(err)
 }
 
