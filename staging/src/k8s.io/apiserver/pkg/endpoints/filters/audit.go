@@ -48,32 +48,12 @@ func WithAudit(handler http.Handler, requestContextMapper request.RequestContext
 			return
 		}
 
-		attribs, err := GetAuthorizerAttributes(ctx)
+		ev, err := createEvent(ctx, policy, requestContextMapper, req, w)
 		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("failed to GetAuthorizerAttributes: %v", err))
-			responsewriters.InternalError(w, req, errors.New("failed to parse request"))
 			return
 		}
-
-		level := policy.Level(attribs)
-		audit.ObservePolicyLevel(level)
-		if level == auditinternal.LevelNone {
-			// Don't audit.
+		if ev == nil {
 			handler.ServeHTTP(w, req)
-			return
-		}
-
-		ev, err := audit.NewEventFromRequest(req, level, attribs)
-		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("failed to complete audit event from request: %v", err))
-			responsewriters.InternalError(w, req, errors.New("failed to update context"))
-			return
-		}
-
-		ctx = request.WithAuditEvent(ctx, ev)
-		if err := requestContextMapper.Update(req, ctx); err != nil {
-			utilruntime.HandleError(fmt.Errorf("failed to attach audit event to the context: %v", err))
-			responsewriters.InternalError(w, req, errors.New("failed to update context"))
 			return
 		}
 
@@ -127,6 +107,38 @@ func WithAudit(handler http.Handler, requestContextMapper request.RequestContext
 		}()
 		handler.ServeHTTP(respWriter, req)
 	})
+}
+
+func createEvent(ctx request.Context, policy policy.Checker, requestContextMapper request.RequestContextMapper, req *http.Request, w http.ResponseWriter) (*auditinternal.Event, error) {
+	attribs, err := GetAuthorizerAttributes(ctx)
+	if err != nil {
+		utilruntime.HandleError(fmt.Errorf("failed to GetAuthorizerAttributes: %v", err))
+		responsewriters.InternalError(w, req, errors.New("failed to parse request"))
+		return nil, err
+	}
+
+	level := policy.Level(attribs)
+	audit.ObservePolicyLevel(level)
+	if level == auditinternal.LevelNone {
+		// Don't audit.
+		return nil, nil
+	}
+
+	ev, err := audit.NewEventFromRequest(req, level, attribs)
+	if err != nil {
+		utilruntime.HandleError(fmt.Errorf("failed to complete audit event from request: %v", err))
+		responsewriters.InternalError(w, req, errors.New("failed to update context"))
+		return nil, err
+	}
+
+	ctx = request.WithAuditEvent(ctx, ev)
+	if err := requestContextMapper.Update(req, ctx); err != nil {
+		utilruntime.HandleError(fmt.Errorf("failed to attach audit event to the context: %v", err))
+		responsewriters.InternalError(w, req, errors.New("failed to update context"))
+		return nil, err
+	}
+
+	return ev, nil
 }
 
 func processEvent(sink audit.Sink, ev *auditinternal.Event) {
