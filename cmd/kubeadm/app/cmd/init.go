@@ -21,6 +21,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"strings"
 	"text/template"
 	"time"
 
@@ -32,8 +33,8 @@ import (
 	kubeadmapi "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm"
 	kubeadmapiext "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/v1alpha1"
 	"k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/validation"
-	"k8s.io/kubernetes/cmd/kubeadm/app/cmd/features"
 	kubeadmconstants "k8s.io/kubernetes/cmd/kubeadm/app/constants"
+	"k8s.io/kubernetes/cmd/kubeadm/app/features"
 	dnsaddonphase "k8s.io/kubernetes/cmd/kubeadm/app/phases/addons/dns"
 	proxyaddonphase "k8s.io/kubernetes/cmd/kubeadm/app/phases/addons/proxy"
 	apiconfigphase "k8s.io/kubernetes/cmd/kubeadm/app/phases/apiconfig"
@@ -88,10 +89,18 @@ func NewCmdInit(out io.Writer) *cobra.Command {
 	var skipPreFlight bool
 	var skipTokenPrint bool
 	var dryRun bool
+	var featureFlagsString string
+
 	cmd := &cobra.Command{
 		Use:   "init",
 		Short: "Run this in order to set up the Kubernetes master",
 		Run: func(cmd *cobra.Command, args []string) {
+
+			var err error
+			if cfg.FeatureFlags, err = features.NewFeatureGate(&features.InitFeatureGates, featureFlagsString); err != nil {
+				kubeadmutil.CheckErr(err)
+			}
+
 			api.Scheme.Default(cfg)
 			internalcfg := &kubeadmapi.MasterConfiguration{}
 			api.Scheme.Convert(cfg, internalcfg, nil)
@@ -171,6 +180,9 @@ func NewCmdInit(out io.Writer) *cobra.Command {
 	cmd.PersistentFlags().DurationVar(
 		&cfg.TokenTTL, "token-ttl", cfg.TokenTTL,
 		"The duration before the bootstrap token is automatically deleted. 0 means 'never expires'.")
+
+	cmd.Flags().StringVar(&featureFlagsString, "feature-gates", featureFlagsString, "A set of key=value pairs that describe feature gates for various features. "+
+		"Options are:\n"+strings.Join(features.KnownFeatures(&features.InitFeatureGates), "\n"))
 
 	return cmd
 }
