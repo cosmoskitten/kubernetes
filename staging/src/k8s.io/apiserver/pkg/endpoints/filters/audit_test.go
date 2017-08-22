@@ -936,21 +936,24 @@ func TestAuditJson(t *testing.T) {
 
 type fakeRequestContextMapper struct {
 	user *user.DefaultInfo
+	ctx  request.Context
 }
 
 func (m *fakeRequestContextMapper) Get(req *http.Request) (request.Context, bool) {
-	ctx := request.NewContext()
+	if m.ctx == nil {
+		m.ctx = request.NewContext()
+	}
 	if m.user != nil {
-		ctx = request.WithUser(ctx, m.user)
+		m.ctx = request.WithUser(m.ctx, m.user)
 	}
 
 	resolver := newTestRequestInfoResolver()
 	info, err := resolver.NewRequestInfo(req)
 	if err == nil {
-		ctx = request.WithRequestInfo(ctx, info)
+		m.ctx = request.WithRequestInfo(m.ctx, info)
 	}
 
-	return ctx, true
+	return m.ctx, true
 }
 
 func (*fakeRequestContextMapper) Update(req *http.Request, context request.Context) error {
