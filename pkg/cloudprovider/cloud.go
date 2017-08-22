@@ -143,13 +143,9 @@ type Instances interface {
 	CurrentNodeName(hostname string) (types.NodeName, error)
 	// InstanceExists returns true if the instance for the given node name still is running.
 	// If false is returned with no error, the instance will be immediately deleted.
-	// Note: The `cloudprovider.InstanceNotFound` error should not be returned here to notify
-	// the CCM that the instance is no longer running.
 	InstanceExists(nodeName types.NodeName) (bool, error)
 	// InstanceExistsByProviderID returns true if the instance for the given provider id still is running.
 	// If false is returned with no error, the instance will be immediately deleted.
-	// Note: The `cloudprovider.InstanceNotFound` error should not be returned here to notify
-	// the CCM that the instance is no longer running.
 	InstanceExistsByProviderID(providerID string) (bool, error)
 }
 
