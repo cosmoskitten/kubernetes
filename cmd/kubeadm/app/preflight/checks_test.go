@@ -191,7 +191,7 @@ func TestRunInitMasterChecks(t *testing.T) {
 			t.Errorf(
 				"failed RunInitMasterChecks:\n\texpected: %t\n\t  actual: %t",
 				rt.expected,
-				(actual != nil),
+				actual != nil,
 			)
 		}
 	}
@@ -214,7 +214,7 @@ func TestRunJoinNodeChecks(t *testing.T) {
 			t.Errorf(
 				"failed RunJoinNodeChecks:\n\texpected: %t\n\t  actual: %t",
 				rt.expected,
-				(actual != nil),
+				actual != nil,
 			)
 		}
 	}
@@ -257,7 +257,7 @@ func TestRunChecks(t *testing.T) {
 			t.Errorf(
 				"failed RunChecks:\n\texpected: %t\n\t  actual: %t",
 				rt.expected,
-				(actual == nil),
+				actual == nil,
 			)
 		}
 		if buf.String() != rt.output {
@@ -402,7 +402,7 @@ func TestKubernetesVersionCheck(t *testing.T) {
 			t.Errorf(
 				"failed KubernetesVersionCheck:\n\texpected: %t\n\t  actual: %t (KubeadmVersion:%s, KubernetesVersion: %s)",
 				rt.expectWarnings,
-				(warning != nil),
+				warning != nil,
 				rt.check.KubeadmVersion,
 				rt.check.KubernetesVersion,
 			)

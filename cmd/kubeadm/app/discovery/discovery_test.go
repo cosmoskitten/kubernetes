@@ -59,7 +59,7 @@ func TestFor(t *testing.T) {
 			t.Errorf(
 				"failed For:\n\texpected: %t\n\t  actual: %t",
 				rt.expect,
-				(actual == nil),
+				actual == nil,
 			)
 		}
 	}

@@ -118,7 +118,7 @@ func TestHandleGetAction(t *testing.T) {
 			t.Errorf(
 				"failed HandleGetAction:\n\texpected error: %t\n\t  actual: %t %v",
 				rt.expectedErr,
-				(actualErr != nil),
+				actualErr != nil,
 				rt.action,
 			)
 		}

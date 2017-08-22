@@ -45,7 +45,7 @@ func TestTokenParse(t *testing.T) {
 				"failed ParseToken for this token: [%s]\n\texpected: %t\n\t  actual: %t",
 				rt.token,
 				rt.expected,
-				(actual == nil),
+				actual == nil,
 			)
 		}
 	}
@@ -71,7 +71,7 @@ func TestParseTokenID(t *testing.T) {
 				"failed ParseTokenID for this token ID: [%s]\n\texpected: %t\n\t  actual: %t",
 				rt.tokenID,
 				rt.expected,
-				(actual == nil),
+				actual == nil,
 			)
 		}
 	}
@@ -102,7 +102,7 @@ func TestValidateToken(t *testing.T) {
 				"failed ValidateToken for this token ID: [%s]\n\texpected: %t\n\t  actual: %t",
 				rt.token,
 				rt.expected,
-				(actual == nil),
+				actual == nil,
 			)
 		}
 		if (valid == true) != rt.expected {
@@ -110,7 +110,7 @@ func TestValidateToken(t *testing.T) {
 				"failed ValidateToken for this token ID: [%s]\n\texpected: %t\n\t  actual: %t",
 				rt.token,
 				rt.expected,
-				(actual == nil),
+				actual == nil,
 			)
 		}
 	}

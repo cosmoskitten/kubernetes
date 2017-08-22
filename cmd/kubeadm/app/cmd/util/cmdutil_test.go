@@ -57,7 +57,7 @@ func TestValidateExactArgNumber(t *testing.T) {
 			t.Errorf(
 				"failed ValidateExactArgNumber:\n\texpected error: %t\n\t  actual error: %t",
 				rt.expectedErr,
-				(actual != nil),
+				actual != nil,
 			)
 		}
 	}

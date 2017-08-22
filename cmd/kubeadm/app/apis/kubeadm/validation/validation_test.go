@@ -44,7 +44,7 @@ func TestValidateTokenDiscovery(t *testing.T) {
 			t.Errorf(
 				"failed ValidateTokenDiscovery:\n\texpected: %t\n\t  actual: %t",
 				rt.expected,
-				(err == nil),
+				err == nil,
 			)
 		}
 	}
@@ -72,7 +72,7 @@ func TestValidateAuthorizationModes(t *testing.T) {
 			t.Errorf(
 				"failed ValidateAuthorizationModes:\n\texpected: %t\n\t  actual: %t",
 				rt.expected,
-				(len(actual) == 0),
+				len(actual) == 0,
 			)
 		}
 	}
@@ -95,7 +95,7 @@ func TestValidateNodeName(t *testing.T) {
 			t.Errorf(
 				"failed ValidateNodeName:\n\texpected: %t\n\t  actual: %t",
 				rt.expected,
-				(len(actual) == 0),
+				len(actual) == 0,
 			)
 		}
 	}
@@ -119,7 +119,7 @@ func TestValidateCloudProvider(t *testing.T) {
 			t.Errorf(
 				"failed ValidateCloudProvider:\n\texpected: %t\n\t  actual: %t",
 				rt.expected,
-				(len(actual) == 0),
+				len(actual) == 0,
 			)
 		}
 	}
@@ -144,7 +144,7 @@ func TestValidateAPIServerCertSANs(t *testing.T) {
 			t.Errorf(
 				"failed ValidateAPIServerCertSANs:\n\texpected: %t\n\t  actual: %t",
 				rt.expected,
-				(len(actual) == 0),
+				len(actual) == 0,
 			)
 		}
 	}
@@ -173,7 +173,7 @@ func TestValidateIPFromString(t *testing.T) {
 				"%s test case failed:\n\texpected: %t\n\t  actual: %t",
 				rt.name,
 				rt.expected,
-				(len(actual) == 0),
+				len(actual) == 0,
 			)
 		}
 	}
@@ -203,7 +203,7 @@ func TestValidateIPNetFromString(t *testing.T) {
 				"%s test case failed :\n\texpected: %t\n\t  actual: %t",
 				rt.name,
 				rt.expected,
-				(len(actual) == 0),
+				len(actual) == 0,
 			)
 		}
 	}
@@ -268,7 +268,7 @@ func TestValidateAPIEndpoint(t *testing.T) {
 				"%s test case failed:\n\texpected: %t\n\t  actual: %t",
 				rt.name,
 				rt.expected,
-				(len(actual) == 0),
+				len(actual) == 0,
 			)
 		}
 	}
@@ -363,7 +363,7 @@ func TestValidateMasterConfiguration(t *testing.T) {
 				"%s test case failed:\n\texpected: %t\n\t  actual: %t",
 				rt.name,
 				rt.expected,
-				(len(actual) == 0),
+				len(actual) == 0,
 			)
 		}
 	}
@@ -387,7 +387,7 @@ func TestValidateNodeConfiguration(t *testing.T) {
 			t.Errorf(
 				"failed ValidateNodeConfiguration:\n\texpected: %t\n\t  actual: %t",
 				rt.expected,
-				(len(actual) == 0),
+				len(actual) == 0,
 			)
 		}
 	}
@@ -429,7 +429,7 @@ func TestValidateMixedArguments(t *testing.T) {
 			t.Errorf(
 				"failed ValidateMixedArguments:\n\texpected: %t\n\t  actual: %t testdata: %v",
 				rt.expected,
-				(actual == nil),
+				actual == nil,
 				rt.args,
 			)
 		}
@@ -454,7 +454,7 @@ func TestValidateFeatureGates(t *testing.T) {
 			t.Errorf(
 				"failed featureGates:\n\texpected: %t\n\t  actual: %t",
 				rt.expected,
-				(len(actual) == 0),
+				len(actual) == 0,
 			)
 		}
 	}

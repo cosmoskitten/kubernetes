@@ -187,7 +187,7 @@ func TestSetImplicitFlags(t *testing.T) {
 			t.Errorf(
 				"failed SetImplicitFlags:\n\texpected error: %t\n\t  actual: %t",
 				rt.errExpected,
-				(actualErr != nil),
+				actualErr != nil,
 			)
 		}
 	}

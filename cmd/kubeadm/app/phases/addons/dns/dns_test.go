@@ -114,7 +114,7 @@ func TestCompileManifests(t *testing.T) {
 			t.Errorf(
 				"failed CompileManifests:\n\texpected: %t\n\t  actual: %t",
 				rt.expected,
-				(actual == nil),
+				actual == nil,
 			)
 		}
 	}

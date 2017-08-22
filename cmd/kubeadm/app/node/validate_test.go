@@ -138,7 +138,7 @@ func TestValidateAPIServer(t *testing.T) {
 			t.Errorf(
 				"failed TestValidateAPIServer:\n\texpected: %t\n\t  actual: %t",
 				rt.expect,
-				(actual == nil),
+				actual == nil,
 			)
 		}
 	}

@@ -106,7 +106,7 @@ func TestGetMasterEndpoint(t *testing.T) {
 				"%s test case failed:\n\texpected: %s\n\t actual: %s",
 				rt.name,
 				rt.endpoint,
-				(actual),
+				actual,
 			)
 		}
 	}
@@ -216,7 +216,7 @@ func TestGetMasterHostPort(t *testing.T) {
 				"%s test case failed:\n\texpected: %s\n\t actual: %s",
 				rt.name,
 				rt.hostPort,
-				(actual),
+				actual,
 			)
 		}
 	}
