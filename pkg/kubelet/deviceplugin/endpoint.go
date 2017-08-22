@@ -47,6 +47,7 @@ type endpoint struct {
 func newEndpoint(socketPath, resourceName string, callback MonitorCallback) (*endpoint, error) {
 	client, err := dial(socketPath)
 	if err != nil {
+		glog.Errorf("Can't create new endpoint with path %s err %v", socketPath, err)
 		return nil, err
 	}
 
@@ -67,8 +68,7 @@ func newEndpoint(socketPath, resourceName string, callback MonitorCallback) (*en
 }
 
 func (e *endpoint) list() (pluginapi.DevicePlugin_ListAndWatchClient, error) {
-	glog.V(2).Infof("Starting ListAndWatch")
-
+	glog.V(3).Infof("Starting List")
 	stream, err := e.client.ListAndWatch(e.ctx, &pluginapi.Empty{})
 	if err != nil {
 		glog.Errorf(ErrListAndWatch, e.resourceName, err)
@@ -83,19 +83,23 @@ func (e *endpoint) list() (pluginapi.DevicePlugin_ListAndWatchClient, error) {
 	}
 
 	devices := make(map[string]*pluginapi.Device)
+	var added, updated, deleted []*pluginapi.Device
 	for _, d := range devs.Devices {
 		devices[d.ID] = d
+		added = append(added, CloneDevice(d))
 	}
 
 	e.mutex.Lock()
 	e.devices = devices
 	e.mutex.Unlock()
 
+	e.callback(e.resourceName, added, updated, deleted)
+
 	return stream, nil
 }
 
 func (e *endpoint) listAndWatch(stream pluginapi.DevicePlugin_ListAndWatchClient) {
-	glog.V(2).Infof("Starting ListAndWatch")
+	glog.V(3).Infof("Starting ListAndWatch")
 
 	devices := make(map[string]*pluginapi.Device)
 
@@ -166,14 +170,9 @@ func (e *endpoint) listAndWatch(stream pluginapi.DevicePlugin_ListAndWatchClient
 
 }
 
-func (e *endpoint) allocate(devs []*pluginapi.Device) (*pluginapi.AllocateResponse, error) {
-	var ids []string
-	for _, d := range devs {
-		ids = append(ids, d.ID)
-	}
-
+func (e *endpoint) allocate(devs []string) (*pluginapi.AllocateResponse, error) {
 	return e.client.Allocate(context.Background(), &pluginapi.AllocateRequest{
-		DevicesIDs: ids,
+		DevicesIDs: devs,
 	})
 }
 

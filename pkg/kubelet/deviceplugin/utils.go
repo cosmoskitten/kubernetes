@@ -18,8 +18,9 @@ package deviceplugin
 
 import (
 	"fmt"
-	"strings"
 
+	"k8s.io/api/core/v1"
+	v1helper "k8s.io/kubernetes/pkg/api/v1/helper"
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha1"
 )
 
@@ -42,7 +43,7 @@ func copyDevices(devs map[string]*pluginapi.Device) []*pluginapi.Device {
 	return clones
 }
 
-// GetDevice returns the Device if a boolean signaling if the device was found or not
+// GetDevice returns the Device with a boolean signaling if the device was found or not
 func GetDevice(d *pluginapi.Device, devs []*pluginapi.Device) (*pluginapi.Device, bool) {
 	name := DeviceKey(d)
 
@@ -62,15 +63,19 @@ func IsResourceNameValid(resourceName string) error {
 	if resourceName == "" {
 		return fmt.Errorf(pluginapi.ErrEmptyResourceName)
 	}
-
-	if strings.ContainsAny(resourceName, pluginapi.InvalidChars) {
+	if !IsDeviceName(v1.ResourceName(resourceName)) {
 		return fmt.Errorf(pluginapi.ErrInvalidResourceName)
 	}
-
 	return nil
 }
 
 // DeviceKey returns the Key of a device
 func DeviceKey(d *pluginapi.Device) string {
 	return d.ID
+}
+
+// IsDeviceName returns whether the ResourceName points to an extended resource
+// name exported by a device plugin.
+func IsDeviceName(k v1.ResourceName) bool {
+	return v1helper.IsExtendedResourceName(k)
 }
