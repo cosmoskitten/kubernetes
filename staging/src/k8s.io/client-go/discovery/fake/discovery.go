@@ -28,11 +28,24 @@ import (
 	"k8s.io/apimachinery/pkg/version"
 	kubeversion "k8s.io/client-go/pkg/version"
 	restclient "k8s.io/client-go/rest"
+	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/testing"
 )
 
+// FakeDiscovery is the fake implementation of DiscoveryInterface
 type FakeDiscovery struct {
 	*testing.Fake
+	serverGroups *metav1.APIGroupList
+	serverVersion *version.Info
+	restClient restclient.Interface
+}
+
+// FakeDiscoverySetterInterface holds setter methods for the FakeDiscovery implementation
+type FakeDiscoverySetterInterface interface {
+	discovery.DiscoveryInterface
+	SetServerGroups(*metav1.APIGroupList)
+	SetServerVersion(*version.Info)
+	SetRESTClient(restclient.Interface)
 }
 
 func (c *FakeDiscovery) ServerResourcesForGroupVersion(groupVersion string) (*metav1.APIResourceList, error) {
@@ -67,7 +80,11 @@ func (c *FakeDiscovery) ServerPreferredNamespacedResources() ([]*metav1.APIResou
 }
 
 func (c *FakeDiscovery) ServerGroups() (*metav1.APIGroupList, error) {
-	return nil, nil
+	return c.serverGroups, nil
+}
+
+func (c *FakeDiscovery) SetServerGroups(serverGroups *metav1.APIGroupList) {
+	c.serverGroups = serverGroups
 }
 
 func (c *FakeDiscovery) ServerVersion() (*version.Info, error) {
@@ -76,8 +93,18 @@ func (c *FakeDiscovery) ServerVersion() (*version.Info, error) {
 	action.Resource = schema.GroupVersionResource{Resource: "version"}
 
 	c.Invokes(action, nil)
+
+	// Return the serverVersion set by the user of this fake implementation or kubeversion.Get() by default
+	if c.serverVersion != nil {
+		return c.serverVersion, nil
+	}
+
 	versionInfo := kubeversion.Get()
 	return &versionInfo, nil
+}
+
+func (c *FakeDiscovery) SetServerVersion(serverVersion *version.Info) {
+	c.serverVersion = serverVersion
 }
 
 func (c *FakeDiscovery) SwaggerSchema(version schema.GroupVersion) (*swagger.ApiDeclaration, error) {
@@ -98,5 +125,9 @@ func (c *FakeDiscovery) OpenAPISchema() (*openapi_v2.Document, error) {
 }
 
 func (c *FakeDiscovery) RESTClient() restclient.Interface {
-	return nil
+	return c.restClient
+}
+
+func (c *FakeDiscovery) SetRESTClient(restClient restclient.Interface) {
+	c.restClient = restClient
 }
