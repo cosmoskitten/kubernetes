@@ -473,6 +473,9 @@ func (f *FakeFactory) Command(*cobra.Command, bool) string {
 func (f *FakeFactory) BindFlags(flags *pflag.FlagSet) {
 }
 
+func (f *FakeFactory) BindDiscoveryFlags(flags *pflag.FlagSet) {
+}
+
 func (f *FakeFactory) BindExternalFlags(flags *pflag.FlagSet) {
 }
 

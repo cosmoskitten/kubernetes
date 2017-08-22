@@ -63,6 +63,10 @@ const (
 	FlagMatchBinaryVersion = "match-server-version"
 )
 
+var (
+	FlagHTTPCacheDir = "cachedir"
+)
+
 // Factory provides abstractions that allow the Kubectl command to be extended across multiple types
 // of resources and different API sets.
 // The rings are here for a reason.  In order for composers to be able to provide alternative factory implementations
@@ -82,6 +86,7 @@ type Factory interface {
 type DiscoveryClientFactory interface {
 	// Returns a discovery client
 	DiscoveryClient() (discovery.CachedDiscoveryInterface, error)
+	BindDiscoveryFlags(*pflag.FlagSet)
 }
 
 // ClientAccessFactory holds the first level of factory methods.
