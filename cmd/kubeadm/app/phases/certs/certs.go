@@ -441,12 +441,12 @@ func ValidateCACert(pkiDir string, baseName string, uxName string) error {
 	// Check CA Cert
 	caCert, err := pkiutil.TryLoadCertFromDisk(pkiDir, baseName)
 	if err != nil {
-		return fmt.Errorf("failure loading certificate for %s: %v\n", uxName, err)
+		return fmt.Errorf("failure loading certificate for %s: %v", uxName, err)
 	}
 
 	// Check if cert is a CA
 	if !caCert.IsCA {
-		return fmt.Errorf("certificate %s is not a CA\n", uxName)
+		return fmt.Errorf("certificate %s is not a CA", uxName)
 	}
 	return nil
 }
@@ -460,7 +460,7 @@ func ValidateCACertAndKey(pkiDir string, baseName string, uxName string) error {
 
 	_, err := pkiutil.TryLoadKeyFromDisk(pkiDir, baseName)
 	if err != nil {
-		return fmt.Errorf("failure loading key for %s: %v\n", uxName, err)
+		return fmt.Errorf("failure loading key for %s: %v", uxName, err)
 	}
 	return nil
 }
@@ -471,18 +471,18 @@ func ValidateSignedCert(pkiDir string, caBaseName string, baseName string, uxNam
 	// Try to load CA
 	caCert, err := pkiutil.TryLoadCertFromDisk(pkiDir, caBaseName)
 	if err != nil {
-		return fmt.Errorf("failure loading certificate authorithy for %s: %v\n", uxName, err)
+		return fmt.Errorf("failure loading certificate authorithy for %s: %v", uxName, err)
 	}
 
 	// Try to load key and signed certificate
 	signedCert, _, err := pkiutil.TryLoadCertAndKeyFromDisk(pkiDir, baseName)
 	if err != nil {
-		return fmt.Errorf("failure loading certificate for %s: %v\n", uxName, err)
+		return fmt.Errorf("failure loading certificate for %s: %v", uxName, err)
 	}
 
 	// Check if the cert is signed by the CA
 	if err := signedCert.CheckSignatureFrom(caCert); err != nil {
-		return fmt.Errorf("certificate %s is not signed by corresponding CA\n", uxName)
+		return fmt.Errorf("certificate %s is not signed by corresponding CA", uxName)
 	}
 	return nil
 }
@@ -492,7 +492,7 @@ func ValidatePrivatePublicKey(pkiDir string, baseName string, uxName string) err
 	// Try to load key
 	_, _, err := pkiutil.TryLoadPrivatePublicKeyFromDisk(pkiDir, baseName)
 	if err != nil {
-		return fmt.Errorf("failure loading key for %s: %v\n", uxName, err)
+		return fmt.Errorf("failure loading key for %s: %v", uxName, err)
 	}
 	return nil
 }
