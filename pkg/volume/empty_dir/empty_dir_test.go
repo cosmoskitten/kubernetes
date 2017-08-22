@@ -125,7 +125,7 @@ func doTestPlugin(t *testing.T, config pluginTestConfig) {
 			},
 			Spec: v1.PodSpec{
 				Containers: []v1.Container{
-					v1.Container{
+					{
 						Resources: v1.ResourceRequirements{
 							Requests: v1.ResourceList{
 								v1.ResourceName("hugepages-2Mi"): resource.MustParse("100Mi"),
@@ -309,7 +309,7 @@ func TestGetHugePagesMountOptions(t *testing.T) {
 			pod: &v1.Pod{
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{
-						v1.Container{
+						{
 							Resources: v1.ResourceRequirements{
 								Requests: v1.ResourceList{
 									v1.ResourceName("hugepages-2Mi"): resource.MustParse("100Mi"),
@@ -326,14 +326,14 @@ func TestGetHugePagesMountOptions(t *testing.T) {
 			pod: &v1.Pod{
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{
-						v1.Container{
+						{
 							Resources: v1.ResourceRequirements{
 								Requests: v1.ResourceList{
 									v1.ResourceName("hugepages-1Gi"): resource.MustParse("2Gi"),
 								},
 							},
 						},
-						v1.Container{
+						{
 							Resources: v1.ResourceRequirements{
 								Requests: v1.ResourceList{
 									v1.ResourceName("hugepages-1Gi"): resource.MustParse("4Gi"),
@@ -350,14 +350,14 @@ func TestGetHugePagesMountOptions(t *testing.T) {
 			pod: &v1.Pod{
 				Spec: v1.PodSpec{
 					InitContainers: []v1.Container{
-						v1.Container{
+						{
 							Resources: v1.ResourceRequirements{
 								Requests: v1.ResourceList{
 									v1.ResourceName("hugepages-1Gi"): resource.MustParse("2Gi"),
 								},
 							},
 						},
-						v1.Container{
+						{
 							Resources: v1.ResourceRequirements{
 								Requests: v1.ResourceList{
 									v1.ResourceName("hugepages-1Gi"): resource.MustParse("4Gi"),
@@ -374,14 +374,14 @@ func TestGetHugePagesMountOptions(t *testing.T) {
 			pod: &v1.Pod{
 				Spec: v1.PodSpec{
 					InitContainers: []v1.Container{
-						v1.Container{
+						{
 							Resources: v1.ResourceRequirements{
 								Requests: v1.ResourceList{
 									v1.ResourceName("hugepages-2Mi"): resource.MustParse("2Gi"),
 								},
 							},
 						},
-						v1.Container{
+						{
 							Resources: v1.ResourceRequirements{
 								Requests: v1.ResourceList{
 									v1.ResourceName("hugepages-1Gi"): resource.MustParse("4Gi"),
@@ -398,14 +398,14 @@ func TestGetHugePagesMountOptions(t *testing.T) {
 			pod: &v1.Pod{
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{
-						v1.Container{
+						{
 							Resources: v1.ResourceRequirements{
 								Requests: v1.ResourceList{
 									v1.ResourceName("hugepages-1Gi"): resource.MustParse("2Gi"),
 								},
 							},
 						},
-						v1.Container{
+						{
 							Resources: v1.ResourceRequirements{
 								Requests: v1.ResourceList{
 									v1.ResourceName("hugepages-2Mi"): resource.MustParse("100Mi"),
