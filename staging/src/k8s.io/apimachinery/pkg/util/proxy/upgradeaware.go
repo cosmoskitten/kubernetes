@@ -37,6 +37,19 @@ import (
 	"github.com/mxk/go-flowrate/flowrate"
 )
 
+// UpgradeRequestRoundTripper provides an additional method to decorate a request
+// with any authentication or other protocol level information prior to performing
+// an upgrade on the server. Any response will be handled by the intercepting
+// proxy.
+type UpgradeRequestRoundTripper interface {
+	http.RoundTripper
+	// WrapRequest takes a valid HTTP request and returns a suitably altered version
+	// of request with any HTTP level values required to complete the request half of
+	// an upgrade on the server. It does not get a chance to see the response and
+	// should bypass any request side logic that expects to see the response.
+	WrapRequest(*http.Request) (*http.Request, error)
+}
+
 // UpgradeAwareHandler is a handler for proxy requests that may require an upgrade
 type UpgradeAwareHandler struct {
 	// UpgradeRequired will reject non-upgrade connections if true.
@@ -48,7 +61,7 @@ type UpgradeAwareHandler struct {
 	Transport http.RoundTripper
 	// UpgradeTransport, if specified, will be used as the backend transport when upgrade requests are provided.
 	// This allows clients to disable HTTP/2.
-	UpgradeTransport http.RoundTripper
+	UpgradeTransport UpgradeRequestRoundTripper
 	// WrapTransport indicates whether the provided Transport should be wrapped with default proxy transport behavior (URL rewriting, X-Forwarded-* header setting)
 	WrapTransport bool
 	// InterceptRedirects determines whether the proxy should sniff backend responses for redirects,
@@ -260,10 +273,14 @@ func (h *UpgradeAwareHandler) Dial(req *http.Request) (net.Conn, error) {
 }
 
 func (h *UpgradeAwareHandler) DialForUpgrade(req *http.Request) (net.Conn, error) {
-	if h.UpgradeTransport != nil {
-		return dial(req, h.UpgradeTransport)
+	if h.UpgradeTransport == nil {
+		return dial(req, h.Transport)
 	}
-	return dial(req, h.Transport)
+	updatedReq, err := h.UpgradeTransport.WrapRequest(req)
+	if err != nil {
+		return nil, err
+	}
+	return dial(updatedReq, h.UpgradeTransport)
 }
 
 // dial dials the backend at req.URL and writes req to it.

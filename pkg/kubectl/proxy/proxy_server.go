@@ -17,7 +17,9 @@ limitations under the License.
 package proxy
 
 import (
+	"bytes"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -156,9 +158,41 @@ func (r *responder) Error(w http.ResponseWriter, req *http.Request, err error) {
 	http.Error(w, err.Error(), http.StatusInternalServerError)
 }
 
+// upgradeRequestRoundTripper implements proxy.UpgradeRequestRoundTripper.
+type upgradeRequestRoundTripper struct {
+	http.RoundTripper
+	upgrader http.RoundTripper
+}
+
+var _ proxy.UpgradeRequestRoundTripper = &upgradeRequestRoundTripper{}
+
+// WriteToRequest calls the nested upgrader and then copies the returned request
+// fields onto the passed request.
+func (rt *upgradeRequestRoundTripper) WrapRequest(req *http.Request) (*http.Request, error) {
+	resp, err := rt.upgrader.RoundTrip(req)
+	if err != nil {
+		return nil, err
+	}
+	return resp.Request, nil
+}
+
+// onewayRoundTripper captures the provided request - which is assumed to have
+// been modified by other round trippers - and then returns a fake response.
+type onewayRoundTripper struct{}
+
+// RoundTrip returns a simple 200 OK response that captures the provided request.
+func (onewayRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	return &http.Response{
+		Status:     "200 OK",
+		StatusCode: http.StatusOK,
+		Body:       ioutil.NopCloser(&bytes.Buffer{}),
+		Request:    req,
+	}, nil
+}
+
 // makeUpgradeTransport creates a transport that explicitly bypasses HTTP2 support
 // for proxy connections that must upgrade.
-func makeUpgradeTransport(config *rest.Config) (http.RoundTripper, error) {
+func makeUpgradeTransport(config *rest.Config) (proxy.UpgradeRequestRoundTripper, error) {
 	transportConfig, err := config.TransportConfig()
 	if err != nil {
 		return nil, err
@@ -170,7 +204,18 @@ func makeUpgradeTransport(config *rest.Config) (http.RoundTripper, error) {
 	rt := utilnet.SetOldTransportDefaults(&http.Transport{
 		TLSClientConfig: tlsConfig,
 	})
-	return transport.HTTPWrappersForConfig(transportConfig, rt)
+	normal, err := transport.HTTPWrappersForConfig(transportConfig, rt)
+	if err != nil {
+		return nil, err
+	}
+	upgrader, err := transport.HTTPWrappersForConfig(transportConfig, onewayRoundTripper{})
+	if err != nil {
+		return nil, err
+	}
+	return &upgradeRequestRoundTripper{
+		RoundTripper: normal,
+		upgrader:     upgrader,
+	}, nil
 }
 
 // NewServer creates and installs a new Server.
