@@ -114,7 +114,7 @@ type GCECloud struct {
 	nodeInstancePrefix       string      // If non-"", an advisory prefix for all nodes in the cluster
 	useMetadataServer        bool
 	operationPollRateLimiter flowcontrol.RateLimiter
-	manager                  ServiceManager
+	manager                  diskServiceManager
 	// sharedResourceLock is used to serialize GCE operations that may mutate shared state to
 	// prevent inconsistencies. For example, load balancers manipulation methods will take the
 	// lock to prevent shared resources from being prematurely deleted while the operation is
@@ -125,24 +125,6 @@ type GCECloud struct {
 	// the corresponding api is enabled.
 	// If not enabled, it should return error.
 	AlphaFeatureGate *AlphaFeatureGate
-}
-
-type ServiceManager interface {
-	// Creates a new persistent disk on GCE with the given disk spec.
-	CreateDisk(project string, zone string, disk *compute.Disk) (*compute.Operation, error)
-
-	// Gets the persistent disk from GCE with the given diskName.
-	GetDisk(project string, zone string, diskName string) (*compute.Disk, error)
-
-	// Deletes the persistent disk from GCE with the given diskName.
-	DeleteDisk(project string, zone string, disk string) (*compute.Operation, error)
-
-	// Waits until GCE reports the given operation in the given zone as done.
-	WaitForZoneOp(op *compute.Operation, zone string, mc *metricContext) error
-}
-
-type GCEServiceManager struct {
-	gce *GCECloud
 }
 
 type ConfigGlobal struct {
@@ -461,7 +443,7 @@ func CreateGCECloud(config *CloudConfig) (*GCECloud, error) {
 		AlphaFeatureGate:         config.AlphaFeatureGate,
 	}
 
-	gce.manager = &GCEServiceManager{gce}
+	gce.manager = &gceServiceManager{gce}
 	return gce, nil
 }
 
@@ -699,32 +681,4 @@ func newOauthClient(tokenSource oauth2.TokenSource) (*http.Client, error) {
 	}
 
 	return oauth2.NewClient(oauth2.NoContext, tokenSource), nil
-}
-
-func (manager *GCEServiceManager) CreateDisk(
-	project string,
-	zone string,
-	disk *compute.Disk) (*compute.Operation, error) {
-
-	return manager.gce.service.Disks.Insert(project, zone, disk).Do()
-}
-
-func (manager *GCEServiceManager) GetDisk(
-	project string,
-	zone string,
-	diskName string) (*compute.Disk, error) {
-
-	return manager.gce.service.Disks.Get(project, zone, diskName).Do()
-}
-
-func (manager *GCEServiceManager) DeleteDisk(
-	project string,
-	zone string,
-	diskName string) (*compute.Operation, error) {
-
-	return manager.gce.service.Disks.Delete(project, zone, diskName).Do()
-}
-
-func (manager *GCEServiceManager) WaitForZoneOp(op *compute.Operation, zone string, mc *metricContext) error {
-	return manager.gce.waitForZoneOp(op, zone, mc)
 }

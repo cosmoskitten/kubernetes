@@ -42,6 +42,44 @@ const (
 	diskTypeUriTemplate = "%s/zones/%s/diskTypes/%s"
 )
 
+type diskServiceManager interface {
+	// Creates a new persistent disk on GCE with the given disk spec.
+	CreateDiskOnCloudProvider(project, zone string, disk *compute.Disk) (*compute.Operation, error)
+
+	// Gets the persistent disk from GCE with the given diskName.
+	GetDiskOnCloudProvider(project, zone, diskName string) (*compute.Disk, error)
+
+	// Deletes the persistent disk from GCE with the given diskName.
+	DeleteDiskOnCloudProvider(project, zone, disk string) (*compute.Operation, error)
+
+	// Waits until GCE reports the given operation in the given zone as done.
+	WaitForZoneOp(op *compute.Operation, zone string, mc *metricContext) error
+}
+
+type gceServiceManager struct {
+	gce *GCECloud
+}
+
+func (manager *gceServiceManager) CreateDiskOnCloudProvider(
+	project, zone string,
+	disk *compute.Disk) (*compute.Operation, error) {
+	return manager.gce.service.Disks.Insert(project, zone, disk).Do()
+}
+
+func (manager *gceServiceManager) GetDiskOnCloudProvider(project, zone, diskName string) (*compute.Disk, error) {
+	return manager.gce.service.Disks.Get(project, zone, diskName).Do()
+}
+
+func (manager *gceServiceManager) DeleteDiskOnCloudProvider(
+	project, zone string,
+	diskName string) (*compute.Operation, error) {
+	return manager.gce.service.Disks.Delete(project, zone, diskName).Do()
+}
+
+func (manager *gceServiceManager) WaitForZoneOp(op *compute.Operation, zone string, mc *metricContext) error {
+	return manager.gce.waitForZoneOp(op, zone, mc)
+}
+
 // Disks is interface for manipulation with GCE PDs.
 type Disks interface {
 	// AttachDisk attaches given disk to the node with the specified NodeName.
@@ -244,7 +282,7 @@ func (gce *GCECloud) CreateDisk(
 	}
 
 	mc := newDiskMetricContext("create", zone)
-	createOp, err := gce.manager.CreateDisk(gce.projectID, zone, diskToCreate)
+	createOp, err := gce.manager.CreateDiskOnCloudProvider(gce.projectID, zone, diskToCreate)
 	if isGCEError(err, "alreadyExists") {
 		glog.Warningf("GCE PD %q already exists, reusing", name)
 		return nil
@@ -323,7 +361,7 @@ func (gce *GCECloud) GetAutoLabelsForPD(name string, zone string) (map[string]st
 // If not found, returns (nil, nil)
 func (gce *GCECloud) findDiskByName(diskName string, zone string) (*GCEDisk, error) {
 	mc := newDiskMetricContext("get", zone)
-	disk, err := gce.manager.GetDisk(gce.projectID, zone, diskName)
+	disk, err := gce.manager.GetDiskOnCloudProvider(gce.projectID, zone, diskName)
 	if err == nil {
 		d := &GCEDisk{
 			Zone: lastComponent(disk.Zone),
@@ -410,7 +448,7 @@ func (gce *GCECloud) doDeleteDisk(diskToDelete string) error {
 
 	mc := newDiskMetricContext("delete", disk.Zone)
 
-	deleteOp, err := gce.manager.DeleteDisk(gce.projectID, disk.Zone, disk.Name)
+	deleteOp, err := gce.manager.DeleteDiskOnCloudProvider(gce.projectID, disk.Zone, disk.Name)
 	if err != nil {
 		return mc.Observe(err)
 	}
