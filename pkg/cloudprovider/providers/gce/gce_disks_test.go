@@ -248,8 +248,8 @@ func TestDeleteDisk_SameDiskMultiZone(t *testing.T) {
 	}
 
 	/* Act */
-	// DeleteDisk will call FakeServiceManager.GetDisk() with all zones,
-	// and FakeServiceManager.GetDisk() always returns a disk,
+	// DeleteDisk will call FakeServiceManager.GetDiskOnCloudProvider() with all zones,
+	// and FakeServiceManager.GetDiskOnCloudProvider() always returns a disk,
 	// so DeleteDisk thinks a disk with diskName exists in all zones.
 	err := gce.DeleteDisk(diskName)
 
@@ -441,7 +441,7 @@ func newFakeManager() *FakeServiceManager {
  * Upon disk creation, disk info is stored in FakeServiceManager
  * to be used by other tested methods.
  */
-func (manager *FakeServiceManager) CreateDisk(
+func (manager *FakeServiceManager) CreateDiskOnCloudProvider(
 	project string,
 	zone string,
 	disk *compute.Disk) (*compute.Operation, error) {
@@ -457,7 +457,7 @@ func (manager *FakeServiceManager) CreateDisk(
 /**
  * Gets disk info stored in the FakeServiceManager.
  */
-func (manager *FakeServiceManager) GetDisk(
+func (manager *FakeServiceManager) GetDiskOnCloudProvider(
 	project string,
 	zone string,
 	diskName string) (*compute.Disk, error) {
@@ -479,7 +479,7 @@ func (manager *FakeServiceManager) GetDisk(
 /**
  * Disk info is removed from the FakeServiceManager.
  */
-func (manager *FakeServiceManager) DeleteDisk(
+func (manager *FakeServiceManager) DeleteDiskOnCloudProvider(
 	project string,
 	zone string,
 	disk string) (*compute.Operation, error) {
