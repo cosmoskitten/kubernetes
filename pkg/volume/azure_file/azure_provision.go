@@ -194,6 +194,7 @@ func (a *azureFileProvisioner) Provision() (*v1.PersistentVolume, error) {
 					ShareName:  name,
 				},
 			},
+			MountOptions: a.options.MountOptions,
 		},
 	}
 	return pv, nil
