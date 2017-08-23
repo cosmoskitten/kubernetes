@@ -18,6 +18,7 @@ package cpumanager
 
 import (
 	"fmt"
+	"math"
 	"sync"
 	"time"
 
