@@ -430,32 +430,32 @@
 		},
 		{
 			"ImportPath": "github.com/containernetworking/cni/libcni",
-			"Comment": "spec-v0.3.1",
+			"Comment": "v0.5.2",
 			"Rev": "137b4975ecab6e1f0c24c1e3c228a50a3cfba75e"
 		},
 		{
 			"ImportPath": "github.com/containernetworking/cni/pkg/invoke",
-			"Comment": "spec-v0.3.1",
+			"Comment": "v0.5.2",
 			"Rev": "137b4975ecab6e1f0c24c1e3c228a50a3cfba75e"
 		},
 		{
 			"ImportPath": "github.com/containernetworking/cni/pkg/types",
-			"Comment": "spec-v0.3.1",
+			"Comment": "v0.5.2",
 			"Rev": "137b4975ecab6e1f0c24c1e3c228a50a3cfba75e"
 		},
 		{
 			"ImportPath": "github.com/containernetworking/cni/pkg/types/020",
-			"Comment": "spec-v0.3.1",
+			"Comment": "v0.5.2",
 			"Rev": "137b4975ecab6e1f0c24c1e3c228a50a3cfba75e"
 		},
 		{
 			"ImportPath": "github.com/containernetworking/cni/pkg/types/current",
-			"Comment": "spec-v0.3.1",
+			"Comment": "v0.5.2",
 			"Rev": "137b4975ecab6e1f0c24c1e3c228a50a3cfba75e"
 		},
 		{
 			"ImportPath": "github.com/containernetworking/cni/pkg/version",
-			"Comment": "spec-v0.3.1",
+			"Comment": "v0.5.2",
 			"Rev": "137b4975ecab6e1f0c24c1e3c228a50a3cfba75e"
 		},
 		{
@@ -2859,55 +2859,55 @@
 		},
 		{
 			"ImportPath": "google.golang.org/api/cloudkms/v1",
-			"Rev": "98825bb0065da4054e5da6db34f5fc598e50bc24"
+			"Rev": "dd6bdadc5852eae2d133075a3690d6ad744add48"
 		},
 		{
 			"ImportPath": "google.golang.org/api/cloudmonitoring/v2beta2",
-			"Rev": "98825bb0065da4054e5da6db34f5fc598e50bc24"
+			"Rev": "dd6bdadc5852eae2d133075a3690d6ad744add48"
 		},
 		{
 			"ImportPath": "google.golang.org/api/compute/v0.alpha",
-			"Rev": "98825bb0065da4054e5da6db34f5fc598e50bc24"
+			"Rev": "dd6bdadc5852eae2d133075a3690d6ad744add48"
 		},
 		{
 			"ImportPath": "google.golang.org/api/compute/v0.beta",
-			"Rev": "98825bb0065da4054e5da6db34f5fc598e50bc24"
+			"Rev": "dd6bdadc5852eae2d133075a3690d6ad744add48"
 		},
 		{
 			"ImportPath": "google.golang.org/api/compute/v1",
-			"Rev": "98825bb0065da4054e5da6db34f5fc598e50bc24"
+			"Rev": "dd6bdadc5852eae2d133075a3690d6ad744add48"
 		},
 		{
 			"ImportPath": "google.golang.org/api/container/v1",
-			"Rev": "98825bb0065da4054e5da6db34f5fc598e50bc24"
+			"Rev": "dd6bdadc5852eae2d133075a3690d6ad744add48"
 		},
 		{
 			"ImportPath": "google.golang.org/api/dns/v1",
-			"Rev": "98825bb0065da4054e5da6db34f5fc598e50bc24"
+			"Rev": "dd6bdadc5852eae2d133075a3690d6ad744add48"
 		},
 		{
 			"ImportPath": "google.golang.org/api/gensupport",
-			"Rev": "98825bb0065da4054e5da6db34f5fc598e50bc24"
+			"Rev": "dd6bdadc5852eae2d133075a3690d6ad744add48"
 		},
 		{
 			"ImportPath": "google.golang.org/api/googleapi",
-			"Rev": "98825bb0065da4054e5da6db34f5fc598e50bc24"
+			"Rev": "dd6bdadc5852eae2d133075a3690d6ad744add48"
 		},
 		{
 			"ImportPath": "google.golang.org/api/googleapi/internal/uritemplates",
-			"Rev": "98825bb0065da4054e5da6db34f5fc598e50bc24"
+			"Rev": "dd6bdadc5852eae2d133075a3690d6ad744add48"
 		},
 		{
 			"ImportPath": "google.golang.org/api/logging/v2beta1",
-			"Rev": "98825bb0065da4054e5da6db34f5fc598e50bc24"
+			"Rev": "dd6bdadc5852eae2d133075a3690d6ad744add48"
 		},
 		{
 			"ImportPath": "google.golang.org/api/monitoring/v3",
-			"Rev": "98825bb0065da4054e5da6db34f5fc598e50bc24"
+			"Rev": "dd6bdadc5852eae2d133075a3690d6ad744add48"
 		},
 		{
 			"ImportPath": "google.golang.org/api/pubsub/v1",
-			"Rev": "98825bb0065da4054e5da6db34f5fc598e50bc24"
+			"Rev": "dd6bdadc5852eae2d133075a3690d6ad744add48"
 		},
 		{
 			"ImportPath": "google.golang.org/grpc",
