@@ -226,6 +226,17 @@ func (reaper *ReplicaSetReaper) Stop(namespace, name string, timeout time.Durati
 		timeout = Timeout + time.Duration(10*rs.Spec.Replicas)*time.Second
 	}
 
+	_, err = reaper.updateReplicaSetWithRetries(namespace, name, func(rs *extensions.ReplicaSet) {
+		// set replicaset's initializers to nil
+		// TODO replace with patch when available: https://github.com/kubernetes/kubernetes/issues/20527
+		if rs.Initializers != nil {
+			rs.Initializers = nil
+		}
+	})
+	if err != nil {
+		return err
+	}
+
 	// The ReplicaSet controller will try and detect all matching ReplicaSets
 	// for a pod's labels, and only sync the oldest one. This means if we have
 	// a pod with labels [(k1: v1), (k2: v2)] and two ReplicaSets: rs1 with
@@ -324,6 +335,17 @@ func (reaper *StatefulSetReaper) Stop(namespace, name string, timeout time.Durat
 		return err
 	}
 
+	_, err = reaper.updateStatefulSetWithRetries(namespace, name, func(sts *apps.StatefulSet) {
+		// set statefulset's initializers to nil
+		// TODO replace with patch when available: https://github.com/kubernetes/kubernetes/issues/20527
+		if sts.Initializers != nil {
+			sts.Initializers = nil
+		}
+	})
+	if err != nil {
+		return err
+	}
+
 	if timeout == 0 {
 		numReplicas := ss.Spec.Replicas
 		// See discussion of this behavior here:
@@ -400,6 +422,9 @@ func (reaper *DeploymentReaper) Stop(namespace, name string, timeout time.Durati
 		d.Spec.RevisionHistoryLimit = &rhl
 		d.Spec.Replicas = 0
 		d.Spec.Paused = true
+		if d.Initializers != nil {
+			d.Initializers = nil
+		}
 	})
 	if err != nil {
 		return err
@@ -479,4 +504,48 @@ func (reaper *PodReaper) Stop(namespace, name string, timeout time.Duration, gra
 		return err
 	}
 	return pods.Delete(name, gracePeriod)
+}
+
+type updateReplicaSetFunc func(d *extensions.ReplicaSet)
+
+func (reaper *ReplicaSetReaper) updateReplicaSetWithRetries(namespace, name string, applyUpdate updateReplicaSetFunc) (rs *extensions.ReplicaSet, err error) {
+	replicaSets := reaper.client.ReplicaSets(namespace)
+	err = wait.Poll(10*time.Millisecond, 1*time.Minute, func() (bool, error) {
+		if rs, err = replicaSets.Get(name, metav1.GetOptions{}); err != nil {
+			return false, err
+		}
+		// Apply the update, then attempt to push it to the apiserver.
+		applyUpdate(rs)
+		if rs, err = replicaSets.Update(rs); err == nil {
+			return true, nil
+		}
+		// Retry only on update conflict.
+		if errors.IsConflict(err) {
+			return false, nil
+		}
+		return false, err
+	})
+	return rs, err
+}
+
+type updateStatefulSetFunc func(d *apps.StatefulSet)
+
+func (reaper *StatefulSetReaper) updateStatefulSetWithRetries(namespace, name string, applyUpdate updateStatefulSetFunc) (rs *apps.StatefulSet, err error) {
+	statefulSets := reaper.client.StatefulSets(namespace)
+	err = wait.Poll(10*time.Millisecond, 1*time.Minute, func() (bool, error) {
+		if rs, err = statefulSets.Get(name, metav1.GetOptions{}); err != nil {
+			return false, err
+		}
+		// Apply the update, then attempt to push it to the apiserver.
+		applyUpdate(rs)
+		if rs, err = statefulSets.Update(rs); err == nil {
+			return true, nil
+		}
+		// Retry only on update conflict.
+		if errors.IsConflict(err) {
+			return false, nil
+		}
+		return false, err
+	})
+	return rs, err
 }
