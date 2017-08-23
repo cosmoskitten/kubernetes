@@ -9,6 +9,7 @@ load(
 go_library(
     name = "go_default_library",
     srcs = [
+        "addons.go",
         "bootstraptoken.go",
         "certs.go",
         "controlplane.go",
@@ -27,6 +28,8 @@ go_library(
         "//cmd/kubeadm/app/apis/kubeadm/validation:go_default_library",
         "//cmd/kubeadm/app/constants:go_default_library",
         "//cmd/kubeadm/app/features:go_default_library",
+        "//cmd/kubeadm/app/phases/addons/dns:go_default_library",
+        "//cmd/kubeadm/app/phases/addons/proxy:go_default_library",
         "//cmd/kubeadm/app/phases/bootstraptoken/clusterinfo:go_default_library",
         "//cmd/kubeadm/app/phases/bootstraptoken/node:go_default_library",
         "//cmd/kubeadm/app/phases/certs:go_default_library",
