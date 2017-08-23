@@ -28,6 +28,7 @@ import (
 
 	runtimeapi "k8s.io/kubernetes/pkg/kubelet/apis/cri/v1alpha1/runtime"
 	"k8s.io/kubernetes/pkg/kubelet/cm/cpumanager/state"
+	"k8s.io/kubernetes/pkg/kubelet/cm/cpumanager/topology"
 	"k8s.io/kubernetes/pkg/kubelet/status"
 )
 
@@ -96,8 +97,30 @@ func NewManager(
 	case PolicyNone:
 		policy = NewNonePolicy()
 
+	case PolicyStatic:
+		topo, err := topology.Discover(machineInfo)
+		if err != nil {
+			return nil, err
+		}
+		glog.Infof("[cpumanager] detected CPU topology: %v", topo)
+		reservedCPUs, ok := nodeAllocatableReservation[v1.ResourceCPU]
+		if !ok {
+			// The static policy cannot initialize without this information. Panic!
+			panic("[cpumanager] unable to determine reserved CPU resources for static policy")
+		}
+		if reservedCPUs.IsZero() {
+			// The static policy requires this to be nonzero. Panic!
+			panic("[cpumanager] the static policy requires systemreserved.cpu + kubereserved.cpu to be greater than zero")
+		}
+
+		// Take the ceiling of the reservation, since fractional CPUs cannot be
+		// exclusively allocated.
+		reservedCPUsFloat := float64(reservedCPUs.MilliValue()) / 1000
+		numReservedCPUs := int(math.Ceil(reservedCPUsFloat))
+		policy = NewStaticPolicy(topo, numReservedCPUs)
+
 	default:
-		glog.Warningf("[cpumanager] Unknown policy (\"%s\"), falling back to \"%s\" policy (\"%s\")", cpuPolicyName, PolicyNone)
+		glog.Errorf("[cpumanager] Unknown policy (\"%s\"), falling back to \"%s\" policy (\"%s\")", cpuPolicyName, PolicyNone)
 		policy = NewNonePolicy()
 	}
 
