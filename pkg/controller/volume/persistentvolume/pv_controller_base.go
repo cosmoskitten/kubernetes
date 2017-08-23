@@ -75,8 +75,6 @@ func NewController(p ControllerParameters) (*PersistentVolumeController, error) 
 		eventRecorder = broadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "persistentvolume-controller"})
 	}
 
-	util.RegisterMetrics()
-
 	controller := &PersistentVolumeController{
 		volumes:           newPersistentVolumeOrderedIndex(),
 		claims:            cache.NewStore(cache.DeletionHandlingMetaNamespaceKeyFunc),

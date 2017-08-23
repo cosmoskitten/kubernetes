@@ -125,8 +125,6 @@ type OperationExecutor interface {
 func NewOperationExecutor(
 	operationGenerator OperationGenerator) OperationExecutor {
 
-	util.RegisterMetrics()
-
 	return &operationExecutor{
 		pendingOperations: nestedpendingoperations.NewNestedPendingOperations(
 			true /* exponentialBackOffOnError */),

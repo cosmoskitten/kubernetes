@@ -17,13 +17,12 @@ limitations under the License.
 package util
 
 import (
-	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-var StorageOperationMetric = prometheus.NewHistogramVec(
+var storageOperationMetric = prometheus.NewHistogramVec(
 	prometheus.HistogramOpts{
 		Name: "storage_operation_duration_seconds",
 		Help: "Storage operation duration",
@@ -31,7 +30,7 @@ var StorageOperationMetric = prometheus.NewHistogramVec(
 	[]string{"volume_plugin", "operation_name"},
 )
 
-var StorageOperationErrorMetric = prometheus.NewCounterVec(
+var storageOperationErrorMetric = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "storage_operation_errors_total",
 		Help: "Storage operation errors",
@@ -39,13 +38,13 @@ var StorageOperationErrorMetric = prometheus.NewCounterVec(
 	[]string{"volume_plugin", "operation_name"},
 )
 
-var registerMetrics sync.Once
+func init() {
+	registerMetrics()
+}
 
-func RegisterMetrics() {
-	registerMetrics.Do(func() {
-		prometheus.MustRegister(StorageOperationMetric)
-		prometheus.MustRegister(StorageOperationErrorMetric)
-	})
+func registerMetrics() {
+	prometheus.MustRegister(storageOperationMetric)
+	prometheus.MustRegister(storageOperationErrorMetric)
 }
 
 // OperationCompleteHook returns a hook to call when an operation is completed
@@ -55,9 +54,9 @@ func OperationCompleteHook(plugin, operationName string) func(error) {
 		timeTaken := time.Since(requestTime).Seconds()
 		// Create metric with operation name and plugin name
 		if err != nil {
-			StorageOperationErrorMetric.WithLabelValues(plugin, operationName).Inc()
+			storageOperationErrorMetric.WithLabelValues(plugin, operationName).Inc()
 		} else {
-			StorageOperationMetric.WithLabelValues(plugin, operationName).Observe(timeTaken)
+			storageOperationMetric.WithLabelValues(plugin, operationName).Observe(timeTaken)
 		}
 	}
 	return opComplete
