@@ -134,7 +134,7 @@ func (s *StatefulSetTester) CheckMount(ss *apps.StatefulSet, mountPath string) e
 func (s *StatefulSetTester) ExecInStatefulPods(ss *apps.StatefulSet, cmd string) error {
 	podList := s.GetPodList(ss)
 	for _, statefulPod := range podList.Items {
-		stdout, err := RunHostCmd(statefulPod.Namespace, statefulPod.Name, cmd)
+		stdout, err := RunHostCmdWithRetries(statefulPod.Namespace, statefulPod.Name, cmd, StatefulSetPoll, 3)
 		Logf("stdout of %v on %v: %v", cmd, statefulPod.Name, stdout)
 		if err != nil {
 			return err
@@ -148,7 +148,7 @@ func (s *StatefulSetTester) CheckHostname(ss *apps.StatefulSet) error {
 	cmd := "printf $(hostname)"
 	podList := s.GetPodList(ss)
 	for _, statefulPod := range podList.Items {
-		hostname, err := RunHostCmd(statefulPod.Namespace, statefulPod.Name, cmd)
+		hostname, err := RunHostCmdWithRetries(statefulPod.Namespace, statefulPod.Name, cmd, StatefulSetPoll, 3)
 		if err != nil {
 			return err
 		}
@@ -519,7 +519,7 @@ func (s *StatefulSetTester) BreakPodHttpProbe(ss *apps.StatefulSet, pod *v1.Pod)
 		return fmt.Errorf("Path expected to be not empty: %v", path)
 	}
 	cmd := fmt.Sprintf("mv -v /usr/share/nginx/html%v /tmp/", path)
-	stdout, err := RunHostCmd(pod.Namespace, pod.Name, cmd)
+	stdout, err := RunHostCmdWithRetries(pod.Namespace, pod.Name, cmd, StatefulSetPoll, 3)
 	Logf("stdout of %v on %v: %v", cmd, pod.Name, stdout)
 	return err
 }
@@ -541,7 +541,7 @@ func (s *StatefulSetTester) RestorePodHttpProbe(ss *apps.StatefulSet, pod *v1.Po
 		return fmt.Errorf("Path expected to be not empty: %v", path)
 	}
 	cmd := fmt.Sprintf("mv -v /tmp%v /usr/share/nginx/html/", path)
-	stdout, err := RunHostCmd(pod.Namespace, pod.Name, cmd)
+	stdout, err := RunHostCmdWithRetries(pod.Namespace, pod.Name, cmd, StatefulSetPoll, 3)
 	Logf("stdout of %v on %v: %v", cmd, pod.Name, stdout)
 	return err
 }
@@ -586,7 +586,7 @@ func (s *StatefulSetTester) ResumeNextPod(ss *apps.StatefulSet) {
 		if resumedPod != "" {
 			Failf("Found multiple paused stateful pods: %v and %v", pod.Name, resumedPod)
 		}
-		_, err := RunHostCmd(pod.Namespace, pod.Name, "touch /data/statefulset-continue")
+		_, err := RunHostCmdWithRetries(pod.Namespace, pod.Name, "touch /data/statefulset-continue", StatefulSetPoll, 3)
 		ExpectNoError(err)
 		Logf("Resumed pod %v", pod.Name)
 		resumedPod = pod.Name
