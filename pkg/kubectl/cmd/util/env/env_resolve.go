@@ -1,3 +1,19 @@
+/*
+Copyright 2017 The Kubernetes Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package env
 
 import (
@@ -7,7 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/resource"
-	kclientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
+	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/fieldpath"
 )
 
@@ -26,7 +42,7 @@ func NewResourceStore() *ResourceStore {
 }
 
 // getSecretRefValue returns the value of a secret in the supplied namespace
-func getSecretRefValue(client kclientset.Interface, namespace string, store *ResourceStore, secretSelector *api.SecretKeySelector) (string, error) {
+func getSecretRefValue(client clientset.Interface, namespace string, store *ResourceStore, secretSelector *api.SecretKeySelector) (string, error) {
 	secret, ok := store.SecretStore[secretSelector.Name]
 	if !ok {
 		var err error
@@ -44,7 +60,7 @@ func getSecretRefValue(client kclientset.Interface, namespace string, store *Res
 }
 
 // getConfigMapRefValue returns the value of a configmap in the supplied namespace
-func getConfigMapRefValue(client kclientset.Interface, namespace string, store *ResourceStore, configMapSelector *api.ConfigMapKeySelector) (string, error) {
+func getConfigMapRefValue(client clientset.Interface, namespace string, store *ResourceStore, configMapSelector *api.ConfigMapKeySelector) (string, error) {
 	configMap, ok := store.ConfigMapStore[configMapSelector.Name]
 	if !ok {
 		var err error
@@ -70,8 +86,8 @@ func getResourceFieldRef(from *api.EnvVarSource, c *api.Container) (string, erro
 	return resource.ExtractContainerResourceValue(from.ResourceFieldRef, c)
 }
 
-// GenEnvVarRefValue returns the value referenced by the supplied EnvVarSource given the other supplied information
-func GetEnvVarRefValue(kc kclientset.Interface, ns string, store *ResourceStore, from *api.EnvVarSource, obj runtime.Object, c *api.Container) (string, error) {
+// GetEnvVarRefValue returns the value referenced by the supplied envvarsource given the other supplied information
+func GetEnvVarRefValue(kc clientset.Interface, ns string, store *ResourceStore, from *api.EnvVarSource, obj runtime.Object, c *api.Container) (string, error) {
 	if from.SecretKeyRef != nil {
 		return getSecretRefValue(kc, ns, store, from.SecretKeyRef)
 	}
@@ -91,7 +107,7 @@ func GetEnvVarRefValue(kc kclientset.Interface, ns string, store *ResourceStore,
 	return "", fmt.Errorf("invalid valueFrom")
 }
 
-// GenEnvVarRefString returns a text description of the supplied EnvVarSource
+// GetEnvVarRefString returns a text description of the supplied envvarsource
 func GetEnvVarRefString(from *api.EnvVarSource) string {
 	if from.ConfigMapKeyRef != nil {
 		return fmt.Sprintf("configmap %s, key %s", from.ConfigMapKeyRef.Name, from.ConfigMapKeyRef.Key)

@@ -261,7 +261,7 @@ func NewKubectlCommand(f cmdutil.Factory, in io.Reader, out, err io.Writer) *cob
       kubectl controls the Kubernetes cluster manager.
 
       Find more information at https://github.com/kubernetes/kubernetes.`),
-		Run:                    runHelp,
+		Run: runHelp,
 		BashCompletionFunction: bashCompletionFunc,
 	}
 

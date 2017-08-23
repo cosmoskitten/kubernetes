@@ -1,3 +1,19 @@
+/*
+Copyright 2017 The Kubernetes Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package env
 
 import (
@@ -6,20 +22,11 @@ import (
 	"io"
 	"os"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/kubernetes/pkg/api"
 )
-
-func EnvInt(key string, defaultValue int32, minValue int32) int32 {
-	value, err := strconv.ParseInt(Env(key, fmt.Sprintf("%d", defaultValue)), 10, 32)
-	if err != nil || int32(value) < minValue {
-		return defaultValue
-	}
-	return int32(value)
-}
 
 // Env returns an environment variable or a default value if not specified.
 func Env(key string, defaultValue string) string {
@@ -42,14 +49,17 @@ func GetEnv(key string) (string, bool) {
 var argumentEnvironment = regexp.MustCompile("(?ms)^(.+)\\=(.*)$")
 var validArgumentEnvironment = regexp.MustCompile("(?ms)^(\\w+)\\=(.*)$")
 
+// IsEnvironmentArgument check str is env args
 func IsEnvironmentArgument(s string) bool {
 	return argumentEnvironment.MatchString(s)
 }
 
+// IsValidEnvironmentArgument check str is valid env
 func IsValidEnvironmentArgument(s string) bool {
 	return validArgumentEnvironment.MatchString(s)
 }
 
+// SplitEnvironmentFromResources returns resources and envargs
 func SplitEnvironmentFromResources(args []string) (resources, envArgs []string, ok bool) {
 	first := true
 	for _, s := range args {
@@ -113,11 +123,7 @@ func parseIntoEnvVar(spec []string, defaultReader io.Reader, envVarType string) 
 	return env, remove, nil
 }
 
-func ParseBuildArg(spec []string, defaultReader io.Reader) ([]api.EnvVar, error) {
-	env, _, err := parseIntoEnvVar(spec, defaultReader, "build-arg")
-	return env, err
-}
-
+// ParseEnv parse env from reader
 func ParseEnv(spec []string, defaultReader io.Reader) ([]api.EnvVar, []string, error) {
 	return parseIntoEnvVar(spec, defaultReader, "environment variable")
 }
