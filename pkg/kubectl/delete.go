@@ -400,6 +400,9 @@ func (reaper *DeploymentReaper) Stop(namespace, name string, timeout time.Durati
 		d.Spec.RevisionHistoryLimit = &rhl
 		d.Spec.Replicas = 0
 		d.Spec.Paused = true
+		if d.Initializers != nil {
+			d.Initializers = nil
+		}
 	})
 	if err != nil {
 		return err
