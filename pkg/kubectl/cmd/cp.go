@@ -137,7 +137,7 @@ func copyToPod(f cmdutil.Factory, cmd *cobra.Command, stdout, stderr io.Writer, 
 	reader, writer := io.Pipe()
 	go func() {
 		defer writer.Close()
-		err := makeTar(src.File, writer)
+		err := makeTar(src.File, dest.File, writer)
 		cmdutil.CheckErr(err)
 	}()
 
@@ -191,17 +191,18 @@ func copyFromPod(f cmdutil.Factory, cmd *cobra.Command, cmderr io.Writer, src, d
 	return untarAll(reader, dest.File, prefix)
 }
 
-func makeTar(filepath string, writer io.Writer) error {
+func makeTar(srcPath, destPath string, writer io.Writer) error {
 	// TODO: use compression here?
 	tarWriter := tar.NewWriter(writer)
 	defer tarWriter.Close()
 
-	filepath = path.Clean(filepath)
-	return recursiveTar(path.Dir(filepath), path.Base(filepath), tarWriter)
+	srcPath = path.Clean(srcPath)
+	destPath = path.Clean(destPath)
+	return recursiveTar(path.Dir(srcPath), path.Base(srcPath), path.Dir(destPath), path.Base(destPath), tarWriter)
 }
 
-func recursiveTar(base, file string, tw *tar.Writer) error {
-	filepath := path.Join(base, file)
+func recursiveTar(srcBase, srcFile, destBase, destFile string, tw *tar.Writer) error {
+	filepath := path.Join(srcBase, srcFile)
 	stat, err := os.Stat(filepath)
 	if err != nil {
 		return err
@@ -212,7 +213,7 @@ func recursiveTar(base, file string, tw *tar.Writer) error {
 			return err
 		}
 		for _, f := range files {
-			if err := recursiveTar(base, path.Join(file, f.Name()), tw); err != nil {
+			if err := recursiveTar(srcBase, path.Join(srcFile, f.Name()), destBase, path.Join(destFile, f.Name()), tw); err != nil {
 				return err
 			}
 		}
@@ -222,7 +223,7 @@ func recursiveTar(base, file string, tw *tar.Writer) error {
 	if err != nil {
 		return err
 	}
-	hdr.Name = file
+	hdr.Name = destFile
 	if err := tw.WriteHeader(hdr); err != nil {
 		return err
 	}
