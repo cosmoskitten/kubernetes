@@ -133,17 +133,17 @@ func (meta *predicateMetadata) AddPod(addedPod *v1.Pod, nodeInfo *schedulercache
 		return fmt.Errorf("Invalid node in nodeInfo.")
 	}
 	// Add matching anti-affinity terms of the addedPod to the map.
-	if podMatchingTerms, err := getMatchingAntiAffinityTermsOfExistingPod(meta.pod, addedPod, nodeInfo.Node()); err == nil {
+	podMatchingTerms, err := getMatchingAntiAffinityTermsOfExistingPod(meta.pod, addedPod, nodeInfo.Node())
+	if err != nil {
+		return err
+	}
+	if len(podMatchingTerms) > 0 {
 		existingTerms, found := meta.matchingAntiAffinityTerms[addedPodFullName]
 		if found {
-			existingTerms = append(existingTerms, podMatchingTerms...)
+			meta.matchingAntiAffinityTerms[addedPodFullName] = append(existingTerms, podMatchingTerms...)
 		} else {
-			if len(podMatchingTerms) > 0 {
-				meta.matchingAntiAffinityTerms[addedPodFullName] = podMatchingTerms
-			}
+			meta.matchingAntiAffinityTerms[addedPodFullName] = podMatchingTerms
 		}
-	} else {
-		return err
 	}
 	// If addedPod is in the same namespace as the meta.pod, update the list
 	// of matching pods if applicable.

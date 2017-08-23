@@ -18,13 +18,81 @@ package predicates
 
 import (
 	"fmt"
+	"reflect"
+	"sort"
+	"testing"
+
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kubernetes/plugin/pkg/scheduler/schedulercache"
 	schedulertesting "k8s.io/kubernetes/plugin/pkg/scheduler/testing"
-	"reflect"
-	"testing"
 )
+
+// sortableAntiAffinityTerms lets us to sort anti-affinity terms.
+type sortableAntiAffinityTerms struct {
+	Items []matchingPodAntiAffinityTerm
+}
+
+// Less establishes some ordering between two matchingPodAntiAffinityTerms for
+// sorting.
+func (s *sortableAntiAffinityTerms) Less(i, j int) bool {
+	t1, t2 := s.Items[i], s.Items[j]
+	return t1.node.Name < t2.node.Name ||
+			(t1.node.Name == t2.node.Name && len(t1.term.Namespaces) < len(t2.term.Namespaces)) ||
+			(t1.node.Name == t2.node.Name && len(t1.term.Namespaces) == len(t2.term.Namespaces) && t1.term.TopologyKey < t2.term.TopologyKey) ||
+			(t1.node.Name == t2.node.Name && len(t1.term.Namespaces) == len(t2.term.Namespaces) &&
+					t1.term.TopologyKey == t2.term.TopologyKey &&	len(t1.term.LabelSelector.MatchLabels) < len(t2.term.LabelSelector.MatchLabels))
+}
+func (s *sortableAntiAffinityTerms) Len() int { return len(s.Items) }
+func (s *sortableAntiAffinityTerms) Swap(i, j int) {
+	s.Items[i], s.Items[j] = s.Items[j], s.Items[i]
+}
+
+var _ = sort.Interface(&sortableAntiAffinityTerms{})
+
+func sortAntiAffinityTerms(terms map[string][]matchingPodAntiAffinityTerm) {
+	for k, v := range terms {
+		sortableTerms := sortableAntiAffinityTerms{v}
+		sort.Sort(&sortableTerms)
+		terms[k] = sortableTerms.Items
+	}
+}
+
+// sortablePods lets us to sort pods.
+type sortablePods struct {
+	Items []*v1.Pod
+}
+
+func (s *sortablePods) Less(i, j int) bool {
+	if s.Items[i].Name < s.Items[j].Name {
+		return true
+	}
+	return false
+}
+func (s *sortablePods) Len() int { return len(s.Items) }
+func (s *sortablePods) Swap(i, j int) {
+	s.Items[i], s.Items[j] = s.Items[j], s.Items[i]
+}
+
+var _ = sort.Interface(&sortablePods{})
+
+// sortableServices allows us to sort services.
+type sortableServices struct {
+	Items []*v1.Service
+}
+
+func (s *sortableServices) Less(i, j int) bool {
+	if s.Items[i].Name < s.Items[j].Name {
+		return true
+	}
+	return false
+}
+func (s *sortableServices) Len() int { return len(s.Items) }
+func (s *sortableServices) Swap(i, j int) {
+	s.Items[i], s.Items[j] = s.Items[j], s.Items[i]
+}
+
+var _ = sort.Interface(&sortableServices{})
 
 // predicateMetadataEquivalent returns true if the two metadata are equivalent.
 // Note: this function does not compare podRequest.
@@ -44,55 +112,26 @@ func predicateMetadataEquivalent(meta1, meta2 *predicateMetadata) error {
 	for !reflect.DeepEqual(meta1.podPorts, meta2.podPorts) {
 		return fmt.Errorf("podPorts are not equal.")
 	}
-	for k1, v1 := range meta1.matchingAntiAffinityTerms {
-		var v2 []matchingPodAntiAffinityTerm
-		found := false
-		if v2, found = meta2.matchingAntiAffinityTerms[k1]; !found {
-			return fmt.Errorf("matchingAntiAffinityTerms have different length.")
-		}
-		for _, term1 := range v1 {
-			found := false
-			for _, term2 := range v2 {
-				if reflect.DeepEqual(term1.term, term2.term) && reflect.DeepEqual(term1.node, term2.node) {
-					found = true
-					break
-				}
-			}
-			if !found {
-				return fmt.Errorf("matchingAntiAffinityTerms are not euqal: missing %v", term1.term)
-			}
-		}
+	sortAntiAffinityTerms(meta1.matchingAntiAffinityTerms)
+	sortAntiAffinityTerms(meta2.matchingAntiAffinityTerms)
+	if !reflect.DeepEqual(meta1.matchingAntiAffinityTerms, meta2.matchingAntiAffinityTerms) {
+		fmt.Errorf("matchingAntiAffinityTerms are not euqal.")
 	}
 	if meta1.serviceAffinityInUse {
-		if len(meta1.serviceAffinityMatchingPodList) != len(meta2.serviceAffinityMatchingPodList) {
-			return fmt.Errorf("serviceAffinityMatchingPodLists have different length.")
+		sortablePods1 := sortablePods{meta1.serviceAffinityMatchingPodList}
+		sort.Sort(&sortablePods1)
+		sortablePods2 := sortablePods{meta2.serviceAffinityMatchingPodList}
+		sort.Sort(&sortablePods2)
+		if !reflect.DeepEqual(sortablePods1, sortablePods2) {
+			fmt.Errorf("serviceAffinityMatchingPodLists are not euqal.")
 		}
-		for _, pod1 := range meta1.serviceAffinityMatchingPodList {
-			found := false
-			for _, pod2 := range meta1.serviceAffinityMatchingPodList {
-				if reflect.DeepEqual(pod1, pod2) {
-					found = true
-					break
-				}
-			}
-			if !found {
-				return fmt.Errorf("serviceAffinityMatchingPodLists are not euqal.")
-			}
-		}
-		if len(meta1.serviceAffinityMatchingPodServices) != len(meta2.serviceAffinityMatchingPodServices) {
-			return fmt.Errorf("serviceAffinityMatchingPodServices have different length.")
-		}
-		for _, service1 := range meta1.serviceAffinityMatchingPodServices {
-			found := false
-			for _, service2 := range meta1.serviceAffinityMatchingPodServices {
-				if service1 == service2 {
-					found = true
-					break
-				}
-			}
-			if !found {
-				return fmt.Errorf("serviceAffinityMatchingPodServices are not euqal.")
-			}
+
+		sortableSerivces1 := sortableServices{meta1.serviceAffinityMatchingPodServices}
+		sort.Sort(&sortableSerivces1)
+		sortableSerivces2 := sortableServices{meta2.serviceAffinityMatchingPodServices}
+		sort.Sort(&sortableSerivces2)
+		if !reflect.DeepEqual(sortableSerivces1, sortableSerivces2) {
+			fmt.Errorf("serviceAffinityMatchingPodServices are not euqal.")
 		}
 	}
 	return nil

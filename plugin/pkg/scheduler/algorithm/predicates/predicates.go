@@ -1113,16 +1113,21 @@ func getMatchingAntiAffinityTermsOfExistingPod(newPod *v1.Pod, existingPod *v1.P
 func (c *PodAffinityChecker) getMatchingAntiAffinityTerms(pod *v1.Pod, allPods []*v1.Pod) (map[string][]matchingPodAntiAffinityTerm, error) {
 	result := make(map[string][]matchingPodAntiAffinityTerm)
 	for _, existingPod := range allPods {
-		existingPodNode, err := c.info.GetNodeInfo(existingPod.Spec.NodeName)
-		if err != nil {
-			return nil, err
+		affinity := existingPod.Spec.Affinity
+		if affinity != nil && affinity.PodAntiAffinity != nil {
+			existingPodNode, err := c.info.GetNodeInfo(existingPod.Spec.NodeName)
+			if err != nil {
+				return nil, err
+			}
+			existingPodMatchingTerms, err := getMatchingAntiAffinityTermsOfExistingPod(pod, existingPod, existingPodNode)
+			if err != nil {
+				return nil, err
+			}
+			if len(existingPodMatchingTerms) > 0 {
+				existingPodFullName := schedutil.GetPodFullName(existingPod)
+				result[existingPodFullName] = existingPodMatchingTerms
+			}
 		}
-		existingPodMatchingTerms, err := getMatchingAntiAffinityTermsOfExistingPod(pod, existingPod, existingPodNode)
-		if err != nil {
-			return nil, err
-		}
-		existingPodFullName := schedutil.GetPodFullName(existingPod)
-		result[existingPodFullName] = append(result[existingPodFullName], existingPodMatchingTerms...)
 	}
 	return result, nil
 }
@@ -1138,6 +1143,8 @@ func (c *PodAffinityChecker) satisfiesExistingPodsAntiAffinity(pod *v1.Pod, meta
 	if predicateMeta, ok := meta.(*predicateMetadata); ok {
 		matchingTerms = predicateMeta.matchingAntiAffinityTerms
 	} else {
+		// Filter out pods whose nodeName is equal to nodeInfo.node.Name, but are not
+		// present in nodeInfo. Pods on other nodes pass the filter.
 		filteredPods, err := c.podLister.FilteredList(nodeInfo.Filter, labels.Everything())
 		if err != nil {
 			glog.Errorf("Failed to get all pods, %+v", err)
@@ -1149,7 +1156,8 @@ func (c *PodAffinityChecker) satisfiesExistingPodsAntiAffinity(pod *v1.Pod, meta
 		}
 	}
 	for _, terms := range matchingTerms {
-		for _, term := range terms {
+		for i := range terms {
+			term := &terms[i]
 			if len(term.term.TopologyKey) == 0 {
 				glog.Error("Empty topologyKey is not allowed except for PreferredDuringScheduling pod anti-affinity")
 				return false

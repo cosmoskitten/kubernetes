@@ -93,17 +93,8 @@ func (cache *schedulerCache) UpdateNodeNameToInfoMap(nodeNameToInfo map[string]*
 }
 
 func (cache *schedulerCache) List(selector labels.Selector) ([]*v1.Pod, error) {
-	cache.mu.Lock()
-	defer cache.mu.Unlock()
-	var pods []*v1.Pod
-	for _, info := range cache.nodes {
-		for _, pod := range info.pods {
-			if selector.Matches(labels.Set(pod.Labels)) {
-				pods = append(pods, pod)
-			}
-		}
-	}
-	return pods, nil
+	alwaysTrue := func(p *v1.Pod) bool { return true }
+	return cache.FilteredList(alwaysTrue, selector)
 }
 
 func (cache *schedulerCache) FilteredList(podFilter PodFilter, selector labels.Selector) ([]*v1.Pod, error) {
