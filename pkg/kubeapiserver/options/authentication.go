@@ -51,7 +51,8 @@ type AnonymousAuthenticationOptions struct {
 }
 
 type BootstrapTokenAuthenticationOptions struct {
-	Allow bool
+	Enable                       bool
+	DeprecatedEnableExperimental bool
 }
 
 type KeystoneAuthenticationOptions struct {
@@ -178,7 +179,9 @@ func (s *BuiltInAuthenticationOptions) AddFlags(fs *pflag.FlagSet) {
 	}
 
 	if s.BootstrapToken != nil {
-		fs.BoolVar(&s.BootstrapToken.Allow, "experimental-bootstrap-token-auth", s.BootstrapToken.Allow, ""+
+		fs.BoolVar(&s.BootstrapToken.DeprecatedEnableExperimental, "experimental-bootstrap-token-auth", s.BootstrapToken.DeprecatedEnableExperimental, ""+
+			"Deprecated (use --enable-bootstrap-token-auth).")
+		fs.BoolVar(&s.BootstrapToken.Enable, "enable-bootstrap-token-auth", s.BootstrapToken.Enable, ""+
 			"Enable to allow secrets of type 'bootstrap.kubernetes.io/token' in the 'kube-system' "+
 			"namespace to be used for TLS bootstrapping authentication.")
 	}
@@ -266,7 +269,10 @@ func (s *BuiltInAuthenticationOptions) ToAuthenticationConfig() authenticator.Au
 	}
 
 	if s.BootstrapToken != nil {
-		ret.BootstrapToken = s.BootstrapToken.Allow
+		ret.BootstrapToken = s.BootstrapToken.Enable || s.BootstrapToken.DeprecatedEnableExperimental
+		if s.BootstrapToken.DeprecatedEnableExperimental {
+			glog.Warningf("--experimental-bootstrap-token-auth is deprecated and will be removed in 1.9, use --enable-bootstrap-token-auth instead.")
+		}
 	}
 
 	if s.ClientCert != nil {

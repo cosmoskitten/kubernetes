@@ -45,6 +45,15 @@ func validateServiceNodePort(options *ServerRunOptions) []error {
 	return errors
 }
 
+func validateBootstrapTokenAuthFlags(options *ServerRunOptions) []error {
+	errors := []error{}
+	bt := options.Authentication.BootstrapToken
+	if bt != nil && bt.Enable && bt.DeprecatedEnableExperimental {
+		errors = append(errors, fmt.Errorf("--experimental-bootstrap-token-auth and --enable-bootstrap-token-auth cannot be specified at the same time"))
+	}
+	return errors
+}
+
 // Validate checks ServerRunOptions and return a slice of found errors.
 func (options *ServerRunOptions) Validate() []error {
 	var errors []error
@@ -55,6 +64,9 @@ func (options *ServerRunOptions) Validate() []error {
 		errors = append(errors, errs...)
 	}
 	if errs := validateServiceNodePort(options); len(errs) > 0 {
+		errors = append(errors, errs...)
+	}
+	if errs := validateBootstrapTokenAuthFlags(options); len(errs) > 0 {
 		errors = append(errors, errs...)
 	}
 	if errs := options.SecureServing.Validate(); len(errs) > 0 {
