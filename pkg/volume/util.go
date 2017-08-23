@@ -389,12 +389,17 @@ func MountOptionFromSpec(spec *Spec, options ...string) []string {
 	pv := spec.PersistentVolume
 
 	if pv != nil {
+		// Use field first
+		if len(pv.Spec.MountOptions) > 0 {
+			return JoinMountOptions(pv.Spec.MountOptions, options)
+		}
+
 		if mo, ok := pv.Annotations[v1.MountOptionAnnotation]; ok {
 			moList := strings.Split(mo, ",")
 			return JoinMountOptions(moList, options)
 		}
-
 	}
+
 	return options
 }
 
