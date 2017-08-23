@@ -335,7 +335,7 @@ function detect-node-names() {
   INSTANCE_GROUPS=()
   INSTANCE_GROUPS+=($(gcloud compute instance-groups managed list \
     --project "${PROJECT}" \
-    --filter "name ~ '${NODE_INSTANCE_PREFIX}-.+' AND zone=(${ZONE})" \
+    --filter "name ~ '${NODE_INSTANCE_PREFIX}-.+' AND zone:(${ZONE})" \
     --format='value(instanceGroup)' || true))
   NODE_NAMES=()
   if [[ -n "${INSTANCE_GROUPS[@]:-}" ]]; then
@@ -1648,7 +1648,7 @@ function kube-down() {
     local -a minions
     minions=( $(gcloud compute instances list \
                   --project "${PROJECT}" \
-                  --filter="name ~ '${NODE_INSTANCE_PREFIX}-.+' AND zone=(${ZONE})" \
+                  --filter="name ~ '${NODE_INSTANCE_PREFIX}-.+' AND zone:(${ZONE})" \
                   --format='value(name)') )
     # If any minions are running, delete them in batches.
     while (( "${#minions[@]}" > 0 )); do
@@ -1740,7 +1740,7 @@ function kube-down() {
 function get-replica-name() {
   echo $(gcloud compute instances list \
     --project "${PROJECT}" \
-    --filter="name ~ '$(get-replica-name-regexp)' AND zone=(${ZONE})" \
+    --filter="name ~ '$(get-replica-name-regexp)' AND zone:(${ZONE})" \
     --format "value(name)" | head -n1)
 }
 
@@ -1856,7 +1856,7 @@ function check-resources() {
   local -a minions
   minions=( $(gcloud compute instances list \
                 --project "${PROJECT}" \
-                --filter="name ~ '${NODE_INSTANCE_PREFIX}-.+' AND zone=(${ZONE})" \
+                --filter="name ~ '${NODE_INSTANCE_PREFIX}-.+' AND zone:(${ZONE})" \
                 --format='value(name)') )
   if (( "${#minions[@]}" > 0 )); then
     KUBE_RESOURCE_FOUND="${#minions[@]} matching matching ${NODE_INSTANCE_PREFIX}-.+"
