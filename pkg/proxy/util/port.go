@@ -24,18 +24,19 @@ import (
 
 // LocalPort describes a port on specific IP address and protocol
 type LocalPort struct {
-	// Desc is the description message of a given LocalPort
+	// Desc is the identity message of a given local port
 	Desc string
-	// Ip is the IP address part of a given LocalPort
-	Ip string
-	// Port is the port part of a given LocalPort
+	// IP is the IP address part of a given local port.
+	// For node port service, the IP filed is empty to represent all IP addresses in the node.
+	IP string
+	// Port is the port part of a given local port
 	Port int
-	// Protocol is the protocol part of a given LocalPort
+	// Protocol is the protocol part of a given local port
 	Protocol string
 }
 
 func (lp *LocalPort) String() string {
-	return fmt.Sprintf("%q (%s:%d/%s)", lp.Desc, lp.Ip, lp.Port, lp.Protocol)
+	return fmt.Sprintf("%q (%s:%d/%s)", lp.Desc, lp.IP, lp.Port, lp.Protocol)
 }
 
 // Closeable is an interface around closing an port.

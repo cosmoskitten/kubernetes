@@ -1181,7 +1181,7 @@ func (proxier *Proxier) syncProxyRules() {
 			} else if local {
 				lp := utilproxy.LocalPort{
 					Desc:     "externalIP for " + svcNameString,
-					Ip:       externalIP,
+					IP:       externalIP,
 					Port:     svcInfo.port,
 					Protocol: protocol,
 				}
@@ -1318,7 +1318,7 @@ func (proxier *Proxier) syncProxyRules() {
 			// (because the socket might open but it would never work).
 			lp := utilproxy.LocalPort{
 				Desc:     "nodePort for " + svcNameString,
-				Ip:       "",
+				IP:       "",
 				Port:     svcInfo.nodePort,
 				Protocol: protocol,
 			}
@@ -1647,13 +1647,13 @@ func openLocalPort(lp *utilproxy.LocalPort) (utilproxy.Closeable, error) {
 	var socket utilproxy.Closeable
 	switch lp.Protocol {
 	case "tcp":
-		listener, err := net.Listen("tcp", net.JoinHostPort(lp.Ip, strconv.Itoa(lp.Port)))
+		listener, err := net.Listen("tcp", net.JoinHostPort(lp.IP, strconv.Itoa(lp.Port)))
 		if err != nil {
 			return nil, err
 		}
 		socket = listener
 	case "udp":
-		addr, err := net.ResolveUDPAddr("udp", net.JoinHostPort(lp.Ip, strconv.Itoa(lp.Port)))
+		addr, err := net.ResolveUDPAddr("udp", net.JoinHostPort(lp.IP, strconv.Itoa(lp.Port)))
 		if err != nil {
 			return nil, err
 		}
