@@ -90,6 +90,15 @@ func (s *GenericAPIServer) AddPostStartHook(name string, hook PostStartHookFunc)
 	return nil
 }
 
+// AddPostStartHookOrDie allows you to add a PostStartHook, but dies on failure
+func (s *GenericAPIServer) AddPostStartHookOrDie(name string, hook PostStartHookFunc) error {
+	err := s.AddPostStartHook(name, hook)
+	if err != nil {
+		glog.Fatalf("Error registering PostStartHook %q: %v", name, err)
+	}
+	return nil
+}
+
 // RunPostStartHooks runs the PostStartHooks for the server
 func (s *GenericAPIServer) RunPostStartHooks(stopCh <-chan struct{}) {
 	s.postStartHookLock.Lock()
