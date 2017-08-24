@@ -57561,7 +57561,17 @@
     ],
     "properties": {
      "activeDeadlineSeconds": {
-      "description": "Optional duration in seconds relative to the startTime that the job may be active before the system tries to terminate it; value must be positive integer",
+      "description": "Specifies the duration in seconds relative to the startTime that the job may be active before the system tries to terminate it; value must be positive integer",
+      "type": "integer",
+      "format": "int64"
+     },
+     "backoffLimit": {
+      "description": "Specifies the number of retries before marking this job failed. Defaults to 6",
+      "type": "integer",
+      "format": "int32"
+     },
+     "backoffSeconds": {
+      "description": "Optional time (in seconds) specifying how long the initial backoff will last. marking it failed. Defaults to 10s.",
       "type": "integer",
       "format": "int64"
      },
