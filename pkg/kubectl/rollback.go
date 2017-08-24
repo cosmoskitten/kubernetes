@@ -329,6 +329,7 @@ func (r *StatefulSetRollbacker) Rollback(obj runtime.Object, updatedAnnotations 
 	return rollbackSuccess, nil
 }
 
+// findHistory checks whether controller revision exists for rollback purpose
 func findHistory(toRevision int64, allHistory []*appsv1beta1.ControllerRevision) *appsv1beta1.ControllerRevision {
 	if toRevision == 0 && len(allHistory) <= 1 {
 		return nil
@@ -352,6 +353,7 @@ func findHistory(toRevision int64, allHistory []*appsv1beta1.ControllerRevision)
 	return toHistory
 }
 
+// printPodTemplate converts pod template to unversioned before printing out the template
 func printPodTemplate(specTemplate *v1.PodTemplateSpec) (string, error) {
 	content := bytes.NewBuffer([]byte{})
 	w := printersinternal.NewPrefixWriter(content)
