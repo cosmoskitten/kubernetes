@@ -123,5 +123,8 @@ func convertToAlphaForwardingRule(object gceObject) *computealpha.ForwardingRule
 	if err := json.Unmarshal(enc, &fwdRule); err != nil {
 		panic(fmt.Sprintf("Failed to convert GCE apiObject %v to alpha fwdRuleess: %v", object, err))
 	}
+	// Set the default values for the Alpha fields.
+	fwdRule.NetworkTier = NetworkTierDefault.ToGCEValue()
+
 	return &fwdRule
 }
