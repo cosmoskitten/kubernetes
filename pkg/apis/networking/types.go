@@ -55,6 +55,16 @@ type NetworkPolicySpec struct {
 	// solely to ensure that the pods it selects are isolated by default)
 	// +optional
 	Ingress []NetworkPolicyIngressRule
+
+	// List of egress rules to be applied to the selected pods. Outgoing traffic is
+	//allowed unbounded if there are no NetworkPolicies selecting the pod
+	// (and cluster policy otherwise allows the traffic), OR if the traffic source is
+	// the pod's local node, OR if the traffic matches at least one egress rule
+	// across all of the NetworkPolicy objects whose podSelector matches the pod. If
+	// this field is empty then this NetworkPolicy does not limit any outgoing traffic
+	// (and serves solely to ensure that the pods it selects are isolated by default)
+	// +optional
+	Egress []NetworkPolicyEgressRule
 }
 
 // NetworkPolicyIngressRule describes a particular set of traffic that is allowed to the pods
@@ -75,6 +85,26 @@ type NetworkPolicyIngressRule struct {
 	// allows traffic only if the traffic matches at least one item in the from list.
 	// +optional
 	From []NetworkPolicyPeer
+}
+
+// NetworkPolicyEgressRule describes a particular set of traffic that pods can egress to
+// matched by a NetworkPolicySpec's podSelector. The traffic must match both ports and to.
+type NetworkPolicyEgressRule struct {
+	// List of destination ports for outgoing traffic.
+	//Each item in this list is combined using a logical OR. If this field is
+	// empty or missing, this rule matches all ports (traffic not restricted by port).
+	// If this field is present and contains at least one item, then this rule does note
+	// constrain outgoing traffic.
+	// +optional
+	Ports []NetworkPolicyPort
+
+	// List of sources for outgoing traffic of pods selected for this rule.
+	// Items in this list are combined using a logical OR operation. If this field is
+	// empty or missing, this rule matches all sources (traffic not restricted by
+	// source). If this field is present and contains at least on item, this rule
+	// allows traffic only if the traffic matches at least one item in the from list.
+	// +optional
+	To []NetworkPolicyPeer
 }
 
 // NetworkPolicyPort describes a port to allow traffic on
