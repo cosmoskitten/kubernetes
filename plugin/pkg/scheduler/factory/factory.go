@@ -798,6 +798,7 @@ func (f *ConfigFactory) ResponsibleForPod(pod *v1.Pod) bool {
 	return f.schedulerName == pod.Spec.SchedulerName
 }
 
+// >>>>>>> remove OutOfDisk from controllers
 // unassignedNonTerminatedPod selects pods that are unassigned and non-terminal.
 func unassignedNonTerminatedPod(pod *v1.Pod) bool {
 	if len(pod.Spec.NodeName) != 0 {

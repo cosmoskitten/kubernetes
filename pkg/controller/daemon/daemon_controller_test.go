@@ -481,20 +481,6 @@ func TestNotReadNodeDaemonDoesNotLaunchPod(t *testing.T) {
 	}
 }
 
-// DaemonSets should not place onto OutOfDisk nodes
-func TestOutOfDiskNodeDaemonDoesNotLaunchPod(t *testing.T) {
-	for _, strategy := range updateStrategies() {
-		ds := newDaemonSet("foo")
-		ds.Spec.UpdateStrategy = *strategy
-		manager, podControl, _ := newTestController(ds)
-		node := newNode("not-enough-disk", nil)
-		node.Status.Conditions = []v1.NodeCondition{{Type: v1.NodeOutOfDisk, Status: v1.ConditionTrue}}
-		manager.nodeStore.Add(node)
-		manager.dsStore.Add(ds)
-		syncAndValidateDaemonSets(t, manager, ds, podControl, 0, 0, 0)
-	}
-}
-
 func resourcePodSpec(nodeName, memory, cpu string) v1.PodSpec {
 	return v1.PodSpec{
 		NodeName: nodeName,
@@ -1230,30 +1216,8 @@ func setDaemonSetToleration(ds *extensions.DaemonSet, tolerations []v1.Toleratio
 	ds.Spec.Template.Spec.Tolerations = tolerations
 }
 
-// DaemonSet should launch a critical pod even when the node is OutOfDisk.
-func TestOutOfDiskNodeDaemonLaunchesCriticalPod(t *testing.T) {
-	for _, strategy := range updateStrategies() {
-		ds := newDaemonSet("critical")
-		ds.Spec.UpdateStrategy = *strategy
-		setDaemonSetCritical(ds)
-		manager, podControl, _ := newTestController(ds)
-
-		node := newNode("not-enough-disk", nil)
-		node.Status.Conditions = []v1.NodeCondition{{Type: v1.NodeOutOfDisk, Status: v1.ConditionTrue}}
-		manager.nodeStore.Add(node)
-
-		// Without enabling critical pod annotation feature gate, we shouldn't create critical pod
-		utilfeature.DefaultFeatureGate.Set("ExperimentalCriticalPodAnnotation=False")
-		manager.dsStore.Add(ds)
-		syncAndValidateDaemonSets(t, manager, ds, podControl, 0, 0, 0)
-
-		// Enabling critical pod annotation feature gate should create critical pod
-		utilfeature.DefaultFeatureGate.Set("ExperimentalCriticalPodAnnotation=True")
-		syncAndValidateDaemonSets(t, manager, ds, podControl, 1, 0, 0)
-	}
-}
-
 // DaemonSet should launch a critical pod even when the node with OutOfDisk taints.
+// TODO(#48843) OutOfDisk taints will be removed in 1.10
 func TestTaintOutOfDiskNodeDaemonLaunchesCriticalPod(t *testing.T) {
 	for _, strategy := range updateStrategies() {
 		ds := newDaemonSet("critical")
@@ -1574,41 +1538,6 @@ func TestUpdateNode(t *testing.T) {
 			newNode:       newNode("node1", nil),
 			ds:            newDaemonSet("ds"),
 			shouldEnqueue: true,
-		},
-		{
-			test: "Node conditions changed",
-			oldNode: func() *v1.Node {
-				node := newNode("node1", nil)
-				node.Status.Conditions = []v1.NodeCondition{
-					{Type: v1.NodeOutOfDisk, Status: v1.ConditionTrue},
-				}
-				return node
-			}(),
-			newNode:       newNode("node1", nil),
-			ds:            newDaemonSet("ds"),
-			shouldEnqueue: true,
-		},
-		{
-			test: "Node conditions not changed",
-			oldNode: func() *v1.Node {
-				node := newNode("node1", nil)
-				node.Status.Conditions = []v1.NodeCondition{
-					{Type: v1.NodeOutOfDisk, Status: v1.ConditionTrue},
-					{Type: v1.NodeMemoryPressure, Status: v1.ConditionFalse},
-					{Type: v1.NodeDiskPressure, Status: v1.ConditionFalse},
-					{Type: v1.NodeNetworkUnavailable, Status: v1.ConditionFalse},
-				}
-				return node
-			}(),
-			newNode: func() *v1.Node {
-				node := newNode("node1", nil)
-				node.Status.Conditions = []v1.NodeCondition{
-					{Type: v1.NodeOutOfDisk, Status: v1.ConditionTrue},
-				}
-				return node
-			}(),
-			ds:            newDaemonSet("ds"),
-			shouldEnqueue: false,
 		},
 	}
 	for _, c := range cases {
