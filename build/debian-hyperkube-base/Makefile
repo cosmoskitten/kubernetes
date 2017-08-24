@@ -24,10 +24,10 @@ ARCH?=amd64
 CACHEBUST?=1
 
 BASEIMAGE=gcr.io/google-containers/debian-base-$(ARCH):0.1
-CNI_RELEASE=0799f5732f2a11b329d9e3d51b9c8f2e3759f2ff
+CNI_VERSION=v0.6.0
 
 TEMP_DIR:=$(shell mktemp -d)
-CNI_TARBALL=cni-$(ARCH)-$(CNI_RELEASE).tar.gz
+CNI_TARBALL=cni-$(ARCH)-$(CNI_VERSION).tgz
 
 .PHONY: all build push clean
 
@@ -35,7 +35,7 @@ all: push
 
 cni-tars/$(CNI_TARBALL):
 	mkdir -p cni-tars/
-	cd cni-tars/ && curl -sSLO --retry 5 https://storage.googleapis.com/kubernetes-release/network-plugins/${CNI_TARBALL}
+	cd cni-tars/ && curl -sSLO --retry 5 https://github.com/containernetworking/cni/releases/download/${CNI_VERSION}/${CNI_TARBALL}
 
 clean:
 	rm -rf cni-tars/
