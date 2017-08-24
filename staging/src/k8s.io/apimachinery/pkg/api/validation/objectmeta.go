@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation"
+	validationutil "k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
@@ -189,15 +190,28 @@ func ValidateObjectMetaAccessor(meta metav1.Object, requiresNamespace bool, name
 	return allErrs
 }
 
+// ValidateInitializerName validates that the name is fully qualified
+func ValidateInitializerName(fldPath *field.Path, name string) field.ErrorList {
+	var allErrors field.ErrorList
+	if len(name) == 0 {
+		allErrors = append(allErrors, field.Required(fldPath, ""))
+	}
+	if errs := validationutil.IsDNS1123Subdomain(name); len(errs) > 0 {
+		allErrors = append(allErrors, field.Invalid(fldPath, name, strings.Join(errs, ",")))
+	}
+	if len(strings.Split(name, ".")) < 3 {
+		allErrors = append(allErrors, field.Invalid(fldPath, name, "should be a domain with at least two dots"))
+	}
+	return allErrors
+}
+
 func ValidateInitializers(initializers *metav1.Initializers, fldPath *field.Path) field.ErrorList {
 	var allErrs field.ErrorList
 	if initializers == nil {
 		return allErrs
 	}
 	for i, initializer := range initializers.Pending {
-		for _, msg := range validation.IsQualifiedName(initializer.Name) {
-			allErrs = append(allErrs, field.Invalid(fldPath.Child("pending").Index(i), initializer.Name, msg))
-		}
+		allErrs = append(allErrs, ValidateInitializerName(fldPath.Child("pending").Index(i).Child("name"), initializer.Name)...)
 	}
 	allErrs = append(allErrs, validateInitializersResult(initializers.Result, fldPath.Child("result"))...)
 	if len(initializers.Pending) == 0 && initializers.Result == nil {

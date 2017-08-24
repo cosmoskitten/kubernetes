@@ -498,3 +498,38 @@ func TestValidateAnnotations(t *testing.T) {
 		}
 	}
 }
+
+func TestValidateInitializerName(t *testing.T) {
+	tests := []struct {
+		name            string
+		initializerName string
+		err             string
+	}{
+		{
+			name:            "name needs to be fully qualified, i.e., contains at least 2 dots",
+			initializerName: "k8s.io",
+			err:             "should be a domain with at least two dots",
+		},
+		{
+			name:            "name cannot be empty",
+			initializerName: "",
+			err:             "Required value",
+		},
+		{
+			name:            "name must conform to RFC 1123",
+			initializerName: "A.B.C",
+			err:             "a DNS-1123 subdomain must consist of lower case alphanumeric characters",
+		},
+	}
+	for _, tc := range tests {
+		err := ValidateInitializerName(field.NewPath(""), tc.initializerName).ToAggregate()
+		switch {
+		case tc.err == "" && err != nil:
+			t.Errorf("%q: unexpected error: %v", tc.name, err)
+		case tc.err != "" && err == nil:
+			t.Errorf("%q: unexpected no error, expected %s", tc.name, tc.err)
+		case tc.err != "" && err != nil && !strings.Contains(err.Error(), tc.err):
+			t.Errorf("%q: expected %s, got %v", tc.name, tc.err, err)
+		}
+	}
+}

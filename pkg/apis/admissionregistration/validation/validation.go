@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"strings"
 
+	apimachineryvalidation "k8s.io/apimachinery/pkg/api/validation"
 	genericvalidation "k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/util/sets"
 	validationutil "k8s.io/apimachinery/pkg/util/validation"
@@ -38,15 +39,7 @@ func ValidateInitializerConfiguration(ic *admissionregistration.InitializerConfi
 func validateInitializer(initializer *admissionregistration.Initializer, fldPath *field.Path) field.ErrorList {
 	var allErrors field.ErrorList
 	// initlializer.Name must be fully qualified
-	if len(initializer.Name) == 0 {
-		allErrors = append(allErrors, field.Required(fldPath.Child("name"), ""))
-	}
-	if errs := validationutil.IsDNS1123Subdomain(initializer.Name); len(errs) > 0 {
-		allErrors = append(allErrors, field.Invalid(fldPath.Child("name"), initializer.Name, strings.Join(errs, ",")))
-	}
-	if len(strings.Split(initializer.Name, ".")) < 3 {
-		allErrors = append(allErrors, field.Invalid(fldPath.Child("name"), initializer.Name, "should be a domain with at least two dots"))
-	}
+	allErrors = append(allErrors, apimachineryvalidation.ValidateInitializerName(fldPath.Child("name"), initializer.Name)...)
 
 	for i, rule := range initializer.Rules {
 		notAllowSubresources := false
