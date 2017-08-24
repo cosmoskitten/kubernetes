@@ -100,7 +100,7 @@ func NewExpandController(
 		pvSynced:   pvInformer.Informer().HasSynced,
 	}
 
-	if err := expc.volumePluginMgr.InitPlugins(plugins, expc); err != nil {
+	if err := expc.volumePluginMgr.InitPlugins(plugins, nil, expc); err != nil {
 		return nil, fmt.Errorf("Could not initialize volume plugins for Expand Controller : %+v", err)
 	}
 
@@ -214,8 +214,12 @@ func (expc *expandController) GetCloudProvider() cloudprovider.Interface {
 	return expc.cloud
 }
 
-func (expc *expandController) GetMounter() mount.Interface {
+func (expc *expandController) GetMounter(pluginName string) mount.Interface {
 	return nil
+}
+
+func (expc *expandController) GetExec(pluginName string) mount.Exec {
+	return mount.NewOsExec()
 }
 
 func (expc *expandController) GetWriter() io.Writer {
