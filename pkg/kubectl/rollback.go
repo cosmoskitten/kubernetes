@@ -330,12 +330,8 @@ func (r *StatefulSetRollbacker) Rollback(obj runtime.Object, updatedAnnotations 
 }
 
 func findHistory(toRevision int64, allHistory []*appsv1beta1.ControllerRevision) *appsv1beta1.ControllerRevision {
-	if len(allHistory) == 0 {
+	if toRevision == 0 && len(allHistory) <= 1 {
 		return nil
-	}
-
-	if len(allHistory) == 1 {
-		return allHistory[0]
 	}
 
 	// Find the history to rollback to
