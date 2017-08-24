@@ -26,7 +26,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"unicode"
 
 	"github.com/golang/glog"
 
@@ -1763,7 +1762,8 @@ func ValidateVolumeMounts(mounts []api.VolumeMount, volumes sets.String, fldPath
 		}
 		if !path.IsAbs(mnt.MountPath) {
 			// also allow windows absolute path
-			if len(mnt.MountPath) < 2 || !unicode.IsLetter(rune(mnt.MountPath[0])) || mnt.MountPath[1] != ':' {
+			p := strings.ToUpper(mnt.MountPath)
+			if len(p) < 2 || p[0] < 'A' || p[0] > 'Z' || p[1] != ':' {
 				allErrs = append(allErrs, field.Invalid(idxPath.Child("mountPath"), mnt.MountPath, "must be an absolute path"))
 			}
 		}
