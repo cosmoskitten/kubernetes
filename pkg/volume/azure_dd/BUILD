@@ -14,7 +14,15 @@ go_library(
         "azure_dd.go",
         "azure_mounter.go",
         "azure_provision.go",
-    ],
+    ] + select({
+        "@io_bazel_rules_go//go/platform:linux_amd64": [
+            "azure_common_linux.go",
+        ],
+        "@io_bazel_rules_go//go/platform:windows_amd64": [
+            "azure_common_windows.go",
+        ],
+        "//conditions:default": [],
+    }),
     deps = [
         "//pkg/api:go_default_library",
         "//pkg/cloudprovider:go_default_library",
@@ -34,7 +42,15 @@ go_library(
         "//vendor/k8s.io/apimachinery/pkg/types:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/util/sets:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/util/wait:go_default_library",
-    ],
+    ] + select({
+        "@io_bazel_rules_go//go/platform:linux_amd64": [
+            "//vendor/k8s.io/utils/exec:go_default_library",
+        ],
+        "@io_bazel_rules_go//go/platform:windows_amd64": [
+            "//vendor/k8s.io/utils/exec:go_default_library",
+        ],
+        "//conditions:default": [],
+    }),
 )
 
 filegroup(
