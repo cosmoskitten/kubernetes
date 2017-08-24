@@ -21,6 +21,8 @@ import (
 	compute "google.golang.org/api/compute/v1"
 )
 
+// These interfaces are added for testability.
+
 // CloudAddressService is an interface for managing addresses
 type CloudAddressService interface {
 	ReserveRegionAddress(*compute.Address, string) error
