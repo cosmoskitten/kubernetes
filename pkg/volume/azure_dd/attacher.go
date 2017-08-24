@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -214,7 +216,11 @@ func (attacher *azureDiskAttacher) MountDevice(spec *volume.Spec, devicePath str
 
 	if err != nil {
 		if os.IsNotExist(err) {
-			if err := os.MkdirAll(deviceMountPath, 0750); err != nil {
+			dir := deviceMountPath
+			if runtime.GOOS == "windows" {
+				dir = filepath.Dir(deviceMountPath)
+			}
+			if err := os.MkdirAll(dir, 0750); err != nil {
 				return fmt.Errorf("azureDisk - mountDevice:CreateDirectory failed with %s", err)
 			}
 			notMnt = true
