@@ -51,6 +51,7 @@ go_library(
         "//vendor/k8s.io/apimachinery/pkg/util/sets:go_default_library",
         "//vendor/k8s.io/apiserver/pkg/admission:go_default_library",
         "//vendor/k8s.io/apiserver/pkg/admission/initializer:go_default_library",
+        "//vendor/k8s.io/apiserver/pkg/admission/plugin/namespace/lifecycle:go_default_library",
         "//vendor/k8s.io/apiserver/pkg/apis/audit/v1alpha1:go_default_library",
         "//vendor/k8s.io/apiserver/pkg/audit:go_default_library",
         "//vendor/k8s.io/apiserver/pkg/audit/policy:go_default_library",
@@ -98,4 +99,11 @@ filegroup(
         "//staging/src/k8s.io/apiserver/pkg/server/options/encryptionconfig:all-srcs",
     ],
     tags = ["automanaged"],
+)
+
+go_test(
+    name = "go_default_xtest",
+    srcs = ["admission_test.go"],
+    data = glob(["testdata/**"]),
+    deps = ["//vendor/k8s.io/apiserver/pkg/server/options:go_default_library"],
 )

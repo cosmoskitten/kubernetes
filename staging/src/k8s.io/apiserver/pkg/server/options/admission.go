@@ -23,8 +23,14 @@ import (
 	"github.com/spf13/pflag"
 	"k8s.io/apiserver/pkg/admission"
 	"k8s.io/apiserver/pkg/admission/initializer"
+	"k8s.io/apiserver/pkg/admission/plugin/namespace/lifecycle"
 	"k8s.io/apiserver/pkg/server"
 	"k8s.io/client-go/kubernetes"
+)
+
+var (
+	// defaultPlugiNames a list that holds default plugin names that we want to apply by default, order matters.
+	defaultPluginNames = []string{lifecycle.PluginName}
 )
 
 // AdmissionOptions holds the admission options
@@ -93,4 +99,14 @@ func (a *AdmissionOptions) ApplyTo(serverCfg *server.Config, pluginInitializers 
 func (a *AdmissionOptions) Validate() []error {
 	errs := []error{}
 	return errs
+}
+
+// SetDefaultPlugins sets the PluginNames field if it was not provided.
+// The field is populated from the hard coded list of default plugin names.
+// Note: This method MUST be called after AddFlags
+func (a *AdmissionOptions) SetDefaultPlugins() {
+	if len(a.PluginNames) > 0 {
+		return
+	}
+	a.PluginNames = defaultPluginNames
 }
