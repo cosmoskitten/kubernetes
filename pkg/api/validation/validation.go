@@ -3405,11 +3405,11 @@ func validateResourceName(value string, fldPath *field.Path) field.ErrorList {
 
 	if len(strings.Split(value, "/")) == 1 {
 		if !helper.IsStandardResourceName(value) {
-			return append(allErrs, field.Invalid(fldPath, value, "must be a standard resource type or fully qualified"))
+			allErrs = append(allErrs, field.Invalid(fldPath, value, "must be a standard resource type or fully qualified"))
 		}
 	}
 
-	return field.ErrorList{}
+	return allErrs
 }
 
 // Validate container resource name
@@ -3419,10 +3419,10 @@ func validateContainerResourceName(value string, fldPath *field.Path) field.Erro
 
 	if len(strings.Split(value, "/")) == 1 {
 		if !helper.IsStandardContainerResourceName(value) {
-			return append(allErrs, field.Invalid(fldPath, value, "must be a standard resource for containers"))
+			allErrs = append(allErrs, field.Invalid(fldPath, value, "must be a standard resource for containers"))
 		}
 	}
-	return field.ErrorList{}
+	return allErrs
 }
 
 // Validate resource names that can go in a resource quota
@@ -3431,10 +3431,10 @@ func ValidateResourceQuotaResourceName(value string, fldPath *field.Path) field.
 	allErrs := validateResourceName(value, fldPath)
 	if len(strings.Split(value, "/")) == 1 {
 		if !helper.IsStandardQuotaResourceName(value) {
-			return append(allErrs, field.Invalid(fldPath, value, isInvalidQuotaResource))
+			allErrs = append(allErrs, field.Invalid(fldPath, value, isInvalidQuotaResource))
 		}
 	}
-	return field.ErrorList{}
+	return allErrs
 }
 
 // Validate limit range types
