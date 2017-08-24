@@ -358,9 +358,6 @@ func (m *kubeGenericRuntimeManager) getKubeletContainers(allContainers bool) ([]
 // getContainers lists containers by filter.
 func (m *kubeGenericRuntimeManager) getContainersHelper(filter *runtimeapi.ContainerFilter) ([]*runtimeapi.Container, error) {
 	resp, err := m.runtimeService.ListContainers(filter)
-	if err != nil {
-		return nil, err
-	}
 
 	return resp, err
 }
