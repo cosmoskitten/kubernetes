@@ -47,6 +47,7 @@ import (
 	"k8s.io/apiserver/pkg/authorization/authorizer"
 	"k8s.io/apiserver/pkg/authorization/authorizerfactory"
 	authorizerunion "k8s.io/apiserver/pkg/authorization/union"
+	"k8s.io/apiserver/pkg/endpoints/bulk"
 	"k8s.io/apiserver/pkg/endpoints/discovery"
 	genericapifilters "k8s.io/apiserver/pkg/endpoints/filters"
 	apiopenapi "k8s.io/apiserver/pkg/endpoints/openapi"
@@ -63,6 +64,7 @@ import (
 	openapicommon "k8s.io/kube-openapi/pkg/common"
 
 	_ "k8s.io/apiserver/pkg/apis/apiserver/install"
+	_ "k8s.io/apiserver/pkg/apis/bulk/install"
 )
 
 const (
@@ -99,6 +101,7 @@ type Config struct {
 	// Requires generic profiling enabled
 	EnableContentionProfiling bool
 	EnableMetrics             bool
+	EnableBulk                bool
 
 	DisabledPostStartHooks sets.String
 
@@ -220,6 +223,7 @@ func NewConfig(codecs serializer.CodecFactory) *Config {
 		EnableIndex:                  true,
 		EnableDiscovery:              true,
 		EnableProfiling:              true,
+		EnableBulk:                   true,
 		MaxRequestsInFlight:          400,
 		MaxMutatingRequestsInFlight:  200,
 		MinRequestTimeout:            1800,
@@ -418,6 +422,13 @@ func (c completedConfig) New(name string, delegationTarget DelegationTarget) (*G
 
 		DiscoveryGroupManager: discovery.NewRootAPIsHandler(c.DiscoveryAddresses, c.Serializer, c.RequestContextMapper),
 
+		bulkAPIManager: bulk.APIManagerFactory{
+			NegotiatedSerializer: c.Serializer,
+			ContextMapper:        c.RequestContextMapper,
+			Root:                 "",
+			Delegate:             delegationTarget.BulkAPIManager(),
+			Authorizer:           c.Authorizer,
+		}.New(),
 		enableAPIResponseCompression: c.EnableAPIResponseCompression,
 	}
 
@@ -508,6 +519,9 @@ func installAPI(s *GenericAPIServer, c *Config) {
 
 	if c.EnableDiscovery {
 		s.Handler.GoRestfulContainer.Add(s.DiscoveryGroupManager.WebService())
+	}
+	if c.EnableBulk {
+		s.bulkAPIManager.Install(s.Handler.NonGoRestfulMux)
 	}
 }
 

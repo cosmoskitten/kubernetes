@@ -24,7 +24,6 @@ import (
 	"time"
 
 	systemd "github.com/coreos/go-systemd/daemon"
-	"github.com/emicklei/go-restful-swagger12"
 	"github.com/golang/glog"
 
 	"k8s.io/apimachinery/pkg/apimachinery"
@@ -37,6 +36,7 @@ import (
 	"k8s.io/apiserver/pkg/admission"
 	"k8s.io/apiserver/pkg/audit"
 	genericapi "k8s.io/apiserver/pkg/endpoints"
+	"k8s.io/apiserver/pkg/endpoints/bulk"
 	"k8s.io/apiserver/pkg/endpoints/discovery"
 	apirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/registry/rest"
@@ -122,6 +122,9 @@ type GenericAPIServer struct {
 	// DiscoveryGroupManager serves /apis
 	DiscoveryGroupManager discovery.GroupManager
 
+	// Proivides bulk get/watch API
+	bulkAPIManager *bulk.APIManager
+
 	// Enable swagger and/or OpenAPI if these configs are non-nil.
 	swaggerConfig *swagger.Config
 	openAPIConfig *openapicommon.Config
@@ -165,6 +168,9 @@ type DelegationTarget interface {
 
 	// ListedPaths returns the paths for supporting an index
 	ListedPaths() []string
+
+	// BulkAPIManager returns the bulk manager of the delegation target if exists, nil otherwise.
+	BulkAPIManager() *bulk.APIManager
 }
 
 func (s *GenericAPIServer) UnprotectedHandler() http.Handler {
@@ -179,6 +185,9 @@ func (s *GenericAPIServer) HealthzChecks() []healthz.HealthzChecker {
 }
 func (s *GenericAPIServer) ListedPaths() []string {
 	return s.listedPathProvider.ListedPaths()
+}
+func (s *GenericAPIServer) BulkAPIManager() *bulk.APIManager {
+	return s.bulkAPIManager
 }
 
 var EmptyDelegate = emptyDelegate{
@@ -203,6 +212,9 @@ func (s emptyDelegate) ListedPaths() []string {
 }
 func (s emptyDelegate) RequestContextMapper() apirequest.RequestContextMapper {
 	return s.requestContextMapper
+}
+func (s emptyDelegate) BulkAPIManager() *bulk.APIManager {
+	return nil
 }
 
 // RequestContextMapper is exposed so that third party resource storage can be build in a different location.
@@ -312,6 +324,20 @@ func (s *GenericAPIServer) installAPIResources(apiPrefix string, apiGroupInfo *A
 
 		if err := apiGroupVersion.InstallREST(s.Handler.GoRestfulContainer); err != nil {
 			return fmt.Errorf("Unable to setup API %v: %v", apiGroupInfo, err)
+		}
+		if s.bulkAPIManager != nil {
+			preferred := apiGroupVersion.GroupVersion == apiGroupInfo.GroupMeta.GroupVersion
+			ginfo := bulk.EnabledAPIGroupInfo{
+				Storage:      apiGroupVersion.Storage,
+				GroupVersion: apiGroupVersion.GroupVersion,
+				Mapper:       apiGroupVersion.Mapper,
+				Linker:       apiGroupVersion.Linker,
+				Serializer:   apiGroupVersion.Serializer,
+				// FIXME(anjensan): Capture authorizer from current apiserver.
+			}
+			if err := s.bulkAPIManager.RegisterAPIGroup(ginfo, preferred); err != nil {
+				return fmt.Errorf("Unable to add API %v to bulk manager: %v", ginfo, err)
+			}
 		}
 	}
 

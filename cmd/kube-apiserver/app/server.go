@@ -52,12 +52,12 @@ import (
 	serverstorage "k8s.io/apiserver/pkg/server/storage"
 	aggregatorapiserver "k8s.io/kube-aggregator/pkg/apiserver"
 	//aggregatorinformers "k8s.io/kube-aggregator/pkg/client/informers/internalversion"
-	openapi "k8s.io/kube-openapi/pkg/common"
-
+	bulkinstall "k8s.io/apiserver/pkg/apis/bulk/install"
 	"k8s.io/apiserver/pkg/storage/etcd3/preflight"
 	clientgoinformers "k8s.io/client-go/informers"
 	clientgoclientset "k8s.io/client-go/kubernetes"
 	clientset "k8s.io/client-go/kubernetes"
+	openapi "k8s.io/kube-openapi/pkg/common"
 	"k8s.io/kubernetes/cmd/kube-apiserver/app/options"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/apis/apps"
@@ -90,6 +90,11 @@ import (
 
 const etcdRetryLimit = 60
 const etcdRetryInterval = 1 * time.Second
+
+func init() {
+	// FIXME(anjensan): Find better place / install bulk api into separate registry...
+	bulkinstall.Install(api.GroupFactoryRegistry, api.Registry, api.Scheme)
+}
 
 // NewAPIServerCommand creates a *cobra.Command object with default parameters
 func NewAPIServerCommand() *cobra.Command {
