@@ -23,25 +23,35 @@ import (
 	"github.com/spf13/pflag"
 	"k8s.io/apiserver/pkg/admission"
 	"k8s.io/apiserver/pkg/admission/initializer"
+	"k8s.io/apiserver/pkg/admission/plugin/namespace/lifecycle"
 	"k8s.io/apiserver/pkg/server"
 	"k8s.io/client-go/kubernetes"
 )
 
 // AdmissionOptions holds the admission options
 type AdmissionOptions struct {
-	PluginNames []string
-	ConfigFile  string
-	Plugins     *admission.Plugins
+	// RecommendedPluginOrder holds an ordered list of plugin names we recommend to use by default
+	RecommendedPluginOrder []string
+	// DefaultOffPlugins a list of plugin names that should be disabled by default
+	DefaultOffPlugins []string
+	PluginNames       []string
+	ConfigFile        string
+	Plugins           *admission.Plugins
 }
 
 // NewAdmissionOptions creates a new instance of AdmissionOptions
 // Note:
-// In addition it calls RegisterAllAdmissionPlugins to register
-// all generic admission plugins.
+//  In addition it calls RegisterAllAdmissionPlugins to register
+//  all generic admission plugins.
+//
+//  Provides the list of RecommendedPluginOrder that holds sane values
+//  that can be used by servers that don't care about admission chain.
+//  Servers that do care can overwrite/append that field after creation.
 func NewAdmissionOptions() *AdmissionOptions {
 	options := &AdmissionOptions{
-		Plugins:     &admission.Plugins{},
-		PluginNames: []string{},
+		Plugins:                &admission.Plugins{},
+		PluginNames:            []string{},
+		RecommendedPluginOrder: []string{lifecycle.PluginName},
 	}
 	server.RegisterAllAdmissionPlugins(options.Plugins)
 	return options
@@ -57,13 +67,18 @@ func (a *AdmissionOptions) AddFlags(fs *pflag.FlagSet) {
 		"File with admission control configuration.")
 }
 
-// ApplyTo adds the admission chain to the server configuration
-// the method lazily initializes a generic plugin that is appended to the list of pluginInitializers
+// ApplyTo adds the admission chain to the server configuration.
+// In case admission plugin names were not provided by a custer-admin they will be prepared from the recommended/default values.
+// In addition the method lazily initializes a generic plugin that is appended to the list of pluginInitializers
 // note this method uses:
 //  genericconfig.LoopbackClientConfig
 //  genericconfig.SharedInformerFactory
 //  genericconfig.Authorizer
 func (a *AdmissionOptions) ApplyTo(serverCfg *server.Config, pluginInitializers ...admission.PluginInitializer) error {
+	if len(a.PluginNames) < 0 {
+		a.PluginNames = a.getEnabledPluginNames()
+	}
+
 	pluginsConfigProvider, err := admission.ReadAdmissionConfiguration(a.PluginNames, a.ConfigFile)
 	if err != nil {
 		return fmt.Errorf("failed to read plugin config: %v", err)
@@ -93,4 +108,25 @@ func (a *AdmissionOptions) ApplyTo(serverCfg *server.Config, pluginInitializers 
 func (a *AdmissionOptions) Validate() []error {
 	errs := []error{}
 	return errs
+}
+
+// getEnabledPluginNames makes use of RecommendedPluginOrder and DefaultOffPlugins fields
+// to prepare a list of plugin names that are enabled.
+func (a *AdmissionOptions) getEnabledPluginNames() []string {
+	onlyEnabledPluginNames := []string{}
+	for _, pluginName := range a.RecommendedPluginOrder {
+		disablePlugin := false
+		for _, disabledPluginName := range a.DefaultOffPlugins {
+			if pluginName == disabledPluginName {
+				disablePlugin = true
+				break
+			}
+		}
+		if disablePlugin {
+			continue
+		}
+		onlyEnabledPluginNames = append(onlyEnabledPluginNames, pluginName)
+	}
+
+	return onlyEnabledPluginNames
 }
