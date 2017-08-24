@@ -54,12 +54,8 @@ kube::util::ensure_dockerized
 kube::golang::setup_env
 kube::util::ensure_single_dir_gopath
 kube::util::ensure_no_staging_repos_in_gopath
-kube::util::ensure_godep_version v79
 
-kube::log::status "Checking whether godeps are restored"
-if ! kube::util::godep_restored 2>&1 | sed 's/^/  /'; then
-  ${KUBE_ROOT}/hack/godep-restore.sh
-fi
+${KUBE_ROOT}/hack/godep-restore-dockerized.sh
 
 kube::util::ensure-temp-dir
 TMP_GOPATH="${KUBE_TEMP}/go"

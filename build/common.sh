@@ -715,8 +715,8 @@ function kube::build::copy_output() {
   # generated files.
   kube::build::rsync \
     --filter='- /_temp/' \
-    --filter='+ /vendor/' \
-    --filter='+ /Godeps/' \
+    --filter='+ /vendor/**' \
+    --filter='+ /Godeps/**' \
     --filter='+ /staging/***/Godeps/**' \
     --filter='+ /_output/dockerized/bin/**' \
     --filter='+ zz_generated.*' \
