@@ -31,6 +31,7 @@ import (
 	kapi "k8s.io/kubernetes/pkg/api"
 	kubeoptions "k8s.io/kubernetes/pkg/kubeapiserver/options"
 	kubeletclient "k8s.io/kubernetes/pkg/kubelet/client"
+	master "k8s.io/kubernetes/pkg/master"
 )
 
 func TestAddFlagsFlag(t *testing.T) {
@@ -71,11 +72,14 @@ func TestAddFlagsFlag(t *testing.T) {
 	}
 	f.Parse(args)
 
+	// This is unlikely to fail
+	_, defaultServiceClusterIPRange, _ := net.ParseCIDR(master.DefaultServiceIPCIDR)
 	// This is a snapshot of expected options parsed by args.
 	expected := &ServerRunOptions{
-		ServiceNodePortRange: DefaultServiceNodePortRange,
-		MasterCount:          5,
-		AllowPrivileged:      false,
+		ServiceNodePortRange:  master.DefaultServiceNodePortRange,
+		ServiceClusterIPRange: *defaultServiceClusterIPRange,
+		MasterCount:           5,
+		AllowPrivileged:       false,
 		GenericServerRunOptions: &apiserveroptions.ServerRunOptions{
 			AdvertiseAddress:            net.ParseIP("192.168.10.10"),
 			CorsAllowedOriginList:       []string{"10.10.10.100", "10.10.10.200"},

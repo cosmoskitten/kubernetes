@@ -28,6 +28,7 @@ import (
 	"k8s.io/kubernetes/pkg/api/validation"
 	kubeoptions "k8s.io/kubernetes/pkg/kubeapiserver/options"
 	kubeletclient "k8s.io/kubernetes/pkg/kubelet/client"
+	"k8s.io/kubernetes/pkg/master"
 	"k8s.io/kubernetes/pkg/master/ports"
 
 	// add the kubernetes feature gates
@@ -35,9 +36,6 @@ import (
 
 	"github.com/spf13/pflag"
 )
-
-// DefaultServiceNodePortRange is the default port range for NodePort services.
-var DefaultServiceNodePortRange = utilnet.PortRange{Base: 30000, Size: 2768}
 
 // ServerRunOptions runs a kubernetes api server.
 type ServerRunOptions struct {
@@ -109,8 +107,12 @@ func NewServerRunOptions() *ServerRunOptions {
 			EnableHttps: true,
 			HTTPTimeout: time.Duration(5) * time.Second,
 		},
-		ServiceNodePortRange: DefaultServiceNodePortRange,
+		ServiceNodePortRange: master.DefaultServiceNodePortRange,
 	}
+	// here we safely assume that DefaultServiceIPCIDR is a valid CIDR value
+	_, defaultServiceClusterIPRange, _ := net.ParseCIDR(master.DefaultServiceIPCIDR)
+	s.ServiceClusterIPRange = *defaultServiceClusterIPRange
+
 	// Overwrite the default for storage data format.
 	s.Etcd.DefaultStorageMediaType = "application/vnd.kubernetes.protobuf"
 
