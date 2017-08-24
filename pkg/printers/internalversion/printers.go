@@ -857,7 +857,7 @@ func loadBalancerStatusStringer(s api.LoadBalancerStatus, wide bool) string {
 
 	r := strings.Join(result.List(), ",")
 	if !wide && len(r) > loadBalancerWidth {
-		r = r[0:(loadBalancerWidth-3)] + "..."
+		r = r[0:(loadBalancerWidth - 3)] + "..."
 	}
 	return r
 }
@@ -1081,6 +1081,9 @@ func printEndpointsList(list *api.EndpointsList, options printers.PrintOptions) 
 }
 
 func printNamespace(obj *api.Namespace, options printers.PrintOptions) ([]metav1alpha1.TableRow, error) {
+	if options.WithNamespace {
+		return nil, fmt.Errorf("namespace is not namespaced")
+	}
 	row := metav1alpha1.TableRow{
 		Object: runtime.RawExtension{Object: obj},
 	}

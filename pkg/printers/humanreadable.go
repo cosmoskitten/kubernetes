@@ -535,7 +535,10 @@ func (h *HumanReadablePrinter) PrintTable(obj runtime.Object, options PrintOptio
 // different from lastType) including all the rows in the object. It returns the current type
 // or an error, if any.
 func printRowsForHandlerEntry(output io.Writer, handler *handlerEntry, obj runtime.Object, options PrintOptions, includeHeaders bool) error {
-	if includeHeaders {
+	args := []reflect.Value{reflect.ValueOf(obj), reflect.ValueOf(options)}
+	results := handler.printFunc.Call(args)
+
+	if includeHeaders && results[1].IsNil(){
 		var headers []string
 		for _, column := range handler.columnDefinitions {
 			if column.Priority != 0 && !options.Wide {
@@ -562,8 +565,6 @@ func printRowsForHandlerEntry(output io.Writer, handler *handlerEntry, obj runti
 		return resultValue.Interface().(error)
 	}
 
-	args := []reflect.Value{reflect.ValueOf(obj), reflect.ValueOf(options)}
-	results := handler.printFunc.Call(args)
 	if results[1].IsNil() {
 		rows := results[0].Interface().([]metav1alpha1.TableRow)
 		printRows(output, rows, options)
