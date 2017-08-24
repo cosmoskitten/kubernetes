@@ -267,6 +267,12 @@ func TestGetHostPathVolumesForTheControlPlane(t *testing.T) {
 							HostPath: &v1.HostPathVolumeSource{Path: "/etc/kubernetes/controller-manager.conf"},
 						},
 					},
+					{
+						Name: "flexvolume-dir",
+						VolumeSource: v1.VolumeSource{
+							HostPath: &v1.HostPathVolumeSource{Path: "/usr/libexec/kubernetes/kubelet-plugins/volume/exec"},
+						},
+					},
 				},
 				kubeadmconstants.KubeScheduler: {
 					{
@@ -305,6 +311,10 @@ func TestGetHostPathVolumesForTheControlPlane(t *testing.T) {
 						Name:      "kubeconfig",
 						MountPath: "/etc/kubernetes/controller-manager.conf",
 						ReadOnly:  true,
+					},
+					{
+						Name:      "flexvolume-dir",
+						MountPath: "/usr/libexec/kubernetes/kubelet-plugins/volume/exec",
 					},
 				},
 				kubeadmconstants.KubeScheduler: {
@@ -373,6 +383,12 @@ func TestGetHostPathVolumesForTheControlPlane(t *testing.T) {
 							HostPath: &v1.HostPathVolumeSource{Path: "/etc/kubernetes/controller-manager.conf"},
 						},
 					},
+					{
+						Name: "flexvolume-dir",
+						VolumeSource: v1.VolumeSource{
+							HostPath: &v1.HostPathVolumeSource{Path: "/usr/libexec/kubernetes/kubelet-plugins/volume/exec"},
+						},
+					},
 				},
 				kubeadmconstants.KubeScheduler: {
 					{
@@ -421,6 +437,10 @@ func TestGetHostPathVolumesForTheControlPlane(t *testing.T) {
 						Name:      "kubeconfig",
 						MountPath: "/etc/kubernetes/controller-manager.conf",
 						ReadOnly:  true,
+					},
+					{
+						Name:      "flexvolume-dir",
+						MountPath: "/usr/libexec/kubernetes/kubelet-plugins/volume/exec",
 					},
 				},
 				kubeadmconstants.KubeScheduler: {
