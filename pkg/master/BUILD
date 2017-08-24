@@ -17,7 +17,6 @@ go_library(
         "services.go",
     ],
     deps = [
-        "//cmd/kube-apiserver/app/options:go_default_library",
         "//pkg/api:go_default_library",
         "//pkg/api/endpoints:go_default_library",
         "//pkg/api/install:go_default_library",

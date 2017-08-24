@@ -52,7 +52,6 @@ import (
 	"k8s.io/apiserver/pkg/server/healthz"
 	serverstorage "k8s.io/apiserver/pkg/server/storage"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
-	"k8s.io/kubernetes/cmd/kube-apiserver/app/options"
 	"k8s.io/kubernetes/pkg/api"
 	coreclient "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
 	kubeletclient "k8s.io/kubernetes/pkg/kubelet/client"
@@ -86,6 +85,9 @@ const (
 	// the kubernetes Service are reconciled.
 	DefaultEndpointReconcilerInterval = 10 * time.Second
 )
+
+// DefaultServiceNodePortRange is the default port range for NodePort services.
+var DefaultServiceNodePortRange = utilnet.PortRange{Base: 30000, Size: 2768}
 
 type Config struct {
 	GenericConfig *genericapiserver.Config
@@ -180,7 +182,7 @@ func (c *Config) Complete() completedConfig {
 		// We should probably allow this for clouds that don't require NodePort to do load-balancing (GCE)
 		// but then that breaks the strict nestedness of ServiceType.
 		// Review post-v1
-		c.ServiceNodePortRange = options.DefaultServiceNodePortRange
+		c.ServiceNodePortRange = DefaultServiceNodePortRange
 		glog.Infof("Node port range unspecified. Defaulting to %v.", c.ServiceNodePortRange)
 	}
 

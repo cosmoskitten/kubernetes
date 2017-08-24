@@ -28,6 +28,7 @@ import (
 	"k8s.io/kubernetes/pkg/api/validation"
 	kubeoptions "k8s.io/kubernetes/pkg/kubeapiserver/options"
 	kubeletclient "k8s.io/kubernetes/pkg/kubelet/client"
+	"k8s.io/kubernetes/pkg/master"
 	"k8s.io/kubernetes/pkg/master/ports"
 
 	// add the kubernetes feature gates
@@ -35,9 +36,6 @@ import (
 
 	"github.com/spf13/pflag"
 )
-
-// DefaultServiceNodePortRange is the default port range for NodePort services.
-var DefaultServiceNodePortRange = utilnet.PortRange{Base: 30000, Size: 2768}
 
 // ServerRunOptions runs a kubernetes api server.
 type ServerRunOptions struct {
@@ -109,7 +107,7 @@ func NewServerRunOptions() *ServerRunOptions {
 			EnableHttps: true,
 			HTTPTimeout: time.Duration(5) * time.Second,
 		},
-		ServiceNodePortRange: DefaultServiceNodePortRange,
+		ServiceNodePortRange: master.DefaultServiceNodePortRange,
 	}
 	// Overwrite the default for storage data format.
 	s.Etcd.DefaultStorageMediaType = "application/vnd.kubernetes.protobuf"
@@ -173,7 +171,7 @@ func (s *ServerRunOptions) AddFlags(fs *pflag.FlagSet) {
 
 	fs.IPNetVar(&s.ServiceClusterIPRange, "service-cluster-ip-range", s.ServiceClusterIPRange, ""+
 		"A CIDR notation IP range from which to assign service cluster IPs. This must not "+
-		"overlap with any IP ranges assigned to nodes for pods.")
+		"overlap with any IP ranges assigned to nodes for pods. [default='"+master.DefaultServiceIPCIDR+"'].")
 
 	fs.IPNetVar(&s.ServiceClusterIPRange, "portal-net", s.ServiceClusterIPRange,
 		"DEPRECATED: see --service-cluster-ip-range instead.")

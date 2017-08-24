@@ -31,6 +31,7 @@ import (
 	kapi "k8s.io/kubernetes/pkg/api"
 	kubeoptions "k8s.io/kubernetes/pkg/kubeapiserver/options"
 	kubeletclient "k8s.io/kubernetes/pkg/kubelet/client"
+	master "k8s.io/kubernetes/pkg/master"
 )
 
 func TestAddFlagsFlag(t *testing.T) {
@@ -73,7 +74,7 @@ func TestAddFlagsFlag(t *testing.T) {
 
 	// This is a snapshot of expected options parsed by args.
 	expected := &ServerRunOptions{
-		ServiceNodePortRange: DefaultServiceNodePortRange,
+		ServiceNodePortRange: master.DefaultServiceNodePortRange,
 		MasterCount:          5,
 		AllowPrivileged:      false,
 		GenericServerRunOptions: &apiserveroptions.ServerRunOptions{
