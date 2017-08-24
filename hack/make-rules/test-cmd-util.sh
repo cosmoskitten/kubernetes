@@ -3089,7 +3089,7 @@ run_statefulset_history_tests() {
   kube::test::get_object_assert statefulset "{{range.items}}{{$container_len}}{{end}}" "2"
   # Clean up - delete newest configuration
   kubectl delete -f hack/testdata/rollingupdate-statefulset-rv2.yaml "${kube_flags[@]}"
-   # Post-condition: no pods from statefulset controller
+  # Post-condition: no pods from statefulset controller
   wait-for-pods-with-label "app=nginx-statefulset" ""
 
   set +o nounset

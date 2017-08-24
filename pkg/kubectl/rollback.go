@@ -232,7 +232,7 @@ func (r *DaemonSetRollbacker) Rollback(obj runtime.Object, updatedAnnotations ma
 	}
 	versionedDS, ok := versionedObj.(*externalextensions.DaemonSet)
 	if !ok {
-		return "", fmt.Errorf("unable to perform type assertion for DaemonSet %s", ds.Name)
+		return "", fmt.Errorf("unexpected non-DaemonSet object returned: %v", versionedDS)
 	}
 
 	if toRevision == 0 && len(allHistory) <= 1 {
@@ -249,7 +249,7 @@ func (r *DaemonSetRollbacker) Rollback(obj runtime.Object, updatedAnnotations ma
 		if err != nil {
 			return "", err
 		}
-		return isPodTemplateConvertible(&appliedDS.Spec.Template)
+		return printPodTemplate(&appliedDS.Spec.Template)
 	}
 
 	// Skip if the revision already matches current DaemonSet
@@ -292,7 +292,7 @@ func (r *StatefulSetRollbacker) Rollback(obj runtime.Object, updatedAnnotations 
 
 	versionedSS, ok := versionedObj.(*appsv1beta1.StatefulSet)
 	if !ok {
-		return "", fmt.Errorf("unable to perform type assertion for StatefulSet %s", ss.Name)
+		return "", fmt.Errorf("unexpected non-StatefulSet object returned: %v", versionedSS)
 	}
 
 	if toRevision == 0 && len(allHistory) <= 1 {
@@ -309,7 +309,7 @@ func (r *StatefulSetRollbacker) Rollback(obj runtime.Object, updatedAnnotations 
 		if err != nil {
 			return "", err
 		}
-		return isPodTemplateConvertible(&appliedSS.Spec.Template)
+		return printPodTemplate(&appliedSS.Spec.Template)
 	}
 
 	// Skip if the revision already matches current StatefulSet
@@ -330,6 +330,14 @@ func (r *StatefulSetRollbacker) Rollback(obj runtime.Object, updatedAnnotations 
 }
 
 func findHistory(toRevision int64, allHistory []*appsv1beta1.ControllerRevision) *appsv1beta1.ControllerRevision {
+	if len(allHistory) == 0 {
+		return nil
+	}
+
+	if len(allHistory) == 1 {
+		return allHistory[0]
+	}
+
 	// Find the history to rollback to
 	var toHistory *appsv1beta1.ControllerRevision
 	if toRevision == 0 {
@@ -340,8 +348,7 @@ func findHistory(toRevision int64, allHistory []*appsv1beta1.ControllerRevision)
 		for _, h := range allHistory {
 			if h.Revision == toRevision {
 				// If toRevision != 0, find the history with matching revision
-				toHistory = h
-				break
+				return h
 			}
 		}
 	}
@@ -349,7 +356,7 @@ func findHistory(toRevision int64, allHistory []*appsv1beta1.ControllerRevision)
 	return toHistory
 }
 
-func isPodTemplateConvertible(specTemplate *v1.PodTemplateSpec) (string, error) {
+func printPodTemplate(specTemplate *v1.PodTemplateSpec) (string, error) {
 	content := bytes.NewBuffer([]byte{})
 	w := printersinternal.NewPrefixWriter(content)
 	internalTemplate := &api.PodTemplateSpec{}

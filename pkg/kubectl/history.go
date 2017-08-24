@@ -175,7 +175,13 @@ func (h *DaemonSetHistoryViewer) ViewHistory(namespace, name string, revision in
 		if !ok {
 			return "", fmt.Errorf("unable to find the specified revision")
 		}
-		dsOfHistory, err := applyHistory(versionedObj.(*extensionsv1beta1.DaemonSet), history)
+
+		versionedDS, ok := versionedObj.(*extensionsv1beta1.DaemonSet)
+		if !ok {
+			return "", fmt.Errorf("unexpected non-DaemonSet object returned: %v", versionedDS)
+		}
+
+		dsOfHistory, err := applyHistory(versionedDS, history)
 		if err != nil {
 			return "", fmt.Errorf("unable to parse history %s", history.Name)
 		}
@@ -277,7 +283,7 @@ func controlledHistories(apps clientappsv1beta1.AppsV1beta1Interface, extensions
 		labelSelector = ss.Spec.Selector
 		obj = ss
 	default:
-		return nil, nil, fmt.Errorf("undefined API object kind: %s", kind)
+		return nil, nil, fmt.Errorf("unsupported API object kind: %s", kind)
 	}
 
 	var result []*appsv1beta1.ControllerRevision
