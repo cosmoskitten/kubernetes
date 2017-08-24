@@ -50,8 +50,8 @@ docker_repositories()
 
 http_file(
     name = "kubernetes_cni",
-    sha256 = "05ab3937bc68562e989dc143362ec4d4275262ba9f359338aed720fc914457a5",
-    url = "https://storage.googleapis.com/kubernetes-release/network-plugins/cni-amd64-0799f5732f2a11b329d9e3d51b9c8f2e3759f2ff.tar.gz",
+    sha256 = "a7f84a742c8f3a95843b3cc636444742554a4853835649ec371a07c841daebab",
+    url = "https://github.com/containernetworking/cni/releases/download/v0.6.0/cni-amd64-v0.6.0.tgz",
 )
 
 docker_pull(
