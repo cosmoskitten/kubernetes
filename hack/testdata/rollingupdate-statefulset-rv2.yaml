@@ -26,12 +26,8 @@ spec:
         - sh
         - -c
         - 'while true; do sleep 1; done'
-      - name: nginx-2
+      - name: pause
         image: gcr.io/google-containers/pause:2.0
         ports:
         - containerPort: 81
           name: web-2
-        command:
-        - sh
-        - -c
-        - 'while true; do sleep 1; done'
