@@ -64,7 +64,7 @@ type StatsProvider interface {
 	// function will return the information of all the sub-containers as well.
 	GetRawContainerInfo(containerName string, req *cadvisorapi.ContainerInfoRequest, subcontainers bool) (map[string]*cadvisorapi.ContainerInfo, error)
 
-	// The following stats are provided by Kubelet.
+	// The following data is provided by Kubelet.
 	//
 	// GetPodByName returns the spec of the pod with the name in the specified
 	// namespace.
