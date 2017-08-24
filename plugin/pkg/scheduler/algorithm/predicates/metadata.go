@@ -140,7 +140,8 @@ func (meta *predicateMetadata) AddPod(addedPod *v1.Pod, nodeInfo *schedulercache
 	if len(podMatchingTerms) > 0 {
 		existingTerms, found := meta.matchingAntiAffinityTerms[addedPodFullName]
 		if found {
-			meta.matchingAntiAffinityTerms[addedPodFullName] = append(existingTerms, podMatchingTerms...)
+			meta.matchingAntiAffinityTerms[addedPodFullName] = append(existingTerms,
+				podMatchingTerms...)
 		} else {
 			meta.matchingAntiAffinityTerms[addedPodFullName] = podMatchingTerms
 		}
@@ -150,7 +151,8 @@ func (meta *predicateMetadata) AddPod(addedPod *v1.Pod, nodeInfo *schedulercache
 	if meta.serviceAffinityInUse && addedPod.Namespace == meta.pod.Namespace {
 		selector := CreateSelectorFromLabels(meta.pod.Labels)
 		if selector.Matches(labels.Set(addedPod.Labels)) {
-			meta.serviceAffinityMatchingPodList = append(meta.serviceAffinityMatchingPodList, addedPod)
+			meta.serviceAffinityMatchingPodList = append(meta.serviceAffinityMatchingPodList,
+				addedPod)
 		}
 	}
 	return nil

@@ -29,68 +29,65 @@ import (
 )
 
 // sortableAntiAffinityTerms lets us to sort anti-affinity terms.
-type sortableAntiAffinityTerms struct {
-	Items []matchingPodAntiAffinityTerm
-}
+type sortableAntiAffinityTerms []matchingPodAntiAffinityTerm
 
 // Less establishes some ordering between two matchingPodAntiAffinityTerms for
 // sorting.
-func (s *sortableAntiAffinityTerms) Less(i, j int) bool {
-	t1, t2 := s.Items[i], s.Items[j]
-	return t1.node.Name < t2.node.Name ||
-			(t1.node.Name == t2.node.Name && len(t1.term.Namespaces) < len(t2.term.Namespaces)) ||
-			(t1.node.Name == t2.node.Name && len(t1.term.Namespaces) == len(t2.term.Namespaces) && t1.term.TopologyKey < t2.term.TopologyKey) ||
-			(t1.node.Name == t2.node.Name && len(t1.term.Namespaces) == len(t2.term.Namespaces) &&
-					t1.term.TopologyKey == t2.term.TopologyKey &&	len(t1.term.LabelSelector.MatchLabels) < len(t2.term.LabelSelector.MatchLabels))
+func (s sortableAntiAffinityTerms) Less(i, j int) bool {
+	t1, t2 := s[i], s[j]
+	if t1.node.Name != t2.node.Name {
+		return t1.node.Name < t2.node.Name
+	}
+	if t1.node.Name == t2.node.Name && len(t1.term.Namespaces) != len(t2.term.Namespaces) {
+		return len(t1.term.Namespaces) < len(t2.term.Namespaces)
+	}
+	if t1.node.Name == t2.node.Name && len(t1.term.Namespaces) == len(t2.term.Namespaces) &&
+		t1.term.TopologyKey != t2.term.TopologyKey {
+		return t1.term.TopologyKey < t2.term.TopologyKey
+	}
+	if t1.node.Name == t2.node.Name && len(t1.term.Namespaces) == len(t2.term.Namespaces) &&
+		t1.term.TopologyKey == t2.term.TopologyKey &&
+		len(t1.term.LabelSelector.MatchLabels) != len(t2.term.LabelSelector.MatchLabels) {
+		return len(t1.term.LabelSelector.MatchLabels) < len(t2.term.LabelSelector.MatchLabels)
+	}
+	return false
 }
-func (s *sortableAntiAffinityTerms) Len() int { return len(s.Items) }
-func (s *sortableAntiAffinityTerms) Swap(i, j int) {
-	s.Items[i], s.Items[j] = s.Items[j], s.Items[i]
+func (s sortableAntiAffinityTerms) Len() int { return len(s) }
+func (s sortableAntiAffinityTerms) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
 }
 
-var _ = sort.Interface(&sortableAntiAffinityTerms{})
+var _ = sort.Interface(sortableAntiAffinityTerms{})
 
 func sortAntiAffinityTerms(terms map[string][]matchingPodAntiAffinityTerm) {
 	for k, v := range terms {
-		sortableTerms := sortableAntiAffinityTerms{v}
-		sort.Sort(&sortableTerms)
-		terms[k] = sortableTerms.Items
+		sortableTerms := sortableAntiAffinityTerms(v)
+		sort.Sort(sortableTerms)
+		terms[k] = sortableTerms
 	}
 }
 
 // sortablePods lets us to sort pods.
-type sortablePods struct {
-	Items []*v1.Pod
-}
+type sortablePods []*v1.Pod
 
-func (s *sortablePods) Less(i, j int) bool {
-	if s.Items[i].Name < s.Items[j].Name {
-		return true
-	}
-	return false
+func (s sortablePods) Less(i, j int) bool {
+	return s[i].Namespace < s[j].Namespace ||
+		(s[i].Namespace == s[j].Namespace && s[i].Name < s[j].Name)
 }
-func (s *sortablePods) Len() int { return len(s.Items) }
-func (s *sortablePods) Swap(i, j int) {
-	s.Items[i], s.Items[j] = s.Items[j], s.Items[i]
-}
+func (s sortablePods) Len() int      { return len(s) }
+func (s sortablePods) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
 
 var _ = sort.Interface(&sortablePods{})
 
 // sortableServices allows us to sort services.
-type sortableServices struct {
-	Items []*v1.Service
-}
+type sortableServices []*v1.Service
 
-func (s *sortableServices) Less(i, j int) bool {
-	if s.Items[i].Name < s.Items[j].Name {
-		return true
-	}
-	return false
+func (s sortableServices) Less(i, j int) bool {
+	return s[i].Namespace < s[j].Namespace ||
+		(s[i].Namespace == s[j].Namespace && s[i].Name < s[j].Name)
 }
-func (s *sortableServices) Len() int { return len(s.Items) }
-func (s *sortableServices) Swap(i, j int) {
-	s.Items[i], s.Items[j] = s.Items[j], s.Items[i]
-}
+func (s sortableServices) Len() int      { return len(s) }
+func (s sortableServices) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
 
 var _ = sort.Interface(&sortableServices{})
 
@@ -118,19 +115,19 @@ func predicateMetadataEquivalent(meta1, meta2 *predicateMetadata) error {
 		fmt.Errorf("matchingAntiAffinityTerms are not euqal.")
 	}
 	if meta1.serviceAffinityInUse {
-		sortablePods1 := sortablePods{meta1.serviceAffinityMatchingPodList}
-		sort.Sort(&sortablePods1)
-		sortablePods2 := sortablePods{meta2.serviceAffinityMatchingPodList}
-		sort.Sort(&sortablePods2)
+		sortablePods1 := sortablePods(meta1.serviceAffinityMatchingPodList)
+		sort.Sort(sortablePods1)
+		sortablePods2 := sortablePods(meta2.serviceAffinityMatchingPodList)
+		sort.Sort(sortablePods2)
 		if !reflect.DeepEqual(sortablePods1, sortablePods2) {
 			fmt.Errorf("serviceAffinityMatchingPodLists are not euqal.")
 		}
 
-		sortableSerivces1 := sortableServices{meta1.serviceAffinityMatchingPodServices}
-		sort.Sort(&sortableSerivces1)
-		sortableSerivces2 := sortableServices{meta2.serviceAffinityMatchingPodServices}
-		sort.Sort(&sortableSerivces2)
-		if !reflect.DeepEqual(sortableSerivces1, sortableSerivces2) {
+		sortableServices1 := sortableServices(meta1.serviceAffinityMatchingPodServices)
+		sort.Sort(sortableServices1)
+		sortableServices2 := sortableServices(meta2.serviceAffinityMatchingPodServices)
+		sort.Sort(sortableServices2)
+		if !reflect.DeepEqual(sortableServices1, sortableServices2) {
 			fmt.Errorf("serviceAffinityMatchingPodServices are not euqal.")
 		}
 	}
