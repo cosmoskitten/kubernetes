@@ -65,18 +65,5 @@ func (rc *syncResize) Sync() {
 		if growFuncError != nil {
 			glog.Errorf("Error growing pvc with %v", growFuncError)
 		}
-		glog.Infof("Resizing PVC %s", pvcWithResizeRequest.CurrentSize)
-	}
-
-	// For PVCs whose API objects updates failed the first time, try again
-	for _, pvcWithUpdateNeeded := range rc.resizeMap.GetPvcsWithUpdateNeeded() {
-		switch *pvcWithUpdateNeeded.UpdateNeeded {
-		case cache.Resized:
-			rc.resizeMap.MarkAsResized(pvcWithUpdateNeeded)
-		case cache.ResizeFailed:
-			rc.resizeMap.MarkResizeFailed(pvcWithUpdateNeeded, *pvcWithUpdateNeeded.FailedReason)
-		case cache.FsResize:
-			rc.resizeMap.MarkForFileSystemResize(pvcWithUpdateNeeded)
-		}
 	}
 }
