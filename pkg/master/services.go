@@ -25,15 +25,20 @@ import (
 	"k8s.io/kubernetes/pkg/registry/core/service/ipallocator"
 )
 
+const (
+	// DefaultServiceIPCIDR is a CIDR notation of IP range from which to
+	// allocate service cluster IPs
+	DefaultServiceIPCIDR = "10.0.0.0/24"
+)
+
 // DefaultServiceIPRange takes a the serviceIPRange flag and returns the defaulted service ip range (if  needed),
 // api server service IP, and an error
 // TODO move this out of the genericapiserver package
 func DefaultServiceIPRange(passedServiceClusterIPRange net.IPNet) (net.IPNet, net.IP, error) {
 	serviceClusterIPRange := passedServiceClusterIPRange
 	if passedServiceClusterIPRange.IP == nil {
-		defaultNet := "10.0.0.0/24"
-		glog.Infof("Network range for service cluster IPs is unspecified. Defaulting to %v.", defaultNet)
-		_, defaultServiceClusterIPRange, err := net.ParseCIDR(defaultNet)
+		glog.Infof("Network range for service cluster IPs is unspecified. Defaulting to %v.", DefaultServiceIPCIDR)
+		_, defaultServiceClusterIPRange, err := net.ParseCIDR(DefaultServiceIPCIDR)
 		if err != nil {
 			return net.IPNet{}, net.IP{}, err
 		}

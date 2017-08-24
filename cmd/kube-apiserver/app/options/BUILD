@@ -21,6 +21,7 @@ go_library(
         "//pkg/kubeapiserver/options:go_default_library",
         "//pkg/kubelet/client:go_default_library",
         "//pkg/master/ports:go_default_library",
+        "//pkg/master/services:go_default_library",
         "//plugin/pkg/admission/admit:go_default_library",
         "//plugin/pkg/admission/alwayspullimages:go_default_library",
         "//plugin/pkg/admission/antiaffinity:go_default_library",
