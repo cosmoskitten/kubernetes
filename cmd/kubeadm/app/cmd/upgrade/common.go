@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/ghodss/yaml"
 
@@ -29,6 +30,8 @@ import (
 	kubeadmapiext "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/v1alpha1"
 	"k8s.io/kubernetes/cmd/kubeadm/app/phases/upgrade"
 	"k8s.io/kubernetes/cmd/kubeadm/app/preflight"
+	"k8s.io/kubernetes/cmd/kubeadm/app/util/apiclient"
+	dryrunutil "k8s.io/kubernetes/cmd/kubeadm/app/util/dryrun"
 	kubeconfigutil "k8s.io/kubernetes/cmd/kubeadm/app/util/kubeconfig"
 )
 
@@ -37,24 +40,25 @@ type upgradeVariables struct {
 	client        clientset.Interface
 	cfg           *kubeadmapiext.MasterConfiguration
 	versionGetter upgrade.VersionGetter
+	waiter        apiclient.Waiter
 }
 
 // EnforceRequirements verifies that it's okay to upgrade and then returns the variables needed for the rest of the procedure
-func EnforceRequirements(kubeConfigPath, cfgPath string, printConfig bool) (*upgradeVariables, error) {
-	client, err := kubeconfigutil.ClientSetFromFile(kubeConfigPath)
+func EnforceRequirements(kubeConfigPath, cfgPath string, printConfig, dryRun bool) (*upgradeVariables, error) {
+	client, err := getClient(kubeConfigPath, dryRun)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't create a Kubernetes client from file %q: %v", kubeConfigPath, err)
 	}
 
 	// Run healthchecks against the cluster
 	if err := upgrade.CheckClusterHealth(client); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("[upgrade/health] FATAL: %v", err)
 	}
 
 	// Fetch the configuration from a file or ConfigMap and validate it
 	cfg, err := upgrade.FetchConfiguration(client, os.Stdout, cfgPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("[upgrade/config] FATAL: %v", err)
 	}
 
 	// If the user told us to print this information out; do it!
@@ -67,6 +71,8 @@ func EnforceRequirements(kubeConfigPath, cfgPath string, printConfig bool) (*upg
 		cfg:    cfg,
 		// Use a real version getter interface that queries the API server, the kubeadm client and the Kubernetes CI system for latest versions
 		versionGetter: upgrade.NewKubeVersionGetter(client, os.Stdout),
+		// Use the waiter conditionally based on the dryrunning variable
+		waiter: getWaiter(dryRun, client),
 	}, nil
 }
 
@@ -97,4 +103,42 @@ func runPreflightChecks(skipPreFlight bool) error {
 
 	fmt.Println("[preflight] Running pre-flight checks")
 	return preflight.RunRootCheckOnly()
+}
+
+// getClient gets a real or fake client depending on whether the user is dry-running or not
+func getClient(file string, dryRun bool) (clientset.Interface, error) {
+	if dryRun {
+		dryRunGetter, err := apiclient.NewClientBackedDryRunGetterFromKubeconfig(file)
+		if err != nil {
+			return nil, err
+		}
+		return apiclient.NewDryRunClient(dryRunGetter, os.Stdout), nil
+	}
+	return kubeconfigutil.ClientSetFromFile(file)
+}
+
+// getWaiter gets the right waiter implementation
+func getWaiter(dryRun bool, client clientset.Interface) apiclient.Waiter {
+	if dryRun {
+		return dryrunutil.NewWaiter()
+	}
+	return apiclient.NewKubeWaiter(client, upgradeManifestTimeout, os.Stdout)
+}
+
+// InteractivelyConfirmUpgrade asks the user whether they _really_ want to upgrade.
+func InteractivelyConfirmUpgrade(question string) error {
+
+	fmt.Printf("[upgrade/confirm] %s [y/N]: ", question)
+
+	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Scan()
+	if err := scanner.Err(); err != nil {
+		return fmt.Errorf("couldn't read from standard input: %v", err)
+	}
+	answer := scanner.Text()
+	if strings.ToLower(answer) == "y" || strings.ToLower(answer) == "yes" {
+		return nil
+	}
+
+	return fmt.Errorf("won't proceed; the user didn't answer (Y|y) in order to continue")
 }
