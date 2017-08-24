@@ -84,9 +84,10 @@ func TestAddFlagsFlag(t *testing.T) {
 			MinRequestTimeout:           1800,
 		},
 		Admission: &apiserveroptions.AdmissionOptions{
-			PluginNames: []string{"AlwaysDeny"},
-			ConfigFile:  "/admission-control-config",
-			Plugins:     s.Admission.Plugins,
+			RecommendedPluginOrder: []string{"NamespaceLifecycle"},
+			PluginNames:            []string{"AlwaysDeny"},
+			ConfigFile:             "/admission-control-config",
+			Plugins:                s.Admission.Plugins,
 		},
 		Etcd: &apiserveroptions.EtcdOptions{
 			StorageConfig: storagebackend.Config{
