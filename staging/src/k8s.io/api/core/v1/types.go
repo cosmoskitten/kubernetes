@@ -634,12 +634,8 @@ type PersistentVolumeClaimSpec struct {
 type PvcConditionType string
 
 const (
-	// Ready means any pending operation on pvc is successfully completed
-	PvcReady PvcConditionType = "Ready"
 	// An user trigger resize of pvc has been started
-	PvcResizeStarted PvcConditionType = "ResizeStarted"
-	// PvcResizeFailed means user trigged resize of PVC has failed
-	PvcResizeFailed PvcConditionType = "ResizeFailed"
+	PersistentVolumeClaimResizeStarted PvcConditionType = "ResizeStarted"
 )
 
 // PvcCondition contails details about state of pvc
