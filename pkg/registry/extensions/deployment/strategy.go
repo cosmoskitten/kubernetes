@@ -17,8 +17,12 @@ limitations under the License.
 package deployment
 
 import (
+	appsv1beta1 "k8s.io/api/apps/v1beta1"
+	appsv1beta2 "k8s.io/api/apps/v1beta2"
+	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/registry/rest"
@@ -77,16 +81,6 @@ func (deploymentStrategy) PrepareForUpdate(ctx genericapirequest.Context, obj, o
 	oldDeployment := old.(*extensions.Deployment)
 	newDeployment.Status = oldDeployment.Status
 
-	// Update is not allowed to set Spec.Selector for all groups/versions except apps/v1beta1 and extensions/v1beta1.
-	// If RequestInfo is nil, it is better to revert to old behavior (i.e. allow update to set Spec.Selector)
-	// to prevent unintentionally breaking users who may rely on the old behavior.
-	// TODO(#50791): after v1beta1 is retired, move selector immutability check to validation codes
-	requestInfo, found := genericapirequest.RequestInfoFrom(ctx)
-	if found && !((requestInfo.APIGroup == "apps" || requestInfo.APIGroup == "extensions") &&
-		requestInfo.APIVersion == "v1beta1") {
-		newDeployment.Spec.Selector = oldDeployment.Spec.Selector
-	}
-
 	// Spec updates bump the generation so that we can distinguish between
 	// scaling events and template changes, annotation updates bump the generation
 	// because annotations are copied from deployments to their replica sets.
@@ -98,7 +92,28 @@ func (deploymentStrategy) PrepareForUpdate(ctx genericapirequest.Context, obj, o
 
 // ValidateUpdate is the default update validation for an end user.
 func (deploymentStrategy) ValidateUpdate(ctx genericapirequest.Context, obj, old runtime.Object) field.ErrorList {
-	return validation.ValidateDeploymentUpdate(obj.(*extensions.Deployment), old.(*extensions.Deployment))
+	allErrs := validation.ValidateDeploymentUpdate(obj.(*extensions.Deployment), old.(*extensions.Deployment))
+
+	// Update is not allowed to set Spec.Selector for all groups/versions except extensions/v1beta1.
+	// If RequestInfo is nil, it is better to revert to old behavior (i.e. allow update to set Spec.Selector)
+	// to prevent unintentionally breaking users who may rely on the old behavior.
+	// TODO(#50791): after v1beta1 is retired, move selector immutability check to validation codes
+	if requestInfo, found := genericapirequest.RequestInfoFrom(ctx); found {
+		groupVersion := schema.GroupVersion{Group: requestInfo.APIGroup, Version: requestInfo.APIVersion}
+		switch groupVersion {
+		case appsv1beta1.SchemeGroupVersion:
+			// no-op for compatibility
+		case extensionsv1beta1.SchemeGroupVersion:
+			// no-op for compatibility
+		case appsv1beta2.SchemeGroupVersion:
+			// disallow mutation of selector
+			allErrs = append(allErrs, validation.ValidateSelectorImmutability(obj.(*extensions.Deployment).Spec.Selector, old.(*extensions.Deployment).Spec.Selector)...)
+		default:
+			panic("unsupported group version for validate selector immutability")
+		}
+	}
+
+	return allErrs
 }
 
 func (deploymentStrategy) AllowUnconditionalUpdate() bool {
