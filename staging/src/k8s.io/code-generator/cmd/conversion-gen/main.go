@@ -55,14 +55,6 @@ func main() {
 	// TODO: make callers pass this in.  It is too opaque here, and any use of
 	// the flag that DOESN'T include these is broken.
 	customArgs := &generators.CustomArgs{
-		ExtraPeerDirs: []string{
-			"k8s.io/kubernetes/pkg/api",
-			"k8s.io/kubernetes/pkg/api/v1",
-			"k8s.io/api/core/v1",
-			"k8s.io/apimachinery/pkg/apis/meta/v1",
-			"k8s.io/apimachinery/pkg/conversion",
-			"k8s.io/apimachinery/pkg/runtime",
-		},
 		SkipUnsafe: false,
 	}
 	pflag.CommandLine.StringSliceVar(&customArgs.ExtraPeerDirs, "extra-peer-dirs", customArgs.ExtraPeerDirs,

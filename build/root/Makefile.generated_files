@@ -592,11 +592,20 @@ CONVERSION_FILES := $(addsuffix /$(CONVERSION_FILENAME), $(CONVERSION_DIRS))
 # Shell function for reuse in rules.
 RUN_GEN_CONVERSION =                                                          \
     function run_gen_conversion() {                                           \
+        DEFAULT_PEERS=(                                                       \
+            "k8s.io/kubernetes/pkg/api"                                       \
+            "k8s.io/kubernetes/pkg/api/v1"                                    \
+            "k8s.io/api/core/v1"                                              \
+            "k8s.io/apimachinery/pkg/apis/meta/v1"                            \
+            "k8s.io/apimachinery/pkg/conversion"                              \
+            "k8s.io/apimachinery/pkg/runtime"                                 \
+        );                                                                    \
         if [[ -f $(META_DIR)/$(CONVERSION_GEN).todo ]]; then                  \
             ./hack/run-in-gopath.sh $(CONVERSION_GEN)                         \
                 --v $(KUBE_VERBOSE)                                           \
                 --logtostderr                                                 \
                 -i $$(cat $(META_DIR)/$(CONVERSION_GEN).todo | paste -sd, -)  \
+                --extra-peer-dirs $$(IFS=,; echo "$${DEFAULT_PEERS[*]}")      \
                 -O $(CONVERSION_BASENAME)                                     \
                 "$$@";                                                        \
         fi                                                                    \
