@@ -34,6 +34,15 @@ type Mounter struct {
 	mounterPath string
 }
 
+// New returns a mount.Interface for the current system.
+// It provides options to override the default mounter behavior.
+// mounterPath allows using an alternative to `/bin/mount` for mounting.
+func New(mounterPath string) Interface {
+	return &Mounter{
+		mounterPath: mounterPath,
+	}
+}
+
 func (mounter *Mounter) Mount(source string, target string, fstype string, options []string) error {
 	target = normalizeWindowsPath(target)
 
@@ -175,15 +184,6 @@ func getAvailableDriveLetter() (string, error) {
 
 func normalizeWindowsPath(path string) string {
 	normalizedPath := strings.Replace(path, "/", "\\", -1)
-	if strings.HasPrefix(normalizedPath, "\\") {
-		normalizedPath = "c:" + normalizedPath
-	}
-	return normalizedPath
-}
-
-func normalizeWindowsPath(path string) string {
-	normalizedPath := strings.Replace(path, "/", "\\", -1)
-
 	if strings.HasPrefix(normalizedPath, "\\") {
 		normalizedPath = "c:" + normalizedPath
 	}

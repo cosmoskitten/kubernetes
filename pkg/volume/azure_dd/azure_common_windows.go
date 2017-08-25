@@ -27,6 +27,7 @@ import (
 
 	"github.com/golang/glog"
 
+	"k8s.io/kubernetes/pkg/util/mount"
 	"k8s.io/utils/exec"
 )
 
@@ -34,7 +35,7 @@ func scsiHostRescan(io ioHandler) {
 	//empty implementation here, don't need to rescan SCSI in Windows
 }
 
-func findDiskByLun(lun int, iohandler ioHandler, exe exec.Interface) (string, error) {
+func findDiskByLun(lun int, iohandler ioHandler) (string, error) {
 	cmd := `Get-Disk | Where-Object { $_.location.contains("LUN") } | select number, location`
 	ex := exec.New()
 	output, err := ex.Command("powershell", "/c", cmd).CombinedOutput()
@@ -82,7 +83,7 @@ func findDiskByLun(lun int, iohandler ioHandler, exe exec.Interface) (string, er
 	return "", nil
 }
 
-func formatIfNotFormatted(disk string, fstype string) {
+func formatIfNotFormatted(disk string, fstype string, exec mount.Exec) {
 	if err := validateDiskNumber(disk); err != nil {
 		glog.Errorf("windowsDisk Mount: formatIfNotFormatted failed, err: %v\n", err)
 		return
@@ -90,8 +91,7 @@ func formatIfNotFormatted(disk string, fstype string) {
 
 	cmd := fmt.Sprintf("Get-Disk -Number %s | Where partitionstyle -eq 'raw' | Initialize-Disk -PartitionStyle MBR -PassThru", disk)
 	cmd += " | New-Partition -AssignDriveLetter -UseMaximumSize | Format-Volume -FileSystem NTFS -Confirm:$false"
-	ex := exec.New()
-	output, err := ex.Command("powershell", "/c", cmd).CombinedOutput()
+	output, err := exec.Run("powershell", "/c", cmd)
 	if err != nil {
 		glog.Errorf("windowsDisk Mount: Get-Disk failed, error: %v, output: %q", err, string(output))
 	} else {
