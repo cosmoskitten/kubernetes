@@ -17,6 +17,7 @@ limitations under the License.
 package util
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -24,6 +25,8 @@ import (
 	"strings"
 	"syscall"
 	"testing"
+
+	"github.com/spf13/cobra"
 
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -318,4 +321,93 @@ func TestDumpReaderToFile(t *testing.T) {
 	if stringData != testString {
 		t.Fatalf("Wrong file content %s != %s", testString, stringData)
 	}
+}
+
+func TestCheckConflictFlagSettings(t *testing.T) {
+	successCases := []struct {
+		name         string
+		args         []string
+		conflictArgs []string
+	}{
+		{
+			name: "case 1",
+			args: []string{"--foo1", "a", "--foo3", "c"},
+		},
+		{
+			name:         "case 2",
+			args:         []string{"--foo2", "b", "--foo3", "c"},
+			conflictArgs: []string{"foo2"},
+		},
+		{
+			name:         "case 3",
+			args:         []string{"--foo2", "b", "--foo3", "c", "--foo4", "d"},
+			conflictArgs: []string{"foo4", "foo5"},
+		},
+		{
+			name:         "case 4",
+			args:         []string{"--foo2", "b", "--foo3", "c", "--foo5", "e"},
+			conflictArgs: []string{"foo1", "foo4"},
+		},
+	}
+	for _, tc := range successCases {
+		output := new(bytes.Buffer)
+		fakeCmd := prepareFakeCmd(tc.conflictArgs)
+		fakeCmd.SetOutput(output)
+		fakeCmd.SetArgs(tc.args)
+		if err := fakeCmd.Execute(); err != nil {
+			t.Errorf("%q: unexpected error %v", tc.name, err)
+		}
+		if output.String() != "" {
+			t.Errorf("%q: expect to have empty output, but got %q", tc.name, output.String())
+		}
+	}
+
+	failureCases := []struct {
+		name         string
+		args         []string
+		conflictArgs []string
+	}{
+		{
+			name:         "conflict args 1",
+			args:         []string{"--foo1", "a", "--foo2", "b"},
+			conflictArgs: []string{"foo1", "foo2"},
+		},
+		{
+			name:         "conflict args 2",
+			args:         []string{"--foo1", "b", "--foo3", "c", "--foo2", "b", "--foo4", "d"},
+			conflictArgs: []string{"foo4", "foo3"},
+		},
+		{
+			name:         "conflict args 3",
+			args:         []string{"--foo1", "b", "--foo2", "b", "--foo3", "c", "--foo4", "d", "--foo5", "e"},
+			conflictArgs: []string{"foo2", "foo4", "foo5"},
+		},
+	}
+	for _, tc := range failureCases {
+		output := new(bytes.Buffer)
+		fakeCmd := prepareFakeCmd(tc.conflictArgs)
+		fakeCmd.SetOutput(output)
+		fakeCmd.SetArgs(tc.args)
+		if err := fakeCmd.Execute(); err == nil {
+			t.Errorf("%q: expected error, but got nil", tc.name)
+		}
+		if !strings.Contains(output.String(), fmt.Sprintf("cannot set %s at the same time", strings.Join(tc.conflictArgs, ","))) {
+			t.Errorf("%q: expected to contain conflict message, but got %q", tc.name, output.String())
+		}
+	}
+}
+
+func prepareFakeCmd(conflictArgs []string) *cobra.Command {
+	fakeCmd := &cobra.Command{
+		Use: "fakeCmd",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return CheckConflictFlagSettings(cmd, conflictArgs...)
+		},
+	}
+	fakeCmd.Flags().String("foo1", "", "flag foo1")
+	fakeCmd.Flags().String("foo2", "", "flag foo2")
+	fakeCmd.Flags().String("foo3", "", "flag foo3")
+	fakeCmd.Flags().String("foo4", "", "flag foo4")
+	fakeCmd.Flags().String("foo5", "", "flag foo5")
+	return fakeCmd
 }

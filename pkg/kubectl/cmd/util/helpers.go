@@ -836,3 +836,21 @@ func ManualStrip(file []byte) []byte {
 	}
 	return stripped
 }
+
+// CheckConflictFlagSettings will check whether the flags can be set explicitly at the same time
+func CheckConflictFlagSettings(cmd *cobra.Command, flagNames ...string) error {
+	if len(flagNames) < 2 {
+		return nil
+	}
+	isCoexist := false
+	for _, flagName := range flagNames {
+		if cmd.Flags().Changed(flagName) {
+			if !isCoexist {
+				isCoexist = true
+			} else {
+				return fmt.Errorf("cannot set %s at the same time", strings.Join(flagNames, ","))
+			}
+		}
+	}
+	return nil
+}
