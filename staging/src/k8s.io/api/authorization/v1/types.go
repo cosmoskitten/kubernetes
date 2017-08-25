@@ -220,7 +220,7 @@ type SubjectRulesReviewStatus struct {
 	NonResourceRules []NonResourceRule `json:"nonResourceRules" protobuf:"bytes,2,rep,name=nonResourceRules"`
 	// Incomplete is true when the rules returned by this call are incomplete. This is most commonly
 	// encountered when an authorizer, such as an external authorizer, doesn't support rules evaluation.
-	Incomplete bool
+	Incomplete bool `protobuf:"varint,4,opt,name=incomplete"`
 	// EvaluationError can appear in combination with Rules. It indicates an error occurred during
 	// rule evaluation, such as an authorizer that doesn't support rule evaluation, and that
 	// ResourceRules and/or NonResourceRules may be incomplete.
