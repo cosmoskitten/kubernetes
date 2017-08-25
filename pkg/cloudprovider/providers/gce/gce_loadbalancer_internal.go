@@ -88,10 +88,26 @@ func (gce *GCECloud) ensureInternalLoadBalancer(clusterName, clusterID string, s
 		}
 	}
 
+	// Determine IP which will be used for the expected forwading rule
+	// If no IP has been established in the forwarding rule or specified in the Service spec,
+	// then targetIP = "".
+	targetIP := determineTargetIP(svc, existingFwdRule)
+
+	var addrMgr *addressManager
+	if targetIP != "" {
+		glog.V(2).Infof("ensureInternalLoadBalancer(%v): Existing forwarding rule or service spec says to use IP: %v", loadBalancerName, targetIP)
+		addrMgr = newAddressManager(gce, nm.String(), gce.Region(), gce.SubnetworkURL(), loadBalancerName, targetIP, schemeInternal)
+
+		// Attempt to hold the target IP.
+		if err = addrMgr.HoldAddress(); err != nil {
+			return nil, err
+		}
+	}
+
 	expectedFwdRule := &compute.ForwardingRule{
 		Name:                loadBalancerName,
 		Description:         fmt.Sprintf(`{"kubernetes.io/service-name":"%s"}`, nm.String()),
-		IPAddress:           svc.Spec.LoadBalancerIP,
+		IPAddress:           targetIP,
 		BackendService:      backendServiceLink,
 		Ports:               ports,
 		IPProtocol:          string(protocol),
@@ -137,6 +153,15 @@ func (gce *GCECloud) ensureInternalLoadBalancer(clusterName, clusterID string, s
 	existingFwdRule, err = gce.GetRegionForwardingRule(loadBalancerName, gce.region)
 	if err != nil {
 		return nil, err
+	}
+
+	// The addrMgr does not exist if no targetIP was specified. This function was not deferred
+	// because the code should continue to hold the targetIP if the sync fails for any reason.
+	// At this point, the existing rule is known to exist; therefore, releasing the address is fine.
+	if addrMgr != nil {
+		if err := addrMgr.ReleaseAddress(); err != nil {
+			glog.Errorf("ensureInternalLoadBalancer: failed to release address reservation, possibly causing an orphan: %v", err)
+		}
 	}
 
 	status := &v1.LoadBalancerStatus{}
@@ -639,4 +664,16 @@ func getNameFromLink(link string) string {
 
 	fields := strings.Split(link, "/")
 	return fields[len(fields)-1]
+}
+
+func determineTargetIP(svc *v1.Service, fwdRule *compute.ForwardingRule) string {
+	if svc.Spec.LoadBalancerIP != "" {
+		return svc.Spec.LoadBalancerIP
+	}
+
+	if fwdRule != nil {
+		return fwdRule.IPAddress
+	}
+
+	return ""
 }
