@@ -24,6 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apiserver/pkg/admission"
+	"k8s.io/apiserver/pkg/authentication/user"
 	"k8s.io/kubernetes/pkg/api"
 	podutil "k8s.io/kubernetes/pkg/api/pod"
 	"k8s.io/kubernetes/pkg/apis/policy"
@@ -230,8 +231,8 @@ func (c *nodePlugin) admitPodEviction(nodeName string, a admission.Attributes) e
 		if err != nil {
 			return admission.NewForbidden(a, err)
 		}
-		// only allow a node to evict a pod bound to itself
-		if existingPod.Spec.NodeName != nodeName {
+		// only allow kube-scheduler or a node to evict a pod bound to itself
+		if existingPod.Spec.NodeName != nodeName && !isKubeScheduler(nodeName) {
 			return admission.NewForbidden(a, fmt.Errorf("node %s can only evict pods with spec.nodeName set to itself", nodeName))
 		}
 		return nil
@@ -283,4 +284,8 @@ func (c *nodePlugin) admitNode(nodeName string, a admission.Attributes) error {
 	}
 
 	return nil
+}
+
+func isKubeScheduler(name string) bool {
+	return name == user.KubeScheduler
 }
