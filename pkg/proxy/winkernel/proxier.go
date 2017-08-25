@@ -1,3 +1,5 @@
+// +build windows
+
 /*
 Copyright 2015 The Kubernetes Authors.
 
@@ -63,6 +65,7 @@ func CanUseWinKernelProxier(kcompat KernelCompatTester) (bool, error) {
 
 type WindowsKernelCompatTester struct{}
 
+// Todo : Fix the below API to query the OS version
 func (lkct WindowsKernelCompatTester) IsCompatible() error {
 	return nil
 }
