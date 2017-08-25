@@ -17,12 +17,18 @@ limitations under the License.
 package cpumanager
 
 import (
+	"fmt"
+	"sync"
+	"time"
+
+	"github.com/golang/glog"
 	cadvisorapi "github.com/google/cadvisor/info/v1"
 
 	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 	runtimeapi "k8s.io/kubernetes/pkg/kubelet/apis/cri/v1alpha1/runtime"
 	"k8s.io/kubernetes/pkg/kubelet/cm/cpumanager/state"
-	"k8s.io/kubernetes/pkg/kubelet/lifecycle"
+	"k8s.io/kubernetes/pkg/kubelet/status"
 )
 
 type kletGetter interface {
@@ -36,12 +42,8 @@ type runtimeService interface {
 
 type policyName string
 
-// Manager interface provides methods for Kubelet to manage pod cpus.
+// Manager interface provides methods for kubelet to manage pod cpus
 type Manager interface {
-	// Start is called during Kubelet initialization.
-	//
-	// @pre:
-	// - cAdvisor is initialized
 	Start()
 
 	// RegisterContainer is called between container creation and container start
@@ -49,11 +51,171 @@ type Manager interface {
 	// container runtime before the first process begins to execute.
 	RegisterContainer(p *v1.Pod, c *v1.Container, containerID string) error
 
-	// UnregisterContainer is called near UnregisterContainer() so that the
-	// manager stops trying to update that container in the reconcilation loop
-	// and any CPUs dedicated to the container are freed to the shared pool.
+	// UnregisterContainer is called near UnregisterContainer() so that the manager
+	// stops trying to update that container in the reconcilation loop and
+	// any CPUs dedicated to the container are freed to the shared pool.
 	UnregisterContainer(containerID string) error
 
-	// Returns a read-only interface to the CPU manager internal state.
 	State() state.Reader
+}
+
+type manager struct {
+	sync.Mutex
+	policy Policy
+	state  state.State
+
+	// containerRuntime is the container runtime service interface needed
+	// to make UpdateContainerResources() calls against the containers.
+	containerRuntime runtimeService
+
+	// kletGetter provides a method for listing all the pods on the node
+	// so all the containers can be updated in the reconciliation loop.
+	kletGetter kletGetter
+
+	// podStatusProvider provides a method for obtaining pod statuses
+	// and the containerID of their containers
+	podStatusProvider status.PodStatusProvider
+}
+
+var _ Manager = &manager{}
+
+// NewManager creates new cpu manager based on provided policy
+func NewManager(
+	cpuPolicyName string,
+	cr runtimeService,
+	kletGetter kletGetter,
+	statusProvider status.PodStatusProvider,
+) (Manager, error) {
+	var policy Policy
+
+	switch policyName(cpuPolicyName) {
+
+	case PolicyNone:
+		policy = NewNonePolicy()
+
+	default:
+		glog.Warningf("[cpumanager] Unknown policy (\"%s\"), falling back to \"%s\" policy (\"%s\")", cpuPolicyName, PolicyNone)
+		policy = NewNonePolicy()
+	}
+
+	manager := &manager{
+		policy:            policy,
+		state:             state.NewMemoryState(),
+		containerRuntime:  cr,
+		kletGetter:        kletGetter,
+		podStatusProvider: statusProvider,
+	}
+	return manager, nil
+}
+
+func (m *manager) Start() {
+	glog.Infof("[cpumanger] starting with %s policy", m.policy.Name())
+	m.policy.Start(m.state)
+	if m.policy.Name() == string(PolicyNone) {
+		return
+	}
+	go wait.Until(func() { m.reconcileState() }, time.Second, wait.NeverStop)
+}
+
+func (m *manager) RegisterContainer(p *v1.Pod, c *v1.Container, containerID string) error {
+	m.Lock()
+	err := m.policy.RegisterContainer(m.state, p, c, containerID)
+	if err != nil {
+		glog.Errorf("[cpumanager] RegisterContainer error: %v", err)
+		m.Unlock()
+		return err
+	}
+	cpuset := m.state.GetCPUSetOrDefault(containerID)
+	m.Unlock()
+
+	err = m.containerRuntime.UpdateContainerResources(
+		containerID,
+		&runtimeapi.LinuxContainerResources{
+			CpusetCpus: cpuset.String(),
+		})
+	if err != nil {
+		glog.Errorf("[cpumanager] RegisterContainer error: %v", err)
+		return err
+	}
+	return nil
+}
+
+func (m *manager) UnregisterContainer(containerID string) error {
+	m.Lock()
+	defer m.Unlock()
+
+	err := m.policy.UnregisterContainer(m.state, containerID)
+	if err != nil {
+		glog.Errorf("[cpumanager] UnregisterContainer error: %v", err)
+		return err
+	}
+	return nil
+}
+
+// CPU Manager state is read-only from outside this package.
+func (m *manager) State() state.Reader {
+	return m.state
+}
+
+type reconciledContainer struct {
+	podName       string
+	containerName string
+	containerID   string
+}
+
+func (m *manager) reconcileState() (success []reconciledContainer, failure []reconciledContainer) {
+	m.Lock()
+	defer m.Unlock()
+
+	success = []reconciledContainer{}
+	failure = []reconciledContainer{}
+
+	for _, pod := range m.kletGetter.GetPods() {
+		for _, container := range pod.Spec.Containers {
+			status, ok := m.podStatusProvider.GetPodStatus(pod.UID)
+			if !ok {
+				glog.Warningf("[cpumanager] reconcileState: skipping pod; status not found (pod: %s, container: %s)", pod.Name, container.Name)
+				failure = append(failure, reconciledContainer{pod.Name, container.Name, ""})
+				break
+			}
+
+			containerID, err := findContainerIDByName(&status, container.Name)
+			if err != nil {
+				glog.Warningf("[cpumanager] reconcileState: skipping container; ID not found in status (pod: %s, container: %s, error: %v)", pod.Name, container.Name, err)
+				failure = append(failure, reconciledContainer{pod.Name, container.Name, ""})
+				continue
+			}
+
+			cset := m.state.GetCPUSetOrDefault(containerID)
+			if cset.IsEmpty() {
+				glog.Infof("[cpumanager] reconcileState: skipping container; assigned cpuset is empty (pod: %s, container: %s)", pod.Name, container.Name)
+				failure = append(failure, reconciledContainer{pod.Name, container.Name, containerID})
+				continue
+			}
+
+			glog.Infof("[cpumanager] reconcileState: updating container (pod: %s, container: %s, container id: %s, cpuset: \"%v\")", pod.Name, container.Name, containerID, cset)
+			err = m.containerRuntime.UpdateContainerResources(
+				containerID,
+				&runtimeapi.LinuxContainerResources{
+					CpusetCpus: cset.String(),
+				})
+			if err != nil {
+				glog.Errorf("[cpumanager] reconcileState: failed to update container (pod: %s, container: %s, container id: %s, cpuset: \"%v\", error: %v)", pod.Name, container.Name, containerID, cset, err)
+				failure = append(failure, reconciledContainer{pod.Name, container.Name, containerID})
+				continue
+			}
+			success = append(success, reconciledContainer{pod.Name, container.Name, containerID})
+		}
+	}
+	return success, failure
+}
+
+func findContainerIDByName(status *v1.PodStatus, name string) (string, error) {
+	for _, container := range status.ContainerStatuses {
+		if container.Name == name && container.ContainerID != "" {
+			// hack hack strip docker:// hack hack
+			return container.ContainerID[9:], nil
+		}
+	}
+	return "", fmt.Errorf("unable to find ID for container with name %v in pod status (it may not be running)", name)
 }
