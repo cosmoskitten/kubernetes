@@ -558,14 +558,18 @@ func (os *Rackspace) GetZone() (cloudprovider.Zone, error) {
 // This is particularly useful in external cloud providers where the kubelet
 // does not initialize node data.
 func (os *Rackspace) GetZoneByProviderID(providerID string) (cloudprovider.Zone, error) {
-	return cloudprovider.Zone{}, errors.New("GetZoneByProviderID not implemented")
+	glog.V(1).Infof("Current zone is %v", os.region)
+
+	return cloudprovider.Zone{Region: os.region}, nil
 }
 
 // GetZoneByNodeName implements Zones.GetZoneByNodeName
 // This is particularly useful in external cloud providers where the kubelet
 // does not initialize node data.
 func (os *Rackspace) GetZoneByNodeName(nodeName types.NodeName) (cloudprovider.Zone, error) {
-	return cloudprovider.Zone{}, errors.New("GetZoneByNodeName not imeplemented")
+	glog.V(1).Infof("Current zone is %v", os.region)
+
+	return cloudprovider.Zone{Region: os.region}, nil
 }
 
 // Create a volume of given size (in GiB)
