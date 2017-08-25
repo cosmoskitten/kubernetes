@@ -409,6 +409,10 @@ func CreateGCECloud(config *CloudConfig) (*GCECloud, error) {
 		glog.Infof("managing multiple zones: %v", config.ManagedZones)
 	}
 
+	if config.SubnetworkURL == "" {
+		config.SubnetworkURL = gceSubnetworkURL(config.ApiEndpoint, config.ProjectID, config.Region, getNameFromLink(config.NetworkURL))
+	}
+
 	operationPollRateLimiter := flowcontrol.NewTokenBucketRateLimiter(10, 100) // 10 qps, 100 bucket size.
 
 	gce := &GCECloud{

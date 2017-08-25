@@ -18,18 +18,23 @@ package gce
 
 import (
 	computealpha "google.golang.org/api/compute/v0.alpha"
+	computebeta "google.golang.org/api/compute/v0.beta"
 	compute "google.golang.org/api/compute/v1"
 )
 
 // CloudAddressService is an interface for managing addresses
 type CloudAddressService interface {
-	ReserveRegionAddress(*compute.Address, string) error
-	GetRegionAddress(string, string) (*compute.Address, error)
+	ReserveRegionAddress(address *compute.Address, region string) error
+	GetRegionAddress(name string, region string) (*compute.Address, error)
 	GetRegionAddressByIP(region, ipAddress string) (*compute.Address, error)
-	// TODO: Mock `DeleteRegionAddress(name, region string) endpoint
-	// TODO: Mock Global endpoints
+	DeleteRegionAddress(name, region string) error
 
 	// Alpha API.
 	GetAlphaRegionAddress(name, region string) (*computealpha.Address, error)
 	ReserveAlphaRegionAddress(addr *computealpha.Address, region string) error
+
+	// Beta API
+	ReserveBetaRegionAddress(address *computebeta.Address, region string) error
+	GetBetaRegionAddress(name string, region string) (*computebeta.Address, error)
+	GetBetaRegionAddressByIP(region, ipAddress string) (*computebeta.Address, error)
 }

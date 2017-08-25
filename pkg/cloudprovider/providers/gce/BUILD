@@ -11,6 +11,7 @@ go_library(
     srcs = [
         "doc.go",
         "gce.go",
+        "gce_address_manager.go",
         "gce_addresses.go",
         "gce_addresses_fakes.go",
         "gce_alpha.go",
@@ -79,6 +80,7 @@ go_library(
 go_test(
     name = "go_default_test",
     srcs = [
+        "gce_address_manager_test.go",
         "gce_disks_test.go",
         "gce_healthchecks_test.go",
         "gce_loadbalancer_external_test.go",
