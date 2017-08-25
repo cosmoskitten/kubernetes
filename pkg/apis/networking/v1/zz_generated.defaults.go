@@ -42,6 +42,13 @@ func SetObjectDefaults_NetworkPolicy(in *v1.NetworkPolicy) {
 			SetDefaults_NetworkPolicyPort(b)
 		}
 	}
+	for i := range in.Spec.Egress {
+		a := &in.Spec.Egress[i]
+		for j := range a.Ports {
+			b := &a.Ports[j]
+			SetDefaults_NetworkPolicyPort(b)
+		}
+	}
 }
 
 func SetObjectDefaults_NetworkPolicyList(in *v1.NetworkPolicyList) {
