@@ -111,8 +111,8 @@ func parseGroupVersionKind(s *openapi_v2.Schema) schema.GroupVersionKind {
 // Definitions is an implementation of `Resources`. It looks for
 // resources in an openapi Schema.
 type Definitions struct {
-	models    map[string]Schema
-	resources map[schema.GroupVersionKind]string
+	Models    map[string]Schema
+	Resources map[schema.GroupVersionKind]string
 }
 
 var _ Resources = &Definitions{}
@@ -120,14 +120,14 @@ var _ Resources = &Definitions{}
 // NewOpenAPIData creates a new `Resources` out of the openapi document.
 func NewOpenAPIData(doc *openapi_v2.Document) (Resources, error) {
 	definitions := Definitions{
-		models:    map[string]Schema{},
-		resources: map[schema.GroupVersionKind]string{},
+		Models:    map[string]Schema{},
+		Resources: map[schema.GroupVersionKind]string{},
 	}
 
 	// Save the list of all models first. This will allow us to
 	// validate that we don't have any dangling reference.
 	for _, namedSchema := range doc.GetDefinitions().GetAdditionalProperties() {
-		definitions.models[namedSchema.GetName()] = nil
+		definitions.Models[namedSchema.GetName()] = nil
 	}
 
 	// Now, parse each model. We can validate that references exists.
@@ -137,10 +137,10 @@ func NewOpenAPIData(doc *openapi_v2.Document) (Resources, error) {
 		if err != nil {
 			return nil, err
 		}
-		definitions.models[namedSchema.GetName()] = schema
+		definitions.Models[namedSchema.GetName()] = schema
 		gvk := parseGroupVersionKind(namedSchema.GetValue())
 		if len(gvk.Kind) > 0 {
-			definitions.resources[gvk] = namedSchema.GetName()
+			definitions.Resources[gvk] = namedSchema.GetName()
 		}
 	}
 
@@ -161,7 +161,7 @@ func (d *Definitions) parseReference(s *openapi_v2.Schema, path *Path) (Schema, 
 		return nil, newSchemaError(path, "unallowed reference to non-definition %q", s.GetXRef())
 	}
 	reference := strings.TrimPrefix(s.GetXRef(), "#/definitions/")
-	if _, ok := d.models[reference]; !ok {
+	if _, ok := d.Models[reference]; !ok {
 		return nil, newSchemaError(path, "unknown model in reference: %q", reference)
 	}
 	return &Ref{
@@ -293,11 +293,11 @@ func (d *Definitions) ParseSchema(s *openapi_v2.Schema, path *Path) (Schema, err
 // LookupResource is public through the interface of Resources. It
 // returns a visitable schema from the given group-version-kind.
 func (d *Definitions) LookupResource(gvk schema.GroupVersionKind) Schema {
-	modelName, found := d.resources[gvk]
+	modelName, found := d.Resources[gvk]
 	if !found {
 		return nil
 	}
-	model, found := d.models[modelName]
+	model, found := d.Models[modelName]
 	if !found {
 		return nil
 	}
@@ -318,7 +318,7 @@ func (r *Ref) Reference() string {
 }
 
 func (r *Ref) SubSchema() Schema {
-	return r.definitions.models[r.reference]
+	return r.definitions.Models[r.reference]
 }
 
 func (r *Ref) Accept(v SchemaVisitor) {

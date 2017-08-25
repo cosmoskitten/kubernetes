@@ -20,18 +20,6 @@ import (
 	"fmt"
 )
 
-type Errors struct {
-	errors []error
-}
-
-func (e *Errors) Errors() []error {
-	return e.errors
-}
-
-func (e *Errors) AppendErrors(err ...error) {
-	e.errors = append(e.errors, err...)
-}
-
 type ValidationError struct {
 	Path string
 	Err  error
@@ -39,16 +27,6 @@ type ValidationError struct {
 
 func (e ValidationError) Error() string {
 	return fmt.Sprintf("ValidationError(%s): %v", e.Path, e.Err)
-}
-
-type InvalidTypeError struct {
-	Path     string
-	Expected string
-	Actual   string
-}
-
-func (e InvalidTypeError) Error() string {
-	return fmt.Sprintf("invalid type for %s: got %q, expected %q", e.Path, e.Actual, e.Expected)
 }
 
 type MissingRequiredFieldError struct {

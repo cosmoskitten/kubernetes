@@ -30,41 +30,23 @@ type ValidationItem interface {
 	Path() *openapi.Path
 }
 
-type baseItem struct {
-	errors Errors
-	path   openapi.Path
+type baseValidationItem struct {
+	*openapi.BaseItem
 }
 
-// Errors returns the list of errors found for this item.
-func (item *baseItem) Errors() []error {
-	return item.errors.Errors()
+func NewBaseValidationItem(path openapi.Path) baseValidationItem {
+	return baseValidationItem{BaseItem: openapi.NewBaseItem(path)}
 }
 
 // AddValidationError wraps the given error into a ValidationError and
 // attaches it to this item.
-func (item *baseItem) AddValidationError(err error) {
-	item.errors.AppendErrors(ValidationError{Path: item.path.String(), Err: err})
-}
-
-// AddError adds a regular (non-validation related) error to the list.
-func (item *baseItem) AddError(err error) {
-	item.errors.AppendErrors(err)
-}
-
-// CopyErrors adds a list of errors to this item. This is useful to copy
-// errors from subitems.
-func (item *baseItem) CopyErrors(errs []error) {
-	item.errors.AppendErrors(errs...)
-}
-
-// Path returns the path of this item, helps print useful errors.
-func (item *baseItem) Path() *openapi.Path {
-	return &item.path
+func (item *baseValidationItem) AddValidationError(err error) {
+	item.GetErrors().AppendErrors(ValidationError{Path: item.GetPath().String(), Err: err})
 }
 
 // mapItem represents a map entry in the yaml.
 type mapItem struct {
-	baseItem
+	baseValidationItem
 
 	Map map[string]interface{}
 }
@@ -81,11 +63,11 @@ func (item *mapItem) sortedKeys() []string {
 var _ ValidationItem = &mapItem{}
 
 func (item *mapItem) VisitPrimitive(schema *openapi.Primitive) {
-	item.AddValidationError(InvalidTypeError{Path: schema.GetPath().String(), Expected: schema.Type, Actual: "map"})
+	item.AddValidationError(openapi.InvalidTypeError{Path: schema.GetPath().String(), Expected: schema.Type, Actual: "map"})
 }
 
 func (item *mapItem) VisitArray(schema *openapi.Array) {
-	item.AddValidationError(InvalidTypeError{Path: schema.GetPath().String(), Expected: "array", Actual: "map"})
+	item.AddValidationError(openapi.InvalidTypeError{Path: schema.GetPath().String(), Expected: "array", Actual: "map"})
 }
 
 func (item *mapItem) VisitMap(schema *openapi.Map) {
@@ -134,7 +116,7 @@ func (item *mapItem) VisitReference(schema openapi.Reference) {
 
 // arrayItem represents a yaml array.
 type arrayItem struct {
-	baseItem
+	baseValidationItem
 
 	Array []interface{}
 }
@@ -142,7 +124,7 @@ type arrayItem struct {
 var _ ValidationItem = &arrayItem{}
 
 func (item *arrayItem) VisitPrimitive(schema *openapi.Primitive) {
-	item.AddValidationError(InvalidTypeError{Path: schema.GetPath().String(), Expected: schema.Type, Actual: "array"})
+	item.AddValidationError(openapi.InvalidTypeError{Path: schema.GetPath().String(), Expected: schema.Type, Actual: "array"})
 }
 
 func (item *arrayItem) VisitArray(schema *openapi.Array) {
@@ -163,11 +145,11 @@ func (item *arrayItem) VisitArray(schema *openapi.Array) {
 }
 
 func (item *arrayItem) VisitMap(schema *openapi.Map) {
-	item.AddValidationError(InvalidTypeError{Path: schema.GetPath().String(), Expected: "array", Actual: "map"})
+	item.AddValidationError(openapi.InvalidTypeError{Path: schema.GetPath().String(), Expected: "array", Actual: "map"})
 }
 
 func (item *arrayItem) VisitKind(schema *openapi.Kind) {
-	item.AddValidationError(InvalidTypeError{Path: schema.GetPath().String(), Expected: "array", Actual: "map"})
+	item.AddValidationError(openapi.InvalidTypeError{Path: schema.GetPath().String(), Expected: "array", Actual: "map"})
 }
 
 func (item *arrayItem) VisitReference(schema openapi.Reference) {
@@ -177,7 +159,7 @@ func (item *arrayItem) VisitReference(schema openapi.Reference) {
 
 // primitiveItem represents a yaml value.
 type primitiveItem struct {
-	baseItem
+	baseValidationItem
 
 	Value interface{}
 	Kind  string
@@ -211,19 +193,19 @@ func (item *primitiveItem) VisitPrimitive(schema *openapi.Primitive) {
 		return
 	}
 
-	item.AddValidationError(InvalidTypeError{Path: schema.GetPath().String(), Expected: schema.Type, Actual: item.Kind})
+	item.AddValidationError(openapi.InvalidTypeError{Path: schema.GetPath().String(), Expected: schema.Type, Actual: item.Kind})
 }
 
 func (item *primitiveItem) VisitArray(schema *openapi.Array) {
-	item.AddValidationError(InvalidTypeError{Path: schema.GetPath().String(), Expected: "array", Actual: item.Kind})
+	item.AddValidationError(openapi.InvalidTypeError{Path: schema.GetPath().String(), Expected: "array", Actual: item.Kind})
 }
 
 func (item *primitiveItem) VisitMap(schema *openapi.Map) {
-	item.AddValidationError(InvalidTypeError{Path: schema.GetPath().String(), Expected: "map", Actual: item.Kind})
+	item.AddValidationError(openapi.InvalidTypeError{Path: schema.GetPath().String(), Expected: "map", Actual: item.Kind})
 }
 
 func (item *primitiveItem) VisitKind(schema *openapi.Kind) {
-	item.AddValidationError(InvalidTypeError{Path: schema.GetPath().String(), Expected: "map", Actual: item.Kind})
+	item.AddValidationError(openapi.InvalidTypeError{Path: schema.GetPath().String(), Expected: "map", Actual: item.Kind})
 }
 
 func (item *primitiveItem) VisitReference(schema openapi.Reference) {
@@ -241,9 +223,9 @@ func itemFactory(path openapi.Path, v interface{}) (ValidationItem, error) {
 	switch kind {
 	case reflect.Bool:
 		return &primitiveItem{
-			baseItem: baseItem{path: path},
-			Value:    v,
-			Kind:     openapi.Boolean,
+			baseValidationItem: NewBaseValidationItem(path),
+			Value:              v,
+			Kind:               openapi.Boolean,
 		}, nil
 	case reflect.Int,
 		reflect.Int8,
@@ -256,33 +238,33 @@ func itemFactory(path openapi.Path, v interface{}) (ValidationItem, error) {
 		reflect.Uint32,
 		reflect.Uint64:
 		return &primitiveItem{
-			baseItem: baseItem{path: path},
-			Value:    v,
-			Kind:     openapi.Integer,
+			baseValidationItem: NewBaseValidationItem(path),
+			Value:              v,
+			Kind:               openapi.Integer,
 		}, nil
 	case reflect.Float32,
 		reflect.Float64:
 		return &primitiveItem{
-			baseItem: baseItem{path: path},
-			Value:    v,
-			Kind:     openapi.Number,
+			baseValidationItem: NewBaseValidationItem(path),
+			Value:              v,
+			Kind:               openapi.Number,
 		}, nil
 	case reflect.String:
 		return &primitiveItem{
-			baseItem: baseItem{path: path},
-			Value:    v,
-			Kind:     openapi.String,
+			baseValidationItem: NewBaseValidationItem(path),
+			Value:              v,
+			Kind:               openapi.String,
 		}, nil
 	case reflect.Array,
 		reflect.Slice:
 		return &arrayItem{
-			baseItem: baseItem{path: path},
-			Array:    v.([]interface{}),
+			baseValidationItem: NewBaseValidationItem(path),
+			Array:              v.([]interface{}),
 		}, nil
 	case reflect.Map:
 		return &mapItem{
-			baseItem: baseItem{path: path},
-			Map:      v.(map[string]interface{}),
+			baseValidationItem: NewBaseValidationItem(path),
+			Map:                v.(map[string]interface{}),
 		}, nil
 	}
 	return nil, InvalidObjectTypeError{Type: kind.String(), Path: path.String()}

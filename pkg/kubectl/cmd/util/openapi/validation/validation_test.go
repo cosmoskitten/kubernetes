@@ -112,7 +112,7 @@ spec:
 		Expect(err).To(Equal(utilerrors.NewAggregate([]error{
 			validation.ValidationError{
 				Path: "Pod.spec.containers[0].args",
-				Err: validation.InvalidTypeError{
+				Err: openapi.InvalidTypeError{
 					Path:     "io.k8s.api.core.v1.Container.args",
 					Expected: "array",
 					Actual:   "string",
@@ -163,7 +163,7 @@ spec:
 		Expect(err).To(Equal(utilerrors.NewAggregate([]error{
 			validation.ValidationError{
 				Path: "Pod.spec.containers[0].ports[0].hostPort",
-				Err: validation.InvalidTypeError{
+				Err: openapi.InvalidTypeError{
 					Path:     "io.k8s.api.core.v1.ContainerPort.hostPort",
 					Expected: "integer",
 					Actual:   "string",

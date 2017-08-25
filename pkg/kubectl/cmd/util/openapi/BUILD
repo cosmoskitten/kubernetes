@@ -11,10 +11,12 @@ go_library(
     srcs = [
         "doc.go",
         "document.go",
+        "errors.go",
         "extensions.go",
         "openapi.go",
         "openapi_cache.go",
         "openapi_getter.go",
+        "types.go",
     ],
     deps = [
         "//pkg/version:go_default_library",
