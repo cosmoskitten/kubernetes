@@ -273,7 +273,6 @@ func TestNodeSyncDelete(t *testing.T) {
 		// Do a single step of the loop.
 		go sync.Loop(doneChan)
 		sync.Delete(tc.node)
-		close(sync.opChan)
 		<-doneChan
 		tc.fake.dumpTrace()
 
