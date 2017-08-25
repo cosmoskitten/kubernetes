@@ -19,11 +19,13 @@ package kubelet
 import (
 	"crypto/tls"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"path"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -745,7 +747,19 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 	// check node capabilities since the mount path is not the default
 	if len(kubeCfg.ExperimentalMounterPath) != 0 {
 		kubeCfg.ExperimentalCheckNodeCapabilitiesBeforeMount = false
+
+		if len(klet.clusterDNS) > 0 {
+			resolvePath := filepath.Join(strings.TrimSuffix(kubeCfg.ExperimentalMounterPath, "/mounter"), "rootfs", "etc", "resolv.conf")
+			dnsString := ""
+			for _, dns := range klet.clusterDNS {
+				dnsString = dnsString + fmt.Sprintf("nameserver %s\n", dns)
+			}
+
+			ioutil.WriteFile(resolvePath, []byte(dnsString), 0600)
+
+		}
 	}
+
 	// setup volumeManager
 	klet.volumeManager = volumemanager.NewVolumeManager(
 		kubeCfg.EnableControllerAttachDetach,
