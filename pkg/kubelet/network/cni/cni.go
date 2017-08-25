@@ -263,10 +263,6 @@ func (plugin *cniNetworkPlugin) buildCNIRuntimeConf(podName string, podNs string
 	glog.V(4).Infof("Got netns path %v", podNetnsPath)
 	glog.V(4).Infof("Using netns path %v", podNs)
 
-	if podNetnsPath == "" {
-		podNetnsPath = "none"
-	}
-
 	rt := &libcni.RuntimeConf{
 		ContainerID: podSandboxID.ID,
 		NetNS:       podNetnsPath,

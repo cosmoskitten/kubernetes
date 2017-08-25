@@ -74,11 +74,20 @@ func (ds *dockerService) determinePodIPBySandboxID(sandboxID string) string {
 			continue
 		}
 
+		// On Windows, every container that is created in a Sandbox, needs to invoke CNI plugin again for adding the Network,
+		// with the shared container name as NetNS info,
+		// which is passed down the platform to replicate some necessary changes on to the new container
+		//
+		// This place is chosen as a hack for now, until we have a better place to do this,
+		// like immediately after ContainerCreation,
+		// Also this is very windows specific for now
+
+		// Using the CONTAINER_NETWORK flag to determine to choose old impl or current impl.
+		// CONTAINER_NETWORK is only kept for backward compatibility, since old OS version doens;t support
+		// Sandbox concept
 		if networkMode := os.Getenv("CONTAINER_NETWORK"); networkMode == "" {
-			// Trigger a Plugin Call, to reattach the container to the Sandbox to replicate some
-			// necessary registry values
-			ds.getIP(sandboxID, r)
 			// Do not return any IP, so that we would continue and get the IP of the Sandbox
+			ds.getIP(sandboxID, r)
 		} else {
 			if containerIP := getContainerIP(r); containerIP != "" {
 				return containerIP
