@@ -22,10 +22,13 @@ import (
 	"fmt"
 	"strconv"
 
+	appsv1beta2 "k8s.io/api/apps/v1beta2"
+	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/registry/generic"
@@ -72,15 +75,6 @@ func (rsStrategy) PrepareForUpdate(ctx genericapirequest.Context, obj, old runti
 	// update is not allowed to set status
 	newRS.Status = oldRS.Status
 
-	// Update is not allowed to set Spec.Selector for all groups/versions except extensions/v1beta1.
-	// If RequestInfo is nil, it is better to revert to old behavior (i.e. allow update to set Spec.Selector)
-	// to prevent unintentionally breaking users who may rely on the old behavior.
-	// TODO(#50791): after v1beta1 is retired, move selector immutability check to validation codes
-	requestInfo, found := genericapirequest.RequestInfoFrom(ctx)
-	if found && !(requestInfo.APIGroup == "extensions" && requestInfo.APIVersion == "v1beta1") {
-		newRS.Spec.Selector = oldRS.Spec.Selector
-	}
-
 	// Any changes to the spec increment the generation number, any changes to the
 	// status should reflect the generation number of the corresponding object. We push
 	// the burden of managing the status onto the clients because we can't (in general)
@@ -112,9 +106,27 @@ func (rsStrategy) AllowCreateOnUpdate() bool {
 
 // ValidateUpdate is the default update validation for an end user.
 func (rsStrategy) ValidateUpdate(ctx genericapirequest.Context, obj, old runtime.Object) field.ErrorList {
-	validationErrorList := validation.ValidateReplicaSet(obj.(*extensions.ReplicaSet))
-	updateErrorList := validation.ValidateReplicaSetUpdate(obj.(*extensions.ReplicaSet), old.(*extensions.ReplicaSet))
-	return append(validationErrorList, updateErrorList...)
+	allErrs := validation.ValidateReplicaSet(obj.(*extensions.ReplicaSet))
+	allErrs = append(allErrs, validation.ValidateReplicaSetUpdate(obj.(*extensions.ReplicaSet), old.(*extensions.ReplicaSet))...)
+
+	// Update is not allowed to set Spec.Selector for all groups/versions except extensions/v1beta1.
+	// If RequestInfo is nil, it is better to revert to old behavior (i.e. allow update to set Spec.Selector)
+	// to prevent unintentionally breaking users who may rely on the old behavior.
+	// TODO(#50791): after v1beta1 is retired, move selector immutability check to validation codes
+	if requestInfo, found := genericapirequest.RequestInfoFrom(ctx); found {
+		groupVersion := schema.GroupVersion{Group: requestInfo.APIGroup, Version: requestInfo.APIVersion}
+		switch groupVersion {
+		case extensionsv1beta1.SchemeGroupVersion:
+			// no-op for compatibility
+		case appsv1beta2.SchemeGroupVersion:
+			// disallow mutation of selector
+			allErrs = append(allErrs, validation.ValidateSelectorImmutability(obj.(*extensions.ReplicaSet).Spec.Selector, old.(*extensions.ReplicaSet).Spec.Selector)...)
+		default:
+			panic("unsupported group version for validate selector immutability")
+		}
+	}
+
+	return allErrs
 }
 
 func (rsStrategy) AllowUnconditionalUpdate() bool {
