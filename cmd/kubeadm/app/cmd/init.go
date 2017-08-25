@@ -296,6 +296,13 @@ func (i *Init) Run(out io.Writer) error {
 		return err
 	}
 
+	// Upload currently used configuration to the cluster
+	// Note: This is done right in the beginning of cluster initialization; as we might want to make other phases
+	// depend on centralized information from this source in the future
+	if err := uploadconfigphase.UploadConfiguration(i.cfg, client); err != nil {
+		return err
+	}
+
 	// PHASE 5: Set up the node bootstrap tokens
 	if !i.skipTokenPrint {
 		fmt.Printf("[bootstraptoken] Using token: %s\n", i.cfg.Token)
@@ -324,11 +331,6 @@ func (i *Init) Run(out io.Writer) error {
 	}
 
 	// PHASE 6: Install and deploy all addons, and configure things as necessary
-
-	// Upload currently used configuration to the cluster
-	if err := uploadconfigphase.UploadConfiguration(i.cfg, client); err != nil {
-		return err
-	}
 
 	if err := apiconfigphase.CreateRBACRules(client, k8sVersion); err != nil {
 		return err
