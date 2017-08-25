@@ -2468,6 +2468,10 @@ func TestValidatePodSecurityPolicy(t *testing.T) {
 		{Min: 1, Max: -10},
 	}
 
+	wildcardAllowedCapAndRequiredDrop := validPSP()
+	wildcardAllowedCapAndRequiredDrop.Spec.RequiredDropCapabilities = []api.Capability{"foo"}
+	wildcardAllowedCapAndRequiredDrop.Spec.AllowedCapabilities = []api.Capability{api.AllowAllCapabilities}
+
 	requiredCapAddAndDrop := validPSP()
 	requiredCapAddAndDrop.Spec.DefaultAddCapabilities = []api.Capability{"foo"}
 	requiredCapAddAndDrop.Spec.RequiredDropCapabilities = []api.Capability{"foo"}
@@ -2571,6 +2575,11 @@ func TestValidatePodSecurityPolicy(t *testing.T) {
 			psp:         invalidRangeNegativeMax,
 			errorType:   field.ErrorTypeInvalid,
 			errorDetail: "max cannot be negative",
+		},
+		"non-empty required drops and all caps are allowed by a wildcard": {
+			psp:         wildcardAllowedCapAndRequiredDrop,
+			errorType:   field.ErrorTypeInvalid,
+			errorDetail: "required capabilities must be empty when all capabilities are allowed by a wildcard",
 		},
 		"invalid required caps": {
 			psp:         requiredCapAddAndDrop,

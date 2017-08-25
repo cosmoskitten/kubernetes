@@ -1673,6 +1673,10 @@ const (
 // Capability represent POSIX capabilities type
 type Capability string
 
+// AllowAllCapabilities can be used as a value for the PodSecurityPolicy.AllowAllCapabilities
+// field and means that any capabilities are allowed to be requested.
+var AllowAllCapabilities Capability = "*"
+
 // Capabilities represent POSIX capabilities that can be added or removed to a running container.
 type Capabilities struct {
 	// Added capabilities
