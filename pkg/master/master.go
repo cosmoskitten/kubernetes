@@ -52,12 +52,17 @@ import (
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	"k8s.io/apiserver/pkg/server/healthz"
 	serverstorage "k8s.io/apiserver/pkg/server/storage"
+	storagefactory "k8s.io/apiserver/pkg/storage/storagebackend/factory"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/kubernetes/cmd/kube-apiserver/app/options"
 	"k8s.io/kubernetes/pkg/api"
+	kapi "k8s.io/kubernetes/pkg/api"
 	coreclient "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
+	election "k8s.io/kubernetes/pkg/election"
 	kubeletclient "k8s.io/kubernetes/pkg/kubelet/client"
 	"k8s.io/kubernetes/pkg/master/tunneler"
+	"k8s.io/kubernetes/pkg/registry/core/endpoint"
+	endpointsstorage "k8s.io/kubernetes/pkg/registry/core/endpoint/storage"
 	"k8s.io/kubernetes/pkg/routes"
 	nodeutil "k8s.io/kubernetes/pkg/util/node"
 
@@ -86,6 +91,16 @@ const (
 	// DefaultEndpointReconcilerInterval is the default amount of time for how often the endpoints for
 	// the kubernetes Service are reconciled.
 	DefaultEndpointReconcilerInterval = 10 * time.Second
+)
+
+// EndpointReconcilerEnum selects which reconciler to use
+type EndpointReconcilerEnum int
+
+const (
+	// DefaultMasterCountReconciler will select the original reconciler
+	MasterCountReconciler = "master-count"
+	// LeaseEndpointReconciler will select a storage based reconciler
+	LeaseEndpointReconciler = "lease"
 )
 
 type Config struct {
@@ -136,6 +151,12 @@ type Config struct {
 	// Number of masters running; all masters must be started with the
 	// same value for this field. (Numbers > 1 currently untested.)
 	MasterCount int
+
+	// out of the kubernetes service record. It is not recommended to set this value below 15s.
+	MasterEndpointReconcileTTL int
+
+	// Selects which reconciler to use
+	EndpointReconcilerType string
 }
 
 // EndpointReconcilerConfig holds the endpoint reconciler and endpoint reconciliation interval to be
@@ -156,6 +177,52 @@ type completedConfig struct {
 	*Config
 }
 
+func (c *Config) createMasterCountReconciler() EndpointReconciler {
+	// use a default endpoint reconciler if nothing is set
+	endpointClient := coreclient.NewForConfigOrDie(c.GenericConfig.LoopbackClientConfig)
+	return NewMasterCountEndpointReconciler(c.MasterCount, endpointClient)
+}
+
+func (c *Config) createLeaseReconciler() EndpointReconciler {
+	ttl := c.MasterEndpointReconcileTTL
+	config, err := c.StorageFactory.NewConfig(kapi.Resource("apiServerIPInfo"))
+	if err != nil {
+		glog.Fatalf("Error determining service IP ranges: %v", err)
+	}
+	leaseStorage, _, err := storagefactory.Create(*config)
+	if err != nil {
+		glog.Fatalf("Error creating storage factory: %v", err)
+	}
+	endpointConfig, err := c.StorageFactory.NewConfig(kapi.Resource("endpoints"))
+	if err != nil {
+		glog.Fatalf("Error getting storage config: %v", err)
+	}
+	endpointsStorage := endpointsstorage.NewREST(generic.RESTOptions{
+		StorageConfig:           endpointConfig,
+		Decorator:               generic.UndecoratedStorage,
+		DeleteCollectionWorkers: 0,
+		ResourcePrefix:          c.StorageFactory.ResourcePrefix(kapi.Resource("endpoints")),
+	})
+	endpointRegistry := endpoint.NewRegistry(endpointsStorage)
+	masterLeases := election.NewLeases(leaseStorage, "/masterleases/", uint64(ttl))
+	return election.NewLeaseEndpointReconciler(endpointRegistry, masterLeases)
+}
+
+func (c *Config) createEndpointReconciler() EndpointReconciler {
+	glog.Infof("Using reconciler: %v", c.EndpointReconcilerType)
+	switch c.EndpointReconcilerType {
+	case "":
+		fallthrough
+	case MasterCountReconciler:
+		return c.createMasterCountReconciler()
+	case LeaseEndpointReconciler:
+		return c.createLeaseReconciler()
+	default:
+		glog.Fatalf("Reconciler not implemented: %v", c.EndpointReconcilerType)
+	}
+	return nil
+}
+
 // Complete fills in any fields not set that are required to have valid data. It's mutating the receiver.
 func (c *Config) Complete() completedConfig {
 	c.GenericConfig.Complete()
@@ -169,6 +236,9 @@ func (c *Config) Complete() completedConfig {
 	}
 	if c.APIServerServiceIP == nil {
 		c.APIServerServiceIP = apiServerServiceIP
+	}
+	if c.MasterEndpointReconcileTTL == 0 {
+		c.MasterEndpointReconcileTTL = 15
 	}
 
 	discoveryAddresses := discovery.DefaultAddresses{DefaultAddress: c.GenericConfig.ExternalAddress}
@@ -193,9 +263,7 @@ func (c *Config) Complete() completedConfig {
 	}
 
 	if c.EndpointReconcilerConfig.Reconciler == nil {
-		// use a default endpoint reconciler if nothing is set
-		endpointClient := coreclient.NewForConfigOrDie(c.GenericConfig.LoopbackClientConfig)
-		c.EndpointReconcilerConfig.Reconciler = NewMasterCountEndpointReconciler(c.MasterCount, endpointClient)
+		c.EndpointReconcilerConfig.Reconciler = c.createEndpointReconciler()
 	}
 
 	// this has always been hardcoded true in the past

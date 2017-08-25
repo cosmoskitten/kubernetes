@@ -59,7 +59,6 @@ type ServerRunOptions struct {
 	EventTTL                  time.Duration
 	KubeletConfig             kubeletclient.KubeletClientConfig
 	KubernetesServiceNodePort int
-	MasterCount               int
 	MaxConnectionBytesPerSec  int64
 	ServiceClusterIPRange     net.IPNet // TODO: make this a list
 	ServiceNodePortRange      utilnet.PortRange
@@ -70,6 +69,9 @@ type ServerRunOptions struct {
 	ProxyClientKeyFile  string
 
 	EnableAggregatorRouting bool
+
+	MasterCount            int
+	EndpointReconcilerType string
 }
 
 // NewServerRunOptions creates a new ServerRunOptions object with default parameters
@@ -163,6 +165,9 @@ func (s *ServerRunOptions) AddFlags(fs *pflag.FlagSet) {
 
 	fs.IntVar(&s.MasterCount, "apiserver-count", s.MasterCount,
 		"The number of apiservers running in the cluster, must be a positive number.")
+
+	fs.StringVar(&s.EndpointReconcilerType, "alpha-endpoint-reconciler-type", "master-count",
+		"If non-empty, use the Endpoint reconciler with type")
 
 	// See #14282 for details on how to test/try this option out.
 	// TODO: remove this comment once this option is tested in CI.

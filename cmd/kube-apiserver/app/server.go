@@ -337,8 +337,11 @@ func CreateKubeAPIServerConfig(s *options.ServerRunOptions, nodeTunneler tunnele
 		ServiceNodePortRange:      s.ServiceNodePortRange,
 		KubernetesServiceNodePort: s.KubernetesServiceNodePort,
 
-		MasterCount: s.MasterCount,
+		EndpointReconcilerType: s.EndpointReconcilerType,
+		MasterCount:            s.MasterCount,
 	}
+
+	config.EndpointReconcilerType = s.EndpointReconcilerType
 
 	if nodeTunneler != nil {
 		// Use the nodeTunneler's dialer to connect to the kubelet

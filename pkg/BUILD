@@ -64,6 +64,7 @@ filegroup(
         "//pkg/cloudprovider:all-srcs",
         "//pkg/controller:all-srcs",
         "//pkg/credentialprovider:all-srcs",
+        "//pkg/election:all-srcs",
         "//pkg/features:all-srcs",
         "//pkg/fieldpath:all-srcs",
         "//pkg/generated:all-srcs",
