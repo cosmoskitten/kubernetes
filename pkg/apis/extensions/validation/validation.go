@@ -19,6 +19,7 @@ package validation
 import (
 	"fmt"
 	"net"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -884,5 +885,16 @@ func ValidatePodSecurityPolicyUpdate(old *extensions.PodSecurityPolicy, new *ext
 	allErrs = append(allErrs, apivalidation.ValidateObjectMetaUpdate(&new.ObjectMeta, &old.ObjectMeta, field.NewPath("metadata"))...)
 	allErrs = append(allErrs, ValidatePodSecurityPolicySpecificAnnotations(new.Annotations, field.NewPath("metadata").Child("annotations"))...)
 	allErrs = append(allErrs, ValidatePodSecurityPolicySpec(&new.Spec, field.NewPath("spec"))...)
+	return allErrs
+}
+
+func ValidateSelectorImmutability(update *metav1.LabelSelector, old *metav1.LabelSelector) field.ErrorList {
+	allErrs := field.ErrorList{}
+	if update == nil || old == nil {
+		return allErrs
+	}
+	if !reflect.DeepEqual(update, old) {
+		allErrs = append(allErrs, field.Invalid(field.NewPath("spec").Child("selector"), update, "selector must not be changed after update"))
+	}
 	return allErrs
 }

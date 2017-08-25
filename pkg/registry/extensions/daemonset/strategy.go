@@ -17,8 +17,11 @@ limitations under the License.
 package daemonset
 
 import (
+	appsv1beta2 "k8s.io/api/apps/v1beta2"
+	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/registry/rest"
@@ -70,15 +73,6 @@ func (daemonSetStrategy) PrepareForUpdate(ctx genericapirequest.Context, obj, ol
 	// update is not allowed to set TemplateGeneration
 	newDaemonSet.Spec.TemplateGeneration = oldDaemonSet.Spec.TemplateGeneration
 
-	// Update is not allowed to set Spec.Selector for all groups/versions except extensions/v1beta1.
-	// If RequestInfo is nil, it is better to revert to old behavior (i.e. allow update to set Spec.Selector)
-	// to prevent unintentionally breaking users who may rely on the old behavior.
-	// TODO(#50791): after v1beta1 is retired, move selector immutability check to validation codes
-	requestInfo, found := genericapirequest.RequestInfoFrom(ctx)
-	if found && !(requestInfo.APIGroup == "extensions" && requestInfo.APIVersion == "v1beta1") {
-		newDaemonSet.Spec.Selector = oldDaemonSet.Spec.Selector
-	}
-
 	// Any changes to the spec increment the generation number, any changes to the
 	// status should reflect the generation number of the corresponding object. We push
 	// the burden of managing the status onto the clients because we can't (in general)
@@ -118,9 +112,27 @@ func (daemonSetStrategy) AllowCreateOnUpdate() bool {
 
 // ValidateUpdate is the default update validation for an end user.
 func (daemonSetStrategy) ValidateUpdate(ctx genericapirequest.Context, obj, old runtime.Object) field.ErrorList {
-	validationErrorList := validation.ValidateDaemonSet(obj.(*extensions.DaemonSet))
-	updateErrorList := validation.ValidateDaemonSetUpdate(obj.(*extensions.DaemonSet), old.(*extensions.DaemonSet))
-	return append(validationErrorList, updateErrorList...)
+	allErrs := validation.ValidateDaemonSet(obj.(*extensions.DaemonSet))
+	allErrs = append(allErrs, validation.ValidateDaemonSetUpdate(obj.(*extensions.DaemonSet), old.(*extensions.DaemonSet))...)
+
+	// Update is not allowed to set Spec.Selector for all groups/versions except extensions/v1beta1.
+	// If RequestInfo is nil, it is better to revert to old behavior (i.e. allow update to set Spec.Selector)
+	// to prevent unintentionally breaking users who may rely on the old behavior.
+	// TODO(#50791): after v1beta1 is retired, move selector immutability check to validation codes
+	if requestInfo, found := genericapirequest.RequestInfoFrom(ctx); found {
+		groupVersion := schema.GroupVersion{Group: requestInfo.APIGroup, Version: requestInfo.APIVersion}
+		switch groupVersion {
+		case extensionsv1beta1.SchemeGroupVersion:
+			// no-op for compatibility
+		case appsv1beta2.SchemeGroupVersion:
+			// disallow mutation of selector
+			allErrs = append(allErrs, validation.ValidateSelectorImmutability(obj.(*extensions.DaemonSet).Spec.Selector, old.(*extensions.DaemonSet).Spec.Selector)...)
+		default:
+			panic("unsupported group version for validate selector immutability")
+		}
+	}
+
+	return allErrs
 }
 
 // AllowUnconditionalUpdate is the default update policy for daemon set objects.
