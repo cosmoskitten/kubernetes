@@ -26,6 +26,19 @@ KUBE_ROOT=$(dirname "${BASH_SOURCE}")/..
 source "${KUBE_ROOT}/build/common.sh"
 source "${KUBE_ROOT}/build/lib/release.sh"
 
+KUBE_RUN_COPY_OUTPUT="${KUBE_RUN_COPY_OUTPUT:-n}"
+
 kube::build::verify_prereqs
 kube::build::build_image
+
+if [[ ${KUBE_RUN_COPY_OUTPUT} =~ ^[yY]$ ]]; then
+  kube::log::status "Output from this container will be rsynced out upon completion"
+else
+  kube::log::status "Output from this container will NOT be rsynced out upon completion"
+fi
+
 kube::build::run_build_command bash || true
+
+if [[ ${KUBE_RUN_COPY_OUTPUT} =~ ^[yY]$ ]]; then
+  kube::build::copy_output
+fi
