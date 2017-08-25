@@ -20,12 +20,11 @@ package azure_dd
 
 import (
 	"path"
-	"regexp"
 	"strconv"
 	libstrings "strings"
 
 	"github.com/golang/glog"
-	"k8s.io/utils/exec"
+	"k8s.io/kubernetes/pkg/util/mount"
 )
 
 // exclude those used by azure as resource and OS root in /dev/disk/azure

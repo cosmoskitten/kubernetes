@@ -21,7 +21,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
-	"strconv"
 	libstrings "strings"
 
 	storage "github.com/Azure/azure-sdk-for-go/arm/storage"
@@ -172,6 +171,10 @@ func (handler *osIOHandler) WriteFile(filename string, data []byte, perm os.File
 
 func (handler *osIOHandler) Readlink(name string) (string, error) {
 	return os.Readlink(name)
+}
+
+func (handler *osIOHandler) ReadFile(filename string) ([]byte, error) {
+	return ioutil.ReadFile(filename)
 }
 
 func getDiskController(host volume.VolumeHost) (DiskController, error) {
