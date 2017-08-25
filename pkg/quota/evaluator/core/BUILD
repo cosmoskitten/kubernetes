@@ -27,6 +27,7 @@ go_library(
         "//pkg/api/validation:go_default_library",
         "//pkg/quota:go_default_library",
         "//pkg/quota/generic:go_default_library",
+        "//pkg/util/node:go_default_library",
         "//vendor/k8s.io/api/core/v1:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/api/resource:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
@@ -51,6 +52,7 @@ go_test(
     deps = [
         "//pkg/api:go_default_library",
         "//pkg/quota:go_default_library",
+        "//pkg/util/node:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/api/resource:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
         "//vendor/k8s.io/client-go/kubernetes/fake:go_default_library",
