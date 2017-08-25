@@ -24,6 +24,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -745,7 +746,24 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 	// check node capabilities since the mount path is not the default
 	if len(kubeCfg.ExperimentalMounterPath) != 0 {
 		kubeCfg.ExperimentalCheckNodeCapabilitiesBeforeMount = false
+		resolvePath := filepath.Join(strings.TrimSuffix(kubeCfg.ExperimentalMounterPath, "/mounter"), "rootfs", "etc", "resolv.conf")
+		fileHandle, err := os.OpenFile(resolvePath, os.O_APPEND|os.O_WRONLY, 0600)
+		if err != nil {
+			glog.Errorf("Failed to open file %s, with error %v", resolvePath, err)
+		} else if len(klet.clusterDNS) > 0 {
+			defer fileHandle.Close()
+			dnsString := ""
+			for _, dns := range klet.clusterDNS {
+				dnsString = dnsString + fmt.Sprintf("nameserver %s\n", dns)
+			}
+			dnsString = dnsString + "options rotate\n"
+			glog.V(4).Infof("DNS nameserver string is %s", dnsString)
+			if _, err = fileHandle.WriteString(dnsString); err != nil {
+				glog.Errorf("Could not write nameserver in file %s, with error %v", resolvePath, err)
+			}
+		}
 	}
+
 	// setup volumeManager
 	klet.volumeManager = volumemanager.NewVolumeManager(
 		kubeCfg.EnableControllerAttachDetach,
