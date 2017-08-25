@@ -465,12 +465,6 @@ func (v *sioVolume) setSioMgrFromConfig() error {
 			return err
 		}
 
-		// merge in Sdc Guid label value
-		if err := attachSdcGuid(v.plugin, configData); err != nil {
-			glog.Error(log("failed to retrieve sdc guid: %v", err))
-			return err
-		}
-
 		mgr, err := newSioMgr(data, v.plugin.host.GetExec(v.plugin.GetPluginName()))
 
 		if err != nil {
