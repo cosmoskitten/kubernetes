@@ -27,8 +27,9 @@ import (
 )
 
 var (
-	ReadWrite = []string{"get", "list", "watch", "create", "update", "patch", "delete", "deletecollection"}
-	Read      = []string{"get", "list", "watch"}
+	ReadWrite  = []string{"get", "list", "watch", "create", "update", "patch", "delete", "deletecollection"}
+	Read       = []string{"get", "list", "watch"}
+	ReadUpdate = []string{"get", "list", "update", "watch"}
 
 	Label      = map[string]string{"kubernetes.io/bootstrapping": "rbac-defaults"}
 	Annotation = map[string]string{rbac.AutoUpdateAnnotationKey: "true"}
@@ -330,8 +331,10 @@ func ClusterRoles() []rbac.ClusterRole {
 				rbac.NewRule("get", "update", "patch", "delete").Groups(legacyGroup).Resources("endpoints").Names("kube-scheduler").RuleOrDie(),
 
 				// fundamental resources
-				rbac.NewRule(Read...).Groups(legacyGroup).Resources("nodes", "pods").RuleOrDie(),
+				rbac.NewRule(Read...).Groups(legacyGroup).Resources("nodes").RuleOrDie(),
+				rbac.NewRule(ReadUpdate...).Groups(legacyGroup).Resources("pods").RuleOrDie(),
 				rbac.NewRule("create").Groups(legacyGroup).Resources("pods/binding", "bindings").RuleOrDie(),
+				rbac.NewRule("create").Groups(legacyGroup).Resources("pods/eviction", "evictions").RuleOrDie(),
 				rbac.NewRule("update").Groups(legacyGroup).Resources("pods/status").RuleOrDie(),
 				// things that select pods
 				rbac.NewRule(Read...).Groups(legacyGroup).Resources("services", "replicationcontrollers").RuleOrDie(),
