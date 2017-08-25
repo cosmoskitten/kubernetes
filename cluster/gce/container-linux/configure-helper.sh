@@ -25,7 +25,18 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-LOCAL_NODE_LABELS="${NODE_LABELS:-}"
+node_labels=""
+if [[ "${KUBERNETES_MASTER:-}" != "true" && "${KUBE_PROXY_DAEMONSET:-}" == "true" ]]; then
+  # Add kube-proxy daemonset label to node to avoid situation during cluster
+  # upgrade/downgrade when there are two instances of kube-proxy running on a node.
+  node_labels="beta.kubernetes.io/kube-proxy-ds-ready=true"
+fi
+if [[ -n "${NODE_LABELS:-}" ]]; then
+  node_labels="${node_labels:+${node_labels},}${NODE_LABELS}"
+fi
+if [[ -n "${node_labels:-}" ]]; then
+  flags+=" --node-labels=${node_labels}"
+fi
 
 function create-dirs {
   echo "Creating required directories"
@@ -82,22 +93,6 @@ function get-calico-typha-cpu {
     typha_cpu=1000m
   fi
   echo "${typha_cpu}"
-}
-
-# Prepare node labels specifically for master or node.
-function prepare-node-labels {
-  # Labels for node.
-  if [[ "${KUBERNETES_MASTER:-}" != "true" ]]; then
-    if [[ "${KUBE_PROXY_DAEMONSET:-}" == "true" ]]; then
-      # Add kube-proxy daemonset label to node to avoid situation during cluster
-      # upgrade/downgrade when there are two instances of kube-proxy running on a node.
-      if [[ -n "${LOCAL_NODE_LABELS:-}" ]]; then
-        LOCAL_NODE_LABELS="${LOCAL_NODE_LABELS},beta.kubernetes.io/kube-proxy-ds-ready=true"
-      else
-        LOCAL_NODE_LABELS="beta.kubernetes.io/kube-proxy-ds-ready=true"
-      fi
-    fi
-  fi
 }
 
 # Create directories referenced in the kube-controller-manager manifest for
@@ -1542,7 +1537,6 @@ else
 fi
 
 load-docker-images
-prepare-node-labels
 start-kubelet
 
 if [[ "${KUBERNETES_MASTER:-}" == "true" ]]; then
