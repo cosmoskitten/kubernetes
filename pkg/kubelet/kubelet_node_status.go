@@ -133,11 +133,14 @@ func (kl *Kubelet) tryRegisterWithAPIServer(node *v1.Node) bool {
 	if existingNode.Spec.ExternalID == node.Spec.ExternalID {
 		glog.Infof("Node %s was previously registered", kl.nodeName)
 
+		labelRequiresUpdate := kl.syncFundamentalSystemLabelWithExistingNode(node, existingNode)
+
 		// Edge case: the node was previously registered; reconcile
 		// the value of the controller-managed attach-detach
 		// annotation.
-		requiresUpdate := kl.reconcileCMADAnnotationWithExistingNode(node, existingNode)
-		if requiresUpdate {
+		annotationRequiresUpdate := kl.reconcileCMADAnnotationWithExistingNode(node, existingNode)
+
+		if labelRequiresUpdate || annotationRequiresUpdate {
 			if _, err := nodeutil.PatchNodeStatus(kl.kubeClient, types.NodeName(kl.nodeName),
 				originalNode, existingNode); err != nil {
 				glog.Errorf("Unable to reconcile node %q with API server: error updating node: %v", kl.nodeName, err)
@@ -159,6 +162,35 @@ func (kl *Kubelet) tryRegisterWithAPIServer(node *v1.Node) bool {
 	}
 
 	return false
+}
+
+// syncFundamentalSystemLabelWithExistingNode synchronize the fundamental system label
+// on a new node and the existing node, returning whether the existing node must be updated.
+func (kl *Kubelet) syncFundamentalSystemLabelWithExistingNode(node, existingNode *v1.Node) bool {
+	var (
+		existingLabelOS            = existingNode.Labels[kubeletapis.LabelOS]
+		existingLabelArch          = existingNode.Labels[kubeletapis.LabelArch]
+		existingLabelKernelVersion = existingNode.Labels[kubeletapis.LabelKernelVersion]
+
+		newLabelOS            = node.Labels[kubeletapis.LabelOS]
+		newLabelArch          = node.Labels[kubeletapis.LabelArch]
+		newLabelKernelVersion = node.Labels[kubeletapis.LabelKernelVersion]
+	)
+
+	if newLabelOS == existingLabelOS &&
+		newLabelArch == existingLabelArch &&
+		newLabelKernelVersion == existingLabelKernelVersion {
+		return false
+	}
+
+	if existingNode.Labels == nil {
+		existingNode.Labels = make(map[string]string)
+	}
+	existingNode.Labels[kubeletapis.LabelOS] = newLabelOS
+	existingNode.Labels[kubeletapis.LabelArch] = newLabelArch
+	existingNode.Labels[kubeletapis.LabelKernelVersion] = newLabelKernelVersion
+
+	return true
 }
 
 // reconcileCMADAnnotationWithExistingNode reconciles the controller-managed
