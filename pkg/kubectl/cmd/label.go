@@ -142,6 +142,10 @@ func NewCmdLabel(f cmdutil.Factory, out io.Writer) *cobra.Command {
 
 // Complete adapts from the command line args and factory to the data required.
 func (o *LabelOptions) Complete(out io.Writer, cmd *cobra.Command, args []string) (err error) {
+	// cannot set --all and --selector at the same time
+	if err := cmdutil.CheckConflictFlagSettings(cmd, "all", "selector"); err != nil {
+		return err
+	}
 	o.out = out
 	o.local = cmdutil.GetFlagBool(cmd, "local")
 	o.overwrite = cmdutil.GetFlagBool(cmd, "overwrite")

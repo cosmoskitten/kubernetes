@@ -109,6 +109,10 @@ func NewCmdSubject(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Co
 }
 
 func (o *SubjectOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args []string) error {
+	// cannot set --all and --selector at the same time
+	if err := cmdutil.CheckConflictFlagSettings(cmd, "all", "selector"); err != nil {
+		return err
+	}
 	o.Local = cmdutil.GetFlagBool(cmd, "local")
 	o.Mapper, o.Typer = f.Object()
 	o.Encoder = f.JSONEncoder()

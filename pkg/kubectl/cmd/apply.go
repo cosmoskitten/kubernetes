@@ -141,10 +141,17 @@ func NewCmdApply(baseName string, f cmdutil.Factory, out, errOut io.Writer) *cob
 }
 
 func validateArgs(cmd *cobra.Command, args []string) error {
+	// cannot set --all and --selector at the same time
+	if err := cmdutil.CheckConflictFlagSettings(cmd, "all", "selector"); err != nil {
+		return err
+	}
 	if len(args) != 0 {
 		return cmdutil.UsageErrorf(cmd, "Unexpected args: %v", args)
 	}
-
+	// cannot set --all and --selector at the same time
+	if err := cmdutil.CheckConflictFlagSettings(cmd, "all", "selector"); err != nil {
+		return err
+	}
 	return nil
 }
 

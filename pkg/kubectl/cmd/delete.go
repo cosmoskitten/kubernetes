@@ -204,6 +204,10 @@ func (o *DeleteOptions) Complete(f cmdutil.Factory, out, errOut io.Writer, args 
 }
 
 func (o *DeleteOptions) Validate(cmd *cobra.Command) error {
+	// cannot set --all and --selector at the same time
+	if err := cmdutil.CheckConflictFlagSettings(cmd, "all", "selector"); err != nil {
+		return err
+	}
 	if o.DeleteAll {
 		f := cmd.Flags().Lookup("ignore-not-found")
 		// The flag should never be missing
