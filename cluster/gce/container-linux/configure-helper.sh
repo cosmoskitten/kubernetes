@@ -710,10 +710,8 @@ function prepare-log-file {
 
 # Prepares parameters for kube-proxy manifest.
 # $1 source path of kube-proxy manifest.
-# $2 true for daemonset manifest; false for static pod. Default to false.
 function prepare-kube-proxy-manifest-variables {
   local -r src_file=$1;
-  local -r is_daemonset_manifest=${2:-false}
 
   remove-salt-config-comments "${src_file}"
 
@@ -733,19 +731,20 @@ function prepare-kube-proxy-manifest-variables {
     params+=" ${KUBEPROXY_TEST_ARGS}"
   fi
   local container_env=""
+  local kube_cache_mutation_detector_env_name=""
+  local kube_cache_mutation_detector_env_value=""
   if [[ -n "${ENABLE_CACHE_MUTATION_DETECTOR:-}" ]]; then
-    # Daemonset manifest needs a different indent.
-    if [ ${is_daemonset_manifest} = true ]; then
-      container_env="env:\n        - name: KUBE_CACHE_MUTATION_DETECTOR\n          value: \"${ENABLE_CACHE_MUTATION_DETECTOR}\""
-    else
-      container_env="env:\n    - name: KUBE_CACHE_MUTATION_DETECTOR\n      value: \"${ENABLE_CACHE_MUTATION_DETECTOR}\""
-    fi
+    container_env="env:"
+    kube_cache_mutation_detector_env_name="- name: KUBE_CACHE_MUTATION_DETECTOR"
+    kube_cache_mutation_detector_env_value="value: \"${ENABLE_CACHE_MUTATION_DETECTOR}\""
   fi
   sed -i -e "s@{{kubeconfig}}@${kubeconfig}@g" ${src_file}
   sed -i -e "s@{{pillar\['kube_docker_registry'\]}}@${kube_docker_registry}@g" ${src_file}
   sed -i -e "s@{{pillar\['kube-proxy_docker_tag'\]}}@${kube_proxy_docker_tag}@g" ${src_file}
   sed -i -e "s@{{params}}@${params}@g" ${src_file}
   sed -i -e "s@{{container_env}}@${container_env}@g" ${src_file}
+  sed -i -e "s@{{kube_cache_mutation_detector_env_name}}@${kube_cache_mutation_detector_env_name}@g" ${src_file}
+  sed -i -e "s@{{kube_cache_mutation_detector_env_value}}@${kube_cache_mutation_detector_env_value}@g" ${src_file}
   sed -i -e "s@{{ cpurequest }}@100m@g" ${src_file}
   sed -i -e "s@{{api_servers_with_port}}@${api_servers}@g" ${src_file}
   if [[ -n "${CLUSTER_IP_RANGE:-}" ]]; then
@@ -764,9 +763,9 @@ function prepare-kube-proxy-manifest-variables {
   fi
 }
 
-# Starts kube-proxy pod.
+# Starts kube-proxy static pod.
 function start-kube-proxy {
-  echo "Start kube-proxy pod"
+  echo "Start kube-proxy static pod"
   prepare-log-file /var/log/kube-proxy.log
   local -r src_file="${KUBE_HOME}/kube-manifests/kubernetes/kube-proxy.manifest"
   prepare-kube-proxy-manifest-variables "$src_file"
@@ -1275,7 +1274,7 @@ function start-kube-addons {
 
   # Set up manifests of other addons.
   if [[ "${KUBE_PROXY_DAEMONSET:-}" == "true" ]]; then
-    prepare-kube-proxy-manifest-variables "$src_dir/kube-proxy/kube-proxy-ds.yaml" true
+    prepare-kube-proxy-manifest-variables "$src_dir/kube-proxy/kube-proxy-ds.yaml"
     setup-addon-manifests "addons" "kube-proxy"
   fi
   if [[ "${ENABLE_CLUSTER_MONITORING:-}" == "influxdb" ]] || \
