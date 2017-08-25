@@ -580,7 +580,6 @@ items:
     - ""
     resources:
     - nodes
-    - pods
     verbs:
     - get
     - list
@@ -588,8 +587,28 @@ items:
   - apiGroups:
     - ""
     resources:
+    - pods
+    verbs:
+    - create
+    - delete
+    - deletecollection
+    - get
+    - list
+    - patch
+    - update
+    - watch
+  - apiGroups:
+    - ""
+    resources:
     - bindings
     - pods/binding
+    verbs:
+    - create
+  - apiGroups:
+    - ""
+    resources:
+    - evictions
+    - pods/eviction
     verbs:
     - create
   - apiGroups:
