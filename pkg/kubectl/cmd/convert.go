@@ -189,6 +189,15 @@ func (o *ConvertOptions) RunConvert() error {
 		if err != nil {
 			return err
 		}
+
+		for _, item := range items {
+			actualVersion := item.GetObjectKind().GroupVersionKind()
+			if actualVersion.Version != o.outputVersion.Version {
+				fmt.Fprintf(o.out, "target version is not specified or not supported, convert to latest version instead\n")
+				break
+			}
+		}
+
 		filteredObj, err := cmdutil.ObjectListToVersionedObject(items, o.outputVersion)
 		if err != nil {
 			return err
@@ -196,5 +205,8 @@ func (o *ConvertOptions) RunConvert() error {
 		return o.printer.PrintObj(filteredObj, o.out)
 	}
 
+	if actualVersion.Version != o.outputVersion.Version {
+		fmt.Fprintf(o.out, "target version is not specified or not supported, convert to latest version instead\n")
+	}
 	return o.printer.PrintObj(objects, o.out)
 }
