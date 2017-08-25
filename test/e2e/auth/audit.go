@@ -112,7 +112,7 @@ func expectAuditLines(f *framework.Framework, expected []auditEvent) {
 	}
 
 	// Fetch the log stream.
-	stream, err := f.ClientSet.Core().RESTClient().Get().AbsPath("/logs/kube-apiserver-audit.log").Stream()
+	stream, err := f.ClientSet.Core().RESTClient().Get().AbsPath("/logs/invalid-log-url.log").Stream()
 	framework.ExpectNoError(err, "could not read audit log")
 	defer stream.Close()
 
