@@ -33,6 +33,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	"golang.org/x/net/http2"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -744,8 +745,16 @@ func (r *Request) DoRaw() ([]byte, error) {
 func (r *Request) transformResponse(resp *http.Response, req *http.Request) Result {
 	var body []byte
 	if resp.Body != nil {
-		if data, err := ioutil.ReadAll(resp.Body); err == nil {
+		data, err := ioutil.ReadAll(resp.Body)
+		switch err.(type) {
+		case nil:
 			body = data
+		case http2.StreamError:
+			glog.V(2).Infof("Stream error when reading response body, may be caused by closed connection.")
+			steamErr := fmt.Errorf("Stream error %#v when reading response body, may be caused by closed connection. Please retry.", err)
+			return Result{
+				err: steamErr,
+			}
 		}
 	}
 
