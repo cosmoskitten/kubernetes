@@ -17,8 +17,6 @@ limitations under the License.
 package flexvolume
 
 import (
-	"io/ioutil"
-
 	"github.com/golang/glog"
 	"k8s.io/kubernetes/pkg/volume"
 
@@ -31,15 +29,18 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"k8s.io/apimachinery/pkg/util/errors"
+	utilfs "k8s.io/kubernetes/pkg/util/filesystem"
 )
 
 type flexVolumeProber struct {
 	mutex           sync.Mutex
 	pluginDir       string // Flexvolume driver directory
-	watcher         *fsnotify.Watcher
+	watcher         FSWatcher
 	probeNeeded     bool      // Must only read and write this through testAndSetProbeNeeded.
 	lastUpdated     time.Time // Last time probeNeeded was updated.
 	watchEventCount int
+	factory         PluginFactory
+	fs              utilfs.Filesystem
 }
 
 const (
@@ -50,7 +51,7 @@ const (
 )
 
 func GetDynamicPluginProber(pluginDir string) volume.DynamicPluginProber {
-	return &flexVolumeProber{pluginDir: pluginDir}
+	return &flexVolumeProber{pluginDir: pluginDir, factory: pluginFactory{}, fs: &utilfs.DefaultFs{}}
 }
 
 func (prober *flexVolumeProber) Init() error {
@@ -64,19 +65,13 @@ func (prober *flexVolumeProber) Init() error {
 		return err
 	}
 
-	go func() {
-		defer prober.watcher.Close()
-		for {
-			select {
-			case event := <-prober.watcher.Events:
-				if err := prober.handleWatchEvent(event); err != nil {
-					glog.Errorf("Flexvolume prober watch: %s", err)
-				}
-			case err := <-prober.watcher.Errors:
-				glog.Errorf("Received an error from watcher: %s", err)
-			}
+	prober.watcher.Init(func(event fsnotify.Event) {
+		if err := prober.handleWatchEvent(event); err != nil {
+			glog.Errorf("Flexvolume prober watch: %s", err)
 		}
-	}()
+	}, func(err error) {
+		glog.Errorf("Received an error from watcher: %s", err)
+	})
 
 	return nil
 }
@@ -94,7 +89,7 @@ func (prober *flexVolumeProber) Probe() (updated bool, plugins []volume.VolumePl
 		return false, nil, nil
 	}
 
-	files, err := ioutil.ReadDir(prober.pluginDir)
+	files, err := prober.fs.ReadDir(prober.pluginDir)
 	if err != nil {
 		return false, nil, fmt.Errorf("Error reading the Flexvolume directory: %s", err)
 	}
@@ -108,7 +103,7 @@ func (prober *flexVolumeProber) Probe() (updated bool, plugins []volume.VolumePl
 		// e.g. dirname = vendor~cifs
 		// then, executable will be pluginDir/dirname/cifs
 		if f.IsDir() && filepath.Base(f.Name())[0] != '.' {
-			plugin, pluginErr := NewFlexVolumePlugin(prober.pluginDir, f.Name())
+			plugin, pluginErr := prober.factory.NewFlexVolumePlugin(prober.pluginDir, f.Name())
 			if pluginErr != nil {
 				pluginErr = fmt.Errorf(
 					"Error creating Flexvolume plugin from directory %s, skipping. Error: %s",
@@ -186,22 +181,23 @@ func (prober *flexVolumeProber) updateProbeNeeded() {
 func (prober *flexVolumeProber) addWatchRecursive(filename string) error {
 	addWatch := func(path string, info os.FileInfo, err error) error {
 		if info.IsDir() {
-			if err := prober.watcher.Add(path); err != nil {
+			if err := prober.watcher.AddWatch(path); err != nil {
 				glog.Errorf("Error recursively adding watch: %v", err)
 			}
 		}
 		return nil
 	}
-
-	return filepath.Walk(filename, addWatch)
+	return prober.fs.Walk(filename, addWatch)
 }
 
 // Creates a new filesystem watcher and adds watches for the plugin directory
 // and all of its subdirectories.
 func (prober *flexVolumeProber) initWatcher() error {
 	var err error
-	if prober.watcher, err = fsnotify.NewWatcher(); err != nil {
-		return fmt.Errorf("Error creating new watcher: %s", err)
+	if prober.watcher == nil {
+		if prober.watcher, err = NewFsnotifyWatcher(); err != nil {
+			return fmt.Errorf("Error creating new watcher: %s", err)
+		}
 	}
 
 	if err = prober.addWatchRecursive(prober.pluginDir); err != nil {
@@ -213,8 +209,8 @@ func (prober *flexVolumeProber) initWatcher() error {
 
 // Creates the plugin directory, if it doesn't already exist.
 func (prober *flexVolumeProber) createPluginDir() error {
-	if _, err := os.Stat(prober.pluginDir); os.IsNotExist(err) {
-		err := os.MkdirAll(prober.pluginDir, 0755)
+	if _, err := prober.fs.Stat(prober.pluginDir); os.IsNotExist(err) {
+		err := prober.fs.MkdirAll(prober.pluginDir, 0755)
 		if err != nil {
 			return fmt.Errorf("Error (re-)creating driver directory: %s", err)
 		}
