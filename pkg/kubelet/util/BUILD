@@ -21,7 +21,7 @@ go_library(
         "util_unsupported.go",
     ] + select({
         "@io_bazel_rules_go//go/platform:darwin_amd64": [
-            "util_darwin.go",
+            "util_unix.go",
         ],
         "@io_bazel_rules_go//go/platform:linux_amd64": [
             "util_unix.go",
@@ -36,6 +36,7 @@ go_library(
     ] + select({
         "@io_bazel_rules_go//go/platform:darwin_amd64": [
             "//vendor/github.com/golang/glog:go_default_library",
+            "//vendor/golang.org/x/sys/unix:go_default_library",
         ],
         "@io_bazel_rules_go//go/platform:linux_amd64": [
             "//vendor/github.com/golang/glog:go_default_library",

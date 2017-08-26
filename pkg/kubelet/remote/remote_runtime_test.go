@@ -40,9 +40,6 @@ func createAndStartFakeRemoteRuntime(t *testing.T) (*fakeremote.RemoteRuntime, s
 	fakeRuntime := fakeremote.NewFakeRemoteRuntime()
 	go fakeRuntime.Start(endpoint)
 
-	// Wait a moment for server started.
-	time.Sleep(time.Second)
-
 	return fakeRuntime, endpoint
 }
 
@@ -62,7 +59,6 @@ func createRemoteImageService(endpoint string, t *testing.T) internalapi.ImageMa
 
 func TestVersion(t *testing.T) {
 	fakeRuntime, endpoint := createAndStartFakeRemoteRuntime(t)
-
 	defer fakeRuntime.Stop()
 
 	r := createRemoteRuntimeService(endpoint, t)
