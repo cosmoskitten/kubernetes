@@ -397,23 +397,8 @@ func CreateGCECloud(config *CloudConfig) (*GCECloud, error) {
 		return nil, err
 	}
 
-	// config.ProjectID may be the id or project number
-	// In gce_routes.go, the generated networkURL is compared with a URL within a route
-	// therefore, we need to make sure the URL is constructed with the string ID.
-	projID, err := getProjectID(service, config.ProjectID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get project %v, err: %v", config.ProjectID, err)
-	}
-
-	// config.NetworkProjectID may be the id or project number. In order to compare project ID
-	// to network project ID to determine XPN status, we need to verify both are actual IDs.
-	netProjID := projID
-	if config.NetworkProjectID != config.ProjectID {
-		netProjID, err = getProjectID(service, config.NetworkProjectID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get network project %v, err: %v", config.NetworkProjectID, err)
-		}
-	}
+	// ProjectID and.NetworkProjectID may be project number or name.
+	projID, netProjID := tryConvertToProjectNames(config.ProjectID, config.NetworkProjectID, service)
 
 	onXPN := projID != netProjID
 
@@ -477,6 +462,33 @@ func CreateGCECloud(config *CloudConfig) (*GCECloud, error) {
 
 	gce.manager = &GCEServiceManager{gce}
 	return gce, nil
+}
+
+func tryConvertToProjectNames(configProject, configNetworkProject string, service *compute.Service) (projID, netProjID string) {
+	projID = configProject
+	if isProjectNumber(projID) {
+		projName, err := getProjectID(service, projID)
+		if err != nil {
+			glog.Warningf("failed to retrieve project %v while trying to retrieve its name. err %v", projID, err)
+		} else {
+			projID = projName
+		}
+	}
+
+	netProjID = projID
+	if configNetworkProject != configProject {
+		netProjID = configNetworkProject
+	}
+	if isProjectNumber(netProjID) {
+		netProjName, err := getProjectID(service, netProjID)
+		if err != nil {
+			glog.Warningf("failed to retrieve network project %v while trying to retrieve its name. err %v", netProjID, err)
+		} else {
+			netProjID = netProjName
+		}
+	}
+
+	return projID, netProjID
 }
 
 // Initialize takes in a clientBuilder and spawns a goroutine for watching the clusterid configmap.
@@ -562,6 +574,16 @@ func (gce *GCECloud) ScrubDNS(nameservers, searches []string) (nsOut, srchOut []
 // HasClusterID returns true if the cluster has a clusterID
 func (gce *GCECloud) HasClusterID() bool {
 	return true
+}
+
+// Project IDs cannot have a digit for the first characeter. If the id contains a digit,
+// then it must be a project number.
+func isProjectNumber(idOrNumber string) bool {
+	if len(idOrNumber) == 0 {
+		return false
+	}
+
+	return idOrNumber[0] >= '0' && idOrNumber[0] <= '9'
 }
 
 // GCECloud implements cloudprovider.Interface.
