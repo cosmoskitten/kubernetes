@@ -116,7 +116,7 @@ func (w *KubeWaiter) WaitForPodToDisappear(podName string) error {
 	return wait.PollImmediate(constants.APICallRetryInterval, w.timeout, func() (bool, error) {
 		_, err := w.client.CoreV1().Pods(metav1.NamespaceSystem).Get(podName, metav1.GetOptions{})
 		if apierrors.IsNotFound(err) {
-			fmt.Printf("[apiclient] The Static Pod %q is now removed\n", podName)
+			fmt.Printf("[apiclient] The old Pod %q is now removed (which is desired)\n", podName)
 			return true, nil
 		}
 		return false, nil

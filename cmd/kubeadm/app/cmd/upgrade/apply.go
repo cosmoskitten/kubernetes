@@ -215,9 +215,8 @@ func PerformControlPlaneUpgrade(flags *applyFlags, client clientset.Interface, w
 	if upgrade.IsControlPlaneSelfHosted(client) {
 		fmt.Printf("[upgrade/apply] Upgrading your Self-Hosted control plane to version %q...\n", flags.newK8sVersionStr)
 
-		// Upgrade a self-hosted cluster
-		// TODO(luxas): Implement this later when we have the new upgrade strategy
-		return fmt.Errorf("not implemented")
+		// Upgrade the self-hosted cluster
+		return upgrade.SelfHostedControlPlane(client, waiter, internalcfg, flags.newK8sVersion)
 	}
 
 	// OK, the cluster is hosted using static pods. Upgrade a static-pod hosted cluster

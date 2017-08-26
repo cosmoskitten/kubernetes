@@ -78,11 +78,7 @@ func (d *DaemonSetPrepuller) WaitFunc(component string) {
 // DeleteFunc deletes the DaemonSet used for making the image available on every relevant node
 func (d *DaemonSetPrepuller) DeleteFunc(component string) error {
 	dsName := addPrepullPrefix(component)
-	foregroundDelete := metav1.DeletePropagationForeground
-	deleteOptions := &metav1.DeleteOptions{
-		PropagationPolicy: &foregroundDelete,
-	}
-	if err := d.client.ExtensionsV1beta1().DaemonSets(metav1.NamespaceSystem).Delete(dsName, deleteOptions); err != nil {
+	if err := apiclient.DeleteDaemonSetForeground(d.client, metav1.NamespaceSystem, dsName); err != nil {
 		return fmt.Errorf("unable to cleanup the DaemonSet used for prepulling %s: %v", component, err)
 	}
 	fmt.Printf("[upgrade/prepull] Prepulled image for component %s.\n", component)

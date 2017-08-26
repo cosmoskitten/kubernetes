@@ -471,7 +471,7 @@ func TestBuildDaemonSet(t *testing.T) {
 			t.Fatalf("couldn't load the specified Pod")
 		}
 
-		ds := buildDaemonSet(rt.component, podSpec, getDefaultMutators())
+		ds := BuildDaemonSet(rt.component, podSpec, GetDefaultMutators())
 		dsBytes, err := yaml.Marshal(ds)
 		if err != nil {
 			t.Fatalf("failed to marshal daemonset to YAML: %v", err)
