@@ -144,7 +144,7 @@ func NewCmdConfigUploadFromFlags(out io.Writer, kubeConfigFile *string) *cobra.C
 		`), metav1.NamespaceSystem, constants.MasterConfigurationConfigMap),
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
-			if cfg.FeatureFlags, err = features.NewFeatureGate(&features.InitFeatureGates, featureFlagsString); err != nil {
+			if cfg.FeatureGates, err = features.NewFeatureGate(&features.InitFeatureGates, featureFlagsString); err != nil {
 				kubeadmutil.CheckErr(err)
 			}
 

@@ -99,7 +99,7 @@ func NewCmdInit(out io.Writer) *cobra.Command {
 		Short: "Run this in order to set up the Kubernetes master",
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
-			if cfg.FeatureFlags, err = features.NewFeatureGate(&features.InitFeatureGates, featureFlagsString); err != nil {
+			if cfg.FeatureGates, err = features.NewFeatureGate(&features.InitFeatureGates, featureFlagsString); err != nil {
 				kubeadmutil.CheckErr(err)
 			}
 
@@ -381,7 +381,7 @@ func (i *Init) Run(out io.Writer) error {
 	}
 
 	// PHASE 7: Make the control plane self-hosted if feature gate is enabled
-	if features.Enabled(i.cfg.FeatureFlags, features.SelfHosting) {
+	if features.Enabled(i.cfg.FeatureGates, features.SelfHosting) {
 		// Temporary control plane is up, now we create our self hosted control
 		// plane components and remove the static manifests:
 		fmt.Println("[self-hosted] Creating self-hosted control plane...")

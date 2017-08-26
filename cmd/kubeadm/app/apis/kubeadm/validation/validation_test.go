@@ -436,7 +436,7 @@ func TestValidateMixedArguments(t *testing.T) {
 	}
 }
 
-func TestValidateFeatureFlags(t *testing.T) {
+func TestValidateFeatureGates(t *testing.T) {
 	type featureFlag map[string]bool
 	var tests = []struct {
 		featureFlags featureFlag
@@ -449,7 +449,7 @@ func TestValidateFeatureFlags(t *testing.T) {
 		{featureFlag{"Foo": true}, false},
 	}
 	for _, rt := range tests {
-		actual := ValidateFeatureFlags(rt.featureFlags, nil)
+		actual := ValidateFeatureGates(rt.featureFlags, nil)
 		if (len(actual) == 0) != rt.expected {
 			t.Errorf(
 				"failed featureFlags:\n\texpected: %t\n\t  actual: %t",

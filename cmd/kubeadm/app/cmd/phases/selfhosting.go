@@ -65,7 +65,7 @@ func getSelfhostingSubCommand() *cobra.Command {
 		Short:   "Converts a Static Pod-hosted control plane into a self-hosted one.",
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
-			if cfg.FeatureFlags, err = features.NewFeatureGate(&features.InitFeatureGates, featureFlagsString); err != nil {
+			if cfg.FeatureGates, err = features.NewFeatureGate(&features.InitFeatureGates, featureFlagsString); err != nil {
 				kubeadmutil.CheckErr(err)
 			}
 
