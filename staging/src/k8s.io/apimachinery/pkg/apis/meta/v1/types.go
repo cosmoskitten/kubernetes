@@ -356,7 +356,7 @@ type ListOptions struct {
 	// first request is issued will be included in any subsequent continued requests. This is sometimes
 	// referred to as a consistent snapshot, and ensures that a client that is using limit to receive
 	// smaller chunks of a very large result can ensure they see all possible objects. If objects are
-	// updated during a paged list the version of the object that was present at the time the first list
+	// updated during a chunked list the version of the object that was present at the time the first list
 	// result was calculated is returned.
 	Limit int64 `json:"limit,omitempty" protobuf:"varint,7,opt,name=limit"`
 	// The continue option should be set when retrieving more results from the server. Since this value
