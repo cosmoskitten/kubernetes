@@ -258,3 +258,7 @@ func (cc *cadvisorClient) HasDedicatedImageFs() (bool, error) {
 	}
 	return imageFsInfo.Device != rootFsInfo.Device, nil
 }
+
+func (cc *cadvisorClient) GetFsInfoByFsUUID(uuid string) (cadvisorapiv2.FsInfo, error) {
+	return cc.GetFsInfoByFsUUID(uuid)
+}
