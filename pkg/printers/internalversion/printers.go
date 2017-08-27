@@ -1081,6 +1081,9 @@ func printEndpointsList(list *api.EndpointsList, options printers.PrintOptions) 
 }
 
 func printNamespace(obj *api.Namespace, options printers.PrintOptions) ([]metav1alpha1.TableRow, error) {
+	if options.WithNamespace {
+		return nil, fmt.Errorf("namespace is not namespaced")
+	}
 	row := metav1alpha1.TableRow{
 		Object: runtime.RawExtension{Object: obj},
 	}
