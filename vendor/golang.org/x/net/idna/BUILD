@@ -10,11 +10,11 @@ go_library(
         "trieval.go",
     ],
     visibility = ["//visibility:public"],
+    visibility = ["//visibility:public"],
     deps = [
         "//vendor/golang.org/x/text/secure/bidirule:go_default_library",
         "//vendor/golang.org/x/text/unicode/norm:go_default_library",
     ],
-    visibility = ["//visibility:public"],
 )
 
 filegroup(
