@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/golang/glog"
+
 	"k8s.io/api/core/v1"
 	informers "k8s.io/client-go/informers/core/v1"
 	clientset "k8s.io/client-go/kubernetes"
@@ -49,9 +51,13 @@ func NewController(
 	clusterCIDR, serviceCIDR *net.IPNet,
 	nodeCIDRMaskSize int) (*Controller, error) {
 
+	if !nodesync.IsValidMode(config.Mode) {
+		return nil, fmt.Errorf("invalid IPAM controller mode %q", config.Mode)
+	}
+
 	gceCloud, ok := cloud.(*gce.GCECloud)
 	if !ok {
-		return nil, fmt.Errorf("cloud CIDR controller does not support %q provider", cloud.ProviderName())
+		return nil, fmt.Errorf("cloud IPAM controller does not support %q provider", cloud.ProviderName())
 	}
 
 	c := &Controller{
@@ -68,10 +74,12 @@ func NewController(
 	return c, nil
 }
 
-// Init initializes the Controller with the existing list of nodes and
+// Start initializes the Controller with the existing list of nodes and
 // registers the informers for node chnages. This will start synchronization
 // of the node and cloud CIDR range allocations.
-func (c *Controller) Init(nodeInformer informers.NodeInformer) error {
+func (c *Controller) Start(nodeInformer informers.NodeInformer) error {
+	glog.V(0).Infof("Starting IPAM controller (config=%+v)", c.config)
+
 	nodes, err := listNodes(c.adapter.k8s)
 	if err != nil {
 		return err
