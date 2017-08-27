@@ -164,7 +164,7 @@ var specialDefaultResourcePrefixes = map[schema.GroupResource]string{
 }
 
 func NewDefaultStorageFactory(config storagebackend.Config, defaultMediaType string, defaultSerializer runtime.StorageSerializer, resourceEncodingConfig ResourceEncodingConfig, resourceConfig APIResourceConfigSource) *DefaultStorageFactory {
-	config.Paging = utilfeature.DefaultFeatureGate.Enabled(features.APIListPaging)
+	config.Paging = utilfeature.DefaultFeatureGate.Enabled(features.APIListChunking)
 	if len(defaultMediaType) == 0 {
 		defaultMediaType = runtime.ContentTypeJSON
 	}
@@ -193,9 +193,9 @@ func (s *DefaultStorageFactory) SetEtcdPrefix(groupResource schema.GroupResource
 	s.Overrides[groupResource] = overrides
 }
 
-// SetDisableAPIListPaging allows a specific resource to disable paging at the storage layer, to prevent
+// SetDisableAPIListChunking allows a specific resource to disable paging at the storage layer, to prevent
 // exposure of key names in continuations. This may be overriden by feature gates.
-func (s *DefaultStorageFactory) SetDisableAPIListPaging(groupResource schema.GroupResource) {
+func (s *DefaultStorageFactory) SetDisableAPIListChunking(groupResource schema.GroupResource) {
 	overrides := s.Overrides[groupResource]
 	overrides.disablePaging = true
 	s.Overrides[groupResource] = overrides

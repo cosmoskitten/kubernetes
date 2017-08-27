@@ -58,9 +58,9 @@ const (
 	// owner: @smarterclayton
 	// alpha: v1.8
 	//
-	// Allow API clients to retrieve resource lists in pages rather than
+	// Allow API clients to retrieve resource lists in chunks rather than
 	// all at once.
-	APIListPaging utilfeature.Feature = "APIListPaging"
+	APIListChunking utilfeature.Feature = "APIListChunking"
 )
 
 func init() {
@@ -75,5 +75,5 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	AdvancedAuditing:        {Default: false, PreRelease: utilfeature.Alpha},
 	APIResponseCompression:  {Default: false, PreRelease: utilfeature.Alpha},
 	Initializers:            {Default: false, PreRelease: utilfeature.Alpha},
-	APIListPaging:           {Default: false, PreRelease: utilfeature.Alpha},
+	APIListChunking:         {Default: false, PreRelease: utilfeature.Alpha},
 }

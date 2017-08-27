@@ -163,8 +163,8 @@ func Test202StatusCode(t *testing.T) {
 	verifyStatusCode(t, "DELETE", s.URL+path("replicasets", ns.Name, rs.Name), cascDel, 202)
 }
 
-func TestAPIListPaging(t *testing.T) {
-	if err := utilfeature.DefaultFeatureGate.Set(string(genericfeatures.APIListPaging) + "=true"); err != nil {
+func TestAPIListChunking(t *testing.T) {
+	if err := utilfeature.DefaultFeatureGate.Set(string(genericfeatures.APIListChunking) + "=true"); err != nil {
 		t.Fatal(err)
 	}
 	s, clientSet, closeFn := setup(t)

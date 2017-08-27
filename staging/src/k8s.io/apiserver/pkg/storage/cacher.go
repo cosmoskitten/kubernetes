@@ -408,7 +408,7 @@ func (c *Cacher) Get(ctx context.Context, key string, resourceVersion string, ob
 
 // Implements storage.Interface.
 func (c *Cacher) GetToList(ctx context.Context, key string, resourceVersion string, pred SelectionPredicate, listObj runtime.Object) error {
-	pagingEnabled := utilfeature.DefaultFeatureGate.Enabled(features.APIListPaging)
+	pagingEnabled := utilfeature.DefaultFeatureGate.Enabled(features.APIListChunking)
 	if resourceVersion == "" || (pagingEnabled && (len(pred.Continue) > 0 || pred.Limit > 0)) {
 		// If resourceVersion is not specified, serve it from underlying
 		// storage (for backward compatibility). If a continuation or limit is
@@ -472,7 +472,7 @@ func (c *Cacher) GetToList(ctx context.Context, key string, resourceVersion stri
 
 // Implements storage.Interface.
 func (c *Cacher) List(ctx context.Context, key string, resourceVersion string, pred SelectionPredicate, listObj runtime.Object) error {
-	pagingEnabled := utilfeature.DefaultFeatureGate.Enabled(features.APIListPaging)
+	pagingEnabled := utilfeature.DefaultFeatureGate.Enabled(features.APIListChunking)
 	if resourceVersion == "" || (pagingEnabled && (len(pred.Continue) > 0 || pred.Limit > 0)) {
 		// If resourceVersion is not specified, serve it from underlying
 		// storage (for backward compatibility). If a continuation or limit is

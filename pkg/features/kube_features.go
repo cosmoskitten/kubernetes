@@ -165,5 +165,5 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	genericfeatures.AdvancedAuditing: {Default: false, PreRelease: utilfeature.Alpha},
 	TaintNodesByCondition:            {Default: false, PreRelease: utilfeature.Alpha},
 	genericfeatures.Initializers:     {Default: false, PreRelease: utilfeature.Alpha},
-	genericfeatures.APIListPaging:    {Default: false, PreRelease: utilfeature.Alpha},
+	genericfeatures.APIListChunking:  {Default: false, PreRelease: utilfeature.Alpha},
 }
