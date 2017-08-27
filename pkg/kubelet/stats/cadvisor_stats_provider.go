@@ -22,8 +22,8 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
-	cadvisorapiv2 "github.com/google/cadvisor/info/v2"
 
+	cadvisorapiv2 "github.com/google/cadvisor/info/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	statsapi "k8s.io/kubernetes/pkg/kubelet/apis/stats/v1alpha1"
@@ -160,15 +160,8 @@ func (p *cadvisorStatsProvider) ImageFsStats() (*statsapi.FsStats, error) {
 		imageFsInodesUsed = &imageFsIU
 	}
 
-	// Get the root container stats's timestamp, which will be used as the
-	// imageFs stats timestamp.
-	rootStats, err := getCgroupStats(p.cadvisor, "/")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get root container stats: %v", err)
-	}
-
 	return &statsapi.FsStats{
-		Time:           metav1.NewTime(rootStats.Timestamp),
+		Time:           metav1.NewTime(imageFsInfo.Timestamp),
 		AvailableBytes: &imageFsInfo.Available,
 		CapacityBytes:  &imageFsInfo.Capacity,
 		UsedBytes:      &imageStats.TotalStorageBytes,
