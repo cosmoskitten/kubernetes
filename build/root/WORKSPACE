@@ -1,8 +1,8 @@
 http_archive(
     name = "io_bazel_rules_go",
-    sha256 = "27a13726ff8621cfa4592fbef116b253043c2b093c8814265dc4489a0e67d229",
-    strip_prefix = "rules_go-82483596ec203eb9c1849937636f4cbed83733eb",
-    urls = ["https://github.com/bazelbuild/rules_go/archive/82483596ec203eb9c1849937636f4cbed83733eb.tar.gz"],
+    sha256 = "d322432e804dfa7936c1f38c24b00f1fb71a0be090a1273d7100a1b4ce281ee7",
+    strip_prefix = "rules_go-a390e7f7eac912f6e67dc54acf67aa974d05f9c3",
+    urls = ["https://github.com/bazelbuild/rules_go/archive/a390e7f7eac912f6e67dc54acf67aa974d05f9c3.tar.gz"],
 )
 
 http_archive(
