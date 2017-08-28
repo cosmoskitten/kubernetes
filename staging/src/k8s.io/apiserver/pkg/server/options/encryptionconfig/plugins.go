@@ -18,7 +18,6 @@ package encryptionconfig
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"reflect"
@@ -35,13 +34,10 @@ import (
 // the parameter is nil.
 type Factory func(config io.Reader) (envelope.Service, error)
 
-type cloudKMSFactory func(name string) (envelope.Service, error)
-
 // KMSPlugins contains all registered KMS options.
 type KMSPlugins struct {
 	lock     sync.RWMutex
 	registry map[string]Factory
-	cloudKMS cloudKMSFactory
 }
 
 var (
@@ -59,8 +55,23 @@ var (
 type PluginEnabledFunc func(name string, config io.Reader) bool
 
 // Register registers a plugin Factory by name. This
-// is expected to happen during app startup.
+// is expected to happen during app startup. It does not allow
+// registering a plugin by the same name twice.
 func (ps *KMSPlugins) Register(name string, plugin Factory) {
+	ps.register(name, plugin, false)
+}
+
+// RegisterAllowRepeat registers a plugin Factory by name. This
+// is expected to happen during app startup. It allows registering
+// a plugin by the same name twice. Use Register function unless
+// you are sure that the plugin registration is stateless, and
+// the plugin is not being registered from multiple locations.
+// Does not overwrite the original plugin in case of repeat.
+func (ps *KMSPlugins) RegisterAllowRepeat(name string, plugin Factory) {
+	ps.register(name, plugin, true)
+}
+
+func (ps *KMSPlugins) register(name string, plugin Factory, allowRepeat bool) {
 	ps.lock.Lock()
 	defer ps.lock.Unlock()
 	_, found := ps.registry[name]
@@ -68,16 +79,13 @@ func (ps *KMSPlugins) Register(name string, plugin Factory) {
 		ps.registry = map[string]Factory{}
 	}
 	if found {
-		glog.Fatalf("KMS plugin %q was registered twice", name)
+		if !allowRepeat {
+			glog.Fatalf("KMS plugin %q was registered twice", name)
+		}
+	} else {
+		ps.registry[name] = plugin
+		glog.V(1).Infof("Registered KMS plugin %q", name)
 	}
-	glog.V(1).Infof("Registered KMS plugin %q", name)
-	ps.registry[name] = plugin
-}
-
-// RegisterCloudProvidedKMSPlugin registers the cloud's KMS provider as
-// an envelope.Service. This service is provided by the cloudprovider interface.
-func (ps *KMSPlugins) RegisterCloudProvidedKMSPlugin(cloudKMSGetter cloudKMSFactory) {
-	ps.cloudKMS = cloudKMSGetter
 }
 
 // getPlugin creates an instance of the named plugin.  It returns `false` if the
@@ -109,14 +117,6 @@ func (ps *KMSPlugins) fetchPluginFromRegistry(name string) (Factory, bool) {
 	// Map lookup defaults to single value context
 	f, found := ps.registry[name]
 	return f, found
-}
-
-// getCloudProvidedPlugin creates an instance of the named cloud provided KMS plugin.
-func (ps *KMSPlugins) getCloudProvidedPlugin(name string) (envelope.Service, error) {
-	if ps.cloudKMS == nil {
-		return nil, fmt.Errorf("no cloud registered for KMS plugins")
-	}
-	return ps.cloudKMS(name)
 }
 
 // splitStream reads the stream bytes and constructs two copies of it.
