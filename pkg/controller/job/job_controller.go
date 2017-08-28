@@ -49,6 +49,11 @@ import (
 // controllerKind contains the schema.GroupVersionKind for this controller type.
 var controllerKind = batch.SchemeGroupVersion.WithKind("Job")
 
+const (
+	// MaxJobBackOff is the max backoff period, exported for the e2e test
+	MaxJobBackOff = 3600 * time.Second
+)
+
 type JobController struct {
 	kubeClient clientset.Interface
 	podControl controller.PodControlInterface
@@ -75,6 +80,9 @@ type JobController struct {
 	// Jobs that need to be updated
 	queue workqueue.RateLimitingInterface
 
+	// backoff
+	backoff *DynamicBackoff
+
 	recorder record.EventRecorder
 }
 
@@ -100,13 +108,21 @@ func NewJobController(podInformer coreinformers.PodInformer, jobInformer batchin
 	}
 
 	jobInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: jm.enqueueController,
-		UpdateFunc: func(old, cur interface{}) {
-			if job := cur.(*batch.Job); !IsJobFinished(job) {
-				jm.enqueueController(job)
+		AddFunc: func(obj interface{}) {
+			if job := obj.(*batch.Job); job != nil {
+				jm.enqueueJob(job)
 			}
 		},
-		DeleteFunc: jm.enqueueController,
+		UpdateFunc: func(old, cur interface{}) {
+			if job := cur.(*batch.Job); !IsJobFinished(job) {
+				jm.enqueueJob(job)
+			}
+		},
+		DeleteFunc: func(obj interface{}) {
+			if job := obj.(*batch.Job); job != nil {
+				jm.enqueueJob(job)
+			}
+		},
 	})
 	jm.jobLister = jobInformer.Lister()
 	jm.jobStoreSynced = jobInformer.Informer().HasSynced
@@ -121,6 +137,9 @@ func NewJobController(podInformer coreinformers.PodInformer, jobInformer batchin
 
 	jm.updateHandler = jm.updateJobStatus
 	jm.syncHandler = jm.syncJob
+
+	jm.backoff = NewDynamicBackOff(MaxJobBackOff)
+
 	return jm
 }
 
@@ -139,6 +158,8 @@ func (jm *JobController) Run(workers int, stopCh <-chan struct{}) {
 	for i := 0; i < workers; i++ {
 		go wait.Until(jm.worker, time.Second, stopCh)
 	}
+
+	StartDynamicBackoffGC(jm.backoff, stopCh)
 
 	<-stopCh
 }
@@ -203,7 +224,7 @@ func (jm *JobController) addPod(obj interface{}) {
 			return
 		}
 		jm.expectations.CreationObserved(jobKey)
-		jm.enqueueController(job)
+		jm.enqueueJob(job)
 		return
 	}
 
@@ -212,7 +233,7 @@ func (jm *JobController) addPod(obj interface{}) {
 	// DO NOT observe creation because no controller should be waiting for an
 	// orphan.
 	for _, job := range jm.getPodJobs(pod) {
-		jm.enqueueController(job)
+		jm.enqueueJob(job)
 	}
 }
 
@@ -244,7 +265,7 @@ func (jm *JobController) updatePod(old, cur interface{}) {
 	if controllerRefChanged && oldControllerRef != nil {
 		// The ControllerRef was changed. Sync the old controller, if any.
 		if job := jm.resolveControllerRef(oldPod.Namespace, oldControllerRef); job != nil {
-			jm.enqueueController(job)
+			jm.enqueueJob(job)
 		}
 	}
 
@@ -254,7 +275,7 @@ func (jm *JobController) updatePod(old, cur interface{}) {
 		if job == nil {
 			return
 		}
-		jm.enqueueController(job)
+		jm.enqueueJob(job)
 		return
 	}
 
@@ -262,7 +283,7 @@ func (jm *JobController) updatePod(old, cur interface{}) {
 	// to see if anyone wants to adopt it now.
 	if labelChanged || controllerRefChanged {
 		for _, job := range jm.getPodJobs(curPod) {
-			jm.enqueueController(job)
+			jm.enqueueJob(job)
 		}
 	}
 }
@@ -303,16 +324,19 @@ func (jm *JobController) deletePod(obj interface{}) {
 		return
 	}
 	jm.expectations.DeletionObserved(jobKey)
-	jm.enqueueController(job)
+	jm.enqueueJob(job)
 }
 
 // obj could be an *batch.Job, or a DeletionFinalStateUnknown marker item.
-func (jm *JobController) enqueueController(obj interface{}) {
-	key, err := controller.KeyFunc(obj)
+func (jm *JobController) enqueueJob(job *batch.Job) {
+	key, err := controller.KeyFunc(job)
 	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("Couldn't get key for object %+v: %v", obj, err))
+		utilruntime.HandleError(fmt.Errorf("Couldn't get key for object %+v: %v", job, err))
 		return
 	}
+
+	// Retrieves the backoff duration for this Job
+	backoff, _ := jm.backoff.Get(key)
 
 	// TODO: Handle overlapping controllers better. Either disallow them at admission time or
 	// deterministically avoid syncing controllers that fight over pods. Currently, we only
@@ -320,7 +344,7 @@ func (jm *JobController) enqueueController(obj interface{}) {
 	// all controllers there will still be some replica instability. One way to handle this is
 	// by querying the store for all controllers that this rc overlaps, as well as all
 	// controllers that overlap this rc, and sorting them.
-	jm.queue.Add(key)
+	jm.queue.AddAfter(key, backoff)
 }
 
 // worker runs a worker thread that just dequeues items, processes them, and marks them done.
@@ -406,6 +430,15 @@ func (jm *JobController) syncJob(key string) error {
 	}
 	job := *sharedJob
 
+	// if job was finished previously, we don't want to redo the termination
+	if IsJobFinished(&job) {
+		jm.backoff.Reset(key)
+		return nil
+	}
+
+	// retrieve the previous number of retry
+	_, previousRetry := jm.backoff.Get(key)
+
 	// Check the expectations of the job before counting active pods, otherwise a new pod can sneak in
 	// and update the expectations after we've retrieved active pods from the store. If a new pod enters
 	// the store after we've checked the expectation, the job sync is just deferred till the next relist.
@@ -424,34 +457,37 @@ func (jm *JobController) syncJob(key string) error {
 		now := metav1.Now()
 		job.Status.StartTime = &now
 	}
-	// if job was finished previously, we don't want to redo the termination
-	if IsJobFinished(&job) {
-		return nil
-	}
 
+	jobFailed := false
 	var manageJobErr error
-	if pastActiveDeadline(&job) {
+	var newFailureConditionFunc func(record.EventRecorder) batch.JobCondition
+
+	jobHaveNewFailure := failed > job.Status.Failed
+
+	// check if the number of failed jobs increaded since the last syncJob
+	if jobHaveNewFailure && jobToManyFailed(previousRetry+1, job.Spec.BackoffLimit) {
+		jobFailed = true
+		newFailureConditionFunc = func(r record.EventRecorder) batch.JobCondition {
+			r.Event(&job, v1.EventTypeNormal, "BackoffLimitExceeded", "Job has reach the specified backoff limit")
+			return newCondition(batch.JobFailed, "BackoffLimitExceeded", "Job has reach the specified backoff limit")
+		}
+	} else if pastActiveDeadline(&job) {
 		// TODO: below code should be replaced with pod termination resulting in
 		// pod failures, rather than killing pods. Unfortunately none such solution
 		// exists ATM. There's an open discussion in the topic in
 		// https://github.com/kubernetes/kubernetes/issues/14602 which might give
 		// some sort of solution to above problem.
 		// kill remaining active pods
-		wait := sync.WaitGroup{}
-		errCh := make(chan error, int(active))
-		wait.Add(int(active))
-		for i := int32(0); i < active; i++ {
-			go func(ix int32) {
-				defer wait.Done()
-				if err := jm.podControl.DeletePod(job.Namespace, activePods[ix].Name, &job); err != nil {
-					defer utilruntime.HandleError(err)
-					glog.V(2).Infof("Failed to delete %v, job %q/%q deadline exceeded", activePods[ix].Name, job.Namespace, job.Name)
-					errCh <- err
-				}
-			}(i)
+		jobFailed = true
+		newFailureConditionFunc = func(r record.EventRecorder) batch.JobCondition {
+			r.Event(&job, v1.EventTypeNormal, "DeadlineExceeded", "Job was active longer than specified deadline")
+			return newCondition(batch.JobFailed, "DeadlineExceeded", "Job was active longer than specified deadline")
 		}
-		wait.Wait()
+	}
 
+	if jobFailed {
+		errCh := make(chan error, active)
+		jm.deleteJobPods(&job, activePods, errCh)
 		select {
 		case manageJobErr = <-errCh:
 			if manageJobErr != nil {
@@ -463,8 +499,7 @@ func (jm *JobController) syncJob(key string) error {
 		// update status values accordingly
 		failed += active
 		active = 0
-		job.Status.Conditions = append(job.Status.Conditions, newCondition(batch.JobFailed, "DeadlineExceeded", "Job was active longer than specified deadline"))
-		jm.recorder.Event(&job, v1.EventTypeNormal, "DeadlineExceeded", "Job was active longer than specified deadline")
+		job.Status.Conditions = append(job.Status.Conditions, newFailureConditionFunc(jm.recorder))
 	} else {
 		if jobNeedsSync && job.DeletionTimestamp == nil {
 			active, manageJobErr = jm.manageJob(activePods, succeeded, &job)
@@ -513,7 +548,44 @@ func (jm *JobController) syncJob(key string) error {
 			return err
 		}
 	}
+
+	if jobHaveNewFailure {
+		jm.backoff.Next(key, time.Duration(*job.Spec.BackoffSeconds), time.Now())
+		// re-enqueue Job after the backoff period
+		jm.enqueueJob(&job)
+	} else {
+		// if no new Failure the job backoff period can be reset
+		jm.backoff.Reset(key)
+	}
+
 	return manageJobErr
+}
+
+func jobToManyFailed(nbRetry int32, maxRetry *int32) bool {
+	if maxRetry == nil {
+		// it means the BackoffLimit is desactivated
+		return false
+	} else if nbRetry > *maxRetry {
+		return true
+	}
+	return false
+}
+
+func (jm *JobController) deleteJobPods(job *batch.Job, pods []*v1.Pod, errCh chan<- error) {
+	wait := sync.WaitGroup{}
+	nbPods := len(pods)
+	wait.Add(nbPods)
+	for i := int32(0); i < int32(nbPods); i++ {
+		go func(ix int32) {
+			defer wait.Done()
+			if err := jm.podControl.DeletePod(job.Namespace, pods[ix].Name, job); err != nil {
+				defer utilruntime.HandleError(err)
+				glog.V(2).Infof("Failed to delete %v, job %q/%q deadline exceeded", pods[ix].Name, job.Namespace, job.Name)
+				errCh <- err
+			}
+		}(i)
+	}
+	wait.Wait()
 }
 
 // pastActiveDeadline checks if job has ActiveDeadlineSeconds field set and if it is exceeded.
