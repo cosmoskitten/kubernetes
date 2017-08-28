@@ -50,6 +50,7 @@ go_library(
         "//pkg/cloudprovider:go_default_library",
         "//pkg/controller:go_default_library",
         "//pkg/controller/node/ipam:go_default_library",
+        "//pkg/controller/node/ipam/sync:go_default_library",
         "//pkg/controller/node/scheduler:go_default_library",
         "//pkg/controller/node/util:go_default_library",
         "//pkg/util/metrics:go_default_library",
