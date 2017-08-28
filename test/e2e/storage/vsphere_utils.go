@@ -207,14 +207,10 @@ func getVSphereStorageClassSpec(name string, scParameters map[string]string) *st
 }
 
 func getVSphereClaimSpecWithStorageClassAnnotation(ns string, storageclass *storage.StorageClass) *v1.PersistentVolumeClaim {
-	scAnnotation := make(map[string]string)
-	scAnnotation[v1.BetaStorageClassAnnotation] = storageclass.Name
-
 	claim := &v1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: "pvc-",
 			Namespace:    ns,
-			Annotations:  scAnnotation,
 		},
 		Spec: v1.PersistentVolumeClaimSpec{
 			AccessModes: []v1.PersistentVolumeAccessMode{
@@ -225,6 +221,7 @@ func getVSphereClaimSpecWithStorageClassAnnotation(ns string, storageclass *stor
 					v1.ResourceName(v1.ResourceStorage): resource.MustParse("2Gi"),
 				},
 			},
+			StorageClassName: &(storageclass.Name),
 		},
 	}
 	return claim

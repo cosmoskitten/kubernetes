@@ -22,7 +22,6 @@ import (
 	"strings"
 	"testing"
 
-	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -531,15 +530,12 @@ func testVolumeClaim(name string, namespace string, spec api.PersistentVolumeCla
 }
 
 func testVolumeClaimStorageClass(name string, namespace string, annval string, spec api.PersistentVolumeClaimSpec) *api.PersistentVolumeClaim {
-	annotations := map[string]string{
-		v1.BetaStorageClassAnnotation: annval,
-	}
+	spec.StorageClassName = &annval
 
 	return &api.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        name,
-			Namespace:   namespace,
-			Annotations: annotations,
+			Name:      name,
+			Namespace: namespace,
 		},
 		Spec: spec,
 	}

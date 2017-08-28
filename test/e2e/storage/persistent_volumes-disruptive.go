@@ -83,11 +83,10 @@ var _ = SIGDescribe("PersistentVolumes[Disruptive][Flaky]", func() {
 				},
 			},
 		}
+		noClass := ""
 		pvcConfig = framework.PersistentVolumeClaimConfig{
-			Annotations: map[string]string{
-				v1.BetaStorageClassAnnotation: "",
-			},
-			Selector: selector,
+			Selector:         selector,
+			StorageClassName: &noClass,
 		}
 		// Get the first ready node IP that is not hosting the NFS pod.
 		if clientNodeIP == "" {

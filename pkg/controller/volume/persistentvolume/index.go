@@ -137,7 +137,7 @@ func (pvIndex *persistentVolumeOrderedIndex) findByClaim(claim *v1.PersistentVol
 			} else if selector != nil && !selector.Matches(labels.Set(volume.Labels)) {
 				continue
 			}
-			if v1helper.GetPersistentVolumeClass(volume) != requestedClass {
+			if volume.Spec.StorageClassName != requestedClass {
 				continue
 			}
 
