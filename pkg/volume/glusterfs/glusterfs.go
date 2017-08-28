@@ -495,7 +495,7 @@ func (plugin *glusterfsPlugin) collectGids(className string, gidTable *MinMaxAll
 	}
 
 	for _, pv := range pvList.Items {
-		if v1helper.GetPersistentVolumeClass(&pv) != className {
+		if pv.Spec.StorageClassName != className {
 			continue
 		}
 

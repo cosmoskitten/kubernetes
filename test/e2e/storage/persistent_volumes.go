@@ -132,9 +132,6 @@ var _ = SIGDescribe("PersistentVolumes", func() {
 				},
 			}
 			pvcConfig = framework.PersistentVolumeClaimConfig{
-				Annotations: map[string]string{
-					v1.BetaStorageClassAnnotation: "",
-				},
 				Selector: selector,
 			}
 		})

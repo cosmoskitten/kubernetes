@@ -1250,7 +1250,7 @@ func printPersistentVolume(obj *api.PersistentVolume, options printers.PrintOpti
 	aSize := aQty.String()
 
 	row.Cells = append(row.Cells, obj.Name, aSize, modesStr, reclaimPolicyStr,
-		obj.Status.Phase, claimRefUID, helper.GetPersistentVolumeClass(obj),
+		obj.Status.Phase, claimRefUID, obj.Spec.StorageClassName,
 		obj.Status.Reason,
 		translateTimestamp(obj.CreationTimestamp))
 	return []metav1alpha1.TableRow{row}, nil

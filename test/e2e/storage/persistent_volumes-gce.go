@@ -93,9 +93,6 @@ var _ = SIGDescribe("PersistentVolumes GCEPD", func() {
 			Prebind: nil,
 		}
 		pvcConfig = framework.PersistentVolumeClaimConfig{
-			Annotations: map[string]string{
-				v1.BetaStorageClassAnnotation: "",
-			},
 			Selector: selector,
 		}
 		clientPod, pv, pvc = initializeGCETestSpec(c, ns, pvConfig, pvcConfig, false)

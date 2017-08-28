@@ -73,11 +73,7 @@ func (t *PersistentVolumeUpgradeTest) Setup(f *framework.Framework) {
 		PVSource:   *t.pvSource,
 		Prebind:    nil,
 	}
-	pvcConfig := framework.PersistentVolumeClaimConfig{
-		Annotations: map[string]string{
-			v1.BetaStorageClassAnnotation: "",
-		},
-	}
+	pvcConfig := framework.PersistentVolumeClaimConfig{}
 
 	By("Creating the PV and PVC")
 	t.pv, t.pvc, err = framework.CreatePVPVC(f.ClientSet, pvConfig, pvcConfig, ns, true)

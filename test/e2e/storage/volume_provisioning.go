@@ -41,7 +41,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/authentication/serviceaccount"
 	clientset "k8s.io/client-go/kubernetes"
-	v1helper "k8s.io/kubernetes/pkg/api/v1/helper"
 	storageutil "k8s.io/kubernetes/pkg/apis/storage/v1/util"
 	kubeletapis "k8s.io/kubernetes/pkg/kubelet/apis"
 	"k8s.io/kubernetes/test/e2e/framework"
@@ -400,9 +399,7 @@ var _ = SIGDescribe("Dynamic Provisioning", func() {
 				defer deleteStorageClass(c, class.Name)
 
 				claim := newClaim(*betaTest, ns, "beta")
-				claim.Annotations = map[string]string{
-					v1.BetaStorageClassAnnotation: class.Name,
-				}
+				claim.Spec.StorageClassName = &(class.Name)
 				testDynamicProvisioning(*betaTest, c, claim, nil)
 			}
 		})
@@ -543,12 +540,7 @@ var _ = SIGDescribe("Dynamic Provisioning", func() {
 			class := newStorageClass(test, ns, "external")
 			className := class.Name
 			claim := newClaim(test, ns, "external")
-			// the external provisioner understands Beta only right now, see
-			// https://github.com/kubernetes-incubator/external-storage/issues/37
-			// claim.Spec.StorageClassName = &className
-			claim.Annotations = map[string]string{
-				v1.BetaStorageClassAnnotation: className,
-			}
+			claim.Spec.StorageClassName = &className
 
 			By("creating a claim with a external provisioning annotation")
 			testDynamicProvisioning(test, c, claim, class)
@@ -900,7 +892,7 @@ func waitForProvisionedVolumesDeleted(c clientset.Interface, scName string) ([]*
 			return true, err
 		}
 		for _, pv := range allPVs.Items {
-			if v1helper.GetPersistentVolumeClass(&pv) == scName {
+			if pv.Spec.StorageClassName == scName {
 				remainingPVs = append(remainingPVs, &pv)
 			}
 		}

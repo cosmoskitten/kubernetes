@@ -531,9 +531,7 @@ func testVolumeClaim(name string, namespace string, spec api.PersistentVolumeCla
 }
 
 func testVolumeClaimStorageClass(name string, namespace string, annval string, spec api.PersistentVolumeClaimSpec) *api.PersistentVolumeClaim {
-	annotations := map[string]string{
-		v1.BetaStorageClassAnnotation: annval,
-	}
+	spec.StorageClassName = &annval
 
 	return &api.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
