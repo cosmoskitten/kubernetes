@@ -102,6 +102,7 @@ go_test(
         "//pkg/client/clientset_generated/internalclientset/fake:go_default_library",
         "//pkg/controller:go_default_library",
         "//pkg/kubectl:go_default_library",
+        "//pkg/kubectl/cmd/templates:go_default_library",
         "//pkg/kubectl/resource:go_default_library",
         "//pkg/kubectl/validation:go_default_library",
         "//vendor/github.com/emicklei/go-restful-swagger12:go_default_library",
