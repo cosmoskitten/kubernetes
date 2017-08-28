@@ -5130,6 +5130,7 @@ func autoConvert_v1_VolumeMount_To_api_VolumeMount(in *v1.VolumeMount, out *api.
 	out.ReadOnly = in.ReadOnly
 	out.MountPath = in.MountPath
 	out.SubPath = in.SubPath
+	out.MountPropagation = (*api.MountPropagationMode)(unsafe.Pointer(in.MountPropagation))
 	return nil
 }
 
@@ -5143,6 +5144,7 @@ func autoConvert_api_VolumeMount_To_v1_VolumeMount(in *api.VolumeMount, out *v1.
 	out.ReadOnly = in.ReadOnly
 	out.MountPath = in.MountPath
 	out.SubPath = in.SubPath
+	out.MountPropagation = (*v1.MountPropagationMode)(unsafe.Pointer(in.MountPropagation))
 	return nil
 }
 
