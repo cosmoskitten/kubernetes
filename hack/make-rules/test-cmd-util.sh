@@ -946,9 +946,7 @@ run_kubectl_apply_tests() {
   [[ "$(kubectl get deployments test-deployment-retainkeys -o yaml "${kube_flags[@]}" | grep emptyDir)" ]]
   # Command: apply a deployment "test-deployment-retainkeys" should clear
   # defaulted fields and successfully update the deployment
-  kubectl apply -f hack/testdata/retainKeys/deployment/deployment-after.yaml "${kube_flags[@]}"
-  # Post-Condition: deployment "test-deployment-retainkeys" updated
-  kube::test::get_object_assert deployments "{{range.items}}{{$id_field}}{{end}}" 'test-deployment-retainkeys'
+  [[ kubectl apply -f hack/testdata/retainKeys/deployment/deployment-after.yaml "${kube_flags[@]}" ]]
   # Post-Condition: deployment "test-deployment-retainkeys" has updated fields
   [[ "$(kubectl get deployments test-deployment-retainkeys -o yaml "${kube_flags[@]}" | grep Recreate)" ]]
   ! [[ "$(kubectl get deployments test-deployment-retainkeys -o yaml "${kube_flags[@]}" | grep RollingUpdate)" ]]
