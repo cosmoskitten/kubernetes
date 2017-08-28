@@ -48,6 +48,7 @@ import (
 	"k8s.io/kubernetes/pkg/cloudprovider"
 	"k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/controller/node/ipam"
+	nodesync "k8s.io/kubernetes/pkg/controller/node/ipam/sync"
 	"k8s.io/kubernetes/pkg/controller/node/scheduler"
 	"k8s.io/kubernetes/pkg/controller/node/util"
 	"k8s.io/kubernetes/pkg/util/metrics"
@@ -328,11 +329,17 @@ func NewNodeController(
 				MaxBackoff:   ipamMaxBackoff,
 				InitialRetry: ipamInitialBackoff,
 			}
+			switch nc.allocatorType {
+			case ipam.IPAMFromClusterAllocatorType:
+				cfg.Mode = nodesync.SyncFromCluster
+			case ipam.IPAMFromCloudAllocatorType:
+				cfg.Mode = nodesync.SyncFromCloud
+			}
 			ipamc, err := ipam.NewController(cfg, kubeClient, cloud, clusterCIDR, serviceCIDR, nodeCIDRMaskSize)
 			if err != nil {
 				glog.Fatalf("Error creating ipam controller: %v", err)
 			}
-			if err := ipamc.Init(nodeInformer); err != nil {
+			if err := ipamc.Start(nodeInformer); err != nil {
 				glog.Fatalf("Error trying to Init(): %v", err)
 			}
 		} else {
