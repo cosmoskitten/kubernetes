@@ -179,6 +179,8 @@ check test:
 	@echo "$$CHECK_TEST_HELP_INFO"
 else
 check test: generated_files
+	$(eval UNKNOWN = $(shell echo $(MAKEFLAGS) | sed s/"\s"/"\n"/g | grep "=" | grep -v "^WHAT=" | grep -v "^TESTS=" | grep -v "^KUBE_COVER=" | grep -v "^GOFLAGS=" | grep -v "^GOLDFLAGS=" | grep -v "^GOGCFLAGS="))
+	$(if $(UNKNOWN),$(error "$(UNKNOWN) is not supported."))
 	hack/make-rules/test.sh $(WHAT) $(TESTS)
 endif
 
