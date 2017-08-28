@@ -38,6 +38,8 @@ import (
 	"k8s.io/kubernetes/plugin/pkg/scheduler/schedulercache"
 	"k8s.io/kubernetes/plugin/pkg/scheduler/util"
 
+	"bytes"
+	"fmt"
 	"github.com/golang/glog"
 )
 
@@ -53,7 +55,7 @@ type PodConditionUpdater interface {
 }
 
 // PodPreemptor has methods needed to evict a pod and to update
-// annotations of a the preemptor pod.
+// annotations of the preemptor pod.
 type PodPreemptor interface {
 	EvictPod(pod *v1.Pod) error
 	UpdatePodAnnotations(pod *v1.Pod, annots map[string]string) error
@@ -194,30 +196,33 @@ func (sched *Scheduler) schedule(pod *v1.Pod) (string, error) {
 	return host, err
 }
 
-func (sched *Scheduler) preempt(pod *v1.Pod, scheduleErr error) (string, error) {
+func (sched *Scheduler) preempt(preemptor *v1.Pod, scheduleErr error) (string, error) {
 	if !utilfeature.DefaultFeatureGate.Enabled(features.PodPriority) {
 		glog.V(3).Infof("Pod priority feature is not enabled. No preemption is performed.")
 		return "", nil
 	}
-	nodeName, pods, err := sched.config.Algorithm.Preempt(pod, sched.config.NodeLister, scheduleErr)
+	nodeName, victims, err := sched.config.Algorithm.Preempt(preemptor, sched.config.NodeLister, scheduleErr)
 	if err != nil {
-		glog.Errorf("Error preempting pods to make room for %v/%v.", pod.Namespace, pod.Name)
+		glog.Errorf("Error preempting victims to make room for %v/%v.", preemptor.Namespace, preemptor.Name)
 	}
 	if len(nodeName) != 0 {
-		glog.Infof("Preempting %d pod(s) on node %v to make room for %v/%v.", len(pods), nodeName, pod.Namespace, pod.Name)
+		glog.Infof("Preempting %d pod(s) on node %v to make room for %v/%v.", len(victims), nodeName, preemptor.Namespace, preemptor.Name)
 		annotations := map[string]string{core.NominatedNodeAnnotationKey: nodeName}
-		err = sched.config.PodPreemptor.UpdatePodAnnotations(pod, annotations)
+		err = sched.config.PodPreemptor.UpdatePodAnnotations(preemptor, annotations)
 		if err != nil {
-			glog.Errorf("Cannot update pod %v annotations: %v", pod.Name, err)
+			glog.Errorf("Cannot update pod %v annotations: %v", preemptor.Name, err)
 			return "", err
 		}
-		for _, pod := range pods {
-			if err := sched.config.PodPreemptor.EvictPod(pod); err != nil {
-				glog.Errorf("Error preempting pod %v: %v", pod.Name, err)
+		var victimNames bytes.Buffer
+		for _, victim := range victims {
+			if err := sched.config.PodPreemptor.EvictPod(victim); err != nil {
+				glog.Errorf("Error preempting pod %v: %v", victim.Name, err)
 				return "", err
 			}
-			sched.config.Recorder.Eventf(pod, v1.EventTypeNormal, "Preempted", "by %v/%v on node %v", pod.Namespace, pod.Name, nodeName)
+			victimNames.WriteString(fmt.Sprintf("%v/%v, ", victim.Namespace, victim.Name))
+			sched.config.Recorder.Eventf(victim, v1.EventTypeNormal, "GotPreempted", "by %v/%v on node %v", preemptor.Namespace, preemptor.Name, nodeName)
 		}
+		sched.config.Recorder.Eventf(preemptor, v1.EventTypeNormal, "Preempted", "pods %v on node %v", victimNames.String(), nodeName)
 	}
 	return nodeName, err
 }
