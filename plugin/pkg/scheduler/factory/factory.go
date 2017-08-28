@@ -1013,12 +1013,11 @@ type podPreemptor struct {
 	Client clientset.Interface
 }
 
-func (p *podPreemptor) EvictPod(pod *v1.Pod) error {
-	if err := p.Client.CoreV1().Pods(pod.Namespace).Evict(newEvictionPolicy(pod)); err != nil {
-		glog.V(1).Infof("Error evicting pod %v: %v", pod.Name, err)
-		return err
-	}
-	return nil
+func (p *podPreemptor) PreemptPod(pod *v1.Pod) error {
+	deletionTime := metav1.NewTime(time.Now())
+	pod.DeletionTimestamp = &deletionTime
+	_, err := p.Client.CoreV1().Pods(pod.Namespace).Update(pod)
+	return err
 }
 
 func (p *podPreemptor) UpdatePodAnnotations(pod *v1.Pod, annotations map[string]string) error {

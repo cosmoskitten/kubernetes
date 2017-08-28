@@ -17,6 +17,8 @@ limitations under the License.
 package scheduler
 
 import (
+	"bytes"
+	"fmt"
 	"time"
 
 	"k8s.io/api/core/v1"
@@ -53,9 +55,9 @@ type PodConditionUpdater interface {
 }
 
 // PodPreemptor has methods needed to evict a pod and to update
-// annotations of a the preemptor pod.
+// annotations of the preemptor pod.
 type PodPreemptor interface {
-	EvictPod(pod *v1.Pod) error
+	PreemptPod(pod *v1.Pod) error
 	UpdatePodAnnotations(pod *v1.Pod, annots map[string]string) error
 }
 
@@ -194,30 +196,33 @@ func (sched *Scheduler) schedule(pod *v1.Pod) (string, error) {
 	return host, err
 }
 
-func (sched *Scheduler) preempt(pod *v1.Pod, scheduleErr error) (string, error) {
+func (sched *Scheduler) preempt(preemptor *v1.Pod, scheduleErr error) (string, error) {
 	if !utilfeature.DefaultFeatureGate.Enabled(features.PodPriority) {
 		glog.V(3).Infof("Pod priority feature is not enabled. No preemption is performed.")
 		return "", nil
 	}
-	nodeName, pods, err := sched.config.Algorithm.Preempt(pod, sched.config.NodeLister, scheduleErr)
+	nodeName, victims, err := sched.config.Algorithm.Preempt(preemptor, sched.config.NodeLister, scheduleErr)
 	if err != nil {
-		glog.Errorf("Error preempting pods to make room for %v/%v.", pod.Namespace, pod.Name)
+		glog.Errorf("Error preempting victims to make room for %v/%v.", preemptor.Namespace, preemptor.Name)
 	}
 	if len(nodeName) != 0 {
-		glog.Infof("Preempting %d pod(s) on node %v to make room for %v/%v.", len(pods), nodeName, pod.Namespace, pod.Name)
+		glog.Infof("Preempting %d pod(s) on node %v to make room for %v/%v.", len(victims), nodeName, preemptor.Namespace, preemptor.Name)
 		annotations := map[string]string{core.NominatedNodeAnnotationKey: nodeName}
-		err = sched.config.PodPreemptor.UpdatePodAnnotations(pod, annotations)
+		err = sched.config.PodPreemptor.UpdatePodAnnotations(preemptor, annotations)
 		if err != nil {
-			glog.Errorf("Cannot update pod %v annotations: %v", pod.Name, err)
+			glog.Errorf("Cannot update pod %v annotations: %v", preemptor.Name, err)
 			return "", err
 		}
-		for _, pod := range pods {
-			if err := sched.config.PodPreemptor.EvictPod(pod); err != nil {
-				glog.Errorf("Error preempting pod %v: %v", pod.Name, err)
+		var victimNames bytes.Buffer
+		for _, victim := range victims {
+			if err := sched.config.PodPreemptor.PreemptPod(victim); err != nil {
+				glog.Errorf("Error preempting pod %v: %v", victim.Name, err)
 				return "", err
 			}
-			sched.config.Recorder.Eventf(pod, v1.EventTypeNormal, "Preempted", "by %v/%v on node %v", pod.Namespace, pod.Name, nodeName)
+			victimNames.WriteString(fmt.Sprintf("%v/%v, ", victim.Namespace, victim.Name))
+			sched.config.Recorder.Eventf(victim, v1.EventTypeNormal, "GotPreempted", "by %v/%v on node %v", preemptor.Namespace, preemptor.Name, nodeName)
 		}
+		sched.config.Recorder.Eventf(preemptor, v1.EventTypeNormal, "Preempted", "pods %v on node %v", victimNames.String(), nodeName)
 	}
 	return nodeName, err
 }
@@ -304,6 +309,10 @@ func (sched *Scheduler) scheduleOne() {
 	suggestedHost, err := sched.schedule(pod)
 	metrics.SchedulingAlgorithmLatency.Observe(metrics.SinceInMicroseconds(start))
 	if err != nil {
+		// schedule() may have failed because the pod would not fit on any host, so we try to
+		// preempt, with the expectation that the next time the pod is tried for scheduling it
+		// will fit due to the preemption. It is also possible that a different pod will schedule
+		// into the resources that were preempted, but this is harmless.
 		sched.preempt(pod, err)
 		return
 	}

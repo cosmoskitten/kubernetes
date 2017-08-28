@@ -799,7 +799,10 @@ func TestSelectNodesForPreemption(t *testing.T) {
 			test.predicates["affinity"] = algorithmpredicates.NewPodAffinityPredicate(FakeNodeInfo(*nodes[0]), schedulertesting.FakePodLister(test.pods))
 		}
 		nodeNameToInfo := schedulercache.CreateNodeNameToInfoMap(test.pods, nodes)
-		nodeToPods := selectNodesForPreemption(test.pod, nodeNameToInfo, nodes, potentialNodeNames, test.predicates, PredicateMetadata)
+		nodeToPods, err := selectNodesForPreemption(test.pod, nodeNameToInfo, nodes, potentialNodeNames, test.predicates, PredicateMetadata, nil)
+		if err != nil {
+			t.Error(err)
+		}
 		if err := checkPreemptionVictims(test.name, test.expected, nodeToPods); err != nil {
 			t.Error(err)
 		}
@@ -953,7 +956,8 @@ func TestPickOneNodeForPreemption(t *testing.T) {
 			nodes = append(nodes, makeNode(n, priorityutil.DefaultMilliCpuRequest*5, priorityutil.DefaultMemoryRequest*5))
 		}
 		nodeNameToInfo := schedulercache.CreateNodeNameToInfoMap(test.pods, nodes)
-		node := pickOneNodeForPreemption(selectNodesForPreemption(test.pod, nodeNameToInfo, nodes, nil, test.predicates, PredicateMetadata))
+		candidateNodes, _ := selectNodesForPreemption(test.pod, nodeNameToInfo, nodes, nil, test.predicates, PredicateMetadata, nil)
+		node := pickOneNodeForPreemption(candidateNodes)
 		found := false
 		for _, nodeName := range test.expected {
 			if node == nodeName {
@@ -1099,6 +1103,7 @@ func TestPreempt(t *testing.T) {
 		name         string
 		pod          *v1.Pod
 		pods         []*v1.Pod
+		extenders    []*FakeExtender
 		expectedNode string
 		expectedPods []string // list of preempted pods
 	}{
@@ -1134,6 +1139,29 @@ func TestPreempt(t *testing.T) {
 			expectedNode: "machine3",
 			expectedPods: []string{},
 		},
+		{
+			name: "Scheduler extenders allow only machine1, otherwise machine3 would have been chosen",
+			pod: &v1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "pod1"}, Spec: v1.PodSpec{
+				Containers: veryLargeContainers,
+				Priority:   &highPriority},
+			},
+			pods: []*v1.Pod{
+				{ObjectMeta: metav1.ObjectMeta{Name: "m1.1"}, Spec: v1.PodSpec{Containers: smallContainers, Priority: &midPriority, NodeName: "machine1"}, Status: v1.PodStatus{Phase: v1.PodRunning}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "m1.2"}, Spec: v1.PodSpec{Containers: smallContainers, Priority: &lowPriority, NodeName: "machine1"}, Status: v1.PodStatus{Phase: v1.PodRunning}},
+
+				{ObjectMeta: metav1.ObjectMeta{Name: "m2.1"}, Spec: v1.PodSpec{Containers: largeContainers, Priority: &midPriority, NodeName: "machine2"}, Status: v1.PodStatus{Phase: v1.PodRunning}},
+			},
+			extenders: []*FakeExtender{
+				{
+					predicates: []fitPredicate{truePredicateExtender},
+				},
+				{
+					predicates: []fitPredicate{machine1PredicateExtender},
+				},
+			},
+			expectedNode: "machine1",
+			expectedPods: []string{"m1.1", "m1.2"},
+		},
 	}
 
 	for _, test := range tests {
@@ -1145,8 +1173,12 @@ func TestPreempt(t *testing.T) {
 		for _, name := range nodeNames {
 			cache.AddNode(makeNode(name, priorityutil.DefaultMilliCpuRequest*5, priorityutil.DefaultMemoryRequest*5))
 		}
+		extenders := []algorithm.SchedulerExtender{}
+		for _, extender := range test.extenders {
+			extenders = append(extenders, extender)
+		}
 		scheduler := NewGenericScheduler(
-			cache, nil, map[string]algorithm.FitPredicate{"matches": algorithmpredicates.PodFitsResources}, algorithm.EmptyPredicateMetadataProducer, []algorithm.PriorityConfig{{Function: numericPriority, Weight: 1}}, algorithm.EmptyMetadataProducer, []algorithm.SchedulerExtender{})
+			cache, nil, map[string]algorithm.FitPredicate{"matches": algorithmpredicates.PodFitsResources}, algorithm.EmptyPredicateMetadataProducer, []algorithm.PriorityConfig{{Function: numericPriority, Weight: 1}}, algorithm.EmptyMetadataProducer, extenders)
 		// Call Preempt and check the expected results.
 		node, victims, err := scheduler.Preempt(test.pod, schedulertesting.FakeNodeLister(makeNodeList(nodeNames)), error(&FitError{test.pod, failedPredMap}))
 		if err != nil {

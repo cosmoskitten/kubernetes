@@ -334,7 +334,6 @@ func ClusterRoles() []rbac.ClusterRole {
 				rbac.NewRule(Read...).Groups(legacyGroup).Resources("nodes").RuleOrDie(),
 				rbac.NewRule(ReadUpdate...).Groups(legacyGroup).Resources("pods").RuleOrDie(),
 				rbac.NewRule("create").Groups(legacyGroup).Resources("pods/binding", "bindings").RuleOrDie(),
-				rbac.NewRule("create").Groups(legacyGroup).Resources("pods/eviction", "evictions").RuleOrDie(),
 				rbac.NewRule("update").Groups(legacyGroup).Resources("pods/status").RuleOrDie(),
 				// things that select pods
 				rbac.NewRule(Read...).Groups(legacyGroup).Resources("services", "replicationcontrollers").RuleOrDie(),

@@ -178,7 +178,7 @@ func (g *genericScheduler) Preempt(pod *v1.Pod, nodeLister algorithm.NodeLister,
 	if err != nil {
 		return "", nil, err
 	}
-	if !isPodEligibleForPreemption(pod, g.cachedNodeInfoMap) {
+	if !podEligibleToPreemptOthers(pod, g.cachedNodeInfoMap) {
 		glog.V(5).Infof("Pod %v is not eligible for more preemption.", pod.Name)
 		return "", nil, nil
 	}
@@ -193,7 +193,10 @@ func (g *genericScheduler) Preempt(pod *v1.Pod, nodeLister algorithm.NodeLister,
 	if len(potentialNodeNames) == 0 {
 		return "", nil, nil
 	}
-	nodeToPods := selectNodesForPreemption(pod, g.cachedNodeInfoMap, allNodes, potentialNodeNames, g.predicates, g.predicateMetaProducer)
+	nodeToPods, err := selectNodesForPreemption(pod, g.cachedNodeInfoMap, allNodes, potentialNodeNames, g.predicates, g.predicateMetaProducer, g.extenders)
+	if err != nil {
+		return "", nil, err
+	}
 	if len(nodeToPods) == 0 {
 		return "", nil, nil
 	}
@@ -561,7 +564,8 @@ func selectNodesForPreemption(pod *v1.Pod,
 	potentialNodeNames map[string]bool,
 	predicates map[string]algorithm.FitPredicate,
 	metadataProducer algorithm.PredicateMetadataProducer,
-) map[string][]*v1.Pod {
+	extenders []algorithm.SchedulerExtender,
+) (map[string][]*v1.Pod, error) {
 
 	nodeNameToPods := map[string][]*v1.Pod{}
 	var resultLock sync.Mutex
@@ -588,7 +592,43 @@ func selectNodesForPreemption(pod *v1.Pod,
 		}
 	}
 	workqueue.Parallelize(16, len(nodes), checkNode)
-	return nodeNameToPods
+
+	// If there are any extenders, run them and filter the list of candidate nodes.
+	if len(nodeNameToPods) > 0 && len(extenders) > 0 {
+		filteredNodeNameToPods := map[string][]*v1.Pod{}
+		// Remove the victims from the corresponding nodeInfo and send nodes to the
+		// extenders for filtering.
+		for nodeName, victims := range nodeNameToPods {
+			originalNodeInfo := nodeNameToInfo[nodeName]
+			nodeInfoCopy := nodeNameToInfo[nodeName].Clone()
+			for _, victim := range victims {
+				nodeInfoCopy.RemovePod(victim)
+			}
+			nodeNameToInfo[nodeName] = nodeInfoCopy
+			filteredNodes := nodes
+			for _, extender := range extenders {
+				var err error
+				filteredNodes, _, err = extender.Filter(pod, filteredNodes, nodeNameToInfo)
+				if err != nil {
+					return nil, err
+				}
+				if len(filteredNodes) == 0 {
+					break
+				}
+			}
+			// Did the node pass extenders filters? If so, add it to the map.
+			for _, filteredNode := range filteredNodes {
+				if nodeName == filteredNode.Name {
+					filteredNodeNameToPods[nodeName] = victims
+					break
+				}
+			}
+			nodeNameToInfo[nodeName] = originalNodeInfo
+		}
+		nodeNameToPods = filteredNodeNameToPods
+	}
+
+	return nodeNameToPods, nil
 }
 
 // selectVictimsOnNode finds minimum set of pods on the given node that should
@@ -676,7 +716,7 @@ func selectVictimsOnNode(pod *v1.Pod, meta algorithm.PredicateMetadata, nodeInfo
 		}
 	}
 	victims := []*v1.Pod{}
-	// Try to reprieve as may pods as possible starting from the highest priority one.
+	// Try to reprieve as many pods as possible starting from the highest priority one.
 	for _, p := range potentialVictims.Items {
 		lpp := p.(*v1.Pod)
 		addPod(lpp)
@@ -703,7 +743,11 @@ func nodesWherePreemptionMightHelp(pod *v1.Pod, nodes []*v1.Node, failedPredicat
 					predicates.ErrNodeSelectorNotMatch,
 					predicates.ErrPodNotMatchHostName,
 					predicates.ErrTaintsTolerationsNotMatch,
-					predicates.ErrNodeLabelPresenceViolated:
+					predicates.ErrNodeLabelPresenceViolated,
+					predicates.ErrNodeNotReady,
+					predicates.ErrNodeNetworkUnavailable,
+					predicates.ErrNodeUnschedulable,
+					predicates.ErrNodeUnknownCondition:
 					unresolvableReasonExist = true
 					break
 				case predicates.ErrPodAffinityNotMatch:
@@ -726,14 +770,14 @@ func nodesWherePreemptionMightHelp(pod *v1.Pod, nodes []*v1.Node, failedPredicat
 	return potentialNodes
 }
 
-// isPodEligibileForPreemption determines whether this pod should be considered
+// podEligibleToPreemptOthers determines whether this pod should be considered
 // for preempting other pods or not. If this pod has already preempted other
 // pods and those are in their graceful termination period, it shouldn't be
 // considered for preemption.
 // We look at the node that is nominated for this pod and as long as there are
 // terminating pods on the node, we don't consider this for preempting more pods.
 // TODO(bsalamat): Revisit this algorithm once scheduling by priority is added.
-func isPodEligibleForPreemption(pod *v1.Pod, nodeNameToInfo map[string]*schedulercache.NodeInfo) bool {
+func podEligibleToPreemptOthers(pod *v1.Pod, nodeNameToInfo map[string]*schedulercache.NodeInfo) bool {
 	if nodeName, found := pod.Annotations[NominatedNodeAnnotationKey]; found {
 		if nodeInfo, found := nodeNameToInfo[nodeName]; found {
 			for _, p := range nodeInfo.Pods() {
