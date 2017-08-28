@@ -106,6 +106,7 @@ go_test(
         "//pkg/kubectl/validation:go_default_library",
         "//vendor/github.com/emicklei/go-restful-swagger12:go_default_library",
         "//vendor/github.com/googleapis/gnostic/OpenAPIv2:go_default_library",
+        "//vendor/github.com/spf13/cobra:go_default_library",
         "//vendor/github.com/stretchr/testify/assert:go_default_library",
         "//vendor/k8s.io/api/core/v1:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/api/equality:go_default_library",
