@@ -17,11 +17,13 @@ limitations under the License.
 package deployment
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	deploymentutil "k8s.io/kubernetes/pkg/controller/deployment/util"
 	"k8s.io/kubernetes/test/integration/framework"
 )
@@ -121,14 +123,26 @@ func TestDeploymentSelectorImmutability(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to get apps/v1beta2 deployment %s: %v", updatedDeploymentAppsV1beta1.Name, err)
 	}
-	oldSelectorLabels := deploymentAppsV1beta2.Spec.Selector.MatchLabels
 	newSelectorLabels = map[string]string{"name_apps_v1beta2": "test_apps_v1beta2"}
 	deploymentAppsV1beta2.Spec.Selector.MatchLabels = newSelectorLabels
-	updatedDeploymentAppsV1beta2, err := c.AppsV1beta2().Deployments(ns.Name).Update(deploymentAppsV1beta2)
-	if err != nil {
-		t.Fatalf("failed to update apps/v1beta2 deployment %s: %v", deploymentAppsV1beta2.Name, err)
+	deploymentAppsV1beta2.Spec.Template.Labels = newSelectorLabels
+	_, err = c.AppsV1beta2().Deployments(ns.Name).Update(deploymentAppsV1beta2)
+	if err == nil {
+		t.Fatalf("failed to provide validation error when changing immutable selector when updating apps/v1beta2 deployment %s", deploymentAppsV1beta2.Name)
 	}
-	if !reflect.DeepEqual(updatedDeploymentAppsV1beta2.Spec.Selector.MatchLabels, oldSelectorLabels) {
-		t.Errorf("selector should NOT be changed for apps/v1beta2, expected: %v, got: %v", oldSelectorLabels, updatedDeploymentAppsV1beta2.Spec.Selector.MatchLabels)
+	expectedErrList := field.ErrorList{
+		&field.Error{
+			Type:  field.ErrorTypeInvalid,
+			Field: field.NewPath("spec").Child("selector").String(),
+			BadValue: &metav1.LabelSelector{
+				MatchLabels: newSelectorLabels,
+			},
+			Detail: "selector must not be changed after update",
+		},
+	}
+	expectedErrMessage := fmt.Sprintf("Deployment.apps \"%s\" is invalid: %v", name, expectedErrList.ToAggregate())
+	errMessage := fmt.Sprintf("%v", err)
+	if errMessage != expectedErrMessage {
+		t.Errorf("error message does not matched, expected: %v, got: %s", expectedErrMessage, errMessage)
 	}
 }
