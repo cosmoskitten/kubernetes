@@ -31,6 +31,8 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/apiserver/pkg/server/options/encryptionconfig"
+	"k8s.io/apiserver/pkg/storage/value/encrypt/envelope"
 	"k8s.io/client-go/util/flowcontrol"
 	"k8s.io/kubernetes/pkg/cloudprovider"
 	"k8s.io/kubernetes/pkg/controller"
@@ -434,6 +436,12 @@ func CreateGCECloud(config *CloudConfig) (*GCECloud, error) {
 	}
 
 	gce.manager = &GCEServiceManager{gce}
+
+	// Register the Google Cloud KMS based service in the KMS plugin registry.
+	encryptionconfig.KMSPluginRegistry.RegisterAllowRepeat(KMSServiceName, func(config io.Reader) (envelope.Service, error) {
+		return gce.getGCPCloudKMSService(config)
+	})
+
 	return gce, nil
 }
 
