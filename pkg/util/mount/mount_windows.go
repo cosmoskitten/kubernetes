@@ -47,7 +47,7 @@ func (mounter *Mounter) Mount(source string, target string, fstype string, optio
 	target = normalizeWindowsPath(target)
 
 	if source == "tmpfs" {
-		glog.Infof("windowsMount: mounting source (%q), target (%q), with options (%q)", source, target, options)
+		glog.Infof("azureDisk: mounting source (%q), target (%q), with options (%q)", source, target, options)
 		return os.MkdirAll(target, 0755)
 	}
 
@@ -56,7 +56,7 @@ func (mounter *Mounter) Mount(source string, target string, fstype string, optio
 		return err
 	}
 
-	glog.V(4).Infof("windowsMount: mount options(%q) source:%q, target:%q, fstype:%q, begin to mount",
+	glog.V(4).Infof("azureDisk: mount options(%q) source:%q, target:%q, fstype:%q, begin to mount",
 		options, source, target, fstype)
 	bindSource := ""
 	ex := exec.New()
@@ -66,43 +66,29 @@ func (mounter *Mounter) Mount(source string, target string, fstype string, optio
 	} else {
 		// mount azure file
 		if len(options) < 2 {
-			glog.Warningf("windowsMount: mount options(%q) command number(%d) less than 2, source:%q, target:%q, skip mounting",
+			glog.Warningf("azureDisk: mount options(%q) command number(%d) less than 2, source:%q, target:%q, skip mounting",
 				options, len(options), source, target)
 			return nil
 		}
-		cmd := fmt.Sprintf(`$User = "AZURE\%s";$PWord = ConvertTo-SecureString -String "%s" -AsPlainText -Force;`+
-			`$Credential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $User, $PWord`,
-			options[0], options[1])
 
-		driverLetter, err := getAvailableDriveLetter()
-		if err != nil {
-			return err
-		}
-		bindSource = driverLetter + ":"
-		cmd += fmt.Sprintf(";New-SmbGlobalMapping -LocalPath %s -RemotePath %s -Credential $Credential", bindSource, source)
-
-		if output, err := ex.Command("powershell", "/c", cmd).CombinedOutput(); err != nil {
-			// we don't return error here, even though New-SmbGlobalMapping failed, we still make it successful,
-			// will return error when Windows 2016 RS3 is ready on azure
-			glog.Errorf("windowsMount: SmbGlobalMapping failed: %v, output: %q", err, string(output))
-			return os.MkdirAll(target, 0755)
-		}
+		return os.MkdirAll(target, 0755)
 	}
 
 	if output, err := ex.Command("cmd", "/c", "mklink", "/D", target, bindSource).CombinedOutput(); err != nil {
 		glog.Errorf("mklink failed: %v, source(%q) target(%q) output: %q", err, bindSource, target, string(output))
-		return fmt.Errorf("mklink failed: %v, output: %q", err, string(output))
+		return err
 	}
 
 	return nil
 }
 
 func (mounter *Mounter) Unmount(target string) error {
-	glog.V(4).Infof("windowsMount: Unmount target (%q)", target)
+	glog.V(4).Infof("azureDisk: Unmount target (%q)", target)
 	target = normalizeWindowsPath(target)
 	ex := exec.New()
 	if output, err := ex.Command("cmd", "/c", "rmdir", target).CombinedOutput(); err != nil {
-		return fmt.Errorf("rmdir failed: %v, output: %q", err, string(output))
+		glog.Errorf("rmdir failed: %v, output: %q", err, string(output))
+		return err
 	}
 	return nil
 }
@@ -148,7 +134,7 @@ func (mounter *SafeFormatAndMount) formatAndMount(source string, target string, 
 	// Try to mount the disk
 	glog.V(4).Infof("Attempting to formatAndMount disk: %s %s %s", fstype, source, target)
 
-	if err := validateDiskNumber(source); err != nil {
+	if err := ValidateDiskNumber(source); err != nil {
 		glog.Errorf("azureDisk Mount: formatAndMount failed, err: %v\n", err)
 		return err
 	}
@@ -162,7 +148,8 @@ func (mounter *SafeFormatAndMount) formatAndMount(source string, target string, 
 	glog.V(4).Infof("Attempting to formatAndMount disk: %s %s %s", fstype, driverPath, target)
 	ex := exec.New()
 	if output, err := ex.Command("cmd", "/c", "mklink", "/D", target, driverPath).CombinedOutput(); err != nil {
-		return fmt.Errorf("mklink failed: %v, output: %q", err, string(output))
+		glog.Errorf("mklink failed: %v, output: %q", err, string(output))
+		return err
 	}
 	return nil
 }
@@ -177,7 +164,7 @@ func getAvailableDriveLetter() (string, error) {
 	}
 
 	if len(output) == 0 {
-		return "", fmt.Errorf("windowsMount: there is no available drive letter now")
+		return "", fmt.Errorf("azureDisk: there is no available drive letter now")
 	}
 	return string(output)[:1], nil
 }
@@ -190,13 +177,18 @@ func normalizeWindowsPath(path string) string {
 	return normalizedPath
 }
 
-func validateDiskNumber(disk string) error {
-	if len(disk) < 1 || len(disk) > 2 {
-		return fmt.Errorf("wrong disk number format: %q", disk)
+// ValidateDiskNumber : disk number should be a number in [0, 99]
+func ValidateDiskNumber(disk string) error {
+	diskNum, err := strconv.Atoi(disk)
+	if err != nil {
+		return fmt.Errorf("wrong disk number format: %q, err:%v", disk, err)
 	}
 
-	_, err := strconv.Atoi(disk)
-	return err
+	if diskNum < 0 || diskNum > 99 {
+		return fmt.Errorf("disk number out of range: %q", disk)
+	}
+
+	return nil
 }
 
 func getDriveLetterByDiskNumber(diskNum string) (string, error) {
@@ -204,10 +196,10 @@ func getDriveLetterByDiskNumber(diskNum string) (string, error) {
 	cmd := fmt.Sprintf("(Get-Partition -DiskNumber %s).DriveLetter", diskNum)
 	output, err := ex.Command("powershell", "/c", cmd).CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("windowsMount: Get Drive Letter failed: %v, output: %q", err, string(output))
+		return "", fmt.Errorf("azureDisk: Get Drive Letter failed: %v, output: %q", err, string(output))
 	}
 	if len(string(output)) < 1 {
-		return "", fmt.Errorf("windowsMount: Get Drive Letter failed, output is empty")
+		return "", fmt.Errorf("azureDisk: Get Drive Letter failed, output is empty")
 	}
 	return string(output)[:1], nil
 }

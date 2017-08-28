@@ -218,6 +218,7 @@ func (attacher *azureDiskAttacher) MountDevice(spec *volume.Spec, devicePath str
 		if os.IsNotExist(err) {
 			dir := deviceMountPath
 			if runtime.GOOS == "windows" {
+				// in windows, as we use mklink, only need to MkdirAll for parent directory
 				dir = filepath.Dir(deviceMountPath)
 			}
 			if err := os.MkdirAll(dir, 0750); err != nil {

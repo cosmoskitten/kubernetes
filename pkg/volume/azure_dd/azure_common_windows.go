@@ -32,7 +32,12 @@ import (
 )
 
 func scsiHostRescan(io ioHandler) {
-	//empty implementation here, don't need to rescan SCSI in Windows
+	cmd := "Update-HostStorageCache"
+	ex := exec.New()
+	output, err := ex.Command("powershell", "/c", cmd).CombinedOutput()
+	if err != nil {
+		glog.Errorf("Update-HostStorageCache failed in scsiHostRescan, error: %v, output: %q", err, string(output))
+	}
 }
 
 func findDiskByLun(lun int, iohandler ioHandler) (string, error) {
@@ -40,7 +45,8 @@ func findDiskByLun(lun int, iohandler ioHandler) (string, error) {
 	ex := exec.New()
 	output, err := ex.Command("powershell", "/c", cmd).CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("Get-Disk failed in findDiskByLun, error: %v, output: %q", err, string(output))
+		glog.Errorf("Get-Disk failed in findDiskByLun, error: %v, output: %q", err, string(output))
+		return "", err
 	}
 
 	if len(string(output)) < 10 {
@@ -63,7 +69,7 @@ func findDiskByLun(lun int, iohandler ioHandler) (string, error) {
 					if len(arr) >= 1 {
 						n, err := strconv.Atoi(arr[0])
 						if err == nil {
-							glog.V(4).Infof("windowsDisk Mount: got disk number(%d) by LUN(%d)", n, lun)
+							glog.V(4).Infof("azureDisk Mount: got disk number(%d) by LUN(%d)", n, lun)
 							return strconv.Itoa(n), nil
 						}
 					}
@@ -84,8 +90,8 @@ func findDiskByLun(lun int, iohandler ioHandler) (string, error) {
 }
 
 func formatIfNotFormatted(disk string, fstype string, exec mount.Exec) {
-	if err := validateDiskNumber(disk); err != nil {
-		glog.Errorf("windowsDisk Mount: formatIfNotFormatted failed, err: %v\n", err)
+	if err := mount.ValidateDiskNumber(disk); err != nil {
+		glog.Errorf("azureDisk Mount: formatIfNotFormatted failed, err: %v\n", err)
 		return
 	}
 
@@ -93,18 +99,8 @@ func formatIfNotFormatted(disk string, fstype string, exec mount.Exec) {
 	cmd += " | New-Partition -AssignDriveLetter -UseMaximumSize | Format-Volume -FileSystem NTFS -Confirm:$false"
 	output, err := exec.Run("powershell", "/c", cmd)
 	if err != nil {
-		glog.Errorf("windowsDisk Mount: Get-Disk failed, error: %v, output: %q", err, string(output))
+		glog.Errorf("azureDisk Mount: Get-Disk failed, error: %v, output: %q", err, string(output))
 	} else {
-		glog.Infof("windowsDisk Mount: Disk successfully formatted, disk: %q, fstype: %q\n", disk, fstype)
+		glog.Infof("azureDisk Mount: Disk successfully formatted, disk: %q, fstype: %q\n", disk, fstype)
 	}
-}
-
-// disk number should be a number in [0, 99]
-func validateDiskNumber(disk string) error {
-	if len(disk) < 1 || len(disk) > 2 {
-		return fmt.Errorf("wrong disk number format: %q", disk)
-	}
-
-	_, err := strconv.Atoi(disk)
-	return err
 }

@@ -84,6 +84,7 @@ func (m *azureDiskMounter) SetUpAt(dir string, fsGroup *int64) error {
 	}
 
 	if runtime.GOOS != "windows" {
+		// in windows, we will use mklink to mount, will MkdirAll in Mount func
 		if err := os.MkdirAll(dir, 0750); err != nil {
 			glog.Errorf("azureDisk - mkdir failed on disk %s on dir: %s (%v)", diskName, dir, err)
 			return err
