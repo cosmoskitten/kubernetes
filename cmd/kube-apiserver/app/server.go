@@ -581,7 +581,15 @@ func BuildStorageFactory(s *options.ServerRunOptions) (*serverstorage.DefaultSto
 		storageFactory.SetEtcdLocation(groupResource, servers)
 	}
 
-	if s.Etcd.EncryptionProviderConfigFilepath != "" {
+	if len(s.Etcd.EncryptionProviderConfigFilepath) != 0 {
+		if s.CloudProvider != nil {
+			// Initialize the cloud once, to give it a chance to register KMS plugins, if any.
+			_, err := cloudprovider.InitCloudProvider(s.CloudProvider.CloudProvider, s.CloudProvider.CloudConfigFile)
+			if err != nil {
+				return nil, err
+			}
+		}
+
 		transformerOverrides, err := encryptionconfig.GetTransformerOverrides(s.Etcd.EncryptionProviderConfigFilepath)
 		if err != nil {
 			return nil, err
