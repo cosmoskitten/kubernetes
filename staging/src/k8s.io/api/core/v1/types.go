@@ -402,7 +402,7 @@ type PersistentVolumeSource struct {
 	// ISCSI represents an ISCSI Disk resource that is attached to a
 	// kubelet's host machine and then exposed to the pod. Provisioned by an admin.
 	// +optional
-	ISCSI *ISCSIVolumeSource `json:"iscsi,omitempty" protobuf:"bytes,7,opt,name=iscsi"`
+	ISCSI *ISCSIPersistentVolumeSource `json:"iscsi,omitempty" protobuf:"bytes,7,opt,name=iscsi"`
 	// Cinder represents a cinder volume attached and mounted on kubelets host machine
 	// More info: https://releases.k8s.io/HEAD/examples/mysql-cinder-pd/README.md
 	// +optional
@@ -1168,6 +1168,51 @@ type ISCSIVolumeSource struct {
 	// CHAP secret for iSCSI target and initiator authentication
 	// +optional
 	SecretRef *LocalObjectReference `json:"secretRef,omitempty" protobuf:"bytes,10,opt,name=secretRef"`
+	// Custom iSCSI initiator name.
+	// If initiatorName is specified with iscsiInterface simultaneously, new iSCSI interface
+	// <target portal>:<volume name> will be created for the connection.
+	// +optional
+	InitiatorName *string `json:"initiatorName,omitempty" protobuf:"bytes,12,opt,name=initiatorName"`
+}
+
+// ISCSIPersistentVolumeSource represents an ISCSI disk.
+// ISCSI volumes can only be mounted as read/write once.
+// ISCSI volumes support ownership management and SELinux relabeling.
+type ISCSIPersistentVolumeSource struct {
+	// iSCSI target portal. The portal is either an IP or ip_addr:port if the port
+	// is other than default (typically TCP ports 860 and 3260).
+	TargetPortal string `json:"targetPortal" protobuf:"bytes,1,opt,name=targetPortal"`
+	// Target iSCSI Qualified Name.
+	IQN string `json:"iqn" protobuf:"bytes,2,opt,name=iqn"`
+	// iSCSI target lun number.
+	Lun int32 `json:"lun" protobuf:"varint,3,opt,name=lun"`
+	// Optional: Defaults to 'default' (tcp). iSCSI interface name that uses an iSCSI transport.
+	// +optional
+	ISCSIInterface string `json:"iscsiInterface,omitempty" protobuf:"bytes,4,opt,name=iscsiInterface"`
+	// Filesystem type of the volume that you want to mount.
+	// Tip: Ensure that the filesystem type is supported by the host operating system.
+	// Examples: "ext4", "xfs", "ntfs". Implicitly inferred to be "ext4" if unspecified.
+	// More info: https://kubernetes.io/docs/concepts/storage/volumes#iscsi
+	// TODO: how do we prevent errors in the filesystem from compromising the machine
+	// +optional
+	FSType string `json:"fsType,omitempty" protobuf:"bytes,5,opt,name=fsType"`
+	// ReadOnly here will force the ReadOnly setting in VolumeMounts.
+	// Defaults to false.
+	// +optional
+	ReadOnly bool `json:"readOnly,omitempty" protobuf:"varint,6,opt,name=readOnly"`
+	// iSCSI target portal List. The portal is either an IP or ip_addr:port if the port
+	// is other than default (typically TCP ports 860 and 3260).
+	// +optional
+	Portals []string `json:"portals,omitempty" protobuf:"bytes,7,opt,name=portals"`
+	// whether support iSCSI Discovery CHAP authentication
+	// +optional
+	DiscoveryCHAPAuth bool `json:"chapAuthDiscovery,omitempty" protobuf:"varint,8,opt,name=chapAuthDiscovery"`
+	// whether support iSCSI Session CHAP authentication
+	// +optional
+	SessionCHAPAuth bool `json:"chapAuthSession,omitempty" protobuf:"varint,11,opt,name=chapAuthSession"`
+	// CHAP secret for iSCSI target and initiator authentication
+	// +optional
+	SecretRef *SecretReference `json:"secretRef,omitempty" protobuf:"bytes,10,opt,name=secretRef"`
 	// Custom iSCSI initiator name.
 	// If initiatorName is specified with iscsiInterface simultaneously, new iSCSI interface
 	// <target portal>:<volume name> will be created for the connection.

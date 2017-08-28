@@ -245,6 +245,12 @@ var Funcs = func(codecs runtimeserializer.CodecFactory) []interface{} {
 				i.ISCSIInterface = "default"
 			}
 		},
+		func(i *api.ISCSIPersistentVolumeSource, c fuzz.Continue) {
+			i.ISCSIInterface = c.RandString()
+			if i.ISCSIInterface == "" {
+				i.ISCSIInterface = "default"
+			}
+		},
 		func(d *api.DNSPolicy, c fuzz.Continue) {
 			policies := []api.DNSPolicy{api.DNSClusterFirst, api.DNSDefault}
 			*d = policies[c.Rand.Intn(len(policies))]
