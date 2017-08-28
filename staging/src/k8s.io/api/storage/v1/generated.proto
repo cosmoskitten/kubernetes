@@ -53,6 +53,10 @@ message StorageClass {
   // created with this reclaimPolicy. Defaults to Delete.
   // +optional
   optional string reclaimPolicy = 4;
+
+  // AllowVolumeExpand shows whether the storage class allow volume expand
+  // +optional
+  optional bool allowVolumeExpand = 5;
 }
 
 // StorageClassList is a collection of storage classes.
