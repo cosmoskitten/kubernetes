@@ -619,6 +619,7 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		if err != nil {
 			return nil, err
 		}
+		klet.runtimeService = runtimeService
 		runtime, err := kuberuntime.NewKubeGenericRuntimeManager(
 			kubecontainer.FilterEventRecorder(kubeDeps.Recorder),
 			klet.livenessManager,
@@ -636,6 +637,7 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 			kubeCfg.CPUCFSQuota,
 			runtimeService,
 			imageService,
+			kubeDeps.ContainerManager.InternalContainerLifecycle(),
 		)
 		if err != nil {
 			return nil, err
@@ -963,6 +965,9 @@ type Kubelet struct {
 	// Container runtime.
 	containerRuntime kubecontainer.Runtime
 
+	// Container runtime service (needed by container runtime)
+	runtimeService internalapi.RuntimeService
+
 	// reasonCache caches the failure reason of the last creation of all containers, which is
 	// used for generating ContainerStatus.
 	reasonCache *ReasonCache
@@ -1221,7 +1226,7 @@ func (kl *Kubelet) initializeModules() error {
 		return fmt.Errorf("Kubelet failed to get node info: %v", err)
 	}
 
-	if err := kl.containerManager.Start(node, kl.GetActivePods); err != nil {
+	if err := kl.containerManager.Start(node, kl.GetActivePods, kl.statusManager, kl.runtimeService); err != nil {
 		return fmt.Errorf("Failed to start ContainerManager %v", err)
 	}
 
