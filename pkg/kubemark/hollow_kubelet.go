@@ -26,6 +26,7 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/apis/kubeletconfig"
 	"k8s.io/kubernetes/pkg/kubelet/cadvisor"
 	"k8s.io/kubernetes/pkg/kubelet/cm"
+	kubeletv1alpha1 "k8s.io/kubernetes/pkg/kubelet/apis/kubeletconfig/v1alpha1"
 	containertest "k8s.io/kubernetes/pkg/kubelet/container/testing"
 	"k8s.io/kubernetes/pkg/kubelet/dockershim/libdocker"
 	kubetypes "k8s.io/kubernetes/pkg/kubelet/types"
@@ -110,6 +111,7 @@ func GetHollowKubeletConfig(
 	f := &options.KubeletFlags{
 		RootDirectory:    testRootDir,
 		HostnameOverride: nodeName,
+		CloudProvider: kubeletv1alpha1.AutoDetectCloudProvider
 		// Use the default runtime options.
 		ContainerRuntimeOptions: *options.NewContainerRuntimeOptions(),
 	}
