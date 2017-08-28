@@ -27,6 +27,7 @@ import (
 	"k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/informers"
 	clientset "k8s.io/client-go/kubernetes"
@@ -502,14 +503,26 @@ func TestRSSelectorImmutability(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to get apps/v1beta2 replicaset %s: %v", replicaset.Name, err)
 	}
-	oldSelectorLabels := rsV1beta2.Spec.Selector.MatchLabels
 	newSelectorLabels = map[string]string{"changed_name_apps_v1beta2": "changed_test_apps_v1beta2"}
 	rsV1beta2.Spec.Selector.MatchLabels = newSelectorLabels
-	replicasetV1beta2, err := clientSet.AppsV1beta2().ReplicaSets(ns.Name).Update(rsV1beta2)
-	if err != nil {
-		t.Fatalf("failed to update apps/v1beta2 replicaset %s: %v", rsV1beta2.Name, err)
+	rsV1beta2.Spec.Template.Labels = newSelectorLabels
+	_, err = clientSet.AppsV1beta2().ReplicaSets(ns.Name).Update(rsV1beta2)
+	if err == nil {
+		t.Fatalf("failed to provide validation error when changing immutable selector when updating apps/v1beta2 replicaset %s", rsV1beta2.Name)
 	}
-	if !reflect.DeepEqual(replicasetV1beta2.Spec.Selector.MatchLabels, oldSelectorLabels) {
-		t.Errorf("selector should NOT be changed for apps/v1beta2, expected: %v, got: %v", oldSelectorLabels, replicasetV1beta2.Spec.Selector.MatchLabels)
+	expectedErrList := field.ErrorList{
+		&field.Error{
+			Type:  field.ErrorTypeInvalid,
+			Field: field.NewPath("spec").Child("selector").String(),
+			BadValue: &metav1.LabelSelector{
+				MatchLabels: newSelectorLabels,
+			},
+			Detail: "selector must not be changed after update",
+		},
+	}
+	expectedErrMessage := fmt.Sprintf("ReplicaSet.apps \"rs\" is invalid: %v", expectedErrList.ToAggregate())
+	errMessage := fmt.Sprintf("%v", err)
+	if errMessage != expectedErrMessage {
+		t.Errorf("error message does not matched, expected: %v, got: %s", expectedErrMessage, errMessage)
 	}
 }
