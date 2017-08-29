@@ -59,9 +59,7 @@ go_library(
         "top_pod.go",
         "version.go",
     ],
-    visibility = [
-        "//build/visible_to:pkg_kubectl_cmd_CONSUMERS",
-    ],
+    visibility = ["//visibility:public"],
     deps = [
         "//pkg/api:go_default_library",
         "//pkg/api/validation:go_default_library",
@@ -183,11 +181,6 @@ go_test(
         "top_pod_test.go",
         "top_test.go",
     ],
-    data = [
-        "testdata",
-        "//examples:config",
-        "//test/fixtures",
-    ],
     library = ":go_default_library",
     deps = [
         "//pkg/api:go_default_library",
@@ -244,6 +237,7 @@ filegroup(
     name = "package-srcs",
     srcs = glob(["**"]),
     tags = ["automanaged"],
+    visibility = ["//visibility:private"],
 )
 
 filegroup(
@@ -260,7 +254,5 @@ filegroup(
         "//pkg/kubectl/cmd/util:all-srcs",
     ],
     tags = ["automanaged"],
-    visibility = [
-        "//build/visible_to:pkg_kubectl_cmd_CONSUMERS",
-    ],
+    visibility = ["//visibility:public"],
 )
