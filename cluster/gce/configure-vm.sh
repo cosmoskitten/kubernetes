@@ -460,7 +460,7 @@ EOF
 storage_media_type: '$(echo "$STORAGE_MEDIA_TYPE" | sed -e "s/'/''/g")'
 EOF
     fi
-    if [ -n "${KUBE_APISERVER_REQUEST_TIMEOUT_SEC:-}" ]; the
+    if [ -n "${KUBE_APISERVER_REQUEST_TIMEOUT_SEC:-}" ]; then
       cat <<EOF >>/srv/salt-overlay/pillar/cluster-params.sls
 kube_apiserver_request_timeout_sec: '$(echo "$KUBE_APISERVER_REQUEST_TIMEOUT_SEC" | sed -e "s/'/''/g")'
 EOF
