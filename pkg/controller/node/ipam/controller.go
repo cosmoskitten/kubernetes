@@ -1,3 +1,19 @@
+/*
+Copyright 2017 The Kubernetes Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package ipam
 
 import (
@@ -148,6 +164,7 @@ func (c *Controller) onAdd(node *v1.Node) error {
 		c.syncers[node.Name] = syncer
 		go syncer.Loop(nil)
 	} else {
+		glog.Warningf("Add for node %q that already exists", node.Name)
 		syncer.Update(node)
 	}
 
@@ -161,7 +178,8 @@ func (c *Controller) onUpdate(_, node *v1.Node) error {
 	if sync, ok := c.syncers[node.Name]; ok {
 		sync.Update(node)
 	} else {
-		// XXX
+		glog.Errorf("Received update for non-existant node %q", node.Name)
+		return fmt.Errorf("unknown node %q", node.Name)
 	}
 
 	return nil
@@ -175,7 +193,7 @@ func (c *Controller) onDelete(node *v1.Node) error {
 		syncer.Delete(node)
 		delete(c.syncers, node.Name)
 	} else {
-		// XXX
+		glog.Warning("Node %q was already deleted", node.Name)
 	}
 
 	return nil
