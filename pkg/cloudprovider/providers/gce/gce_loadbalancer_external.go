@@ -343,9 +343,11 @@ func (gce *GCECloud) ensureExternalLoadBalancerDeleted(clusterName, clusterID st
 
 	errs := utilerrors.AggregateGoroutines(
 		func() error {
-			err := ignoreNotFound(gce.DeleteFirewall(makeFirewallName(loadBalancerName)))
+			fwName := makeFirewallName(loadBalancerName)
+			err := ignoreNotFound(gce.DeleteFirewall(fwName))
 			if isForbidden(err) && gce.OnXPN() {
-				glog.V(4).Infof("ensureExternalLoadBalancerDeleted(%v): do not have permission to delete firewall rule (on XPN).", loadBalancerName)
+				glog.V(4).Infof("ensureExternalLoadBalancerDeleted(%v): do not have permission to delete firewall rule (on XPN). Raising event.", loadBalancerName)
+				gce.raiseFirewallChangeNeededEvent(service, FirewallToGCloudDeleteCmd(fwName, gce.NetworkProjectID()))
 				return nil
 			}
 			return err

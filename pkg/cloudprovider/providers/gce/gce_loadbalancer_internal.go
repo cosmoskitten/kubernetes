@@ -124,7 +124,7 @@ func (gce *GCECloud) ensureInternalLoadBalancer(clusterName, clusterID string, s
 
 	// Delete the previous internal load balancer resources if necessary
 	if existingBackendService != nil {
-		gce.clearPreviousInternalResources(loadBalancerName, existingBackendService, backendServiceName, hcName)
+		gce.clearPreviousInternalResources(svc, loadBalancerName, existingBackendService, backendServiceName, hcName)
 	}
 
 	// Get the most recent forwarding rule for the new address.
@@ -138,7 +138,7 @@ func (gce *GCECloud) ensureInternalLoadBalancer(clusterName, clusterID string, s
 	return status, nil
 }
 
-func (gce *GCECloud) clearPreviousInternalResources(loadBalancerName string, existingBackendService *compute.BackendService, expectedBSName, expectedHCName string) {
+func (gce *GCECloud) clearPreviousInternalResources(svc *v1.Service, loadBalancerName string, existingBackendService *compute.BackendService, expectedBSName, expectedHCName string) {
 	// If a new backend service was created, delete the old one.
 	if existingBackendService.Name != expectedBSName {
 		glog.V(2).Infof("clearPreviousInternalResources(%v): expected backend service %q does not match previous %q - deleting backend service", loadBalancerName, expectedBSName, existingBackendService.Name)
@@ -152,7 +152,7 @@ func (gce *GCECloud) clearPreviousInternalResources(loadBalancerName string, exi
 		existingHCName := getNameFromLink(existingBackendService.HealthChecks[0])
 		if existingHCName != expectedHCName {
 			glog.V(2).Infof("clearPreviousInternalResources(%v): expected health check %q does not match previous %q - deleting health check", loadBalancerName, expectedHCName, existingHCName)
-			if err := gce.teardownInternalHealthCheckAndFirewall(existingHCName); err != nil {
+			if err := gce.teardownInternalHealthCheckAndFirewall(svc, existingHCName); err != nil {
 				glog.Warningf("clearPreviousInternalResources: could not delete existing healthcheck: %v, err: %v", existingHCName, err)
 			}
 		}
@@ -207,6 +207,7 @@ func (gce *GCECloud) ensureInternalLoadBalancerDeleted(clusterName, clusterID st
 	if err := gce.DeleteFirewall(loadBalancerName); err != nil {
 		if isForbidden(err) && gce.OnXPN() {
 			glog.V(2).Infof("ensureInternalLoadBalancerDeleted(%v): could not delete traffic firewall on XPN cluster. Ignoring.", loadBalancerName)
+			gce.raiseFirewallChangeNeededEvent(svc, FirewallToGCloudDeleteCmd(loadBalancerName, gce.NetworkProjectID()))
 		} else {
 			return err
 		}
@@ -214,7 +215,7 @@ func (gce *GCECloud) ensureInternalLoadBalancerDeleted(clusterName, clusterID st
 
 	hcName := makeHealthCheckName(loadBalancerName, clusterID, sharedHealthCheck)
 	glog.V(2).Infof("ensureInternalLoadBalancerDeleted(%v): deleting health check %v and its firewall", loadBalancerName, hcName)
-	if err := gce.teardownInternalHealthCheckAndFirewall(hcName); err != nil {
+	if err := gce.teardownInternalHealthCheckAndFirewall(svc, hcName); err != nil {
 		return err
 	}
 
@@ -243,7 +244,7 @@ func (gce *GCECloud) teardownInternalBackendService(bsName string) error {
 	return nil
 }
 
-func (gce *GCECloud) teardownInternalHealthCheckAndFirewall(hcName string) error {
+func (gce *GCECloud) teardownInternalHealthCheckAndFirewall(svc *v1.Service, hcName string) error {
 	if err := gce.DeleteHealthCheck(hcName); err != nil {
 		if isNotFound(err) {
 			glog.V(2).Infof("teardownInternalHealthCheckAndFirewall(%v): health check does not exist.", hcName)
@@ -260,7 +261,8 @@ func (gce *GCECloud) teardownInternalHealthCheckAndFirewall(hcName string) error
 	hcFirewallName := makeHealthCheckFirewallNameFromHC(hcName)
 	if err := gce.DeleteFirewall(hcFirewallName); err != nil && !isNotFound(err) {
 		if isForbidden(err) && gce.OnXPN() {
-			glog.V(2).Infof("teardownInternalHealthCheckAndFirewall(%v) could not delete health check firewall on XPN cluster. Ignoring.", hcName)
+			glog.V(2).Infof("teardownInternalHealthCheckAndFirewall(%v): could not delete health check traffic firewall on XPN cluster. Raising Event.", hcName)
+			gce.raiseFirewallChangeNeededEvent(svc, FirewallToGCloudDeleteCmd(hcFirewallName, gce.NetworkProjectID()))
 		} else {
 			return fmt.Errorf("failed to delete health check firewall: %v, err: %v", hcFirewallName, err)
 		}

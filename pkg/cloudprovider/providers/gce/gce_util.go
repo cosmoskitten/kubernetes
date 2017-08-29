@@ -77,10 +77,9 @@ func FirewallToGCloudUpdateCmd(fw *compute.Firewall, projectID string) string {
 	return fmt.Sprintf("gcloud compute firewall-rules update %v %v", fw.Name, args)
 }
 
-// FirewallToGCloudCreateCmd generates a gcloud command to update a firewall to specified params
-func FirewallToGCloudDeleteCmd(fw *compute.Firewall, projectID string) string {
-	args := firewallToGcloudArgs(fw, projectID)
-	return fmt.Sprintf("gcloud compute firewall-rules update %v %v", fw.Name, args)
+// FirewallToGCloudCreateCmd generates a gcloud command to delete a firewall to specified params
+func FirewallToGCloudDeleteCmd(fwName, projectID string) string {
+	return fmt.Sprintf("gcloud compute firewall-rules delete %v --project %v", fwName, projectID)
 }
 
 func firewallToGcloudArgs(fw *compute.Firewall, projectID string) string {
