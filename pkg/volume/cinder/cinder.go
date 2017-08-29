@@ -56,6 +56,7 @@ type CinderProvider interface {
 	DisksAreAttached(instanceID string, volumeIDs []string) (map[string]bool, error)
 	ShouldTrustDevicePath() bool
 	Instances() (cloudprovider.Instances, bool)
+	ExpandVolume(volumeID string, newSize int) error
 }
 
 type cinderPlugin struct {
@@ -231,6 +232,42 @@ func (plugin *cinderPlugin) ConstructVolumeSpec(volumeName, mountPath string) (*
 		},
 	}
 	return volume.NewSpecFromVolume(cinderVolume), nil
+}
+
+type cinderDiskExpander struct {
+	*cinderVolume
+}
+
+func (plugin *cinderPlugin) NewExpander(spec *volume.Spec) (volume.Expander, error) {
+	cinder, _, err := getVolumeSource(spec)
+	if err != nil {
+		return nil, err
+	}
+
+	pdName := cinder.VolumeID
+
+	return &cinderDiskExpander{
+		cinderVolume: &cinderVolume{
+			volName: spec.Name(),
+			pdName:  pdName,
+			plugin:  plugin,
+		},
+	}, nil
+}
+
+var _ volume.Expander = &cinderDiskExpander{}
+
+func (cde *cinderDiskExpander) ExpandVolumeDevice(newSize resource.Quantity, oldSize resource.Quantity) error {
+	cloud, err := cde.plugin.getCloudProvider()
+	if err != nil {
+		return err
+	}
+
+	return cloud.ExpandVolume(cde.pdName, int(newSize.Value()))
+}
+
+func (e *cinderDiskExpander) RequiresFSResize() bool {
+	return true
 }
 
 // Abstract interface to PD operations.

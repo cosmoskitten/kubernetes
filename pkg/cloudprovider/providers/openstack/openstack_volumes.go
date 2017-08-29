@@ -27,6 +27,7 @@ import (
 	k8s_volume "k8s.io/kubernetes/pkg/volume"
 
 	"github.com/gophercloud/gophercloud"
+	volume_expand "github.com/gophercloud/gophercloud/openstack/blockstorage/extensions/volumeactions"
 	volumes_v1 "github.com/gophercloud/gophercloud/openstack/blockstorage/v1/volumes"
 	volumes_v2 "github.com/gophercloud/gophercloud/openstack/blockstorage/v2/volumes"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/volumeattach"
@@ -285,6 +286,28 @@ func (os *OpenStack) DetachDisk(instanceID, volumeID string) error {
 		glog.V(2).Infof("Successfully detached volume: %s from compute: %s", volume.ID, instanceID)
 	}
 
+	return nil
+}
+
+// ExpandVolume expand the size of specific cinder volume
+func (os *OpenStack) ExpandVolume(volumeID string, newSize int) error {
+	startTime := time.Now()
+
+	cClient, err := os.NewComputeV2()
+	if err != nil {
+		return err
+	}
+
+	create_opts := volume_expand.ExtendSizeOpts{
+		NewSize: newSize,
+	}
+
+	err = volume_expand.ExtendSize(cClient, volumeID, create_opts).ExtractErr()
+	timeTaken := time.Since(startTime).Seconds()
+	recordOpenstackOperationMetric("expand_volume", timeTaken, err)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
