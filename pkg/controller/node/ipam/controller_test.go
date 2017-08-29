@@ -17,6 +17,7 @@ limitations under the License.
 package ipam
 
 import (
+	"net"
 	"testing"
 
 	"k8s.io/kubernetes/pkg/controller/node/ipam/cidrset"
@@ -24,18 +25,41 @@ import (
 )
 
 func TestOccupyServiceCIDR(t *testing.T) {
+	const clusterCIDR = "10.1.0.0/16"
+
+TestCase:
 	for _, tc := range []struct {
-		clusterCIDR string
 		serviceCIDR string
 	}{
-		{"10.1.0.0/16", "10.0.255.0/24"},
-		{"10.1.0.0/16", "10.1.0.0/24"},
-		{"10.1.0.0/16", "10.1.0.0/24"},
+		{"10.0.255.0/24"},
+		{"10.1.0.0/24"},
+		{"10.1.255.0/24"},
+		{"10.2.0.0/24"},
 	} {
-		set := cidrset.NewCIDRSet(test.MustParseCIDR(tc.clusterCIDR), 24)
-		if err := occupyServiceCIDR(set, test.MustParseCIDR(tc.clusterCIDR), test.MustParseCIDR(tc.serviceCIDR)); err != nil {
+
+		serviceCIDR := test.MustParseCIDR(tc.serviceCIDR)
+		set := cidrset.NewCIDRSet(test.MustParseCIDR(clusterCIDR), 24)
+		if err := occupyServiceCIDR(set, test.MustParseCIDR(clusterCIDR), serviceCIDR); err != nil {
 			t.Errorf("test case %+v: occupyServiceCIDR() = %v, want nil", tc, err)
 		}
-		// XXX
+		// Allocate until full.
+		var cidrs []*net.IPNet
+		for {
+			cidr, err := set.AllocateNext()
+			if err != nil {
+				if err == cidrset.ErrCIDRRangeNoCIDRsRemaining {
+					break
+				}
+				t.Errorf("set.AllocateNext() = %v, want %v", err, cidrset.ErrCIDRRangeNoCIDRsRemaining)
+				continue TestCase
+			}
+			cidrs = append(cidrs, cidr)
+		}
+		// No allocated CIDR range should intersect with serviceCIDR.
+		for _, c := range cidrs {
+			if c.Contains(serviceCIDR.IP) || serviceCIDR.Contains(c.IP) {
+				t.Errorf("test case %+v: allocated CIDR %v from service range", tc, c)
+			}
+		}
 	}
 }
