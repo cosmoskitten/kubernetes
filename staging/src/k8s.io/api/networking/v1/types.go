@@ -66,6 +66,9 @@ type NetworkPolicySpec struct {
 	// (and serves solely to ensure that the pods it selects does not allow any outgoing traffic.)
 	// +optional
 	Egress []NetworkPolicyEgressRule `json:"egress,omitempty" protobuf:"bytes,3,rep,name=egress"`
+
+	// +optional
+	PolicyType []string `json:"policyType,omitempty" protobuf:"bytes,3,rep,name=policyType"`
 }
 
 // NetworkPolicyIngressRule describes a particular set of traffic that is allowed to the pods

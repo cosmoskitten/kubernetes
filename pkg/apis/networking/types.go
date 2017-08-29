@@ -64,6 +64,9 @@ type NetworkPolicySpec struct {
 	// (and serves solely to ensure that the pods it selects does not allow any outgoing traffic.)
 	// +optional
 	Egress []NetworkPolicyEgressRule
+
+	// +optional
+	PolicyType []string
 }
 
 // NetworkPolicyIngressRule describes a particular set of traffic that is allowed to the pods

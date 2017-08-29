@@ -33,3 +33,15 @@ func SetDefaults_NetworkPolicyPort(obj *networkingv1.NetworkPolicyPort) {
 		obj.Protocol = &proto
 	}
 }
+
+func SetDefaults_NetworkPolicySpec(obj *networkingv1.NetworkPolicySpec) {
+	if obj.PolicyType == nil {
+		if obj.Ingress != nil && obj.Egress != nil {
+			obj.PolicyType = []string{"ingress", "egress"}
+		} else if obj.Egress != nil {
+			obj.PolicyType = []string{"egress"}
+		} else if obj.Egress == nil {
+			obj.PolicyType = []string{"ingress"}
+		}
+	}
+}
