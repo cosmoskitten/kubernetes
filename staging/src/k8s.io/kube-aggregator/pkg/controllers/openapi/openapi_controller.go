@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package apiserver
+package openapi
 
 import (
 	"fmt"
@@ -49,6 +49,9 @@ type OpenAPIAggregationController struct {
 	openAPIAggregationManager OpenAPIAggregationManager
 	queue                     workqueue.RateLimitingInterface
 	downloader                *openAPIDownloader
+
+	// To allow injection for testing.
+	syncHandler func(key string) error
 }
 
 func NewOpenAPIAggregationController(downloader *openAPIDownloader, openAPIAggregationManager OpenAPIAggregationManager) *OpenAPIAggregationController {
@@ -56,8 +59,10 @@ func NewOpenAPIAggregationController(downloader *openAPIDownloader, openAPIAggre
 		openAPIAggregationManager: openAPIAggregationManager,
 		queue: workqueue.NewNamedRateLimitingQueue(
 			workqueue.NewItemExponentialFailureRateLimiter(successfulUpdateDelay, failedUpdateMaxExpDelay), "APIServiceOpenAPIAggregationControllerQueue1"),
-		downloader: downloader,
+		downloader:  downloader,
 	}
+
+	c.syncHandler = c.sync
 
 	return c
 }
@@ -86,25 +91,37 @@ func (c *OpenAPIAggregationController) processNextWorkItem() bool {
 	if quit {
 		return false
 	}
-	apiServiceName := key.(string)
-	handler, etag, exists := c.openAPIAggregationManager.GetApiServiceInfo(apiServiceName)
+
+	err := c.syncHandler(key.(string))
+	if err == nil {
+		return true
+	}
+
+	utilruntime.HandleError(fmt.Errorf("loading OpenAPI spec for %q failed with: %v", key, err))
+
+	c.queue.AddRateLimited(key)
+
+	return true
+}
+
+func (c *OpenAPIAggregationController) sync(key string) error {
+	handler, etag, exists := c.openAPIAggregationManager.GetApiServiceInfo(key)
 	if !exists || handler == nil {
 		c.queue.Forget(key)
-		return true
+		return nil
 	}
 	returnSpec, newEtag, httpStatus, err := c.downloader.Download(handler, etag)
 	rateLimit := false
 	switch {
 	case err != nil:
-		utilruntime.HandleError(fmt.Errorf("loading OpenAPI spec for %q failed with : %v", apiServiceName, err))
-		rateLimit = true
+		return err
 	case httpStatus == http.StatusNotModified:
 		rateLimit = false
 	case httpStatus == http.StatusNotFound || returnSpec == nil:
 		rateLimit = true
 	case httpStatus == http.StatusOK:
-		if err := c.openAPIAggregationManager.UpdateApiServiceSpec(apiServiceName, returnSpec, newEtag); err != nil {
-			utilruntime.HandleError(fmt.Errorf("aggregating OpenAPI spec for %q failed with : %v", apiServiceName, err))
+		if err := c.openAPIAggregationManager.UpdateApiServiceSpec(key, returnSpec, newEtag); err != nil {
+			utilruntime.HandleError(fmt.Errorf("aggregating OpenAPI spec for %q failed with: %v", key, err))
 			rateLimit = true
 		}
 	}
@@ -115,19 +132,19 @@ func (c *OpenAPIAggregationController) processNextWorkItem() bool {
 		c.queue.Forget(key)
 		c.queue.AddAfter(key, successfulUpdateDelay)
 	}
-	return true
+	return nil
 }
 
 func (c *OpenAPIAggregationController) AddAPIService(handler http.Handler, apiService *apiregistration.APIService) {
 	if err := c.openAPIAggregationManager.AddUpdateApiService(handler, apiService); err != nil {
-		utilruntime.HandleError(fmt.Errorf("adding %q to OpenAPIAggregationController failed with : %v", apiService.Name, err))
+		utilruntime.HandleError(fmt.Errorf("adding %q to OpenAPIAggregationController failed with: %v", apiService.Name, err))
 	}
 	c.queue.AddAfter(apiService.Name, time.Second)
 }
 
 func (c *OpenAPIAggregationController) UpdateAPIService(handler http.Handler, apiService *apiregistration.APIService) {
 	if err := c.openAPIAggregationManager.AddUpdateApiService(handler, apiService); err != nil {
-		utilruntime.HandleError(fmt.Errorf("updating %q to OpenAPIAggregationController failed with : %v", apiService.Name, err))
+		utilruntime.HandleError(fmt.Errorf("updating %q to OpenAPIAggregationController failed with: %v", apiService.Name, err))
 	}
 	key := apiService.Name
 	if c.queue.NumRequeues(key) > 0 {
@@ -142,7 +159,7 @@ func (c *OpenAPIAggregationController) UpdateAPIService(handler http.Handler, ap
 
 func (c *OpenAPIAggregationController) RemoveAPIService(apiServiceName string) {
 	if err := c.openAPIAggregationManager.RemoveApiServiceSpec(apiServiceName); err != nil {
-		utilruntime.HandleError(fmt.Errorf("removing %q from OpenAPIAggregationController failed with : %v", apiServiceName, err))
+		utilruntime.HandleError(fmt.Errorf("removing %q from OpenAPIAggregationController failed with: %v", apiServiceName, err))
 	}
 	// This will only remove it if it was failing before. If it was successful, processNextWorkItem will figure it out
 	// and will not add it again to the queue.

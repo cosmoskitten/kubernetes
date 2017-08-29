@@ -37,6 +37,13 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+
+func TestTeardown(t *testing.T) {
+	_, tearDown := StartTestServerOrDie(t)
+	defer tearDown()
+	<-make(chan struct{})
+}
+
 func TestRun(t *testing.T) {
 	config, tearDown := StartTestServerOrDie(t)
 	defer tearDown()
