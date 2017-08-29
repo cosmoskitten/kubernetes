@@ -179,6 +179,7 @@ go_test(
         "replace_test.go",
         "rollingupdate_test.go",
         "run_test.go",
+        "scale_test.go",
         "taint_test.go",
         "top_node_test.go",
         "top_pod_test.go",
