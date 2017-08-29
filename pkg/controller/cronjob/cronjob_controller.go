@@ -72,7 +72,7 @@ func NewCronJobController(kubeClient clientset.Interface) *CronJobController {
 	// TODO: remove the wrapper when every clients have moved to use the clientset.
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: v1core.New(kubeClient.Core().RESTClient()).Events("")})
 
-	if kubeClient != nil && kubeClient.Core().RESTClient().GetRateLimiter() != nil {
+	if kubeClient != nil && kubeClient.CoreV1().RESTClient().GetRateLimiter() != nil {
 		metrics.RegisterMetricAndTrackRateLimiterUsage("cronjob_controller", kubeClient.Core().RESTClient().GetRateLimiter())
 	}
 
@@ -253,6 +253,7 @@ func syncOne(sj *batchv2alpha1.CronJob, js []batchv1.Job, now time.Time, jc jobC
 		glog.V(4).Infof("Not starting job for %s because it is suspended", nameForLog)
 		return
 	}
+
 	times, err := getRecentUnmetScheduleTimes(*sj, now)
 	if err != nil {
 		recorder.Eventf(sj, v1.EventTypeWarning, "FailedNeedsStart", "Cannot determine if job needs to be started: %v", err)
@@ -263,9 +264,8 @@ func syncOne(sj *batchv2alpha1.CronJob, js []batchv1.Job, now time.Time, jc jobC
 		glog.V(4).Infof("No unmet start times for %s", nameForLog)
 		return
 	}
-	if len(times) > 1 {
-		glog.V(4).Infof("Multiple unmet start times for %s so only starting last one", nameForLog)
-	}
+
+	glog.V(4).Infof("Multiple unmet start times for %s so only start last one", nameForLog)
 	scheduledTime := times[len(times)-1]
 	tooLate := false
 	if sj.Spec.StartingDeadlineSeconds != nil {
@@ -284,6 +284,7 @@ func syncOne(sj *batchv2alpha1.CronJob, js []batchv1.Job, now time.Time, jc jobC
 		// can see easily that there was a missed execution.
 		return
 	}
+
 	if sj.Spec.ConcurrencyPolicy == batchv2alpha1.ForbidConcurrent && len(sj.Status.Active) > 0 {
 		// Regardless which source of information we use for the set of active jobs,
 		// there is some risk that we won't see an active job when there is one.
@@ -376,6 +377,7 @@ func deleteJob(sj *batchv2alpha1.CronJob, job *batchv1.Job, jc jobControlInterfa
 	podList, err := pc.ListPods(job.Namespace, options)
 	if err != nil {
 		recorder.Eventf(sj, v1.EventTypeWarning, "FailedList", "List job-pods: %v", err)
+		return false
 	}
 	errList := []error{}
 	for _, pod := range podList.Items {
