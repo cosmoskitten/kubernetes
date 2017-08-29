@@ -439,6 +439,14 @@ var Funcs = func(codecs runtimeserializer.CodecFactory) []interface{} {
 					ss.Ports[i].TargetPort.StrVal = "x" + ss.Ports[i].TargetPort.StrVal // non-empty
 				}
 			}
+			if ss.SessionAffinity == api.ServiceAffinityClientIP && ss.SessionAffinityConfig == nil {
+				timeoutSeconds := api.DefaultClientIPServiceAffinitySeconds
+				ss.SessionAffinityConfig = &api.SessionAffinityConfig{
+					ClientIP: &api.ClientIPConfig{
+						TimeoutSeconds: &timeoutSeconds,
+					},
+				}
+			}
 		},
 		func(n *api.Node, c fuzz.Continue) {
 			c.FuzzNoCustom(n)
