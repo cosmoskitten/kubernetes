@@ -444,6 +444,51 @@ func podMemoryUsage(podStats statsapi.PodStats) (v1.ResourceList, error) {
 	}, nil
 }
 
+// localEphemeralVolumeNames returns the set of ephemeral volumes for the pod that are local
+func localEphemeralVolumeNames(pod *v1.Pod) []string {
+	result := []string{}
+	for _, volume := range pod.Spec.Volumes {
+		if volume.GitRepo != nil ||
+			(volume.EmptyDir != nil && volume.EmptyDir.Medium != v1.StorageMediumMemory) ||
+			volume.ConfigMap != nil || volume.DownwardAPI != nil {
+			result = append(result, volume.Name)
+		}
+	}
+	return result
+}
+
+// podLocalEphemeralStorageUsage  aggregates pod local ephemeral storage usage and inode consumption for the specified stats to measure.
+func podLocalEphemeralStorageUsage(podStats statsapi.PodStats, pod *v1.Pod, statsToMeasure []fsStatsType) (v1.ResourceList, error) {
+	disk := resource.Quantity{Format: resource.BinarySI}
+	inodes := resource.Quantity{Format: resource.BinarySI}
+	for _, container := range podStats.Containers {
+		if hasFsStatsType(statsToMeasure, fsStatsRoot) {
+			disk.Add(*diskUsage(container.Rootfs))
+			inodes.Add(*inodeUsage(container.Rootfs))
+		}
+		if hasFsStatsType(statsToMeasure, fsStatsLogs) {
+			disk.Add(*diskUsage(container.Logs))
+			inodes.Add(*inodeUsage(container.Logs))
+		}
+	}
+	if hasFsStatsType(statsToMeasure, fsStatsLocalVolumeSource) {
+		volumeNames := localEphemeralVolumeNames(pod)
+		for _, volumeName := range volumeNames {
+			for _, volumeStats := range podStats.VolumeStats {
+				if volumeStats.Name == volumeName {
+					disk.Add(*diskUsage(&volumeStats.FsStats))
+					inodes.Add(*inodeUsage(&volumeStats.FsStats))
+					break
+				}
+			}
+		}
+	}
+	return v1.ResourceList{
+		resourceDisk:   disk,
+		resourceInodes: inodes,
+	}, nil
+}
+
 // formatThreshold formats a threshold for logging.
 func formatThreshold(threshold evictionapi.Threshold) string {
 	return fmt.Sprintf("threshold(signal=%v, operator=%v, value=%v, gracePeriod=%v)", threshold.Signal, threshold.Operator, evictionapi.ThresholdValue(threshold.Value), threshold.GracePeriod)
