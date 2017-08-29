@@ -168,15 +168,6 @@ func defaultPredicates() sets.String {
 		// (e.g. kubelet and all schedulers)
 		factory.RegisterFitPredicate("GeneralPredicates", predicates.GeneralPredicates),
 
-		// Fit is determined based on whether a pod can tolerate all of the node's taints
-		func() string {
-			// If taint node by condition is enabled, toleration predicate is mandatory.
-			if utilfeature.DefaultFeatureGate.Enabled(features.TaintNodesByCondition) {
-				return factory.RegisterMandatoryFitPredicate("PodToleratesNodeTaints", predicates.PodToleratesNodeTaints)
-			}
-			return factory.RegisterFitPredicate("PodToleratesNodeTaints", predicates.PodToleratesNodeTaints)
-		}(),
-
 		// Fit is determined by node memory pressure condition.
 		factory.RegisterFitPredicate("CheckNodeMemoryPressure", predicates.CheckNodeMemoryPressurePredicate),
 
@@ -192,10 +183,15 @@ func defaultPredicates() sets.String {
 		),
 	)
 
-	// If taint node by condition is disabled, register node condition as mandatory predicate.
-	if !utilfeature.DefaultFeatureGate.Enabled(features.TaintNodesByCondition) {
+	if utilfeature.DefaultFeatureGate.Enabled(features.TaintNodesByCondition) {
+		// Fit is determined based on whether a pod can tolerate all of the node's taints
+		predSet.Insert(factory.RegisterMandatoryFitPredicate("PodToleratesNodeTaints", predicates.PodToleratesNodeTaints))
+		glog.Infof("TaintNodesByCondition is enabled, PodToleratesNodeTaints predicate is mandatory")
+	} else {
 		// Fit is determied by node condtions: not ready, network unavailable and out of disk.
 		predSet.Insert(factory.RegisterMandatoryFitPredicate("CheckNodeCondition", predicates.CheckNodeConditionPredicate))
+		// Fit is determined based on whether a pod can tolerate all of the node's taints
+		predSet.Insert(factory.RegisterFitPredicate("PodToleratesNodeTaints", predicates.PodToleratesNodeTaints))
 	}
 
 	return predSet
