@@ -585,7 +585,7 @@ func selectNodesForPreemption(pod *v1.Pod,
 		if meta != nil {
 			metaCopy = meta.ShallowCopy()
 		}
-		pods, fits := selectVictimsOnNode(pod, metaCopy, nodeNameToInfo[nodeName], predicates)
+		pods, fits := selectVictimsOnNode(pod, metaCopy, nodeNameToInfo[nodeName], predicates, extenders)
 		if fits {
 			resultLock.Lock()
 			nodeNameToPods[nodeName] = pods
@@ -607,22 +607,22 @@ func selectNodesForPreemption(pod *v1.Pod,
 			}
 			nodeNameToInfo[nodeName] = nodeInfoCopy
 			filteredNodes := nodes
+			nodePassedExtenders := true
 			for _, extender := range extenders {
 				var err error
-				filteredNodes, _, err = extender.Filter(pod, filteredNodes, nodeNameToInfo)
+				var failedNodesMap map[string]string
+				filteredNodes, failedNodesMap, err = extender.Filter(pod, filteredNodes, nodeNameToInfo)
 				if err != nil {
 					return nil, err
 				}
-				if len(filteredNodes) == 0 {
+				if _, found := failedNodesMap[nodeName]; found || len(filteredNodes) == 0 {
+					nodePassedExtenders = false
 					break
 				}
 			}
 			// Did the node pass extenders filters? If so, add it to the map.
-			for _, filteredNode := range filteredNodes {
-				if nodeName == filteredNode.Name {
-					filteredNodeNameToPods[nodeName] = victims
-					break
-				}
+			if nodePassedExtenders {
+				filteredNodeNameToPods[nodeName] = victims
 			}
 			nodeNameToInfo[nodeName] = originalNodeInfo
 		}
@@ -645,7 +645,12 @@ func selectNodesForPreemption(pod *v1.Pod,
 // due to pod affinity, node affinity, or node anti-affinity reasons. None of
 // these predicates can be satisfied by removing more pods from the node.
 // TODO(bsalamat): Add support for PodDisruptionBudget.
-func selectVictimsOnNode(pod *v1.Pod, meta algorithm.PredicateMetadata, nodeInfo *schedulercache.NodeInfo, fitPredicates map[string]algorithm.FitPredicate) ([]*v1.Pod, bool) {
+func selectVictimsOnNode(
+	pod *v1.Pod,
+	meta algorithm.PredicateMetadata,
+	nodeInfo *schedulercache.NodeInfo,
+	fitPredicates map[string]algorithm.FitPredicate,
+	extenders []algorithm.SchedulerExtender) ([]*v1.Pod, bool) {
 	higherPriority := func(pod1, pod2 interface{}) bool {
 		return util.GetPodPriority(pod1.(*v1.Pod)) > util.GetPodPriority(pod2.(*v1.Pod))
 	}
