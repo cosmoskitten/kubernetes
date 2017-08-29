@@ -943,10 +943,11 @@ func ensureStaticIP(s CloudAddressService, name, serviceName, region, existingIP
 			addressObj.Address = existingIP
 		}
 		if err = s.ReserveRegionAddress(addressObj, region); err != nil {
-			if !isHTTPErrorCode(err, http.StatusConflict) {
+			// GCE returns StatusConflict if the name conflicts; it returns
+			// StatusBadRequest if the IP conflicts.
+			if !isHTTPErrorCode(err, http.StatusConflict) && !isHTTPErrorCode(err, http.StatusBadRequest) {
 				return "", false, fmt.Errorf("error creating gce static IP address: %v", err)
 			}
-			// StatusConflict == the IP exists already.
 			existed = true
 		}
 	default:
@@ -959,10 +960,11 @@ func ensureStaticIP(s CloudAddressService, name, serviceName, region, existingIP
 			addressObj.Address = existingIP
 		}
 		if err = s.ReserveAlphaRegionAddress(addressObj, region); err != nil {
-			if !isHTTPErrorCode(err, http.StatusConflict) {
+			// GCE returns StatusConflict if the name conflicts; it returns
+			// StatusBadRequest if the IP conflicts.
+			if !isHTTPErrorCode(err, http.StatusConflict) && !isHTTPErrorCode(err, http.StatusBadRequest) {
 				return "", false, fmt.Errorf("error creating gce static IP address: %v", err)
 			}
-			// StatusConflict == the IP exists already.
 			existed = true
 		}
 	}
