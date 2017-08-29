@@ -18,6 +18,7 @@ package auth
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -138,6 +139,26 @@ func expectAuditLines(f *framework.Framework, expected []auditEvent) {
 }
 
 func parseAuditLine(line string) (auditEvent, error) {
+	var e struct {
+		Verb      string `json:"verb"`
+		ObjectRef struct {
+			Namespace string `json:"namespace"`
+		} `json:"objectRef"`
+		ResponseStatus struct {
+			Code int32 `json:"code"`
+		} `json:"responseStatus"`
+		RequestURI string `json:"requestURI"`
+	}
+
+	if err := json.Unmarshal([]byte(line), &e); err == nil {
+		return auditEvent{
+			method:    e.Verb,
+			namespace: e.ObjectRef.Namespace,
+			uri:       e.RequestURI,
+			response:  fmt.Sprintf("%d", e.ResponseStatus.Code),
+		}, nil
+	}
+
 	fields := strings.Fields(line)
 	if len(fields) < 3 {
 		return auditEvent{}, fmt.Errorf("could not parse audit line: %s", line)
