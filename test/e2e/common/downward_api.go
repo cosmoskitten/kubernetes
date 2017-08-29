@@ -28,7 +28,7 @@ import (
 	. "github.com/onsi/ginkgo"
 )
 
-var _ = framework.KubeDescribe("Downward API", func() {
+var _ = Describe("[sig-api-machinery] Downward API", func() {
 	f := framework.NewDefaultFramework("downward-api")
 
 	It("should provide pod name and namespace as env vars [Conformance]", func() {
@@ -219,4 +219,21 @@ func testDownwardAPI(f *framework.Framework, podName string, env []v1.EnvVar, ex
 
 func testDownwardAPIUsingPod(f *framework.Framework, pod *v1.Pod, env []v1.EnvVar, expectations []string) {
 	f.TestContainerOutputRegexp("downward api env vars", pod, 0, expectations)
+}
+
+func downwardAPIVolumeDefaultBaseContainer(name, filePath string) []v1.Container {
+	return []v1.Container{
+		{
+			Name:    name,
+			Image:   "gcr.io/google_containers/mounttest:0.8",
+			Command: []string{"/mt", "--file_content=" + filePath},
+			VolumeMounts: []v1.VolumeMount{
+				{
+					Name:      "podinfo",
+					MountPath: "/etc",
+				},
+			},
+		},
+	}
+
 }
