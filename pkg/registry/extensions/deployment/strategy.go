@@ -17,10 +17,13 @@ limitations under the License.
 package deployment
 
 import (
+	"fmt"
+
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	apivalidation "k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -92,12 +95,15 @@ func (deploymentStrategy) PrepareForUpdate(ctx genericapirequest.Context, obj, o
 
 // ValidateUpdate is the default update validation for an end user.
 func (deploymentStrategy) ValidateUpdate(ctx genericapirequest.Context, obj, old runtime.Object) field.ErrorList {
-	allErrs := validation.ValidateDeploymentUpdate(obj.(*extensions.Deployment), old.(*extensions.Deployment))
+	newDeployment := obj.(*extensions.Deployment)
+	oldDeployment := old.(*extensions.Deployment)
+	allErrs := validation.ValidateDeploymentUpdate(newDeployment, oldDeployment)
 
 	// Update is not allowed to set Spec.Selector for all groups/versions except extensions/v1beta1.
 	// If RequestInfo is nil, it is better to revert to old behavior (i.e. allow update to set Spec.Selector)
 	// to prevent unintentionally breaking users who may rely on the old behavior.
-	// TODO(#50791): after v1beta1 is retired, move selector immutability check to validation codes
+	// TODO(#50791): after apps/v1beta1 and extensions/v1beta1 are removed,
+	// move selector immutability check inside ValidateDeploymentUpdate().
 	if requestInfo, found := genericapirequest.RequestInfoFrom(ctx); found {
 		groupVersion := schema.GroupVersion{Group: requestInfo.APIGroup, Version: requestInfo.APIVersion}
 		switch groupVersion {
@@ -107,9 +113,9 @@ func (deploymentStrategy) ValidateUpdate(ctx genericapirequest.Context, obj, old
 			// no-op for compatibility
 		case appsv1beta2.SchemeGroupVersion:
 			// disallow mutation of selector
-			allErrs = append(allErrs, validation.ValidateSelectorImmutability(obj.(*extensions.Deployment).Spec.Selector, old.(*extensions.Deployment).Spec.Selector)...)
+			allErrs = append(allErrs, apivalidation.ValidateImmutableField(newDeployment.Spec.Selector, oldDeployment.Spec.Selector, field.NewPath("spec").Child("selector"))...)
 		default:
-			panic("unsupported group version for validate selector immutability")
+			panic(fmt.Sprintf("unexpected group/version: %v", groupVersion))
 		}
 	}
 

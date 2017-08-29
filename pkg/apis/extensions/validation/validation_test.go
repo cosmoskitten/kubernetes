@@ -18,7 +18,6 @@ package validation
 
 import (
 	"fmt"
-	"reflect"
 	"strings"
 	"testing"
 
@@ -2820,51 +2819,6 @@ func TestIsValidSysctlPattern(t *testing.T) {
 	for _, s := range invalid {
 		if IsValidSysctlPattern(s) {
 			t.Errorf("%q expected to be an invalid sysctl pattern", s)
-		}
-	}
-}
-
-func TestValidateSelectorImmutability(t *testing.T) {
-	tests := []struct {
-		newSelectorLabels map[string]string
-		oldSelectorLabels map[string]string
-		expectedErrorList field.ErrorList
-	}{
-		{
-			map[string]string{"a": "b"},
-			map[string]string{"a": "b"},
-			field.ErrorList{},
-		},
-		{
-			map[string]string{"c": "d"},
-			map[string]string{"a": "b"},
-			field.ErrorList{
-				&field.Error{
-					Type:  field.ErrorTypeInvalid,
-					Field: field.NewPath("spec").Child("selector").String(),
-					BadValue: &metav1.LabelSelector{
-						MatchLabels:      map[string]string{"c": "d"},
-						MatchExpressions: []metav1.LabelSelectorRequirement{},
-					},
-					Detail: "selector must not be changed after update",
-				}},
-		},
-	}
-
-	for _, test := range tests {
-		newSelector := &metav1.LabelSelector{
-			MatchLabels:      test.newSelectorLabels,
-			MatchExpressions: []metav1.LabelSelectorRequirement{},
-		}
-		oldSelector := &metav1.LabelSelector{
-			MatchLabels:      test.oldSelectorLabels,
-			MatchExpressions: []metav1.LabelSelectorRequirement{},
-		}
-
-		errorList := ValidateSelectorImmutability(newSelector, oldSelector)
-
-		if !reflect.DeepEqual(test.expectedErrorList, errorList) {
-			t.Errorf("Unexpected error list, expected: %v, actual: %v", test.expectedErrorList, errorList)
 		}
 	}
 }

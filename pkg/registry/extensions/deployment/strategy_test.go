@@ -111,7 +111,7 @@ func TestSelectorImmutability(t *testing.T) {
 						MatchLabels:      map[string]string{"c": "d"},
 						MatchExpressions: []metav1.LabelSelectorRequirement{},
 					},
-					Detail: "selector must not be changed after update",
+					Detail: "field is immutable",
 				},
 			},
 		},

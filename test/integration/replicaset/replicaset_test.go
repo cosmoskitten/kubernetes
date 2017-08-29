@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"net/http/httptest"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -27,7 +28,6 @@ import (
 	"k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/informers"
 	clientset "k8s.io/client-go/kubernetes"
@@ -498,7 +498,6 @@ func TestRSSelectorImmutability(t *testing.T) {
 	}
 
 	// test to ensure apps/v1beta2 selector is immutable
-	// TODO(#50791): change this to expect an error after selector immutability codes are moved to validation
 	rsV1beta2, err := clientSet.AppsV1beta2().ReplicaSets(ns.Name).Get(replicaset.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("failed to get apps/v1beta2 replicaset %s: %v", replicaset.Name, err)
@@ -510,19 +509,9 @@ func TestRSSelectorImmutability(t *testing.T) {
 	if err == nil {
 		t.Fatalf("failed to provide validation error when changing immutable selector when updating apps/v1beta2 replicaset %s", rsV1beta2.Name)
 	}
-	expectedErrList := field.ErrorList{
-		&field.Error{
-			Type:  field.ErrorTypeInvalid,
-			Field: field.NewPath("spec").Child("selector").String(),
-			BadValue: &metav1.LabelSelector{
-				MatchLabels: newSelectorLabels,
-			},
-			Detail: "selector must not be changed after update",
-		},
-	}
-	expectedErrMessage := fmt.Sprintf("ReplicaSet.apps \"rs\" is invalid: %v", expectedErrList.ToAggregate())
-	errMessage := fmt.Sprintf("%v", err)
-	if errMessage != expectedErrMessage {
-		t.Errorf("error message does not matched, expected: %v, got: %s", expectedErrMessage, errMessage)
+	expectedErrType := "Invalid value"
+	expectedErrDetail := "field is immutable"
+	if !strings.Contains(err.Error(), expectedErrType) || !strings.Contains(err.Error(), expectedErrDetail) {
+		t.Errorf("error message does not match, expected type: %s, expected detail: %s, got: %s", expectedErrType, expectedErrDetail, err.Error())
 	}
 }

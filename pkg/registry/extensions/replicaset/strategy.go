@@ -25,6 +25,7 @@ import (
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	apivalidation "k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -106,13 +107,15 @@ func (rsStrategy) AllowCreateOnUpdate() bool {
 
 // ValidateUpdate is the default update validation for an end user.
 func (rsStrategy) ValidateUpdate(ctx genericapirequest.Context, obj, old runtime.Object) field.ErrorList {
+	newReplicaSet := obj.(*extensions.ReplicaSet)
+	oldReplicaSet := old.(*extensions.ReplicaSet)
 	allErrs := validation.ValidateReplicaSet(obj.(*extensions.ReplicaSet))
-	allErrs = append(allErrs, validation.ValidateReplicaSetUpdate(obj.(*extensions.ReplicaSet), old.(*extensions.ReplicaSet))...)
+	allErrs = append(allErrs, validation.ValidateReplicaSetUpdate(newReplicaSet, oldReplicaSet)...)
 
 	// Update is not allowed to set Spec.Selector for all groups/versions except extensions/v1beta1.
 	// If RequestInfo is nil, it is better to revert to old behavior (i.e. allow update to set Spec.Selector)
 	// to prevent unintentionally breaking users who may rely on the old behavior.
-	// TODO(#50791): after v1beta1 is retired, move selector immutability check to validation codes
+	// TODO(#50791): after extensions/v1beta1 is removed, move selector immutability check inside ValidateReplicaSetUpdate().
 	if requestInfo, found := genericapirequest.RequestInfoFrom(ctx); found {
 		groupVersion := schema.GroupVersion{Group: requestInfo.APIGroup, Version: requestInfo.APIVersion}
 		switch groupVersion {
@@ -120,9 +123,9 @@ func (rsStrategy) ValidateUpdate(ctx genericapirequest.Context, obj, old runtime
 			// no-op for compatibility
 		case appsv1beta2.SchemeGroupVersion:
 			// disallow mutation of selector
-			allErrs = append(allErrs, validation.ValidateSelectorImmutability(obj.(*extensions.ReplicaSet).Spec.Selector, old.(*extensions.ReplicaSet).Spec.Selector)...)
+			allErrs = append(allErrs, apivalidation.ValidateImmutableField(newReplicaSet.Spec.Selector, oldReplicaSet.Spec.Selector, field.NewPath("spec").Child("selector"))...)
 		default:
-			panic("unsupported group version for validate selector immutability")
+			panic(fmt.Sprintf("unexpected group/version: %v", groupVersion))
 		}
 	}
 
