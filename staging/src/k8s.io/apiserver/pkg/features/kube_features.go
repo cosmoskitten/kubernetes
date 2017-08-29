@@ -66,6 +66,6 @@ func init() {
 var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureSpec{
 	StreamingProxyRedirects: {Default: true, PreRelease: utilfeature.Beta},
 	AdvancedAuditing:        {Default: false, PreRelease: utilfeature.Alpha},
-	APIResponseCompression:  {Default: false, PreRelease: utilfeature.Alpha},
+	APIResponseCompression:  {Default: true, PreRelease: utilfeature.Alpha},
 	Initializers:            {Default: false, PreRelease: utilfeature.Alpha},
 }
