@@ -111,9 +111,12 @@ func (cas *FakeCloudAddressService) DeleteRegionAddress(name, region string) err
 		return makeGoogleAPINotFoundError("")
 	}
 
-	if _, exists := cas.addrsByRegionAndName[region][name]; !exists {
+	addr, exists := cas.addrsByRegionAndName[region][name]
+	if !exists {
 		return makeGoogleAPINotFoundError("")
 	}
+
+	delete(cas.reservedAddrs, addr.Address)
 	delete(cas.addrsByRegionAndName[region], name)
 	return nil
 }
