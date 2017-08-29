@@ -17,12 +17,14 @@ limitations under the License.
 package gce
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"net/http"
 	"regexp"
 	"strings"
 
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 
@@ -56,6 +58,45 @@ func getProjectAndZone() (string, string, error) {
 		return "", "", err
 	}
 	return projectID, zone, nil
+}
+
+func (gce *GCECloud) raiseFirewallChangeNeededEvent(svc *v1.Service, cmd string) {
+	msg := fmt.Sprintf("Firewall change required by network admin: `%v`", cmd)
+	gce.eventRecorder.Event(svc, v1.EventTypeNormal, "LoadBalancerManualChange", msg)
+}
+
+// FirewallToGCloudCreateCmd generates a gcloud command to create a firewall with specified params
+func FirewallToGCloudCreateCmd(fw *compute.Firewall, projectID string) string {
+	args := firewallToGcloudArgs(fw, projectID)
+	return fmt.Sprintf("gcloud compute firewall-rules create %v --network %v %v", fw.Name, fw.Network, args)
+}
+
+// FirewallToGCloudCreateCmd generates a gcloud command to update a firewall to specified params
+func FirewallToGCloudUpdateCmd(fw *compute.Firewall, projectID string) string {
+	args := firewallToGcloudArgs(fw, projectID)
+	return fmt.Sprintf("gcloud compute firewall-rules update %v %v", fw.Name, args)
+}
+
+// FirewallToGCloudCreateCmd generates a gcloud command to delete a firewall to specified params
+func FirewallToGCloudDeleteCmd(fwName, projectID string) string {
+	return fmt.Sprintf("gcloud compute firewall-rules delete %v --project %v", fwName, projectID)
+}
+
+func firewallToGcloudArgs(fw *compute.Firewall, projectID string) string {
+	var allowedBuffer bytes.Buffer
+	for i, a := range fw.Allowed {
+		for x, p := range a.Ports {
+			sep := ","
+			if i == len(fw.Allowed)-1 && x == len(a.Ports)-1 {
+				sep = ""
+			}
+			allowedBuffer.WriteString(fmt.Sprintf("%v:%v%v", a.IPProtocol, p, sep))
+		}
+	}
+	allow := allowedBuffer.String()
+	srcRngs := strings.Join(fw.SourceRanges, ",")
+	targets := strings.Join(fw.TargetTags, ",")
+	return fmt.Sprintf("--description %q --allow %v --source-ranges %v --target-tags %v --project %v", fw.Description, allow, srcRngs, targets, projectID)
 }
 
 // Take a GCE instance 'hostname' and break it down to something that can be fed
@@ -148,6 +189,10 @@ func ignoreNotFound(err error) error {
 
 func isNotFoundOrInUse(err error) bool {
 	return isNotFound(err) || isInUsedByError(err)
+}
+
+func isForbidden(err error) bool {
+	return isHTTPErrorCode(err, http.StatusForbidden)
 }
 
 func makeGoogleAPINotFoundError(message string) error {
