@@ -26,7 +26,7 @@ import (
 	"k8s.io/kubernetes/pkg/kubectl/resource"
 )
 
-func AddJsonFilenameFlag(cmd *cobra.Command, value *[]string, usage string) {
+func AddFilenameFlag(cmd *cobra.Command, value *[]string, usage string) {
 	cmd.Flags().StringSliceVarP(value, "filename", "f", *value, usage)
 	annotations := make([]string, 0, len(resource.FileExtensions))
 	for _, ext := range resource.FileExtensions {
