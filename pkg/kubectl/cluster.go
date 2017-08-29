@@ -26,8 +26,10 @@ import (
 )
 
 const (
+	// ServiceAccountNameAnnotation annotation for service account name.
 	ServiceAccountNameAnnotation = "federation.kubernetes.io/servive-account-name"
-	ClusterRoleNameAnnotation    = "federation.kubernetes.io/cluster-role-name"
+	// ClusterRoleNameAnnotation annotation for cluster role name.
+	ClusterRoleNameAnnotation = "federation.kubernetes.io/cluster-role-name"
 )
 
 // ClusterGeneratorV1Beta1 supports stable generation of a

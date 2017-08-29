@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// A set of common functions needed by cmd/kubectl and pkg/kubectl packages.
+// Package kubectl provides a set of common functions needed by the cmd/kubectl and pkg/kubectl packages.
 package kubectl
 
 import (
@@ -29,10 +29,6 @@ import (
 const (
 	kubectlAnnotationPrefix = "kubectl.kubernetes.io/"
 )
-
-type NamespaceInfo struct {
-	Namespace string
-}
 
 // ResourceShortcuts represents a structure that holds the information how to
 // transition from resource's shortcut to its full name.
@@ -201,9 +197,9 @@ func parseFileSource(source string) (keyName, filePath string, err error) {
 	case numSeparators == 0:
 		return path.Base(source), source, nil
 	case numSeparators == 1 && strings.HasPrefix(source, "="):
-		return "", "", fmt.Errorf("key name for file path %v missing.", strings.TrimPrefix(source, "="))
+		return "", "", fmt.Errorf("key name for file path %v missing", strings.TrimPrefix(source, "="))
 	case numSeparators == 1 && strings.HasSuffix(source, "="):
-		return "", "", fmt.Errorf("file path for key name %v missing.", strings.TrimSuffix(source, "="))
+		return "", "", fmt.Errorf("file path for key name %v missing", strings.TrimSuffix(source, "="))
 	case numSeparators > 1:
 		return "", "", errors.New("Key names or file paths cannot contain '='.")
 	default:
