@@ -26,6 +26,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	pkgruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
@@ -225,7 +226,9 @@ func (s *ServiceDNSController) validateConfig() error {
 func (s *ServiceDNSController) retrieveOrCreateDNSZone() error {
 	matchingZones, err := getDNSZones(s.zoneName, s.zoneID, s.dnsZones)
 	if err != nil {
-		return fmt.Errorf("error querying for DNS zones: %v", err)
+		if ss, ok := err.(errors.APIStatus); !ok || ss.Status().Code != 404 {
+			return fmt.Errorf("error querying for DNS zones: %v", err)
+		}
 	}
 	switch len(matchingZones) {
 	case 0: // No matching zones for s.zoneName, so create one
