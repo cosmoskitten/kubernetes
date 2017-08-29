@@ -128,16 +128,19 @@ type GCECloud struct {
 
 type ServiceManager interface {
 	// Creates a new persistent disk on GCE with the given disk spec.
-	CreateDisk(project string, zone string, disk *compute.Disk) (*compute.Operation, error)
+	CreateDisk(project string, zone string, disk gceObject) (gceObject, error)
+
+	// Attach a new persistent disk on GCE with the given disk spec to the specified instance.
+	AttachDisk(project string, zone string, instanceName string, attachedDisk gceObject) (gceObject, error)
 
 	// Gets the persistent disk from GCE with the given diskName.
-	GetDisk(project string, zone string, diskName string) (*compute.Disk, error)
+	GetDisk(project string, zone string, diskName string) (*GCEDisk, error)
 
 	// Deletes the persistent disk from GCE with the given diskName.
-	DeleteDisk(project string, zone string, disk string) (*compute.Operation, error)
+	DeleteDisk(project string, zone string, disk string) (gceObject, error)
 
 	// Waits until GCE reports the given operation in the given zone as done.
-	WaitForZoneOp(op *compute.Operation, zone string, mc *metricContext) error
+	WaitForZoneOp(op gceObject, zone string, mc *metricContext) error
 }
 
 type GCEServiceManager struct {
@@ -684,27 +687,85 @@ func newOauthClient(tokenSource oauth2.TokenSource) (*http.Client, error) {
 func (manager *GCEServiceManager) CreateDisk(
 	project string,
 	zone string,
-	disk *compute.Disk) (*compute.Operation, error) {
+	disk gceObject) (gceObject, error) {
 
-	return manager.gce.service.Disks.Insert(project, zone, disk).Do()
+	switch v := disk.(type) {
+	case *computealpha.Disk:
+		return manager.gce.serviceAlpha.Disks.Insert(project, zone, disk.(*computealpha.Disk)).Do()
+	case *computebeta.Disk:
+		return manager.gce.serviceBeta.Disks.Insert(project, zone, disk.(*computebeta.Disk)).Do()
+	case *compute.Disk:
+		return manager.gce.service.Disks.Insert(project, zone, disk.(*compute.Disk)).Do()
+	default:
+		return nil, fmt.Errorf("unexpected type: %T", v)
+	}
+}
+
+func (manager *GCEServiceManager) AttachDisk(
+	project string,
+	zone string,
+	instanceName string,
+	attachedDisk gceObject) (gceObject, error) {
+
+	switch v := attachedDisk.(type) {
+	case *computealpha.AttachedDisk:
+		return manager.gce.serviceAlpha.Instances.AttachDisk(
+			project, zone, instanceName, attachedDisk.(*computealpha.AttachedDisk)).Do()
+	case *computebeta.AttachedDisk:
+		return manager.gce.serviceBeta.Instances.AttachDisk(
+			project, zone, instanceName, attachedDisk.(*computebeta.AttachedDisk)).Do()
+	case *compute.AttachedDisk:
+		return manager.gce.service.Instances.AttachDisk(
+			project, zone, instanceName, attachedDisk.(*compute.AttachedDisk)).Do()
+	default:
+		return nil, fmt.Errorf("unexpected type: %T", v)
+	}
 }
 
 func (manager *GCEServiceManager) GetDisk(
 	project string,
 	zone string,
-	diskName string) (*compute.Disk, error) {
+	diskName string) (*GCEDisk, error) {
 
-	return manager.gce.service.Disks.Get(project, zone, diskName).Do()
+	if manager.gce.AlphaFeatureGate.Enabled(GCEDiskAlphaFeatureGate) {
+		diskAlpha, err := manager.gce.serviceAlpha.Disks.Get(project, zone, diskName).Do()
+		if err != nil {
+			return nil, err
+		}
+
+		return &GCEDisk{
+			Zone: lastComponent(diskAlpha.Zone),
+			Name: diskAlpha.Name,
+			Kind: diskAlpha.Kind,
+			Type: diskAlpha.Type,
+		}, nil
+	}
+
+	diskStable, err := manager.gce.service.Disks.Get(project, zone, diskName).Do()
+	if err != nil {
+		return nil, err
+	}
+
+	return &GCEDisk{
+		Zone: lastComponent(diskStable.Zone),
+		Name: diskStable.Name,
+		Kind: diskStable.Kind,
+		Type: diskStable.Type,
+	}, nil
 }
 
 func (manager *GCEServiceManager) DeleteDisk(
 	project string,
 	zone string,
-	diskName string) (*compute.Operation, error) {
+	diskName string) (gceObject, error) {
+
+	if manager.gce.AlphaFeatureGate.Enabled(GCEDiskAlphaFeatureGate) {
+		return manager.gce.serviceAlpha.Disks.Delete(project, zone, diskName).Do()
+	}
 
 	return manager.gce.service.Disks.Delete(project, zone, diskName).Do()
 }
 
-func (manager *GCEServiceManager) WaitForZoneOp(op *compute.Operation, zone string, mc *metricContext) error {
+func (manager *GCEServiceManager) WaitForZoneOp(op gceObject, zone string, mc *metricContext) error {
 	return manager.gce.waitForZoneOp(op, zone, mc)
 }
