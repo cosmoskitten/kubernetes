@@ -19,9 +19,8 @@ limitations under the License.
 package azure_dd
 
 import (
-	"bufio"
+	"encoding/json"
 	"fmt"
-	"io"
 	"strconv"
 	"strings"
 
@@ -41,7 +40,7 @@ func scsiHostRescan(io ioHandler) {
 }
 
 func findDiskByLun(lun int, iohandler ioHandler) (string, error) {
-	cmd := `Get-Disk | Where-Object { $_.location.contains("LUN") } | select number, location`
+	cmd := `Get-Disk | select number, location | ConvertTo-Json`
 	ex := exec.New()
 	output, err := ex.Command("powershell", "/c", cmd).CombinedOutput()
 	if err != nil {
@@ -49,40 +48,51 @@ func findDiskByLun(lun int, iohandler ioHandler) (string, error) {
 		return "", err
 	}
 
-	if len(string(output)) < 10 {
+	if len(output) < 10 {
 		return "", fmt.Errorf("Get-Disk output is too short, output: %q", string(output))
 	}
 
-	reader := bufio.NewReader(strings.NewReader(string(output)))
-	for {
-		line, readerr := reader.ReadString('\n')
+	var data []map[string]interface{}
+	if err = json.Unmarshal(output, &data); err != nil {
+		glog.Errorf("Get-Disk output is not a json array, output: %q", string(output))
+		return "", err
+	}
 
-		arr := strings.Split(line, " LUN ")
-		if len(arr) >= 2 {
-			trimStr := strings.TrimRight(arr[1], "\r\n")
-			trimStr = strings.TrimSpace(trimStr)
-			l, err := strconv.Atoi(trimStr)
-			if err == nil {
+	for _, v := range data {
+		if jsonLocation, ok := v["location"]; ok {
+			if location, ok := jsonLocation.(string); ok {
+				if !strings.Contains(location, " LUN ") {
+					continue
+				}
+
+				arr := strings.Split(location, " ")
+				arrLen := len(arr)
+				if arrLen < 3 {
+					glog.Warningf("unexpected json structure from Get-Disk, location: %q", jsonLocation)
+					continue
+				}
+
+				glog.V(4).Infof("found a disk, locatin: %q, lun: %q", location, arr[arrLen-1])
+				//last element of location field is LUN number, e.g.
+				//		"location":  "Integrated : Adapter 3 : Port 0 : Target 0 : LUN 1"
+				l, err := strconv.Atoi(arr[arrLen-1])
+				if err != nil {
+					glog.Warningf("cannot parse element from data structure, location: %q, element: %q", location, arr[arrLen-1])
+					continue
+				}
+
 				if l == lun {
-					trimStr = strings.TrimSpace(line)
-					arr = strings.Split(trimStr, " ")
-					if len(arr) >= 1 {
-						n, err := strconv.Atoi(arr[0])
-						if err == nil {
-							glog.V(4).Infof("azureDisk Mount: got disk number(%d) by LUN(%d)", n, lun)
-							return strconv.Itoa(n), nil
+					glog.V(4).Infof("found a disk and lun, locatin: %q, lun: %d", location, lun)
+					if d, ok := v["number"]; ok {
+						if diskNum, ok := d.(float64); ok {
+							glog.V(2).Infof("azureDisk Mount: got disk number(%d) by LUN(%d)", int(diskNum), lun)
+							return strconv.Itoa(int(diskNum)), nil
 						}
+						glog.Warningf("LUN(%d) found, but could not get disk number(%q), location: %q", lun, d, location)
 					}
-					return "", fmt.Errorf("LUN(%d) found, but could not get disk number", lun)
+					return "", fmt.Errorf("LUN(%d) found, but could not get disk number, location: %q", lun, location)
 				}
 			}
-		}
-
-		if readerr != nil {
-			if readerr != io.EOF {
-				glog.Errorf("Unexpected error in findDiskByLun: %v", readerr)
-			}
-			break
 		}
 	}
 
