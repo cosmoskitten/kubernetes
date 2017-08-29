@@ -836,3 +836,19 @@ func ManualStrip(file []byte) []byte {
 	}
 	return stripped
 }
+
+// RetrieveArgsAndAliases retrieve a list of handled resources from printer as valid args.
+// Fatal error (os.Exit()) if printer is not returned by factory.
+func RetrieveArgsAndAliases(f Factory) (validArgs, argAliases []string) {
+	p, err := f.Printer(nil, printers.PrintOptions{
+		ColumnLabels: []string{},
+	})
+
+	CheckErr(err)
+
+	if p != nil {
+		validArgs = p.HandledResources()
+		argAliases = kubectl.ResourceAliases(validArgs)
+	}
+	return
+}
