@@ -25,7 +25,6 @@ import (
 
 	"github.com/golang/glog"
 	"k8s.io/api/core/v1"
-	policy "k8s.io/api/policy/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -993,31 +992,12 @@ func (p *podConditionUpdater) Update(pod *v1.Pod, condition *v1.PodCondition) er
 	return nil
 }
 
-func newEvictionPolicy(pod *v1.Pod) *policy.Eviction {
-	return &policy.Eviction{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "Policy/v1beta1",
-			Kind:       "Eviction",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      pod.Name,
-			Namespace: pod.Namespace,
-		},
-		DeleteOptions: &metav1.DeleteOptions{
-			GracePeriodSeconds: pod.DeletionGracePeriodSeconds,
-		},
-	}
-}
-
 type podPreemptor struct {
 	Client clientset.Interface
 }
 
 func (p *podPreemptor) PreemptPod(pod *v1.Pod) error {
-	deletionTime := metav1.NewTime(time.Now())
-	pod.DeletionTimestamp = &deletionTime
-	_, err := p.Client.CoreV1().Pods(pod.Namespace).Update(pod)
-	return err
+	return p.Client.CoreV1().Pods(pod.Namespace).Delete(pod.Name, &metav1.DeleteOptions{})
 }
 
 func (p *podPreemptor) UpdatePodAnnotations(pod *v1.Pod, annotations map[string]string) error {
