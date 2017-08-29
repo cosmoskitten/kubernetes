@@ -28,7 +28,7 @@ import (
 type addressManager struct {
 	logPrefix   string
 	svc         CloudAddressService
-	lbName      string
+	name        string
 	serviceName string
 	targetIP    string
 	addressType lbScheme
@@ -37,13 +37,13 @@ type addressManager struct {
 	tryRelease  bool
 }
 
-func newAddressManager(svc CloudAddressService, serviceName, region, subnetURL, lbName, targetIP string, addressType lbScheme) *addressManager {
+func newAddressManager(svc CloudAddressService, serviceName, region, subnetURL, name, targetIP string, addressType lbScheme) *addressManager {
 	return &addressManager{
 		svc:         svc,
-		logPrefix:   fmt.Sprintf("AddressManager(%q)", lbName),
+		logPrefix:   fmt.Sprintf("AddressManager(%q)", name),
 		region:      region,
 		serviceName: serviceName,
-		lbName:      lbName,
+		name:        name,
 		targetIP:    targetIP,
 		addressType: addressType,
 		tryRelease:  true,
@@ -53,7 +53,7 @@ func newAddressManager(svc CloudAddressService, serviceName, region, subnetURL, 
 
 // HoldAddress will ensure that the IP is reserved with an address - either owned by the controller
 // or by a user. If the address is not the loadBalancerName, then it's assumed to be a user's address.
-func (am *addressManager) HoldAddress() error {
+func (am *addressManager) HoldAddress() (string, error) {
 	// HoldAddress starts with retrieving the address that we use for this load balancer (by name).
 	// Retrieving an address by IP will indicate if the IP is reserved and if reserved by the user
 	// or the controller, but won't tell us the current state of the controller's IP. The address
@@ -62,28 +62,28 @@ func (am *addressManager) HoldAddress() error {
 	// calls since it indicates whether a Delete is necessary before Reserve.
 	glog.V(3).Infof("%v: attempting hold of IP %v with type %v", am.logPrefix, am.targetIP, am.addressType)
 	// Get the address in case it was orphaned earlier
-	addr, err := am.svc.GetBetaRegionAddress(am.lbName, am.region)
+	addr, err := am.svc.GetBetaRegionAddress(am.name, am.region)
 	if err != nil && !isNotFound(err) {
-		return err
+		return "", err
 	}
 
 	if addr != nil {
-		// If address exists, check if the address IP is different from what's expected.
-		if addr.Address != am.targetIP || addr.AddressType != string(am.addressType) {
-			glog.V(3).Infof("%v: existing address %q has IP %v Type %v which does not match targeted IP %v Type %v. Attemping to delete.", am.logPrefix, addr.Name, addr.Address, addr.AddressType, am.targetIP, am.addressType)
-			err := am.svc.DeleteRegionAddress(addr.Name, am.region)
-			if err != nil {
-				if isNotFound(err) {
-					glog.V(3).Infof("%v: address %q was not found. Ignoring.", am.logPrefix, addr.Name)
-				} else {
-					return err
-				}
+		// If address exists, check if the address had the expected attributes.
+		if (am.targetIP == "" || am.targetIP == addr.Address) && addr.AddressType == string(am.addressType) {
+			glog.V(3).Infof("%v: address %q already reserves IP %v of type %v. No further action required.", am.logPrefix, addr.Name, addr.Address, addr.AddressType)
+			return addr.Address, nil
+		}
+
+		glog.V(3).Infof("%v: existing address %q has IP %v Type %v which does not match targeted IP %v Type %v. Attemping to delete.", am.logPrefix, addr.Name, addr.Address, addr.AddressType, am.targetIP, am.addressType)
+		err := am.svc.DeleteRegionAddress(addr.Name, am.region)
+		if err != nil {
+			if isNotFound(err) {
+				glog.V(3).Infof("%v: address %q was not found. Ignoring.", am.logPrefix, addr.Name)
 			} else {
-				glog.V(3).Infof("%v: successfully deleted previous address %q", am.logPrefix, addr.Name)
+				return "", err
 			}
 		} else {
-			glog.V(3).Infof("%v: address %q already reserves targeted IP %v of type %v. No further action required.", am.logPrefix, addr.Name, am.targetIP, am.addressType)
-			return nil
+			glog.V(3).Infof("%v: successfully deleted previous address %q", am.logPrefix, addr.Name)
 		}
 	}
 
@@ -97,26 +97,27 @@ func (am *addressManager) ReleaseAddress() error {
 		return nil
 	}
 
-	glog.V(3).Infof("%v: releasing address %v named %q", am.logPrefix, am.targetIP, am.lbName)
+	glog.V(3).Infof("%v: releasing address %v named %q", am.logPrefix, am.targetIP, am.name)
 	// Controller only ever tries to unreserve the address named with the load balancer's name.
-	err := am.svc.DeleteRegionAddress(am.lbName, am.region)
+	err := am.svc.DeleteRegionAddress(am.name, am.region)
 	if err != nil {
 		if isNotFound(err) {
-			glog.Warningf("%v: address %q was not found. Ignoring.", am.logPrefix, am.targetIP, am.lbName)
+			glog.Warningf("%v: address %q was not found. Ignoring.", am.logPrefix, am.name)
 			return nil
 		}
 
 		return err
 	}
 
-	glog.V(3).Infof("%v: successfully released IP %v named %q", am.logPrefix, am.targetIP, am.lbName)
+	glog.V(3).Infof("%v: successfully released IP %v named %q", am.logPrefix, am.targetIP, am.name)
 	return nil
 }
 
-func (am *addressManager) ensureAddressReservation() error {
+func (am *addressManager) ensureAddressReservation() (string, error) {
 	// Try reserving the IP with controller-owned address name
+	// If am.targetIP is an empty string, a new IP will be created.
 	newAddr := &computebeta.Address{
-		Name:        am.lbName,
+		Name:        am.name,
 		Description: fmt.Sprintf(`{"kubernetes.io/service-name":"%s"}`, am.serviceName),
 		Address:     am.targetIP,
 		AddressType: string(am.addressType),
@@ -124,32 +125,55 @@ func (am *addressManager) ensureAddressReservation() error {
 	}
 
 	err := am.svc.ReserveBetaRegionAddress(newAddr, am.region)
-	if err != nil {
-		if !isHTTPErrorCode(err, http.StatusConflict) {
-			return err
+	if err == nil {
+		if newAddr.Address != "" {
+			glog.V(3).Infof("%v: successfully reserved IP %v with name %q", am.logPrefix, newAddr.Address, newAddr.Name)
+			return newAddr.Address, nil
 		}
-	} else {
-		glog.V(3).Infof("%v: successfully reserved IP %v with name %q", am.logPrefix, am.targetIP, newAddr.Name)
-		return nil
-	}
 
-	glog.V(3).Infof("%v: could not reserve IP %v due to err: %v", am.logPrefix, am.targetIP, err)
+		addr, err := am.svc.GetRegionAddress(newAddr.Name, am.region)
+		if err != nil {
+			return "", err
+		}
+
+		glog.V(3).Infof("%v: successfully created address %q which reserved IP %q", am.logPrefix, addr.Name, addr.Address)
+		return addr.Address, nil
+	} else if !isHTTPErrorCode(err, http.StatusConflict) && !isHTTPErrorCode(err, http.StatusBadRequest) {
+		// If the IP is already reserved:
+		//    by an internal address: a StatusConflict is returned
+		//    by an external address: a BadRequest is returned
+		return "", err
+	}
 
 	// Reserving the address failed due to a conflict. The address manager just checked that no address
-	// exists with the lbName, so it may belong to the user.
+	// exists with the name, so it may belong to the user.
 	addr, err := am.svc.GetBetaRegionAddressByIP(am.region, am.targetIP)
 	if err != nil {
-		return fmt.Errorf("could not find address with IP %v after getting conflict error while creating address: %v", am.targetIP, err)
+		return "", fmt.Errorf("could not find address with IP %q after getting conflict error while creating address: %q", am.targetIP, err)
 	}
 
-	// If the retrieved address is not named with the loadbalancer name, then the controller does not own it.
-	if addr.Name != am.lbName {
-		glog.V(3).Infof("%v: address %q was already reserved with name: %q, description: %q", am.logPrefix, am.targetIP, addr.Name, addr.Description)
-		am.tryRelease = false
-	} else {
+	// Check that the address attributes are as required.
+	if addr.AddressType != string(am.addressType) {
+		return "", fmt.Errorf("address %q does not have the expected address type %v, actual: %v", addr.Name, am.addressType, addr.AddressType)
+	}
+
+	if am.isManagedAddress(addr) {
 		// The address with this name is checked at the beginning of 'HoldAddress()', but for some reason
 		// it was re-created by this point. May be possible that two controllers are running.
 		glog.Warning("%v: address %q unexpectedly existed with IP %q.", am.logPrefix, addr.Name, am.targetIP)
+	} else {
+		// If the retrieved address is not named with the loadbalancer name, then the controller does not own it.
+		glog.V(3).Infof("%v: address %q was already reserved with name: %q, description: %q", am.logPrefix, am.targetIP, addr.Name, addr.Description)
+		am.tryRelease = false
 	}
-	return nil
+
+	return addr.Address, nil
+}
+
+func (am *addressManager) isManagedAddress(addr *computebeta.Address) bool {
+	return addr.Name == am.name
+}
+
+func ensureAddressDeleted(svc CloudAddressService, name, region string) error {
+	return ignoreNotFound(svc.DeleteRegionAddress(name, region))
 }

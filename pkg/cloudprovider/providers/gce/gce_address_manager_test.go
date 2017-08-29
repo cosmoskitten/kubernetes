@@ -19,13 +19,34 @@ package gce
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	computebeta "google.golang.org/api/compute/v0.beta"
-	compute "google.golang.org/api/compute/v1"
 )
 
 const svcNm = "my-service"
 const region = "us-central1"
 const subnet = "/projects/x/regions/us-central1/subnetworks/customsub"
+
+// TestAddressManagerNoRequestedIP tests the typical case of passing in no requested IP
+func TestAddressManagerNoRequestedIP(t *testing.T) {
+	svc := NewFakeCloudAddressService()
+	loadBalancerName := "a111111111111111"
+	targetIP := ""
+
+	mgr := newAddressManager(svc, svcNm, region, subnet, loadBalancerName, targetIP, schemeInternal)
+	ipToUse, err := mgr.HoldAddress()
+	assert.NoError(t, err)
+	assert.NotEmpty(t, ipToUse)
+
+	addr, err := svc.GetRegionAddress(loadBalancerName, region)
+	assert.NoError(t, err)
+	assert.EqualValues(t, ipToUse, addr.Address)
+
+	err = mgr.ReleaseAddress()
+	assert.NoError(t, err)
+	_, err = svc.GetRegionAddress(loadBalancerName, region)
+	assert.True(t, isNotFound(err))
+}
 
 // TestAddressManagerBasic tests the typical case of reserving and unreserving an address.
 func TestAddressManagerBasic(t *testing.T) {
@@ -36,27 +57,18 @@ func TestAddressManagerBasic(t *testing.T) {
 	targetIP := getTargetIP(forwardingRuleAddr, loadBalancerIP)
 
 	mgr := newAddressManager(svc, svcNm, region, subnet, loadBalancerName, targetIP, schemeInternal)
-	err := mgr.HoldAddress()
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	ipToUse, err := mgr.HoldAddress()
+	assert.NoError(t, err)
+	assert.NotEmpty(t, ipToUse)
 
 	addr, err := svc.GetRegionAddress(loadBalancerName, region)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if addr.Address != targetIP {
-		t.Fatalf("expected address: %v, got: %v", targetIP, addr.Address)
-	}
+	assert.NoError(t, err)
+	assert.EqualValues(t, targetIP, addr.Address)
 
 	err = mgr.ReleaseAddress()
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	assert.NoError(t, err)
 	_, err = svc.GetRegionAddress(loadBalancerName, region)
-	if err == nil || !isNotFound(err) {
-		t.Fatalf("expected NotFound error, got: %v", err)
-	}
+	assert.True(t, isNotFound(err))
 }
 
 // TestAddressManagerOrphaned tests the case where the address exists with the IP being equal
@@ -70,32 +82,22 @@ func TestAddressManagerOrphaned(t *testing.T) {
 	targetIP := getTargetIP(forwardingRuleAddr, loadBalancerIP)
 
 	addr := &computebeta.Address{Name: loadBalancerName, Address: targetIP, AddressType: "INTERNAL"}
-	if err := svc.ReserveBetaRegionAddress(addr, region); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	err := svc.ReserveBetaRegionAddress(addr, region)
+	assert.NoError(t, err)
 
 	mgr := newAddressManager(svc, svcNm, region, subnet, loadBalancerName, targetIP, schemeInternal)
-	err := mgr.HoldAddress()
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	ipToUse, err := mgr.HoldAddress()
+	assert.NoError(t, err)
+	assert.NotEmpty(t, ipToUse)
 
 	addr, err = svc.GetBetaRegionAddress(loadBalancerName, region)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if addr.Address != targetIP {
-		t.Fatalf("expected address: %v, got: %v", targetIP, addr.Address)
-	}
+	assert.NoError(t, err)
+	assert.EqualValues(t, targetIP, addr.Address)
 
 	err = mgr.ReleaseAddress()
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	assert.NoError(t, err)
 	_, err = svc.GetRegionAddress(loadBalancerName, region)
-	if err == nil || !isNotFound(err) {
-		t.Fatalf("expected NotFound error, got: %v", err)
-	}
+	assert.True(t, isNotFound(err))
 }
 
 // TestAddressManagerOutdatedOrphan tests the case where an address exists but points to
@@ -110,32 +112,22 @@ func TestAddressManagerOutdatedOrphan(t *testing.T) {
 	targetIP := getTargetIP(forwardingRuleAddr, loadBalancerIP)
 
 	addr := &computebeta.Address{Name: loadBalancerName, Address: addrIP, AddressType: string(schemeExternal)}
-	if err := svc.ReserveBetaRegionAddress(addr, region); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	err := svc.ReserveBetaRegionAddress(addr, region)
+	assert.NoError(t, err)
 
 	mgr := newAddressManager(svc, svcNm, region, subnet, loadBalancerName, targetIP, schemeInternal)
-	err := mgr.HoldAddress()
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	ipToUse, err := mgr.HoldAddress()
+	assert.NoError(t, err)
+	assert.NotEmpty(t, ipToUse)
 
 	addr, err = svc.GetBetaRegionAddress(loadBalancerName, region)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if addr.Address != targetIP {
-		t.Fatalf("expected address: %v, got: %v", targetIP, addr.Address)
-	}
+	assert.NoError(t, err)
+	assert.EqualValues(t, targetIP, addr.Address)
 
 	err = mgr.ReleaseAddress()
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	assert.NoError(t, err)
 	_, err = svc.GetRegionAddress(loadBalancerName, region)
-	if err == nil || !isNotFound(err) {
-		t.Fatalf("expected NotFound error, got: %v", err)
-	}
+	assert.True(t, isNotFound(err))
 }
 
 // TestAddressManagerExternallyOwned tests the case where the address exists but isn't
@@ -149,33 +141,43 @@ func TestAddressManagerExternallyOwned(t *testing.T) {
 	addrName := "my-important-address"
 	targetIP := getTargetIP(forwardingRuleAddr, loadBalancerIP)
 
-	addr := &compute.Address{Name: addrName, Address: targetIP}
-	if err := svc.ReserveRegionAddress(addr, region); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	addr := &computebeta.Address{Name: addrName, Address: targetIP, AddressType: string(schemeInternal)}
+	err := svc.ReserveBetaRegionAddress(addr, region)
+	assert.NoError(t, err)
 
 	mgr := newAddressManager(svc, svcNm, region, subnet, loadBalancerName, targetIP, schemeInternal)
-	err := mgr.HoldAddress()
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	ipToUse, err := mgr.HoldAddress()
+	assert.NoError(t, err)
+	assert.NotEmpty(t, ipToUse)
 
-	addr, err = svc.GetRegionAddress(addrName, region)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if addr.Address != targetIP {
-		t.Fatalf("expected address: %v, got: %v", targetIP, addr.Address)
-	}
+	addr, err = svc.GetBetaRegionAddress(addrName, region)
+	assert.NoError(t, err)
+	assert.EqualValues(t, targetIP, addr.Address)
 
 	err = mgr.ReleaseAddress()
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	assert.NoError(t, err)
 	_, err = svc.GetRegionAddress(addrName, region)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	assert.NoError(t, err)
+}
+
+// TestAddressManagerExternallyOwned tests the case where the address exists but isn't
+// owned by the controller. However, this address has the wrong type.
+func TestAddressManagerBadExternallyOwned(t *testing.T) {
+	svc := NewFakeCloudAddressService()
+	loadBalancerName := "a111111111111111"
+	forwardingRuleAddr := "1.1.1.1"
+	loadBalancerIP := ""
+	region := "us-central1"
+	addrName := "my-important-address"
+	targetIP := getTargetIP(forwardingRuleAddr, loadBalancerIP)
+
+	addr := &computebeta.Address{Name: addrName, Address: targetIP, AddressType: string(schemeExternal)}
+	err := svc.ReserveBetaRegionAddress(addr, region)
+	assert.NoError(t, err)
+
+	mgr := newAddressManager(svc, svcNm, region, subnet, loadBalancerName, targetIP, schemeInternal)
+	_, err = mgr.HoldAddress()
+	assert.NotNil(t, err)
 }
 
 func getTargetIP(forwardingRuleAddr, loadBalancerIP string) string {
