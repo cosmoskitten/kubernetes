@@ -34,8 +34,6 @@ const (
 	allInstances = "ALL"
 )
 
-type lbBalancingMode string
-
 func (gce *GCECloud) ensureInternalLoadBalancer(clusterName, clusterID string, svc *v1.Service, existingFwdRule *compute.ForwardingRule, nodes []*v1.Node) (*v1.LoadBalancerStatus, error) {
 	nm := types.NamespacedName{Name: svc.Name, Namespace: svc.Namespace}
 	ports, protocol := getPortsAndProtocol(svc.Spec.Ports)
@@ -80,12 +78,8 @@ func (gce *GCECloud) ensureInternalLoadBalancer(clusterName, clusterID string, s
 	}
 
 	// Ensure firewall rules if necessary
-	if gce.OnXPN() {
-		glog.V(2).Infof("ensureInternalLoadBalancer: cluster is on a cross-project network (XPN) network project %v, compute project %v - skipping firewall creation", gce.networkProjectID, gce.projectID)
-	} else {
-		if err = gce.ensureInternalFirewalls(loadBalancerName, clusterID, nm, svc, strconv.Itoa(int(hcPort)), sharedHealthCheck, nodes); err != nil {
-			return nil, err
-		}
+	if err = gce.ensureInternalFirewalls(loadBalancerName, clusterID, nm, svc, strconv.Itoa(int(hcPort)), sharedHealthCheck, nodes); err != nil {
+		return nil, err
 	}
 
 	expectedFwdRule := &compute.ForwardingRule{
@@ -211,7 +205,11 @@ func (gce *GCECloud) ensureInternalLoadBalancerDeleted(clusterName, clusterID st
 
 	glog.V(2).Infof("ensureInternalLoadBalancerDeleted(%v): deleting firewall for traffic", loadBalancerName)
 	if err := gce.DeleteFirewall(loadBalancerName); err != nil {
-		return err
+		if isForbidden(err) && gce.OnXPN() {
+			glog.V(2).Infof("ensureInternalLoadBalancerDeleted(%v): could not delete traffic firewall on XPN cluster. Ignoring.", loadBalancerName)
+		} else {
+			return err
+		}
 	}
 
 	hcName := makeHealthCheckName(loadBalancerName, clusterID, sharedHealthCheck)
@@ -261,13 +259,17 @@ func (gce *GCECloud) teardownInternalHealthCheckAndFirewall(hcName string) error
 
 	hcFirewallName := makeHealthCheckFirewallNameFromHC(hcName)
 	if err := gce.DeleteFirewall(hcFirewallName); err != nil && !isNotFound(err) {
-		return fmt.Errorf("failed to delete health check firewall: %v, err: %v", hcFirewallName, err)
+		if isForbidden(err) && gce.OnXPN() {
+			glog.V(2).Infof("teardownInternalHealthCheckAndFirewall(%v) could not delete health check firewall on XPN cluster. Ignoring.", hcName)
+		} else {
+			return fmt.Errorf("failed to delete health check firewall: %v, err: %v", hcFirewallName, err)
+		}
 	}
 	glog.V(2).Infof("teardownInternalHealthCheckAndFirewall(%v): health check firewall deleted", hcFirewallName)
 	return nil
 }
 
-func (gce *GCECloud) ensureInternalFirewall(fwName, fwDesc string, sourceRanges []string, ports []string, protocol v1.Protocol, nodes []*v1.Node) error {
+func (gce *GCECloud) ensureInternalFirewall(svc *v1.Service, fwName, fwDesc string, sourceRanges []string, ports []string, protocol v1.Protocol, nodes []*v1.Node) error {
 	glog.V(2).Infof("ensureInternalFirewall(%v): checking existing firewall", fwName)
 	targetTags, err := gce.GetNodeTags(nodeNames(nodes))
 	if err != nil {
@@ -295,7 +297,12 @@ func (gce *GCECloud) ensureInternalFirewall(fwName, fwDesc string, sourceRanges 
 
 	if existingFirewall == nil {
 		glog.V(2).Infof("ensureInternalFirewall(%v): creating firewall", fwName)
-		return gce.CreateFirewall(expectedFirewall)
+		err = gce.CreateFirewall(expectedFirewall)
+		if err != nil && isForbidden(err) && gce.OnXPN() {
+			glog.V(2).Infof("ensureInternalFirewall(%v): do not have permission to create firewall rule (on XPN). Raising event.", fwName)
+			gce.raiseFirewallChangeNeededEvent(svc, FirewallToGCloudCreateCmd(expectedFirewall, gce.NetworkProjectID()))
+		}
+		return err
 	}
 
 	if firewallRuleEqual(expectedFirewall, existingFirewall) {
@@ -303,7 +310,12 @@ func (gce *GCECloud) ensureInternalFirewall(fwName, fwDesc string, sourceRanges 
 	}
 
 	glog.V(2).Infof("ensureInternalFirewall(%v): updating firewall", fwName)
-	return gce.UpdateFirewall(expectedFirewall)
+	err = gce.UpdateFirewall(expectedFirewall)
+	if err != nil && isForbidden(err) && gce.OnXPN() {
+		glog.V(2).Infof("ensureInternalFirewall(%v): do not have permission to update firewall rule (on XPN). Raising event.", fwName)
+		gce.raiseFirewallChangeNeededEvent(svc, FirewallToGCloudUpdateCmd(expectedFirewall, gce.NetworkProjectID()))
+	}
+	return err
 }
 
 func (gce *GCECloud) ensureInternalFirewalls(loadBalancerName, clusterID string, nm types.NamespacedName, svc *v1.Service, healthCheckPort string, sharedHealthCheck bool, nodes []*v1.Node) error {
@@ -314,7 +326,7 @@ func (gce *GCECloud) ensureInternalFirewalls(loadBalancerName, clusterID string,
 	if err != nil {
 		return err
 	}
-	err = gce.ensureInternalFirewall(loadBalancerName, fwDesc, sourceRanges.StringSlice(), ports, protocol, nodes)
+	err = gce.ensureInternalFirewall(svc, loadBalancerName, fwDesc, sourceRanges.StringSlice(), ports, protocol, nodes)
 	if err != nil {
 		return err
 	}
@@ -322,7 +334,7 @@ func (gce *GCECloud) ensureInternalFirewalls(loadBalancerName, clusterID string,
 	// Second firewall is for health checking nodes / services
 	fwHCName := makeHealthCheckFirewallName(loadBalancerName, clusterID, sharedHealthCheck)
 	hcSrcRanges := LoadBalancerSrcRanges()
-	return gce.ensureInternalFirewall(fwHCName, "", hcSrcRanges, []string{healthCheckPort}, v1.ProtocolTCP, nodes)
+	return gce.ensureInternalFirewall(svc, fwHCName, "", hcSrcRanges, []string{healthCheckPort}, v1.ProtocolTCP, nodes)
 }
 
 func (gce *GCECloud) ensureInternalHealthCheck(name string, svcName types.NamespacedName, shared bool, path string, port int32) (*compute.HealthCheck, error) {
