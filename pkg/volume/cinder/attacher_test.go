@@ -245,7 +245,7 @@ func TestAttachDetach(t *testing.T) {
 			detach:           detachCall{instanceID, volumeID, nil},
 			test: func(testcase *testcase) (string, error) {
 				detacher := newDetacher(testcase)
-				return "", detacher.Detach(volumeID, nodeName)
+				return "", detacher.Detach(nil, volumeID, nodeName)
 			},
 		},
 
@@ -257,7 +257,7 @@ func TestAttachDetach(t *testing.T) {
 			diskIsAttached:   diskIsAttachedCall{instanceID, volumeID, false, nil},
 			test: func(testcase *testcase) (string, error) {
 				detacher := newDetacher(testcase)
-				return "", detacher.Detach(volumeID, nodeName)
+				return "", detacher.Detach(nil, volumeID, nodeName)
 			},
 		},
 
@@ -270,7 +270,7 @@ func TestAttachDetach(t *testing.T) {
 			detach:           detachCall{instanceID, volumeID, nil},
 			test: func(testcase *testcase) (string, error) {
 				detacher := newDetacher(testcase)
-				return "", detacher.Detach(volumeID, nodeName)
+				return "", detacher.Detach(nil, volumeID, nodeName)
 			},
 		},
 
@@ -283,7 +283,7 @@ func TestAttachDetach(t *testing.T) {
 			detach:           detachCall{instanceID, volumeID, detachError},
 			test: func(testcase *testcase) (string, error) {
 				detacher := newDetacher(testcase)
-				return "", detacher.Detach(volumeID, nodeName)
+				return "", detacher.Detach(nil, volumeID, nodeName)
 			},
 			expectedError: detachError,
 		},
@@ -295,7 +295,7 @@ func TestAttachDetach(t *testing.T) {
 			operationPending: operationPendingCall{volumeID, true, pending, operationFinishTimeout},
 			test: func(testcase *testcase) (string, error) {
 				detacher := newDetacher(testcase)
-				return "", detacher.Detach(volumeID, nodeName)
+				return "", detacher.Detach(nil, volumeID, nodeName)
 			},
 			expectedError: operationFinishTimeout,
 		},

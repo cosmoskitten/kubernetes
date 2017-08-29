@@ -62,6 +62,7 @@ func init() {
 		ObjectMeta: metav1.ObjectMeta{Name: saRolePrefix + "attachdetach-controller"},
 		Rules: []rbac.PolicyRule{
 			rbac.NewRule("list", "watch").Groups(legacyGroup).Resources("persistentvolumes", "persistentvolumeclaims").RuleOrDie(),
+			rbac.NewRule("get").Groups(legacyGroup).Resources("secrets").RuleOrDie(),
 			rbac.NewRule("get", "list", "watch").Groups(legacyGroup).Resources("nodes").RuleOrDie(),
 			rbac.NewRule("patch", "update").Groups(legacyGroup).Resources("nodes/status").RuleOrDie(),
 			rbac.NewRule("list", "watch").Groups(legacyGroup).Resources("pods").RuleOrDie(),
