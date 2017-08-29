@@ -46,7 +46,7 @@ go_library(
         "node_controller.go",
     ],
     deps = [
-        "//pkg/api/v1/node:go_default_library",
+        "//pkg/util/node:go_default_library",
         "//pkg/cloudprovider:go_default_library",
         "//pkg/controller:go_default_library",
         "//pkg/controller/node/ipam:go_default_library",
