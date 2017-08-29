@@ -60,7 +60,7 @@ func (am *addressManager) HoldAddress() (string, error) {
 	// could be reserving another address; therefore, it would need to be deleted. In the normal
 	// case of using a controller address, retrieving the address by name results in the fewest API
 	// calls since it indicates whether a Delete is necessary before Reserve.
-	glog.V(3).Infof("%v: attempting hold of IP %v with type %v", am.logPrefix, am.targetIP, am.addressType)
+	glog.V(3).Infof("%v: attempting hold of IP %q with type %q", am.logPrefix, am.targetIP, am.addressType)
 	// Get the address in case it was orphaned earlier
 	addr, err := am.svc.GetBetaRegionAddress(am.name, am.region)
 	if err != nil && !isNotFound(err) {
@@ -70,11 +70,11 @@ func (am *addressManager) HoldAddress() (string, error) {
 	if addr != nil {
 		// If address exists, check if the address had the expected attributes.
 		if (am.targetIP == "" || am.targetIP == addr.Address) && addr.AddressType == string(am.addressType) {
-			glog.V(3).Infof("%v: address %q already reserves IP %v of type %v. No further action required.", am.logPrefix, addr.Name, addr.Address, addr.AddressType)
+			glog.V(3).Infof("%v: address %q already reserves IP %q of type %q. No further action required.", am.logPrefix, addr.Name, addr.Address, addr.AddressType)
 			return addr.Address, nil
 		}
 
-		glog.V(3).Infof("%v: existing address %q has IP %v Type %v which does not match targeted IP %v Type %v. Attemping to delete.", am.logPrefix, addr.Name, addr.Address, addr.AddressType, am.targetIP, am.addressType)
+		glog.V(3).Infof("%v: existing address %q has IP %q Type %q which does not match targeted IP %q Type %q. Attemping to delete.", am.logPrefix, addr.Name, addr.Address, addr.AddressType, am.targetIP, am.addressType)
 		err := am.svc.DeleteRegionAddress(addr.Name, am.region)
 		if err != nil {
 			if isNotFound(err) {
@@ -93,11 +93,11 @@ func (am *addressManager) HoldAddress() (string, error) {
 // ReleaseAddress will release the address if it's owned by the controller.
 func (am *addressManager) ReleaseAddress() error {
 	if !am.tryRelease {
-		glog.V(3).Infof("%v: not attempting release of address %v.", am.logPrefix, am.targetIP)
+		glog.V(3).Infof("%v: not attempting release of address %q.", am.logPrefix, am.targetIP)
 		return nil
 	}
 
-	glog.V(3).Infof("%v: releasing address %v named %q", am.logPrefix, am.targetIP, am.name)
+	glog.V(3).Infof("%v: releasing address %q named %q", am.logPrefix, am.targetIP, am.name)
 	// Controller only ever tries to unreserve the address named with the load balancer's name.
 	err := am.svc.DeleteRegionAddress(am.name, am.region)
 	if err != nil {
@@ -109,7 +109,7 @@ func (am *addressManager) ReleaseAddress() error {
 		return err
 	}
 
-	glog.V(3).Infof("%v: successfully released IP %v named %q", am.logPrefix, am.targetIP, am.name)
+	glog.V(3).Infof("%v: successfully released IP %q named %q", am.logPrefix, am.targetIP, am.name)
 	return nil
 }
 
@@ -127,7 +127,7 @@ func (am *addressManager) ensureAddressReservation() (string, error) {
 	err := am.svc.ReserveBetaRegionAddress(newAddr, am.region)
 	if err == nil {
 		if newAddr.Address != "" {
-			glog.V(3).Infof("%v: successfully reserved IP %v with name %q", am.logPrefix, newAddr.Address, newAddr.Name)
+			glog.V(3).Infof("%v: successfully reserved IP %q with name %q", am.logPrefix, newAddr.Address, newAddr.Name)
 			return newAddr.Address, nil
 		}
 
@@ -154,7 +154,7 @@ func (am *addressManager) ensureAddressReservation() (string, error) {
 
 	// Check that the address attributes are as required.
 	if addr.AddressType != string(am.addressType) {
-		return "", fmt.Errorf("address %q does not have the expected address type %v, actual: %v", addr.Name, am.addressType, addr.AddressType)
+		return "", fmt.Errorf("address %q does not have the expected address type %q, actual: %q", addr.Name, am.addressType, addr.AddressType)
 	}
 
 	if am.isManagedAddress(addr) {
