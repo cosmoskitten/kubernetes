@@ -374,7 +374,7 @@ func (detacher *cinderDiskDetacher) waitDiskDetached(instanceID, volumeID string
 	return err
 }
 
-func (detacher *cinderDiskDetacher) Detach(deviceMountPath string, nodeName types.NodeName) error {
+func (detacher *cinderDiskDetacher) Detach(_ *volume.Spec, deviceMountPath string, nodeName types.NodeName) error {
 	volumeID := path.Base(deviceMountPath)
 	instances, res := detacher.cinderProvider.Instances()
 	if !res {

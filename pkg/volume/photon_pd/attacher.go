@@ -243,7 +243,7 @@ func (plugin *photonPersistentDiskPlugin) NewDetacher() (volume.Detacher, error)
 }
 
 // Detach the given device from the given host.
-func (detacher *photonPersistentDiskDetacher) Detach(deviceMountPath string, nodeName types.NodeName) error {
+func (detacher *photonPersistentDiskDetacher) Detach(_ *volume.Spec, deviceMountPath string, nodeName types.NodeName) error {
 
 	hostName := string(nodeName)
 	pdID := deviceMountPath
