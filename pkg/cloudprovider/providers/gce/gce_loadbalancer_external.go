@@ -71,18 +71,14 @@ func (gce *GCECloud) ensureExternalLoadBalancer(clusterName, clusterID string, a
 
 	lbRefStr := fmt.Sprintf("%v(%v)", loadBalancerName, serviceName)
 	// Check the current and the desired network tiers. If they do not match,
-	// tear down the existing resources -- delete the forwarding rule, and
-	// release the IP.
+	// tear down the existing resources with the wrong tier.
 	netTier, err := gce.getServiceNetworkTier(apiService)
 	if err != nil {
 		glog.Errorf("EnsureLoadBalancer(%s): failed to get the desired network tier: %v", lbRefStr, err)
 		return nil, err
 	}
 	glog.V(2).Infof("EnsureLoadBalancer(%s): desired network tier %q ", lbRefStr, netTier)
-	if gce.AlphaFeatureGate.Enabled(AlphaFeatureNetworkTiers) {
-		reconcileFwdRuleNetworkTiers(gce, gce.region, loadBalancerName, lbRefStr, netTier)
-		reconcileAddressNetworkTiers(gce, gce.region, loadBalancerName, lbRefStr, netTier)
-	}
+	gce.deleteWrongNetworkTieredResources(loadBalancerName, lbRefStr, netTier)
 
 	// Check if the forwarding rule exists, and if so, what its IP is.
 	fwdRuleExists, fwdRuleNeedsUpdate, fwdRuleIP, err := gce.forwardingRuleNeedsUpdate(loadBalancerName, gce.region, requestedIP, ports)
@@ -991,15 +987,28 @@ func (gce *GCECloud) getServiceNetworkTier(svc *v1.Service) (NetworkTier, error)
 	return tier, nil
 }
 
-// reconcileFwdRuleNetworkTiers check the network tiers of existing forwarding
+func (gce *GCECloud) deleteWrongNetworkTieredResources(lbName, lbRef string, desiredNetTier NetworkTier) error {
+	if !gce.AlphaFeatureGate.Enabled(AlphaFeatureNetworkTiers) {
+		// Do nothing if the feature is disabled.
+		return nil
+	}
+	logPrefix := fmt.Sprintf("deleteWrongNetworkTieredResources:(%s)", lbRef)
+	if err := deleteFWDRuleWithWrongTier(gce, gce.region, lbName, logPrefix, desiredNetTier); err != nil {
+		return err
+	}
+	if err := deleteAddressWithWrongTier(gce, gce.region, lbName, logPrefix, desiredNetTier); err != nil {
+		return err
+	}
+	return nil
+}
+
+// deleteFWDRuleWithWrongTier checks the network tier of existing forwarding
 // rule and delete the rule if the tier does not matched the desired tier.
-func reconcileFwdRuleNetworkTiers(s CloudForwardingRuleService, region, name, lbRef string, desiredNetTier NetworkTier) error {
-	logPrefix := fmt.Sprintf("reconcileNetworkTiers(%s)", lbRef)
+func deleteFWDRuleWithWrongTier(s CloudForwardingRuleService, region, name, logPrefix string, desiredNetTier NetworkTier) error {
 	tierStr, err := s.getNetworkTierFromForwardingRule(name, region)
 	if isNotFound(err) {
 		return nil
-	}
-	if err != nil {
+	} else if err != nil {
 		return err
 	}
 	existingTier := NetworkTierGCEValueToType(tierStr)
@@ -1012,9 +1021,9 @@ func reconcileFwdRuleNetworkTiers(s CloudForwardingRuleService, region, name, lb
 	return ignoreNotFound(err)
 }
 
-// reconcileAddressNetworkTiers check the network tiers of existing address
+// deleteAddressWithWrongTier checks the network tier of existing address
 // and delete the address if the tier does not matched the desired tier.
-func reconcileAddressNetworkTiers(s CloudAddressService, region, name, lbRef string, desiredNetTier NetworkTier) error {
+func deleteAddressWithWrongTier(s CloudAddressService, region, name, logPrefix string, desiredNetTier NetworkTier) error {
 	// We only check the IP address matching the reserved name that the
 	// controller assigned to the LB. We make the assumption that an address of
 	// such name is owned by the controller and is safe to release. Whether an
@@ -1024,12 +1033,10 @@ func reconcileAddressNetworkTiers(s CloudAddressService, region, name, lbRef str
 	// properly gated.
 	// TODO(yujuhong): Re-evaluate the "ownership" of the IP address to ensure
 	// we don't release IP unintentionally.
-	logPrefix := fmt.Sprintf("reconcileNetworkTiers(%s)", lbRef)
 	tierStr, err := s.getNetworkTierFromAddress(name, region)
 	if isNotFound(err) {
 		return nil
-	}
-	if err != nil {
+	} else if err != nil {
 		return err
 	}
 	existingTier := NetworkTierGCEValueToType(tierStr)

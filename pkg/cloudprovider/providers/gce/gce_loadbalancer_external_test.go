@@ -185,3 +185,56 @@ func TestCreateForwardingRule(t *testing.T) {
 		})
 	}
 }
+
+func TestDeleteAddressWithWrongTier(t *testing.T) {
+	region := "test-region"
+	lbRef := "test-lb"
+	s := NewFakeCloudAddressService()
+
+	for desc, tc := range map[string]struct {
+		addrName     string
+		netTier      NetworkTier
+		addrList     []*computealpha.Address
+		expectDelete bool
+	}{
+		"Network tiers (premium) match; do nothing": {
+			addrName: "foo1",
+			netTier:  NetworkTierPremium,
+			addrList: []*computealpha.Address{{Name: "foo1", Address: "1.1.1.1", NetworkTier: "PREMIUM"}},
+		},
+		"Network tiers (standard) match; do nothing": {
+			addrName: "foo2",
+			netTier:  NetworkTierStandard,
+			addrList: []*computealpha.Address{{Name: "foo2", Address: "1.1.1.2", NetworkTier: "STANDARD"}},
+		},
+		"Wrong network tier (standard); delete address": {
+			addrName:     "foo3",
+			netTier:      NetworkTierPremium,
+			addrList:     []*computealpha.Address{{Name: "foo3", Address: "1.1.1.3", NetworkTier: "STANDARD"}},
+			expectDelete: true,
+		},
+		"Wrong network tier (preimium); delete address": {
+			addrName:     "foo4",
+			netTier:      NetworkTierStandard,
+			addrList:     []*computealpha.Address{{Name: "foo4", Address: "1.1.1.4", NetworkTier: "PREMIUM"}},
+			expectDelete: true,
+		},
+	} {
+		t.Run(desc, func(t *testing.T) {
+			s.SetRegionalAddresses(region, tc.addrList)
+			// Sanity check to ensure we inject the right address.
+			_, err := s.GetRegionAddress(tc.addrName, region)
+			require.NoError(t, err)
+
+			err = deleteAddressWithWrongTier(s, region, tc.addrName, lbRef, tc.netTier)
+			assert.NoError(t, err)
+			// Check whether the address still exists.
+			_, err = s.GetRegionAddress(tc.addrName, region)
+			if tc.expectDelete {
+				assert.True(t, isNotFound(err))
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
