@@ -17,6 +17,7 @@ limitations under the License.
 package statefulset
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"regexp"
@@ -111,9 +112,7 @@ func identityMatches(set *apps.StatefulSet, pod *v1.Pod) bool {
 	return ordinal >= 0 &&
 		set.Name == parent &&
 		pod.Name == getPodName(set, ordinal) &&
-		pod.Namespace == set.Namespace &&
-		pod.Spec.Hostname == pod.Name &&
-		pod.Spec.Subdomain == set.Spec.ServiceName
+		pod.Namespace == set.Namespace
 }
 
 // storageMatches returns true if pod's Volumes cover the set of PersistentVolumeClaims
@@ -181,12 +180,18 @@ func updateStorage(set *apps.StatefulSet, pod *v1.Pod) {
 	pod.Spec.Volumes = newVolumes
 }
 
+func initIdentity(set *apps.StatefulSet, pod *v1.Pod) {
+	updateIdentity(set, pod)
+	// Set these immutable fields only on initial Pod creation, not updates.
+	pod.Spec.Hostname = pod.Name
+	pod.Spec.Subdomain = set.Spec.ServiceName
+}
+
 // updateIdentity updates pod's name, hostname, and subdomain to conform to set's name and headless service.
 func updateIdentity(set *apps.StatefulSet, pod *v1.Pod) {
 	pod.Name = getPodName(set, getOrdinal(pod))
 	pod.Namespace = set.Namespace
-	pod.Spec.Hostname = pod.Name
-	pod.Spec.Subdomain = set.Spec.ServiceName
+
 }
 
 // isRunningAndReady returns true if pod is in the PodRunning Phase, if it has a condition of PodReady.
@@ -240,7 +245,7 @@ func getPodRevision(pod *v1.Pod) string {
 func newStatefulSetPod(set *apps.StatefulSet, ordinal int) *v1.Pod {
 	pod, _ := controller.GetPodFromTemplate(&set.Spec.Template, set, metav1.NewControllerRef(set, controllerKind))
 	pod.Name = getPodName(set, ordinal)
-	updateIdentity(set, pod)
+	initIdentity(set, pod)
 	updateStorage(set, pod)
 	return pod
 }
@@ -260,6 +265,15 @@ func newVersionedStatefulSetPod(currentSet, updateSet *apps.StatefulSet, current
 	pod := newStatefulSetPod(updateSet, ordinal)
 	setPodRevision(pod, updateRevision)
 	return pod
+}
+
+// Match check if the given StatefulSet's template matches the template stored in the given history.
+func Match(ss *apps.StatefulSet, history *apps.ControllerRevision) (bool, error) {
+	patch, err := getPatch(ss)
+	if err != nil {
+		return false, err
+	}
+	return bytes.Equal(patch, history.Data.Raw), nil
 }
 
 // getPatch returns a strategic merge patch that can be applied to restore a StatefulSet to a
@@ -315,9 +329,9 @@ func newRevision(set *apps.StatefulSet, revision int64, collisionCount *int32) (
 	return cr, nil
 }
 
-// applyRevision returns a new StatefulSet constructed by restoring the state in revision to set. If the returned error
+// ApplyRevision returns a new StatefulSet constructed by restoring the state in revision to set. If the returned error
 // is nil, the returned StatefulSet is valid.
-func applyRevision(set *apps.StatefulSet, revision *apps.ControllerRevision) (*apps.StatefulSet, error) {
+func ApplyRevision(set *apps.StatefulSet, revision *apps.ControllerRevision) (*apps.StatefulSet, error) {
 	obj, err := scheme.Scheme.DeepCopy(set)
 	if err != nil {
 		return nil, err

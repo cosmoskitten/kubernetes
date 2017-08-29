@@ -9,6 +9,7 @@ load(
 go_library(
     name = "go_default_library",
     srcs = [
+        "arguments.go",
         "endpoint.go",
         "error.go",
         "template.go",
@@ -24,6 +25,7 @@ go_library(
 go_test(
     name = "go_default_test",
     srcs = [
+        "arguments_test.go",
         "endpoint_test.go",
         "error_test.go",
         "template_test.go",
@@ -49,6 +51,7 @@ filegroup(
         ":package-srcs",
         "//cmd/kubeadm/app/util/apiclient:all-srcs",
         "//cmd/kubeadm/app/util/config:all-srcs",
+        "//cmd/kubeadm/app/util/dryrun:all-srcs",
         "//cmd/kubeadm/app/util/kubeconfig:all-srcs",
         "//cmd/kubeadm/app/util/pubkeypin:all-srcs",
         "//cmd/kubeadm/app/util/staticpod:all-srcs",

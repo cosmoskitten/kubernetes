@@ -51,7 +51,7 @@ type AnonymousAuthenticationOptions struct {
 }
 
 type BootstrapTokenAuthenticationOptions struct {
-	Allow bool
+	Enable bool
 }
 
 type KeystoneAuthenticationOptions struct {
@@ -94,7 +94,7 @@ func NewBuiltInAuthenticationOptions() *BuiltInAuthenticationOptions {
 
 func (s *BuiltInAuthenticationOptions) WithAll() *BuiltInAuthenticationOptions {
 	return s.
-		WithAnyonymous().
+		WithAnonymous().
 		WithBootstrapToken().
 		WithClientCert().
 		WithKeystone().
@@ -106,7 +106,7 @@ func (s *BuiltInAuthenticationOptions) WithAll() *BuiltInAuthenticationOptions {
 		WithWebHook()
 }
 
-func (s *BuiltInAuthenticationOptions) WithAnyonymous() *BuiltInAuthenticationOptions {
+func (s *BuiltInAuthenticationOptions) WithAnonymous() *BuiltInAuthenticationOptions {
 	s.Anonymous = &AnonymousAuthenticationOptions{Allow: true}
 	return s
 }
@@ -178,7 +178,11 @@ func (s *BuiltInAuthenticationOptions) AddFlags(fs *pflag.FlagSet) {
 	}
 
 	if s.BootstrapToken != nil {
-		fs.BoolVar(&s.BootstrapToken.Allow, "experimental-bootstrap-token-auth", s.BootstrapToken.Allow, ""+
+		fs.BoolVar(&s.BootstrapToken.Enable, "experimental-bootstrap-token-auth", s.BootstrapToken.Enable, ""+
+			"Deprecated (use --enable-bootstrap-token-auth).")
+		fs.MarkDeprecated("experimental-bootstrap-token-auth", "use --enable-bootstrap-token-auth instead.")
+
+		fs.BoolVar(&s.BootstrapToken.Enable, "enable-bootstrap-token-auth", s.BootstrapToken.Enable, ""+
 			"Enable to allow secrets of type 'bootstrap.kubernetes.io/token' in the 'kube-system' "+
 			"namespace to be used for TLS bootstrapping authentication.")
 	}
@@ -266,7 +270,7 @@ func (s *BuiltInAuthenticationOptions) ToAuthenticationConfig() authenticator.Au
 	}
 
 	if s.BootstrapToken != nil {
-		ret.BootstrapToken = s.BootstrapToken.Allow
+		ret.BootstrapToken = s.BootstrapToken.Enable
 	}
 
 	if s.ClientCert != nil {

@@ -26,6 +26,7 @@ import (
 	clientcache "k8s.io/client-go/tools/cache"
 	v1helper "k8s.io/kubernetes/pkg/api/v1/helper"
 	priorityutil "k8s.io/kubernetes/plugin/pkg/scheduler/algorithm/priorities/util"
+	"k8s.io/kubernetes/plugin/pkg/scheduler/util"
 )
 
 var emptyResource = Resource{}
@@ -63,11 +64,10 @@ type NodeInfo struct {
 
 // Resource is a collection of compute resource.
 type Resource struct {
-	MilliCPU       int64
-	Memory         int64
-	NvidiaGPU      int64
-	StorageScratch int64
-	StorageOverlay int64
+	MilliCPU         int64
+	Memory           int64
+	NvidiaGPU        int64
+	EphemeralStorage int64
 	// We store allowedPodNumber (which is Node.Status.Allocatable.Pods().Value())
 	// explicitly as int, to avoid conversions and improve performance.
 	AllowedPodNumber  int
@@ -97,10 +97,8 @@ func (r *Resource) Add(rl v1.ResourceList) {
 			r.NvidiaGPU += rQuant.Value()
 		case v1.ResourcePods:
 			r.AllowedPodNumber += int(rQuant.Value())
-		case v1.ResourceStorageScratch:
-			r.StorageScratch += rQuant.Value()
-		case v1.ResourceStorageOverlay:
-			r.StorageOverlay += rQuant.Value()
+		case v1.ResourceEphemeralStorage:
+			r.EphemeralStorage += rQuant.Value()
 		default:
 			if v1helper.IsExtendedResourceName(rName) {
 				r.AddExtended(rName, rQuant.Value())
@@ -111,12 +109,11 @@ func (r *Resource) Add(rl v1.ResourceList) {
 
 func (r *Resource) ResourceList() v1.ResourceList {
 	result := v1.ResourceList{
-		v1.ResourceCPU:            *resource.NewMilliQuantity(r.MilliCPU, resource.DecimalSI),
-		v1.ResourceMemory:         *resource.NewQuantity(r.Memory, resource.BinarySI),
-		v1.ResourceNvidiaGPU:      *resource.NewQuantity(r.NvidiaGPU, resource.DecimalSI),
-		v1.ResourcePods:           *resource.NewQuantity(int64(r.AllowedPodNumber), resource.BinarySI),
-		v1.ResourceStorageOverlay: *resource.NewQuantity(r.StorageOverlay, resource.BinarySI),
-		v1.ResourceStorageScratch: *resource.NewQuantity(r.StorageScratch, resource.BinarySI),
+		v1.ResourceCPU:              *resource.NewMilliQuantity(r.MilliCPU, resource.DecimalSI),
+		v1.ResourceMemory:           *resource.NewQuantity(r.Memory, resource.BinarySI),
+		v1.ResourceNvidiaGPU:        *resource.NewQuantity(r.NvidiaGPU, resource.DecimalSI),
+		v1.ResourcePods:             *resource.NewQuantity(int64(r.AllowedPodNumber), resource.BinarySI),
+		v1.ResourceEphemeralStorage: *resource.NewQuantity(r.EphemeralStorage, resource.BinarySI),
 	}
 	for rName, rQuant := range r.ExtendedResources {
 		result[rName] = *resource.NewQuantity(rQuant, resource.DecimalSI)
@@ -130,8 +127,7 @@ func (r *Resource) Clone() *Resource {
 		Memory:           r.Memory,
 		NvidiaGPU:        r.NvidiaGPU,
 		AllowedPodNumber: r.AllowedPodNumber,
-		StorageOverlay:   r.StorageOverlay,
-		StorageScratch:   r.StorageScratch,
+		EphemeralStorage: r.EphemeralStorage,
 	}
 	if r.ExtendedResources != nil {
 		res.ExtendedResources = make(map[v1.ResourceName]int64)
@@ -304,8 +300,7 @@ func (n *NodeInfo) addPod(pod *v1.Pod) {
 	n.requestedResource.MilliCPU += res.MilliCPU
 	n.requestedResource.Memory += res.Memory
 	n.requestedResource.NvidiaGPU += res.NvidiaGPU
-	n.requestedResource.StorageOverlay += res.StorageOverlay
-	n.requestedResource.StorageScratch += res.StorageScratch
+	n.requestedResource.EphemeralStorage += res.EphemeralStorage
 	if n.requestedResource.ExtendedResources == nil && len(res.ExtendedResources) > 0 {
 		n.requestedResource.ExtendedResources = map[v1.ResourceName]int64{}
 	}
@@ -392,14 +387,6 @@ func calculateResource(pod *v1.Pod) (res Resource, non0_cpu int64, non0_mem int6
 		// No non-zero resources for GPUs or opaque resources.
 	}
 
-	// Account for storage requested by emptydir volumes
-	// If the storage medium is memory, should exclude the size
-	for _, vol := range pod.Spec.Volumes {
-		if vol.EmptyDir != nil && vol.EmptyDir.Medium != v1.StorageMediumMemory {
-			res.StorageScratch += vol.EmptyDir.SizeLimit.Value()
-		}
-	}
-
 	return
 }
 
@@ -457,4 +444,20 @@ func (n *NodeInfo) RemoveNode(node *v1.Node) error {
 // getPodKey returns the string key of a pod.
 func getPodKey(pod *v1.Pod) (string, error) {
 	return clientcache.MetaNamespaceKeyFunc(pod)
+}
+
+// Filter implements PodFilter interface. It returns false only if the pod node name
+// matches NodeInfo.node and the pod is not found in the pods list. Otherwise,
+// returns true.
+func (n *NodeInfo) Filter(pod *v1.Pod) bool {
+	pFullName := util.GetPodFullName(pod)
+	if pod.Spec.NodeName != n.node.Name {
+		return true
+	}
+	for _, p := range n.pods {
+		if util.GetPodFullName(p) == pFullName {
+			return true
+		}
+	}
+	return false
 }

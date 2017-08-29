@@ -107,6 +107,7 @@ func IsResourceQuotaScopeValidForResource(scope api.ResourceQuotaScope, resource
 var standardContainerResources = sets.NewString(
 	string(api.ResourceCPU),
 	string(api.ResourceMemory),
+	string(api.ResourceEphemeralStorage),
 )
 
 // IsStandardContainerResourceName returns true if the container can make a resource request
@@ -169,11 +170,14 @@ func IsStandardLimitRangeType(str string) bool {
 var standardQuotaResources = sets.NewString(
 	string(api.ResourceCPU),
 	string(api.ResourceMemory),
+	string(api.ResourceEphemeralStorage),
 	string(api.ResourceRequestsCPU),
 	string(api.ResourceRequestsMemory),
 	string(api.ResourceRequestsStorage),
+	string(api.ResourceRequestsEphemeralStorage),
 	string(api.ResourceLimitsCPU),
 	string(api.ResourceLimitsMemory),
+	string(api.ResourceLimitsEphemeralStorage),
 	string(api.ResourcePods),
 	string(api.ResourceQuotas),
 	string(api.ResourceServices),
@@ -194,10 +198,13 @@ func IsStandardQuotaResourceName(str string) bool {
 var standardResources = sets.NewString(
 	string(api.ResourceCPU),
 	string(api.ResourceMemory),
+	string(api.ResourceEphemeralStorage),
 	string(api.ResourceRequestsCPU),
 	string(api.ResourceRequestsMemory),
+	string(api.ResourceRequestsEphemeralStorage),
 	string(api.ResourceLimitsCPU),
 	string(api.ResourceLimitsMemory),
+	string(api.ResourceLimitsEphemeralStorage),
 	string(api.ResourcePods),
 	string(api.ResourceQuotas),
 	string(api.ResourceServices),
@@ -207,6 +214,8 @@ var standardResources = sets.NewString(
 	string(api.ResourcePersistentVolumeClaims),
 	string(api.ResourceStorage),
 	string(api.ResourceRequestsStorage),
+	string(api.ResourceServicesNodePorts),
+	string(api.ResourceServicesLoadBalancers),
 )
 
 // IsStandardResourceName returns true if the resource is known to the system
