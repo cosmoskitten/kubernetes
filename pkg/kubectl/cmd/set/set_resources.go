@@ -36,14 +36,14 @@ import (
 )
 
 var (
-	resources_long = templates.LongDesc(`
+	resourcesLong = templates.LongDesc(`
 		Specify compute resource requirements (cpu, memory) for any resource that defines a pod template.  If a pod is successfully scheduled, it is guaranteed the amount of resource requested, but may burst up to its specified limits.
 
 		for each compute resource, if a limit is specified and a request is omitted, the request will default to the limit.
 
 		Possible resources include (case insensitive): %s.`)
 
-	resources_example = templates.Examples(`
+	resourcesExample = templates.Examples(`
 		# Set a deployments nginx container cpu limits to "200m" and memory to "512Mi"
 		kubectl set resources deployment nginx -c=nginx --limits=cpu=200m,memory=512Mi
 
@@ -57,8 +57,7 @@ var (
 		kubectl set resources -f path/to/file.yaml --limits=cpu=200m,memory=512Mi --local -o yaml`)
 )
 
-// ResourcesOptions is the start of the data required to perform the operation. As new fields are added, add them here instead of
-// referencing the cmd.Flags
+// ResourcesOptions holds command line options required to run the command.
 type ResourcesOptions struct {
 	resource.FilenameOptions
 
@@ -86,6 +85,7 @@ type ResourcesOptions struct {
 	Resources              []string
 }
 
+// NewCmdResources creates the `resources` subcommand.
 func NewCmdResources(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &ResourcesOptions{
 		Out: out,
@@ -100,8 +100,8 @@ func NewCmdResources(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.
 	cmd := &cobra.Command{
 		Use:     "resources (-f FILENAME | TYPE NAME)  ([--limits=LIMITS & --requests=REQUESTS]",
 		Short:   i18n.T("Update resource requests/limits on objects with pod templates"),
-		Long:    fmt.Sprintf(resources_long, strings.Join(resourceTypesWithPodTemplate, ", ")),
-		Example: resources_example,
+		Long:    fmt.Sprintf(resourcesLong, strings.Join(resourceTypesWithPodTemplate, ", ")),
+		Example: resourcesExample,
 		Run: func(cmd *cobra.Command, args []string) {
 			cmdutil.CheckErr(options.Complete(f, cmd, args))
 			cmdutil.CheckErr(options.Validate())
@@ -125,6 +125,7 @@ func NewCmdResources(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.
 	return cmd
 }
 
+// Complete completes all the required options.
 func (o *ResourcesOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args []string) error {
 	o.Mapper, o.Typer = f.Object()
 	o.UpdatePodSpecForObject = f.UpdatePodSpecForObject
@@ -162,6 +163,7 @@ func (o *ResourcesOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args 
 	return nil
 }
 
+// Validate command options for sufficient information to run the command.
 func (o *ResourcesOptions) Validate() error {
 	var err error
 	if len(o.Limits) == 0 && len(o.Requests) == 0 {
@@ -176,6 +178,7 @@ func (o *ResourcesOptions) Validate() error {
 	return nil
 }
 
+// Run implements the actual command.
 func (o *ResourcesOptions) Run() error {
 	allErrs := []error{}
 	patches := CalculatePatches(o.Infos, o.Encoder, func(info *resource.Info) ([]byte, error) {

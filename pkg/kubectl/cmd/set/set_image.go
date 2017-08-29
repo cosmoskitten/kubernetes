@@ -32,8 +32,7 @@ import (
 	"k8s.io/kubernetes/pkg/kubectl/util/i18n"
 )
 
-// ImageOptions is the start of the data required to perform the operation.  As new fields are added, add them here instead of
-// referencing the cmd.Flags()
+// ImageOptions holds command line options required to run the command.
 type ImageOptions struct {
 	resource.FilenameOptions
 
@@ -61,16 +60,16 @@ type ImageOptions struct {
 }
 
 var (
-	image_resources = `
+	imageResources = `
   	pod (po), replicationcontroller (rc), deployment (deploy), daemonset (ds), job, replicaset (rs)`
 
-	image_long = templates.LongDesc(`
+	imageLong = templates.LongDesc(`
 		Update existing container image(s) of resources.
 
 		Possible resources include (case insensitive):
-		` + image_resources)
+		` + imageResources)
 
-	image_example = templates.Examples(`
+	imageExample = templates.Examples(`
 		# Set a deployment's nginx container image to 'nginx:1.9.1', and its busybox container image to 'busybox'.
 		kubectl set image deployment/nginx busybox=busybox nginx=nginx:1.9.1
 
@@ -84,6 +83,7 @@ var (
 		kubectl set image -f path/to/file.yaml nginx=nginx:1.9.1 --local -o yaml`)
 )
 
+// NewCmdImage creates the `image` subcommand.
 func NewCmdImage(f cmdutil.Factory, out, err io.Writer) *cobra.Command {
 	options := &ImageOptions{
 		Out: out,
@@ -93,8 +93,8 @@ func NewCmdImage(f cmdutil.Factory, out, err io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "image (-f FILENAME | TYPE NAME) CONTAINER_NAME_1=CONTAINER_IMAGE_1 ... CONTAINER_NAME_N=CONTAINER_IMAGE_N",
 		Short:   i18n.T("Update image of a pod template"),
-		Long:    image_long,
-		Example: image_example,
+		Long:    imageLong,
+		Example: imageExample,
 		Run: func(cmd *cobra.Command, args []string) {
 			cmdutil.CheckErr(options.Complete(f, cmd, args))
 			cmdutil.CheckErr(options.Validate())
@@ -110,9 +110,11 @@ func NewCmdImage(f cmdutil.Factory, out, err io.Writer) *cobra.Command {
 	cmd.Flags().BoolVar(&options.Local, "local", false, "If true, set image will NOT contact api-server but run locally.")
 	cmdutil.AddRecordFlag(cmd)
 	cmdutil.AddDryRunFlag(cmd)
+
 	return cmd
 }
 
+// Complete completes all the required options.
 func (o *ImageOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args []string) error {
 	o.Mapper, o.Typer = f.Object()
 	o.UpdatePodSpecForObject = f.UpdatePodSpecForObject
@@ -156,6 +158,7 @@ func (o *ImageOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args []st
 	return nil
 }
 
+// Validate command options for sufficient information to run the command.
 func (o *ImageOptions) Validate() error {
 	errors := []error{}
 	if len(o.Resources) < 1 && cmdutil.IsFilenameSliceEmpty(o.Filenames) {
@@ -169,6 +172,7 @@ func (o *ImageOptions) Validate() error {
 	return utilerrors.NewAggregate(errors)
 }
 
+// Run implements the actual command.
 func (o *ImageOptions) Run() error {
 	allErrs := []error{}
 

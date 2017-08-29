@@ -36,10 +36,10 @@ import (
 )
 
 var (
-	subject_long = templates.LongDesc(`
+	subjectLong = templates.LongDesc(`
 	Update User, Group or ServiceAccount in a RoleBinding/ClusterRoleBinding.`)
 
-	subject_example = templates.Examples(`
+	subjectExample = templates.Examples(`
 	# Update a ClusterRoleBinding for serviceaccount1
 	kubectl set subject clusterrolebinding admin --serviceaccount=namespace:serviceaccount1
 
@@ -52,8 +52,7 @@ var (
 
 type updateSubjects func(existings []rbac.Subject, targets []rbac.Subject) (bool, []rbac.Subject)
 
-// SubjectOptions is the start of the data required to perform the operation. As new fields are added, add them here instead of
-// referencing the cmd.Flags
+// SubjectOptions holds command line options required to run the command.
 type SubjectOptions struct {
 	resource.FilenameOptions
 
@@ -77,6 +76,7 @@ type SubjectOptions struct {
 	PrintObject func(mapper meta.RESTMapper, obj runtime.Object, out io.Writer) error
 }
 
+// NewCmdSubject creates the `can-i` subcommand.
 func NewCmdSubject(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &SubjectOptions{
 		Out: out,
@@ -86,8 +86,8 @@ func NewCmdSubject(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Co
 	cmd := &cobra.Command{
 		Use:     "subject (-f FILENAME | TYPE NAME) [--user=username] [--group=groupname] [--serviceaccount=namespace:serviceaccountname] [--dry-run]",
 		Short:   i18n.T("Update User, Group or ServiceAccount in a RoleBinding/ClusterRoleBinding"),
-		Long:    subject_long,
-		Example: subject_example,
+		Long:    subjectLong,
+		Example: subjectExample,
 		Run: func(cmd *cobra.Command, args []string) {
 			cmdutil.CheckErr(options.Complete(f, cmd, args))
 			cmdutil.CheckErr(options.Validate())
@@ -108,6 +108,7 @@ func NewCmdSubject(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Co
 	return cmd
 }
 
+// Complete completes all the required options.
 func (o *SubjectOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args []string) error {
 	o.Local = cmdutil.GetFlagBool(cmd, "local")
 	o.Mapper, o.Typer = f.Object()
@@ -143,6 +144,7 @@ func (o *SubjectOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args []
 	return nil
 }
 
+// Validate command options for sufficient information to run the command.
 func (o *SubjectOptions) Validate() error {
 	if len(o.Users) == 0 && len(o.Groups) == 0 && len(o.ServiceAccounts) == 0 {
 		return fmt.Errorf("you must specify at least one value of user, group or serviceaccount")
@@ -165,6 +167,7 @@ func (o *SubjectOptions) Validate() error {
 	return nil
 }
 
+// Run implements the actual command.
 func (o *SubjectOptions) Run(f cmdutil.Factory, fn updateSubjects) error {
 	var err error
 	patches := CalculatePatches(o.Infos, o.Encoder, func(info *resource.Info) ([]byte, error) {
