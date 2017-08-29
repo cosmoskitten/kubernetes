@@ -321,7 +321,7 @@ func (c *sioClient) IID() (string, error) {
 // it attemps to fallback to using drv_cfg binary
 func (c *sioClient) getGuid() (string, error) {
 	if c.sdcGuid == "" {
-		glog.Warning(log("sdc guid not set, falling back to using drv_cfg to get it"))
+		glog.V(4).Info(log("sdc guid label not set, falling back to using drv_cfg"))
 		cmd := c.getSdcCmd()
 		output, err := exec.Command(cmd, "--query_guid").Output()
 		if err != nil {

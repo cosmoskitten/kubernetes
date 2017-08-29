@@ -388,7 +388,7 @@ func (v *sioVolume) setSioMgr() error {
 
 		// merge in Sdc Guid label value
 		if err := attachSdcGuid(v.plugin, configData); err != nil {
-			glog.Error(log("failed to retrieve sdc guid: %", err))
+			glog.Error(log("failed to retrieve sdc guid: %v", err))
 			return err
 		}
 		mgr, err := newSioMgr(configData, v.plugin.host.GetExec(v.plugin.GetPluginName()))
@@ -426,7 +426,7 @@ func (v *sioVolume) resetSioMgr() error {
 
 		// merge in Sdc Guid label value
 		if err := attachSdcGuid(v.plugin, configData); err != nil {
-			glog.Error(log("failed to retrieve sdc guid: %", err))
+			glog.Error(log("failed to retrieve sdc guid: %v", err))
 			return err
 		}
 
