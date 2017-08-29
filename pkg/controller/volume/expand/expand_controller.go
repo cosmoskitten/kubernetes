@@ -166,7 +166,7 @@ func (expc *expandController) pvcUpdate(oldObj, newObj interface{}) {
 	}
 	volumeSpec, err := createVolumeSpec(newPvc, expc.pvcLister, expc.pvLister)
 	if err != nil {
-		glog.Errorf("Error creating volume spec during update event : %v", err)
+		glog.V(5).Infof("Error creating volume spec on update event : %v", err)
 		return
 	}
 	expc.resizeMap.AddPVCUpdate(newPvc, oldPvc, volumeSpec)
@@ -182,6 +182,10 @@ func createVolumeSpec(
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to find PV %q in PV informer cache with error : %v", volumeName, err)
+	}
+
+	if pvc.Namespace != pv.Spec.ClaimRef.Namespace || pvc.Name != pv.Spec.ClaimRef.Name {
+		return nil, fmt.Errorf("Persistent Volume is not mapped to PVC being updated : %v/%v", pvc.Namespace, pvc.Name)
 	}
 
 	clonedPvObject, err := scheme.Scheme.DeepCopy(pv)
