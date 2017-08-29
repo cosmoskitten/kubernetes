@@ -420,8 +420,18 @@ func GetOpenAPICacheDir(cmd *cobra.Command) string {
 	return GetFlagString(cmd, "schema-cache-dir")
 }
 
+// AddFilenameFlag adds the --filename flag.
+func AddFilenameFlag(cmd *cobra.Command, value *[]string, usage string) {
+	cmd.Flags().StringSliceVarP(value, "filename", "f", *value, usage)
+	annotations := make([]string, 0, len(resource.FileExtensions))
+	for _, ext := range resource.FileExtensions {
+		annotations = append(annotations, strings.TrimLeft(ext, "."))
+	}
+	cmd.Flags().SetAnnotation("filename", cobra.BashCompFilenameExt, annotations)
+}
+
 func AddFilenameOptionFlags(cmd *cobra.Command, options *resource.FilenameOptions, usage string) {
-	kubectl.AddFilenameFlag(cmd, &options.Filenames, "Filename, directory, or URL to files "+usage)
+	AddFilenameFlag(cmd, &options.Filenames, "Filename, directory, or URL to files "+usage)
 	cmd.Flags().BoolVarP(&options.Recursive, "recursive", "R", options.Recursive, "Process the directory used in -f, --filename recursively. Useful when you want to manage related manifests organized within the same directory.")
 }
 
