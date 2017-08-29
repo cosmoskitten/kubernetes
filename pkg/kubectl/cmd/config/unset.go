@@ -30,23 +30,25 @@ import (
 	"k8s.io/kubernetes/pkg/kubectl/util/i18n"
 )
 
+// unsetOptions holds command line options required to run the command.
 type unsetOptions struct {
 	configAccess clientcmd.ConfigAccess
 	propertyName string
 }
 
-var unset_long = templates.LongDesc(`
+var unsetLong = templates.LongDesc(`
 	Unsets an individual value in a kubeconfig file
 
 	PROPERTY_NAME is a dot delimited name where each token represents either an attribute name or a map key.  Map keys may not contain dots.`)
 
+// NewCmdConfigUnset creates the `unset` subcommand.
 func NewCmdConfigUnset(out io.Writer, configAccess clientcmd.ConfigAccess) *cobra.Command {
 	options := &unsetOptions{configAccess: configAccess}
 
 	cmd := &cobra.Command{
 		Use:   "unset PROPERTY_NAME",
 		Short: i18n.T("Unsets an individual value in a kubeconfig file"),
-		Long:  unset_long,
+		Long:  unsetLong,
 		Run: func(cmd *cobra.Command, args []string) {
 			cmdutil.CheckErr(options.complete(cmd))
 			cmdutil.CheckErr(options.run())
@@ -57,6 +59,7 @@ func NewCmdConfigUnset(out io.Writer, configAccess clientcmd.ConfigAccess) *cobr
 	return cmd
 }
 
+// run implements the actual command.
 func (o unsetOptions) run() error {
 	err := o.validate()
 	if err != nil {
@@ -84,6 +87,7 @@ func (o unsetOptions) run() error {
 	return nil
 }
 
+// complete completes all the required options.
 func (o *unsetOptions) complete(cmd *cobra.Command) error {
 	endingArgs := cmd.Flags().Args()
 	if len(endingArgs) != 1 {
@@ -95,6 +99,7 @@ func (o *unsetOptions) complete(cmd *cobra.Command) error {
 	return nil
 }
 
+// validate command options for sufficient information to run the command.
 func (o unsetOptions) validate() error {
 	if len(o.propertyName) == 0 {
 		return errors.New("you must specify a property")
