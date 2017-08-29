@@ -37,9 +37,7 @@ func NewCmdView(f cmdutil.Factory, out io.Writer) *cobra.Command {
 		Use:   "view SUBCOMMAND",
 		Short: "View specific fields on objects",
 		Long:  viewLong,
-		Run: func(cmd *cobra.Command, args []string) {
-			cmd.Help()
-		},
+		Run:   cmdutil.DefaultSubCommandRun(err),
 	}
 	// add subcommands
 	cmd.AddCommand(NewCmdImage(f, out))
