@@ -278,7 +278,7 @@ func (i *Init) Run(out io.Writer) error {
 	adminKubeConfigPath := filepath.Join(kubeConfigDir, kubeadmconstants.AdminKubeConfigFileName)
 
 	if res, err := certsphase.UsingExternalCA(i.cfg); !res {
-		fmt.Println("[externalca] Not using external CA mode: %v", err)
+		fmt.Printf("[externalca] Not using external CA mode: %v\n", err)
 
 		// PHASE 1: Generate certificates
 		if err := certsphase.CreatePKIAssets(i.cfg); err != nil {
