@@ -18,7 +18,6 @@ package azure
 
 import (
 	"encoding/json"
-	"errors"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -61,14 +60,31 @@ func (az *Cloud) GetZone() (cloudprovider.Zone, error) {
 // This is particularly useful in external cloud providers where the kubelet
 // does not initialize node data.
 func (az *Cloud) GetZoneByProviderID(providerID string) (cloudprovider.Zone, error) {
-	return cloudprovider.Zone{}, errors.New("GetZoneByProviderID not implemented")
+	nodeName, err := splitProviderID(providerID)
+	if err != nil {
+		return cloudprovider.Zone{}, err
+	}
+	return az.GetZoneByNodeName(nodeName)
 }
 
 // GetZoneByNodeName implements Zones.GetZoneByNodeName
 // This is particularly useful in external cloud providers where the kubelet
 // does not initialize node data.
 func (az *Cloud) GetZoneByNodeName(nodeName types.NodeName) (cloudprovider.Zone, error) {
-	return cloudprovider.Zone{}, errors.New("GetZoneByNodeName not imeplemented")
+	vm, exists, err := az.getVirtualMachine(nodeName)
+
+	if err != nil {
+		return cloudprovider.Zone{}, err
+	}
+
+	if !exists {
+		return cloudprovider.Zone{}, nil
+	}
+	zone := cloudprovider.Zone{
+		FailureDomain: *(vm.AvailabilitySet.ID),
+		Region:        *(vm.Location),
+	}
+	return zone, nil
 }
 
 func fetchFaultDomain() (*string, error) {
