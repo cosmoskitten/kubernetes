@@ -17,13 +17,12 @@ limitations under the License.
 package deployment
 
 import (
-	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/validation/field"
 	deploymentutil "k8s.io/kubernetes/pkg/controller/deployment/util"
 	"k8s.io/kubernetes/test/integration/framework"
 )
@@ -118,7 +117,6 @@ func TestDeploymentSelectorImmutability(t *testing.T) {
 	}
 
 	// test to ensure apps/v1beta2 selector is immutable
-	// TODO(#50791): change this to expect an error after selector immutability codes are moved to validation
 	deploymentAppsV1beta2, err := c.AppsV1beta2().Deployments(ns.Name).Get(updatedDeploymentAppsV1beta1.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("failed to get apps/v1beta2 deployment %s: %v", updatedDeploymentAppsV1beta1.Name, err)
@@ -130,19 +128,9 @@ func TestDeploymentSelectorImmutability(t *testing.T) {
 	if err == nil {
 		t.Fatalf("failed to provide validation error when changing immutable selector when updating apps/v1beta2 deployment %s", deploymentAppsV1beta2.Name)
 	}
-	expectedErrList := field.ErrorList{
-		&field.Error{
-			Type:  field.ErrorTypeInvalid,
-			Field: field.NewPath("spec").Child("selector").String(),
-			BadValue: &metav1.LabelSelector{
-				MatchLabels: newSelectorLabels,
-			},
-			Detail: "selector must not be changed after update",
-		},
-	}
-	expectedErrMessage := fmt.Sprintf("Deployment.apps \"%s\" is invalid: %v", name, expectedErrList.ToAggregate())
-	errMessage := fmt.Sprintf("%v", err)
-	if errMessage != expectedErrMessage {
-		t.Errorf("error message does not matched, expected: %v, got: %s", expectedErrMessage, errMessage)
+	expectedErrType := "Invalid value"
+	expectedErrDetail := "field is immutable"
+	if !strings.Contains(err.Error(), expectedErrType) || !strings.Contains(err.Error(), expectedErrDetail) {
+		t.Errorf("error message does not match, expected type: %s, expected detail: %s, got: %s", expectedErrType, expectedErrDetail, err.Error())
 	}
 }
