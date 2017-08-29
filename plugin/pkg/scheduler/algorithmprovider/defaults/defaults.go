@@ -225,8 +225,8 @@ func defaultPriorities() sets.String {
 		// Prioritizes nodes that have labels matching NodeAffinity
 		factory.RegisterPriorityFunction2("NodeAffinityPriority", priorities.CalculateNodeAffinityPriorityMap, priorities.CalculateNodeAffinityPriorityReduce, 1),
 
-		// TODO: explain what it does.
-		//Taints are some restricts added to Nodes,only pod tolerates it can be schedule onto those Nodes.
+		// Taints are restrictive markers added to Nodes. Only Pods which explicitly tolerate a particular taint
+		// will be scheduled onto a Node marked with that taint.
 		factory.RegisterPriorityFunction2("TaintTolerationPriority", priorities.ComputeTaintTolerationPriorityMap, priorities.ComputeTaintTolerationPriorityReduce, 1),
 	)
 }
