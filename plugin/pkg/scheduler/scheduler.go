@@ -210,7 +210,7 @@ func (sched *Scheduler) preempt(preemptor *v1.Pod, scheduleErr error) (string, e
 		annotations := map[string]string{core.NominatedNodeAnnotationKey: nodeName}
 		err = sched.config.PodPreemptor.UpdatePodAnnotations(preemptor, annotations)
 		if err != nil {
-			glog.Errorf("Cannot update pod %v annotations: %v", preemptor.Name, err)
+			glog.Errorf("Error in preemption process. Cannot update pod %v annotations: %v", preemptor.Name, err)
 			return "", err
 		}
 		var victimNames bytes.Buffer

@@ -575,6 +575,7 @@ func selectNodesForPreemption(pod *v1.Pod,
 	checkNode := func(i int) {
 		nodeName := nodes[i].Name
 		// if potentialNodeNames is not nil, try the node only if it exists in potentialNodeNames.
+		// potentialNodeNames may be nil only in tests.
 		if potentialNodeNames != nil {
 			if _, ok := potentialNodeNames[nodeName]; !ok {
 				return
@@ -736,6 +737,10 @@ func nodesWherePreemptionMightHelp(pod *v1.Pod, nodes []*v1.Node, failedPredicat
 	for _, node := range nodes {
 		unresolvableReasonExist := false
 		failedPredicates, found := failedPredicatesMap[node.Name]
+		// If we assume that scheduler looks at all nodes and populates the failedPredicateMap
+		// (which is the case today), the !found case should never happen, but we'd prefer
+		// to rely less on such assumptions in the code when checking does not impose
+		// significant overhead.
 		if found {
 			for _, failedPredicate := range failedPredicates {
 				switch failedPredicate {
