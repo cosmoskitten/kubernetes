@@ -11,6 +11,8 @@ go_test(
     srcs = ["converter_test.go"],
     library = ":go_default_library",
     deps = [
+        "//vendor/github.com/stretchr/testify/assert:go_default_library",
+        "//vendor/github.com/stretchr/testify/require:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/util/diff:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/util/json:go_default_library",
     ],

@@ -10,6 +10,12 @@ go_test(
     name = "go_default_test",
     srcs = ["unstructured_test.go"],
     library = ":go_default_library",
+    deps = [
+        "//vendor/k8s.io/apimachinery/pkg/conversion/unstructured:go_default_library",
+        "//vendor/k8s.io/apimachinery/pkg/runtime:go_default_library",
+        "//vendor/k8s.io/apimachinery/pkg/util/diff:go_default_library",
+        "//vendor/k8s.io/apimachinery/pkg/util/json:go_default_library",
+    ],
 )
 
 go_library(
