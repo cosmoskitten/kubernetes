@@ -648,7 +648,12 @@ func TestCreateOrUpdateMasterService(t *testing.T) {
 					Selector:        nil,
 					ClusterIP:       "1.2.3.4",
 					SessionAffinity: api.ServiceAffinityClientIP,
-					Type:            api.ServiceTypeNodePort,
+					SessionAffinityConfig: &api.SessionAffinityConfig{
+						ClientIP: &api.ClientIPConfig{
+							TimeoutSeconds: &timeoutSeconds,
+						},
+					},
+					Type: api.ServiceTypeNodePort,
 				},
 			},
 		},
@@ -669,7 +674,12 @@ func TestCreateOrUpdateMasterService(t *testing.T) {
 					Selector:        nil,
 					ExternalName:    "foo.bar",
 					SessionAffinity: api.ServiceAffinityClientIP,
-					Type:            api.ServiceTypeExternalName,
+					SessionAffinityConfig: &api.SessionAffinityConfig{
+						ClientIP: &api.ClientIPConfig{
+							TimeoutSeconds: &timeoutSeconds,
+						},
+					},
+					Type: api.ServiceTypeExternalName,
 				},
 			},
 		},
