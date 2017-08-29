@@ -96,6 +96,7 @@ import (
 	"k8s.io/kubernetes/plugin/pkg/scheduler/schedulercache"
 	"k8s.io/kubernetes/test/e2e/framework/ginkgowrapper"
 	testutil "k8s.io/kubernetes/test/utils"
+	imageutils "k8s.io/kubernetes/test/utils/image"
 	uexec "k8s.io/utils/exec"
 )
 
@@ -179,8 +180,6 @@ const (
 	// TODO(justinsb): Avoid hardcoding this.
 	awsMasterIP = "172.20.0.9"
 
-	// Serve hostname image name
-	ServeHostnameImage = "gcr.io/google_containers/serve_hostname:v1.4"
 	// ssh port
 	sshPort = "22"
 
@@ -192,6 +191,7 @@ const (
 )
 
 var (
+	BusyBoxImage = imageutils.GetBusyBoxImage()
 	// Label allocated to the image puller static pod that runs on each node
 	// before e2es.
 	ImagePullerLabels = map[string]string{"name": "e2e-image-puller"}
@@ -205,6 +205,9 @@ var (
 		regexp.MustCompile(".*fluentd-elasticsearch.*"),
 		regexp.MustCompile(".*node-problem-detector.*"),
 	}
+
+	// Serve hostname image name
+	ServeHostnameImage = imageutils.GetE2EImage(imageutils.ServeHostname)
 )
 
 type Address struct {
@@ -418,7 +421,7 @@ func ProxyMode(f *Framework) (string, error) {
 			Containers: []v1.Container{
 				{
 					Name:    "detector",
-					Image:   "gcr.io/google_containers/e2e-net-amd64:1.0",
+					Image:   imageutils.GetE2EImage(imageutils.Net),
 					Command: []string{"/bin/sleep", "3600"},
 				},
 			},
@@ -3264,7 +3267,7 @@ func NewHostExecPodSpec(ns, name string) *v1.Pod {
 			Containers: []v1.Container{
 				{
 					Name:            "hostexec",
-					Image:           "gcr.io/google_containers/hostexec:1.2",
+					Image:           imageutils.GetE2EImage(imageutils.Hostexec),
 					ImagePullPolicy: v1.PullIfNotPresent,
 				},
 			},
@@ -3314,7 +3317,7 @@ func newExecPodSpec(ns, generateName string) *v1.Pod {
 			Containers: []v1.Container{
 				{
 					Name:    "exec",
-					Image:   "gcr.io/google_containers/busybox:1.24",
+					Image:   BusyBoxImage,
 					Command: []string{"sh", "-c", "while true; do sleep 5; done"},
 				},
 			},
@@ -4416,7 +4419,7 @@ func LaunchWebserverPod(f *Framework, podName, nodeName string) (ip string) {
 			Containers: []v1.Container{
 				{
 					Name:  containerName,
-					Image: "gcr.io/google_containers/porter:4524579c0eb935c056c8e75563b4e1eda31587e0",
+					Image: imageutils.GetE2EImage(imageutils.Porter),
 					Env:   []v1.EnvVar{{Name: fmt.Sprintf("SERVE_PORT_%d", port), Value: "foo"}},
 					Ports: []v1.ContainerPort{{ContainerPort: int32(port)}},
 				},
@@ -4459,7 +4462,7 @@ func CheckConnectivityToHost(f *Framework, nodeName, podName, host string, timeo
 			Containers: []v1.Container{
 				{
 					Name:    contName,
-					Image:   "gcr.io/google_containers/busybox:1.24",
+					Image:   BusyBoxImage,
 					Command: command,
 				},
 			},
