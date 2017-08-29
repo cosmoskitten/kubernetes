@@ -16,7 +16,6 @@ filegroup(
         "//build/debs:all-srcs",
         "//build/release-tars:all-srcs",
         "//build/rpms:all-srcs",
-        "//build/visible_to:all-srcs",
     ],
     tags = ["automanaged"],
 )
