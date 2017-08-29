@@ -449,7 +449,13 @@ func (proxier *Proxier) mergeService(service *api.Service) sets.String {
 		info.nodePort = int(servicePort.NodePort)
 		info.sessionAffinityType = service.Spec.SessionAffinity
 		// Set session affinity timeout value when sessionAffinity==ClientIP
-		if service.Spec.SessionAffinity == api.ServiceAffinityClientIP {
+		// We changed the API definition that sessionAffinityConfig is required when
+		// service session affinity type is ClientIP - previously, it's not. In order to
+		// backward compatible with latency services, we set default timeout for those
+		// services whose session affinity type is ClientIP but without session affinity config.
+		if service.Spec.SessionAffinityConfig == nil {
+			info.stickyMaxAgeSeconds = int(api.DefaultClientIPServiceAffinitySeconds)
+		} else {
 			info.stickyMaxAgeSeconds = int(*service.Spec.SessionAffinityConfig.ClientIP.TimeoutSeconds)
 		}
 

@@ -196,7 +196,15 @@ func newServiceInfo(svcPortName proxy.ServicePortName, port *api.ServicePort, se
 	}
 	var stickyMaxAgeSeconds int
 	if service.Spec.SessionAffinity == api.ServiceAffinityClientIP {
-		stickyMaxAgeSeconds = int(*service.Spec.SessionAffinityConfig.ClientIP.TimeoutSeconds)
+		// We changed the API definition that sessionAffinityConfig is required when
+		// service session affinity type is ClientIP - previously, it's not. In order to
+		// backward compatible with latency services, we set default timeout for those
+		// services whose session affinity type is ClientIP but without session affinity config.
+		if service.Spec.SessionAffinityConfig == nil {
+			stickyMaxAgeSeconds = int(api.DefaultClientIPServiceAffinitySeconds)
+		} else {
+			stickyMaxAgeSeconds = int(*service.Spec.SessionAffinityConfig.ClientIP.TimeoutSeconds)
+		}
 	}
 	info := &serviceInfo{
 		clusterIP: net.ParseIP(service.Spec.ClusterIP),
