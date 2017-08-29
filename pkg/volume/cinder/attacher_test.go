@@ -583,6 +583,10 @@ func (testcase *testcase) InstanceID() (string, error) {
 	return testcase.instanceID, nil
 }
 
+func (testcase *testcase) ExpandVolume(volumeID string, newSize int) error {
+	return nil
+}
+
 func (testcase *testcase) DeleteVolume(volumeID string) error {
 	return errors.New("Not implemented")
 }

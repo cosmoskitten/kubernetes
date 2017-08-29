@@ -27,6 +27,7 @@ import (
 	k8s_volume "k8s.io/kubernetes/pkg/volume"
 
 	"github.com/gophercloud/gophercloud"
+	volumeexpand "github.com/gophercloud/gophercloud/openstack/blockstorage/extensions/volumeactions"
 	volumes_v1 "github.com/gophercloud/gophercloud/openstack/blockstorage/v1/volumes"
 	volumes_v2 "github.com/gophercloud/gophercloud/openstack/blockstorage/v2/volumes"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/volumeattach"
@@ -39,6 +40,7 @@ type volumeService interface {
 	createVolume(opts VolumeCreateOpts) (string, string, error)
 	getVolume(volumeID string) (Volume, error)
 	deleteVolume(volumeName string) error
+	expandVolume(volumeID string, newSize int) error
 }
 
 // Volumes implementation for v1
@@ -193,6 +195,36 @@ func (volumes *VolumesV2) deleteVolume(volumeID string) error {
 	return err
 }
 
+func (volumes *VolumesV1) expandVolume(volumeID string, newSize int) error {
+	startTime := time.Now()
+	create_opts := volumeexpand.ExtendSizeOpts{
+		NewSize: newSize,
+	}
+	err := volumeexpand.ExtendSize(volumes.blockstorage, volumeID, create_opts).ExtractErr()
+	timeTaken := time.Since(startTime).Seconds()
+	recordOpenstackOperationMetric("expand_volume", timeTaken, err)
+	if err != nil {
+		glog.Errorf("Cannot expand volume %s: %v", volumeID, err)
+	}
+
+	return err
+}
+
+func (volumes *VolumesV2) expandVolume(volumeID string, newSize int) error {
+	startTime := time.Now()
+	create_opts := volumeexpand.ExtendSizeOpts{
+		NewSize: newSize,
+	}
+	err := volumeexpand.ExtendSize(volumes.blockstorage, volumeID, create_opts).ExtractErr()
+	timeTaken := time.Since(startTime).Seconds()
+	recordOpenstackOperationMetric("expand_volume", timeTaken, err)
+	if err != nil {
+		glog.Errorf("Cannot expand volume %s: %v", volumeID, err)
+	}
+
+	return err
+}
+
 func (os *OpenStack) OperationPending(diskName string) (bool, string, error) {
 	volume, err := os.getVolume(diskName)
 	if err != nil {
@@ -286,6 +318,32 @@ func (os *OpenStack) DetachDisk(instanceID, volumeID string) error {
 	}
 
 	return nil
+}
+
+// ExpandVolume expands the size of specific cinder volume (in GiB)
+func (os *OpenStack) ExpandVolume(volumeID string, newSize int) error {
+	volume, err := os.getVolume(volumeID)
+	if err != nil {
+		return err
+	}
+	if volume.Status != VolumeAvailableStatus {
+		// cinder volume can not be expanded if its status is not available
+		glog.V(2).Infof("the status of volume: %s is not available", volume.ID)
+		return fmt.Errorf("volume status is not available")
+	}
+
+	volumes, err := os.volumeService("")
+	if err != nil || volumes == nil {
+		glog.Errorf("Unable to initialize cinder client for region: %s", os.region)
+		return err
+	}
+
+	newSizeGb := newSize / 1024 / 1024 / 1024
+	err = volumes.expandVolume(volumeID, newSizeGb)
+	if err != nil {
+		glog.Errorf("Cannot expand volume %s: %v", volumeID, err)
+	}
+	return err
 }
 
 // getVolume retrieves Volume by its ID.

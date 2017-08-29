@@ -55,6 +55,7 @@ type CinderProvider interface {
 	DisksAreAttached(instanceID string, volumeIDs []string) (map[string]bool, error)
 	ShouldTrustDevicePath() bool
 	Instances() (cloudprovider.Instances, bool)
+	ExpandVolume(volumeID string, newSize int) error
 }
 
 type cinderPlugin struct {
@@ -225,6 +226,34 @@ func (plugin *cinderPlugin) ConstructVolumeSpec(volumeName, mountPath string) (*
 		},
 	}
 	return volume.NewSpecFromVolume(cinderVolume), nil
+}
+
+var _ volume.ExpandableVolumePlugin = &cinderPlugin{}
+
+func (plugin *cinderPlugin) ExpandVolumeDevice(spec *volume.Spec, newSize resource.Quantity, oldSize resource.Quantity) (resource.Quantity, error) {
+	cinder, _, err := getVolumeSource(spec)
+	if err != nil {
+		glog.Errorf("error when getting volume source : %v", err)
+		return oldSize, err
+	}
+	cloud, err := plugin.getCloudProvider()
+	if err != nil {
+		glog.Errorf("error when getting cloud providern  : %v", err)
+		return oldSize, err
+	}
+
+	err = cloud.ExpandVolume(cinder.VolumeID, int(newSize.Value()))
+	if err != nil {
+		glog.Errorf("error when expanding the volume %s : %v", cinder.VolumeID, err)
+		return oldSize, err
+	}
+
+	glog.V(2).Infof("volume %s expanded to new size %d successfully", cinder.VolumeID, int(newSize.Value()))
+	return newSize, nil
+}
+
+func (plugin *cinderPlugin) RequiresFSResize() bool {
+	return true
 }
 
 // Abstract interface to PD operations.
