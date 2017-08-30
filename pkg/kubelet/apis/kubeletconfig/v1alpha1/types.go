@@ -203,7 +203,9 @@ type KubeletConfiguration struct {
 	// containerRuntime is the container runtime to use.
 	ContainerRuntime string `json:"containerRuntime"`
 	// CPUManagerPolicy is the name of the policy to use.
-	CPUManagerPolicy string
+	CPUManagerPolicy string `json:"cpuManagerPolicy"`
+	// CPU Manager reconciliation period.
+	CPUManagerReconcileFrequency metav1.Duration `json:"cpuManagerReconcileFrequency"`
 	// remoteRuntimeEndpoint is the endpoint of remote runtime service
 	RemoteRuntimeEndpoint string `json:"remoteRuntimeEndpoint"`
 	// remoteImageEndpoint is the endpoint of remote image service
