@@ -101,6 +101,16 @@ func (c *Controller) Start(nodeInformer informers.NodeInformer) error {
 		return err
 	}
 	for _, node := range nodes.Items {
+		if node.Spec.PodCIDR != "" {
+			_, cidrRange, err := net.ParseCIDR(node.Spec.PodCIDR)
+			if err == nil {
+				c.set.Occupy(cidrRange)
+				glog.V(3).Infof("Occupying CIDR for node %q (%v)", node.Name, node.Spec.PodCIDR)
+			} else {
+				glog.Errorf("Node %q has an invalid CIDR (%q): %v", node.Name, node.Spec.PodCIDR, err)
+			}
+		}
+
 		func() {
 			c.lock.Lock()
 			defer c.lock.Unlock()

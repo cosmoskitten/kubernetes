@@ -182,6 +182,10 @@ type updateOp struct {
 	node *v1.Node
 }
 
+func (op *updateOp) String() string {
+	return fmt.Sprintf("updateOp(%q,%v)", node.Name, node.Spec.PodCIDR)
+}
+
 func (op *updateOp) run(sync *NodeSync) error {
 	glog.V(3).Infof("Running updateOp %+v", op)
 
@@ -227,6 +231,8 @@ func (op *updateOp) validateRange(ctx context.Context, sync *NodeSync, node *v1.
 			"Node.Spec.PodCIDR != cloud alias (%v != %v)", node.Spec.PodCIDR, aliasRange)
 		// User intervention is required in this case, as this is most likely due
 		// to the user mucking around with their VM aliases on the side.
+	} else {
+		glog.V(4).Infof("Node %q CIDR range %v is matches cloud assignment", node.Name, node.Spec.PodCIDR)
 	}
 	return nil
 }
@@ -344,6 +350,10 @@ func (op *updateOp) allocateRange(ctx context.Context, sync *NodeSync, node *v1.
 // deleteOp handles deletion of a node.
 type deleteOp struct {
 	node *v1.Node
+}
+
+func (op *deleteOp) String() string {
+	return fmt.Sprintf("deleteOp(%q,%v)", node.Name, node.Spec.PodCIDR)
 }
 
 func (op *deleteOp) run(sync *NodeSync) error {
