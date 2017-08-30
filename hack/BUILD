@@ -14,11 +14,6 @@ filegroup(
     visibility = ["//visibility:private"],
 )
 
-sh_library(
-    name = "test-shlib",
-    srcs = ["test-shlib.sh"],
-)
-
 filegroup(
     name = "all-srcs",
     srcs = [
