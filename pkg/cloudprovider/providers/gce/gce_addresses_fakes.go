@@ -133,6 +133,7 @@ func (cas *FakeCloudAddressService) GetRegionAddressByIP(region, ipAddress strin
 	}
 	return nil, makeGoogleAPINotFoundError("")
 }
+
 func (cas *FakeCloudAddressService) getNetworkTierFromAddress(name, region string) (string, error) {
 	addr, err := cas.GetAlphaRegionAddress(name, region)
 	if err != nil {

@@ -135,7 +135,7 @@ func TestVerifyRequestedIP(t *testing.T) {
 	}
 }
 
-func TestCreateForwardingRule(t *testing.T) {
+func TestCreateForwardingRuleWithTier(t *testing.T) {
 	s := NewFakeCloudForwardingRuleService()
 	// Common variables among the tests.
 	ports := []v1.ServicePort{{Name: "foo", Protocol: v1.ProtocolTCP, Port: int32(123)}}
