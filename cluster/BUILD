@@ -47,32 +47,30 @@ pkg_tar(
     ],
 )
 
+# These tests just verify that bash can interpret the file.
 sh_test(
-    name = "common",
-    srcs = ["common_test.sh"],
+    name = "common_test",
+    srcs = ["common.sh"],
     data = [
-        "all-srcs",
-        "//hack/lib:all-srcs",
+        ":all-srcs",
     ],
-    deps = ["//hack:test-shlib"],
+    deps = ["//hack/lib:lib"],
 )
 
 sh_test(
-    name = "clientbin",
-    srcs = ["clientbin_test.sh"],
+    name = "clientbin_test",
+    srcs = ["clientbin.sh"],
     data = [
-        "all-srcs",
-        "//hack/lib:all-srcs",
+        ":all-srcs",
     ],
-    deps = ["//hack:test-shlib"],
+    deps = ["//hack/lib:lib"],
 )
 
 sh_test(
-    name = "kube-util",
-    srcs = ["kube-util_test.sh"],
+    name = "kube-util_test",
+    srcs = ["kube-util.sh"],
     data = [
-        "all-srcs",
-        "//hack/lib:all-srcs",
+        ":all-srcs",
     ],
-    deps = ["//hack:test-shlib"],
+    deps = ["//hack/lib:lib"],
 )
