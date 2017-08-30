@@ -91,7 +91,7 @@ func CreateVolumeSpec(podVolume v1.Volume, podNamespace string, pvcLister coreli
 		return nil, fmt.Errorf("failed to cast clonedPodVolume %#v to v1.Volume", clonedPodVolumeObj)
 	}
 
-	return volume.NewSpecFromVolume(clonedPodVolume), nil
+	return volume.NewSpecFromVolumeWithNS(clonedPodVolume, podNamespace), nil
 }
 
 // getPVCFromCacheExtractPV fetches the PVC object with the given namespace and
@@ -156,7 +156,7 @@ func getPVSpecFromCache(name string, pvcReadOnly bool, expectedClaimUID types.UI
 		return nil, fmt.Errorf("failed to cast %q clonedPV %#v to PersistentVolume", name, pv)
 	}
 
-	return volume.NewSpecFromPersistentVolume(clonedPV, pvcReadOnly), nil
+	return volume.NewSpecFromPersistentVolumeWithNS(clonedPV, pvcReadOnly, pv.Spec.ClaimRef.Namespace), nil
 }
 
 // DetermineVolumeAction returns true if volume and pod needs to be added to dswp

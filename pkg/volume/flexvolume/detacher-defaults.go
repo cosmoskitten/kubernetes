@@ -21,13 +21,14 @@ import (
 
 	"github.com/golang/glog"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/kubernetes/pkg/volume"
 	"k8s.io/kubernetes/pkg/volume/util"
 )
 
 type detacherDefaults flexVolumeDetacher
 
 // Detach is part of the volume.Detacher interface.
-func (d *detacherDefaults) Detach(deviceName string, hostName types.NodeName) error {
+func (d *detacherDefaults) Detach(_ *volume.Spec, deviceName string, hostName types.NodeName) error {
 	glog.Warning(logPrefix(d.plugin.flexVolumePlugin), "using default Detach for device ", deviceName, ", host ", hostName)
 	return nil
 }
