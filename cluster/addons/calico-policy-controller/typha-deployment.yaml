@@ -8,7 +8,6 @@ metadata:
     addonmanager.kubernetes.io/mode: Reconcile
     k8s-app: calico-typha
 spec:
-  replicas: __CALICO_TYPHA_REPLICAS__
   revisionHistoryLimit: 2
   template:
     metadata:
@@ -52,9 +51,6 @@ spec:
         - mountPath: /etc/calico
           name: etc-calico
           readOnly: true
-        resources:
-          requests:
-            cpu: __CALICO_TYPHA_CPU__
         livenessProbe:
           httpGet:
             path: /liveness
