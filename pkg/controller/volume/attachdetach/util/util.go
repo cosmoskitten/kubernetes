@@ -81,7 +81,7 @@ func CreateVolumeSpec(podVolume v1.Volume, podNamespace string, pvcLister coreli
 	// informer it may be mutated by another consumer.
 	clonedPodVolume := podVolume.DeepCopy()
 
-	return volume.NewSpecFromVolume(clonedPodVolume), nil
+	return volume.NewSpecFromVolumeWithNS(clonedPodVolume, podNamespace), nil
 }
 
 // getPVCFromCacheExtractPV fetches the PVC object with the given namespace and
@@ -138,7 +138,7 @@ func getPVSpecFromCache(name string, pvcReadOnly bool, expectedClaimUID types.UI
 	// may be mutated by another consumer.
 	clonedPV := pv.DeepCopy()
 
-	return volume.NewSpecFromPersistentVolume(clonedPV, pvcReadOnly), nil
+	return volume.NewSpecFromPersistentVolumeWithNS(clonedPV, pvcReadOnly, pv.Spec.ClaimRef.Namespace), nil
 }
 
 // DetermineVolumeAction returns true if volume and pod needs to be added to dswp

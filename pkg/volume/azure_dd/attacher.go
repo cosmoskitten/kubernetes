@@ -244,7 +244,7 @@ func (attacher *azureDiskAttacher) MountDevice(spec *volume.Spec, devicePath str
 }
 
 // Detach detaches disk from Azure VM.
-func (d *azureDiskDetacher) Detach(diskURI string, nodeName types.NodeName) error {
+func (d *azureDiskDetacher) Detach(_ *volume.Spec, diskURI string, nodeName types.NodeName) error {
 	if diskURI == "" {
 		return fmt.Errorf("invalid disk to detach: %q", diskURI)
 	}

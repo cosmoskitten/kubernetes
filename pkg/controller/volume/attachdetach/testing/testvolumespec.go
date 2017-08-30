@@ -417,7 +417,7 @@ type testPluginDetacher struct {
 	pluginLock        *sync.RWMutex
 }
 
-func (detacher *testPluginDetacher) Detach(volumeName string, nodeName types.NodeName) error {
+func (detacher *testPluginDetacher) Detach(_ *volume.Spec, volumeName string, nodeName types.NodeName) error {
 	detacher.pluginLock.Lock()
 	defer detacher.pluginLock.Unlock()
 	detacher.detachedVolumeMap[string(nodeName)] = append(detacher.detachedVolumeMap[string(nodeName)], volumeName)
