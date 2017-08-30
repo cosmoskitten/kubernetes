@@ -795,11 +795,14 @@ message PodSecurityPolicySpec {
   // runAsUser is the strategy that will dictate the allowable RunAsUser values that may be set.
   optional RunAsUserStrategyOptions runAsUser = 11;
 
+  // runAsGroup is the strategy that will dictate the allowable RunAsGroup values that may be set.
+  optional RunAsGroupStrategyOptions runAsGroup = 12;
+
   // SupplementalGroups is the strategy that will dictate what supplemental groups are used by the SecurityContext.
-  optional SupplementalGroupsStrategyOptions supplementalGroups = 12;
+  optional SupplementalGroupsStrategyOptions supplementalGroups = 13;
 
   // FSGroup is the strategy that will dictate what fs group is used by the SecurityContext.
-  optional FSGroupStrategyOptions fsGroup = 13;
+  optional FSGroupStrategyOptions fsGroup = 14;
 
   // ReadOnlyRootFilesystem when set to true will force containers to run with a read only root file
   // system.  If the container specifically requests to run with a non-read only root file system
@@ -807,21 +810,25 @@ message PodSecurityPolicySpec {
   // If set to false the container may run with a read only root file system if it wishes but it
   // will not be forced to.
   // +optional
-  optional bool readOnlyRootFilesystem = 14;
+  optional bool readOnlyRootFilesystem = 15;
 
   // DefaultAllowPrivilegeEscalation controls the default setting for whether a
   // process can gain more privileges than its parent process.
   // +optional
-  optional bool defaultAllowPrivilegeEscalation = 15;
+  optional bool defaultAllowPrivilegeEscalation = 16;
 
   // AllowPrivilegeEscalation determines if a pod can request to allow
   // privilege escalation.
   // +optional
+<<<<<<< d0eccc550580486d374c1949ca10c70a33223497
   optional bool allowPrivilegeEscalation = 16;
 
   // is a white list of allowed host paths. Empty indicates that all host paths may be used.
   // +optional
   repeated AllowedHostPath allowedHostPaths = 17;
+=======
+  optional bool allowPrivilegeEscalation = 17;
+>>>>>>> add primary gid for containers and generated code
 }
 
 // DEPRECATED - This group version of ReplicaSet is deprecated by apps/v1beta2/ReplicaSet. See the release notes for
@@ -998,6 +1005,16 @@ message RollingUpdateDeployment {
   // at any time during the update is atmost 130% of desired pods.
   // +optional
   optional k8s.io.apimachinery.pkg.util.intstr.IntOrString maxSurge = 2;
+}
+
+// RunAsGroupStrategyOptions defines the strategy type and any options used to create the strategy.
+message RunAsGroupStrategyOptions {
+  // Rule is the strategy that will dictate the allowable RunAsUser values that may be set.
+  optional string rule = 1;
+
+  // Ranges are the allowed ranges of uids that may be used.
+  // +optional
+  repeated IDRange ranges = 2;
 }
 
 // Run A sUser Strategy Options defines the strategy type and any options used to create the strategy.

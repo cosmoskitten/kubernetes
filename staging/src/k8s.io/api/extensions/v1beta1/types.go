@@ -959,21 +959,23 @@ type PodSecurityPolicySpec struct {
 	SELinux SELinuxStrategyOptions `json:"seLinux" protobuf:"bytes,10,opt,name=seLinux"`
 	// runAsUser is the strategy that will dictate the allowable RunAsUser values that may be set.
 	RunAsUser RunAsUserStrategyOptions `json:"runAsUser" protobuf:"bytes,11,opt,name=runAsUser"`
+	// runAsGroup is the strategy that will dictate the allowable RunAsGroup values that may be set.
+	RunAsGroup RunAsGroupStrategyOptions `json:"runAsGroup" protobuf:"bytes,12,opt,name=runAsGroup"`
 	// SupplementalGroups is the strategy that will dictate what supplemental groups are used by the SecurityContext.
-	SupplementalGroups SupplementalGroupsStrategyOptions `json:"supplementalGroups" protobuf:"bytes,12,opt,name=supplementalGroups"`
+	SupplementalGroups SupplementalGroupsStrategyOptions `json:"supplementalGroups" protobuf:"bytes,13,opt,name=supplementalGroups"`
 	// FSGroup is the strategy that will dictate what fs group is used by the SecurityContext.
-	FSGroup FSGroupStrategyOptions `json:"fsGroup" protobuf:"bytes,13,opt,name=fsGroup"`
+	FSGroup FSGroupStrategyOptions `json:"fsGroup" protobuf:"bytes,14,opt,name=fsGroup"`
 	// ReadOnlyRootFilesystem when set to true will force containers to run with a read only root file
 	// system.  If the container specifically requests to run with a non-read only root file system
 	// the PSP should deny the pod.
 	// If set to false the container may run with a read only root file system if it wishes but it
 	// will not be forced to.
 	// +optional
-	ReadOnlyRootFilesystem bool `json:"readOnlyRootFilesystem,omitempty" protobuf:"varint,14,opt,name=readOnlyRootFilesystem"`
+	ReadOnlyRootFilesystem bool `json:"readOnlyRootFilesystem,omitempty" protobuf:"varint,15,opt,name=readOnlyRootFilesystem"`
 	// DefaultAllowPrivilegeEscalation controls the default setting for whether a
 	// process can gain more privileges than its parent process.
 	// +optional
-	DefaultAllowPrivilegeEscalation *bool `json:"defaultAllowPrivilegeEscalation,omitempty" protobuf:"varint,15,opt,name=defaultAllowPrivilegeEscalation"`
+	DefaultAllowPrivilegeEscalation *bool `json:"defaultAllowPrivilegeEscalation,omitempty" protobuf:"varint,16,opt,name=defaultAllowPrivilegeEscalation"`
 	// AllowPrivilegeEscalation determines if a pod can request to allow
 	// privilege escalation.
 	// +optional
@@ -1063,6 +1065,15 @@ type RunAsUserStrategyOptions struct {
 	Ranges []IDRange `json:"ranges,omitempty" protobuf:"bytes,2,rep,name=ranges"`
 }
 
+// RunAsGroupStrategyOptions defines the strategy type and any options used to create the strategy.
+type RunAsGroupStrategyOptions struct {
+	// Rule is the strategy that will dictate the allowable RunAsUser values that may be set.
+	Rule RunAsGroupStrategy `json:"rule" protobuf:"bytes,1,opt,name=rule,casttype=RunAsGroupStrategy"`
+	// Ranges are the allowed ranges of uids that may be used.
+	// +optional
+	Ranges []IDRange `json:"ranges,omitempty" protobuf:"bytes,2,rep,name=ranges"`
+}
+
 // ID Range provides a min/max of an allowed range of IDs.
 type IDRange struct {
 	// Min is the start of the range, inclusive.
@@ -1082,6 +1093,19 @@ const (
 	RunAsUserStrategyMustRunAsNonRoot RunAsUserStrategy = "MustRunAsNonRoot"
 	// container may make requests for any uid.
 	RunAsUserStrategyRunAsAny RunAsUserStrategy = "RunAsAny"
+)
+
+// RunAsGroupStrategy denotes strategy types for generating RunAsGroup values for a
+// Security Context.
+type RunAsGroupStrategy string
+
+const (
+	// container must run as a particular gid.
+	RunAsGroupStrategyMustRunAs RunAsGroupStrategy = "MustRunAs"
+	// container must run as a non-root gid
+	RunAsGroupStrategyMustRunAsNonRoot RunAsGroupStrategy = "MustRunAsNonRoot"
+	// container may make requests for any gid.
+	RunAsGroupStrategyRunAsAny RunAsGroupStrategy = "RunAsAny"
 )
 
 // FSGroupStrategyOptions defines the strategy type and options used to create the strategy.

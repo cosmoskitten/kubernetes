@@ -3562,6 +3562,7 @@ func Convert_api_PodProxyOptions_To_v1_PodProxyOptions(in *api.PodProxyOptions, 
 func autoConvert_v1_PodSecurityContext_To_api_PodSecurityContext(in *v1.PodSecurityContext, out *api.PodSecurityContext, s conversion.Scope) error {
 	out.SELinuxOptions = (*api.SELinuxOptions)(unsafe.Pointer(in.SELinuxOptions))
 	out.RunAsUser = (*int64)(unsafe.Pointer(in.RunAsUser))
+	out.RunAsGroup = (*int64)(unsafe.Pointer(in.RunAsGroup))
 	out.RunAsNonRoot = (*bool)(unsafe.Pointer(in.RunAsNonRoot))
 	out.SupplementalGroups = *(*[]int64)(unsafe.Pointer(&in.SupplementalGroups))
 	out.FSGroup = (*int64)(unsafe.Pointer(in.FSGroup))
@@ -3574,6 +3575,7 @@ func autoConvert_api_PodSecurityContext_To_v1_PodSecurityContext(in *api.PodSecu
 	// INFO: in.HostIPC opted out of conversion generation
 	out.SELinuxOptions = (*v1.SELinuxOptions)(unsafe.Pointer(in.SELinuxOptions))
 	out.RunAsUser = (*int64)(unsafe.Pointer(in.RunAsUser))
+	out.RunAsGroup = (*int64)(unsafe.Pointer(in.RunAsGroup))
 	out.RunAsNonRoot = (*bool)(unsafe.Pointer(in.RunAsNonRoot))
 	out.SupplementalGroups = *(*[]int64)(unsafe.Pointer(&in.SupplementalGroups))
 	out.FSGroup = (*int64)(unsafe.Pointer(in.FSGroup))
@@ -4693,6 +4695,7 @@ func autoConvert_v1_SecurityContext_To_api_SecurityContext(in *v1.SecurityContex
 	out.Privileged = (*bool)(unsafe.Pointer(in.Privileged))
 	out.SELinuxOptions = (*api.SELinuxOptions)(unsafe.Pointer(in.SELinuxOptions))
 	out.RunAsUser = (*int64)(unsafe.Pointer(in.RunAsUser))
+	out.RunAsGroup = (*int64)(unsafe.Pointer(in.RunAsGroup))
 	out.RunAsNonRoot = (*bool)(unsafe.Pointer(in.RunAsNonRoot))
 	out.ReadOnlyRootFilesystem = (*bool)(unsafe.Pointer(in.ReadOnlyRootFilesystem))
 	out.AllowPrivilegeEscalation = (*bool)(unsafe.Pointer(in.AllowPrivilegeEscalation))
@@ -4709,6 +4712,7 @@ func autoConvert_api_SecurityContext_To_v1_SecurityContext(in *api.SecurityConte
 	out.Privileged = (*bool)(unsafe.Pointer(in.Privileged))
 	out.SELinuxOptions = (*v1.SELinuxOptions)(unsafe.Pointer(in.SELinuxOptions))
 	out.RunAsUser = (*int64)(unsafe.Pointer(in.RunAsUser))
+	out.RunAsGroup = (*int64)(unsafe.Pointer(in.RunAsGroup))
 	out.RunAsNonRoot = (*bool)(unsafe.Pointer(in.RunAsNonRoot))
 	out.ReadOnlyRootFilesystem = (*bool)(unsafe.Pointer(in.ReadOnlyRootFilesystem))
 	out.AllowPrivilegeEscalation = (*bool)(unsafe.Pointer(in.AllowPrivilegeEscalation))

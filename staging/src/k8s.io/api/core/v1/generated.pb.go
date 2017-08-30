@@ -6776,8 +6776,13 @@ func (m *PodSecurityContext) MarshalTo(dAtA []byte) (int, error) {
 		i++
 		i = encodeVarintGenerated(dAtA, i, uint64(*m.RunAsUser))
 	}
-	if m.RunAsNonRoot != nil {
+	if m.RunAsGroup != nil {
 		dAtA[i] = 0x18
+		i++
+		i = encodeVarintGenerated(dAtA, i, uint64(*m.RunAsGroup))
+	}
+	if m.RunAsNonRoot != nil {
+		dAtA[i] = 0x20
 		i++
 		if *m.RunAsNonRoot {
 			dAtA[i] = 1
@@ -6788,13 +6793,13 @@ func (m *PodSecurityContext) MarshalTo(dAtA []byte) (int, error) {
 	}
 	if len(m.SupplementalGroups) > 0 {
 		for _, num := range m.SupplementalGroups {
-			dAtA[i] = 0x20
+			dAtA[i] = 0x28
 			i++
 			i = encodeVarintGenerated(dAtA, i, uint64(num))
 		}
 	}
 	if m.FSGroup != nil {
-		dAtA[i] = 0x28
+		dAtA[i] = 0x30
 		i++
 		i = encodeVarintGenerated(dAtA, i, uint64(*m.FSGroup))
 	}
@@ -8684,8 +8689,13 @@ func (m *SecurityContext) MarshalTo(dAtA []byte) (int, error) {
 		i++
 		i = encodeVarintGenerated(dAtA, i, uint64(*m.RunAsUser))
 	}
-	if m.RunAsNonRoot != nil {
+	if m.RunAsGroup != nil {
 		dAtA[i] = 0x28
+		i++
+		i = encodeVarintGenerated(dAtA, i, uint64(*m.RunAsGroup))
+	}
+	if m.RunAsNonRoot != nil {
+		dAtA[i] = 0x30
 		i++
 		if *m.RunAsNonRoot {
 			dAtA[i] = 1
@@ -8695,7 +8705,7 @@ func (m *SecurityContext) MarshalTo(dAtA []byte) (int, error) {
 		i++
 	}
 	if m.ReadOnlyRootFilesystem != nil {
-		dAtA[i] = 0x30
+		dAtA[i] = 0x38
 		i++
 		if *m.ReadOnlyRootFilesystem {
 			dAtA[i] = 1
@@ -8705,7 +8715,7 @@ func (m *SecurityContext) MarshalTo(dAtA []byte) (int, error) {
 		i++
 	}
 	if m.AllowPrivilegeEscalation != nil {
-		dAtA[i] = 0x38
+		dAtA[i] = 0x40
 		i++
 		if *m.AllowPrivilegeEscalation {
 			dAtA[i] = 1
@@ -11954,6 +11964,9 @@ func (m *PodSecurityContext) Size() (n int) {
 	if m.RunAsUser != nil {
 		n += 1 + sovGenerated(uint64(*m.RunAsUser))
 	}
+	if m.RunAsGroup != nil {
+		n += 1 + sovGenerated(uint64(*m.RunAsGroup))
+	}
 	if m.RunAsNonRoot != nil {
 		n += 2
 	}
@@ -12640,6 +12653,9 @@ func (m *SecurityContext) Size() (n int) {
 	}
 	if m.RunAsUser != nil {
 		n += 1 + sovGenerated(uint64(*m.RunAsUser))
+	}
+	if m.RunAsGroup != nil {
+		n += 1 + sovGenerated(uint64(*m.RunAsGroup))
 	}
 	if m.RunAsNonRoot != nil {
 		n += 2
@@ -14730,6 +14746,7 @@ func (this *PodSecurityContext) String() string {
 	s := strings.Join([]string{`&PodSecurityContext{`,
 		`SELinuxOptions:` + strings.Replace(fmt.Sprintf("%v", this.SELinuxOptions), "SELinuxOptions", "SELinuxOptions", 1) + `,`,
 		`RunAsUser:` + valueToStringGenerated(this.RunAsUser) + `,`,
+		`RunAsGroup:` + valueToStringGenerated(this.RunAsGroup) + `,`,
 		`RunAsNonRoot:` + valueToStringGenerated(this.RunAsNonRoot) + `,`,
 		`SupplementalGroups:` + fmt.Sprintf("%v", this.SupplementalGroups) + `,`,
 		`FSGroup:` + valueToStringGenerated(this.FSGroup) + `,`,
@@ -15306,6 +15323,7 @@ func (this *SecurityContext) String() string {
 		`Privileged:` + valueToStringGenerated(this.Privileged) + `,`,
 		`SELinuxOptions:` + strings.Replace(fmt.Sprintf("%v", this.SELinuxOptions), "SELinuxOptions", "SELinuxOptions", 1) + `,`,
 		`RunAsUser:` + valueToStringGenerated(this.RunAsUser) + `,`,
+		`RunAsGroup:` + valueToStringGenerated(this.RunAsGroup) + `,`,
 		`RunAsNonRoot:` + valueToStringGenerated(this.RunAsNonRoot) + `,`,
 		`ReadOnlyRootFilesystem:` + valueToStringGenerated(this.ReadOnlyRootFilesystem) + `,`,
 		`AllowPrivilegeEscalation:` + valueToStringGenerated(this.AllowPrivilegeEscalation) + `,`,
@@ -35111,6 +35129,26 @@ func (m *PodSecurityContext) Unmarshal(dAtA []byte) error {
 			m.RunAsUser = &v
 		case 3:
 			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RunAsGroup", wireType)
+			}
+			var v int64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenerated
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= (int64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.RunAsGroup = &v
+		case 4:
+			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field RunAsNonRoot", wireType)
 			}
 			var v int
@@ -35130,7 +35168,7 @@ func (m *PodSecurityContext) Unmarshal(dAtA []byte) error {
 			}
 			b := bool(v != 0)
 			m.RunAsNonRoot = &b
-		case 4:
+		case 5:
 			if wireType == 0 {
 				var v int64
 				for shift := uint(0); ; shift += 7 {
@@ -35192,7 +35230,7 @@ func (m *PodSecurityContext) Unmarshal(dAtA []byte) error {
 			} else {
 				return fmt.Errorf("proto: wrong wireType = %d for field SupplementalGroups", wireType)
 			}
-		case 5:
+		case 6:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field FSGroup", wireType)
 			}
@@ -42020,6 +42058,26 @@ func (m *SecurityContext) Unmarshal(dAtA []byte) error {
 			m.RunAsUser = &v
 		case 5:
 			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RunAsGroup", wireType)
+			}
+			var v int64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenerated
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= (int64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.RunAsGroup = &v
+		case 6:
+			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field RunAsNonRoot", wireType)
 			}
 			var v int
@@ -42039,7 +42097,7 @@ func (m *SecurityContext) Unmarshal(dAtA []byte) error {
 			}
 			b := bool(v != 0)
 			m.RunAsNonRoot = &b
-		case 6:
+		case 7:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ReadOnlyRootFilesystem", wireType)
 			}
@@ -42060,7 +42118,7 @@ func (m *SecurityContext) Unmarshal(dAtA []byte) error {
 			}
 			b := bool(v != 0)
 			m.ReadOnlyRootFilesystem = &b
-		case 7:
+		case 8:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field AllowPrivilegeEscalation", wireType)
 			}
