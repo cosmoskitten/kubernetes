@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/Azure/azure-sdk-for-go/arm/compute"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/kubernetes/pkg/cloudprovider"
 	"strconv"
@@ -72,8 +73,10 @@ func (az *Cloud) GetZoneByProviderID(providerID string) (cloudprovider.Zone, err
 // This is particularly useful in external cloud providers where the kubelet
 // does not initialize node data.
 func (az *Cloud) GetZoneByNodeName(nodeName types.NodeName) (cloudprovider.Zone, error) {
-	vm, exists, err := az.getVirtualMachine(nodeName)
 
+	vm, err := az.VirtualMachinesClient.Get(az.ResourceGroup, string(nodeName), compute.InstanceView)
+
+	exists, err := checkResourceExistsFromError(err)
 	if err != nil {
 		return cloudprovider.Zone{}, err
 	}
