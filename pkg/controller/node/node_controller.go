@@ -66,12 +66,13 @@ func init() {
 
 var (
 	gracefulDeletionVersion = utilversion.MustParseSemantic("v1.1.0")
-
+	// UnreachableTaintTemplate is the taint for when a node becomes unreachable.
 	UnreachableTaintTemplate = &v1.Taint{
 		Key:    algorithm.TaintNodeUnreachable,
 		Effect: v1.TaintEffectNoExecute,
 	}
-
+	// NotReadyTaintTemplate is the taint for when a node is not ready for
+	// executing pods
 	NotReadyTaintTemplate = &v1.Taint{
 		Key:    algorithm.TaintNodeNotReady,
 		Effect: v1.TaintEffectNoExecute,
@@ -95,13 +96,14 @@ const (
 	ipamInitialBackoff = 250 * time.Millisecond
 )
 
-type zoneState string
+// ZoneState is the state of a given zone.
+type ZoneState string
 
 const (
-	stateInitial           = zoneState("Initial")
-	stateNormal            = zoneState("Normal")
-	stateFullDisruption    = zoneState("FullDisruption")
-	statePartialDisruption = zoneState("PartialDisruption")
+	stateInitial           = ZoneState("Initial")
+	stateNormal            = ZoneState("Normal")
+	stateFullDisruption    = ZoneState("FullDisruption")
+	statePartialDisruption = ZoneState("PartialDisruption")
 )
 
 type nodeStatusData struct {
@@ -171,11 +173,11 @@ type NodeController struct {
 
 	forcefullyDeletePod        func(*v1.Pod) error
 	nodeExistsInCloudProvider  func(types.NodeName) (bool, error)
-	computeZoneStateFunc       func(nodeConditions []*v1.NodeCondition) (int, zoneState)
+	computeZoneStateFunc       func(nodeConditions []*v1.NodeCondition) (int, ZoneState)
 	enterPartialDisruptionFunc func(nodeNum int) float32
 	enterFullDisruptionFunc    func(nodeNum int) float32
 
-	zoneStates                  map[string]zoneState
+	zoneStates                  map[string]ZoneState
 	evictionLimiterQPS          float32
 	secondaryEvictionLimiterQPS float32
 	largeClusterThreshold       int32
@@ -273,7 +275,7 @@ func NewNodeController(
 		secondaryEvictionLimiterQPS: secondaryEvictionLimiterQPS,
 		largeClusterThreshold:       largeClusterThreshold,
 		unhealthyZoneThreshold:      unhealthyZoneThreshold,
-		zoneStates:                  make(map[string]zoneState),
+		zoneStates:                  make(map[string]ZoneState),
 		runTaintManager:             runTaintManager,
 		useTaintBasedEvictions:      useTaintBasedEvictions && runTaintManager,
 	}
@@ -395,8 +397,8 @@ func (nc *NodeController) doEvictionPass() {
 				zone := utilnode.GetZoneKey(node)
 				evictionsNumber.WithLabelValues(zone).Inc()
 			}
-			nodeUid, _ := value.UID.(string)
-			remaining, err := util.DeletePods(nc.kubeClient, nc.recorder, value.Value, nodeUid, nc.daemonSetStore)
+			nodeUID, _ := value.UID.(string)
+			remaining, err := util.DeletePods(nc.kubeClient, nc.recorder, value.Value, nodeUID, nc.daemonSetStore)
 			if err != nil {
 				utilruntime.HandleError(fmt.Errorf("unable to evict node %q: %v", value.Value, err))
 				return false, 0
@@ -678,7 +680,7 @@ func (nc *NodeController) monitorNodeStatus() error {
 }
 
 func (nc *NodeController) handleDisruption(zoneToNodeConditions map[string][]*v1.NodeCondition, nodes []*v1.Node) {
-	newZoneStates := map[string]zoneState{}
+	newZoneStates := map[string]ZoneState{}
 	allAreFullyDisrupted := true
 	for k, v := range zoneToNodeConditions {
 		zoneSize.WithLabelValues(k).Set(float64(len(v)))
@@ -775,7 +777,7 @@ func (nc *NodeController) handleDisruption(zoneToNodeConditions map[string][]*v1
 	}
 }
 
-func (nc *NodeController) setLimiterInZone(zone string, zoneSize int, state zoneState) {
+func (nc *NodeController) setLimiterInZone(zone string, zoneSize int, state ZoneState) {
 	switch state {
 	case stateNormal:
 		if nc.useTaintBasedEvictions {
@@ -961,14 +963,13 @@ func (nc *NodeController) tryUpdateNodeStatus(node *v1.Node) (time.Duration, v1.
 			if _, err = nc.kubeClient.Core().Nodes().UpdateStatus(node); err != nil {
 				glog.Errorf("Error updating node %s: %v", node.Name, err)
 				return gracePeriod, observedReadyCondition, currentReadyCondition, err
-			} else {
-				nc.nodeStatusMap[node.Name] = nodeStatusData{
-					status:                   node.Status,
-					probeTimestamp:           nc.nodeStatusMap[node.Name].probeTimestamp,
-					readyTransitionTimestamp: nc.now(),
-				}
-				return gracePeriod, observedReadyCondition, currentReadyCondition, nil
 			}
+			nc.nodeStatusMap[node.Name] = nodeStatusData{
+				status:                   node.Status,
+				probeTimestamp:           nc.nodeStatusMap[node.Name].probeTimestamp,
+				readyTransitionTimestamp: nc.now(),
+			}
+			return gracePeriod, observedReadyCondition, currentReadyCondition, nil
 		}
 	}
 
@@ -1053,12 +1054,14 @@ func (nc *NodeController) markNodeAsHealthy(node *v1.Node) (bool, error) {
 	return nc.zoneNoExecuteTainer[utilnode.GetZoneKey(node)].Remove(node.Name), nil
 }
 
-// Default value for cluster eviction rate - we take nodeNum for consistency with ReducedQPSFunc.
+// HealthyQPSFunc returns the default value for cluster eviction rate - we take
+// nodeNum for consistency with ReducedQPSFunc.
 func (nc *NodeController) HealthyQPSFunc(nodeNum int) float32 {
 	return nc.evictionLimiterQPS
 }
 
-// If the cluster is large make evictions slower, if they're small stop evictions altogether.
+// ReducedQPSFunc returns the QPS for when a the cluster is large make
+// evictions slower, if they're small stop evictions altogether.
 func (nc *NodeController) ReducedQPSFunc(nodeNum int) float32 {
 	if int32(nodeNum) > nc.largeClusterThreshold {
 		return nc.secondaryEvictionLimiterQPS
@@ -1071,7 +1074,7 @@ func (nc *NodeController) ReducedQPSFunc(nodeNum int) float32 {
 // - fullyDisrupted if there're no Ready Nodes,
 // - partiallyDisrupted if at least than nc.unhealthyZoneThreshold percent of Nodes are not Ready,
 // - normal otherwise
-func (nc *NodeController) ComputeZoneState(nodeReadyConditions []*v1.NodeCondition) (int, zoneState) {
+func (nc *NodeController) ComputeZoneState(nodeReadyConditions []*v1.NodeCondition) (int, ZoneState) {
 	readyNodes := 0
 	notReadyNodes := 0
 	for i := range nodeReadyConditions {
