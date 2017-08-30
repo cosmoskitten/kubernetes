@@ -20,169 +20,118 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	computebeta "google.golang.org/api/compute/v0.beta"
 )
 
-const svcNm = "my-service"
-const region = "us-central1"
-const subnet = "/projects/x/regions/us-central1/subnetworks/customsub"
+const testSvcName = "my-service"
+const testRegion = "us-central1"
+const testSubnet = "/projects/x/testRegions/us-central1/testSubnetworks/customsub"
+const testLBName = "a111111111111111"
 
 // TestAddressManagerNoRequestedIP tests the typical case of passing in no requested IP
 func TestAddressManagerNoRequestedIP(t *testing.T) {
 	svc := NewFakeCloudAddressService()
-	loadBalancerName := "a111111111111111"
 	targetIP := ""
 
-	mgr := newAddressManager(svc, svcNm, region, subnet, loadBalancerName, targetIP, schemeInternal)
-	ipToUse, err := mgr.HoldAddress()
-	assert.NoError(t, err)
-	assert.NotEmpty(t, ipToUse)
-
-	addr, err := svc.GetRegionAddress(loadBalancerName, region)
-	assert.NoError(t, err)
-	assert.EqualValues(t, ipToUse, addr.Address)
-
-	err = mgr.ReleaseAddress()
-	assert.NoError(t, err)
-	_, err = svc.GetRegionAddress(loadBalancerName, region)
-	assert.True(t, isNotFound(err))
+	mgr := newAddressManager(svc, testSvcName, testRegion, testSubnet, testLBName, targetIP, schemeInternal)
+	testHoldAddress(t, mgr, svc, testLBName, testRegion, targetIP, string(schemeInternal))
+	testReleaseAddress(t, mgr, svc, testLBName, testRegion)
 }
 
 // TestAddressManagerBasic tests the typical case of reserving and unreserving an address.
 func TestAddressManagerBasic(t *testing.T) {
 	svc := NewFakeCloudAddressService()
-	loadBalancerName := "a111111111111111"
-	forwardingRuleAddr := "1.1.1.1"
-	loadBalancerIP := ""
-	targetIP := getTargetIP(forwardingRuleAddr, loadBalancerIP)
+	targetIP := "1.1.1.1"
 
-	mgr := newAddressManager(svc, svcNm, region, subnet, loadBalancerName, targetIP, schemeInternal)
-	ipToUse, err := mgr.HoldAddress()
-	assert.NoError(t, err)
-	assert.NotEmpty(t, ipToUse)
-
-	addr, err := svc.GetRegionAddress(loadBalancerName, region)
-	assert.NoError(t, err)
-	assert.EqualValues(t, targetIP, addr.Address)
-
-	err = mgr.ReleaseAddress()
-	assert.NoError(t, err)
-	_, err = svc.GetRegionAddress(loadBalancerName, region)
-	assert.True(t, isNotFound(err))
+	mgr := newAddressManager(svc, testSvcName, testRegion, testSubnet, testLBName, targetIP, schemeInternal)
+	testHoldAddress(t, mgr, svc, testLBName, testRegion, targetIP, string(schemeInternal))
+	testReleaseAddress(t, mgr, svc, testLBName, testRegion)
 }
 
 // TestAddressManagerOrphaned tests the case where the address exists with the IP being equal
 // to the requested address (forwarding rule or loadbalancer IP).
 func TestAddressManagerOrphaned(t *testing.T) {
 	svc := NewFakeCloudAddressService()
-	loadBalancerName := "a111111111111111"
-	forwardingRuleAddr := "1.1.1.1"
-	loadBalancerIP := ""
-	region := "us-central1"
-	targetIP := getTargetIP(forwardingRuleAddr, loadBalancerIP)
+	targetIP := "1.1.1.1"
 
-	addr := &computebeta.Address{Name: loadBalancerName, Address: targetIP, AddressType: "INTERNAL"}
-	err := svc.ReserveBetaRegionAddress(addr, region)
-	assert.NoError(t, err)
+	addr := &computebeta.Address{Name: testLBName, Address: targetIP, AddressType: string(schemeInternal)}
+	err := svc.ReserveBetaRegionAddress(addr, testRegion)
+	require.NoError(t, err)
 
-	mgr := newAddressManager(svc, svcNm, region, subnet, loadBalancerName, targetIP, schemeInternal)
-	ipToUse, err := mgr.HoldAddress()
-	assert.NoError(t, err)
-	assert.NotEmpty(t, ipToUse)
-
-	addr, err = svc.GetBetaRegionAddress(loadBalancerName, region)
-	assert.NoError(t, err)
-	assert.EqualValues(t, targetIP, addr.Address)
-
-	err = mgr.ReleaseAddress()
-	assert.NoError(t, err)
-	_, err = svc.GetRegionAddress(loadBalancerName, region)
-	assert.True(t, isNotFound(err))
+	mgr := newAddressManager(svc, testSvcName, testRegion, testSubnet, testLBName, targetIP, schemeInternal)
+	testHoldAddress(t, mgr, svc, testLBName, testRegion, targetIP, string(schemeInternal))
+	testReleaseAddress(t, mgr, svc, testLBName, testRegion)
 }
 
 // TestAddressManagerOutdatedOrphan tests the case where an address exists but points to
 // an IP other than the forwarding rule or loadbalancer IP.
 func TestAddressManagerOutdatedOrphan(t *testing.T) {
 	svc := NewFakeCloudAddressService()
-	loadBalancerName := "a111111111111111"
-	forwardingRuleAddr := "1.1.1.1"
-	loadBalancerIP := ""
-	region := "us-central1"
-	addrIP := "1.1.0.0"
-	targetIP := getTargetIP(forwardingRuleAddr, loadBalancerIP)
+	previousAddress := "1.1.0.0"
+	targetIP := "1.1.1.1"
 
-	addr := &computebeta.Address{Name: loadBalancerName, Address: addrIP, AddressType: string(schemeExternal)}
-	err := svc.ReserveBetaRegionAddress(addr, region)
-	assert.NoError(t, err)
+	addr := &computebeta.Address{Name: testLBName, Address: previousAddress, AddressType: string(schemeExternal)}
+	err := svc.ReserveBetaRegionAddress(addr, testRegion)
+	require.NoError(t, err)
 
-	mgr := newAddressManager(svc, svcNm, region, subnet, loadBalancerName, targetIP, schemeInternal)
-	ipToUse, err := mgr.HoldAddress()
-	assert.NoError(t, err)
-	assert.NotEmpty(t, ipToUse)
-
-	addr, err = svc.GetBetaRegionAddress(loadBalancerName, region)
-	assert.NoError(t, err)
-	assert.EqualValues(t, targetIP, addr.Address)
-
-	err = mgr.ReleaseAddress()
-	assert.NoError(t, err)
-	_, err = svc.GetRegionAddress(loadBalancerName, region)
-	assert.True(t, isNotFound(err))
+	mgr := newAddressManager(svc, testSvcName, testRegion, testSubnet, testLBName, targetIP, schemeInternal)
+	testHoldAddress(t, mgr, svc, testLBName, testRegion, targetIP, string(schemeInternal))
+	testReleaseAddress(t, mgr, svc, testLBName, testRegion)
 }
 
 // TestAddressManagerExternallyOwned tests the case where the address exists but isn't
 // owned by the controller.
 func TestAddressManagerExternallyOwned(t *testing.T) {
 	svc := NewFakeCloudAddressService()
-	loadBalancerName := "a111111111111111"
-	forwardingRuleAddr := "1.1.1.1"
-	loadBalancerIP := ""
-	region := "us-central1"
-	addrName := "my-important-address"
-	targetIP := getTargetIP(forwardingRuleAddr, loadBalancerIP)
+	targetIP := "1.1.1.1"
 
-	addr := &computebeta.Address{Name: addrName, Address: targetIP, AddressType: string(schemeInternal)}
-	err := svc.ReserveBetaRegionAddress(addr, region)
-	assert.NoError(t, err)
+	addr := &computebeta.Address{Name: "my-important-address", Address: targetIP, AddressType: string(schemeInternal)}
+	err := svc.ReserveBetaRegionAddress(addr, testRegion)
+	require.NoError(t, err)
 
-	mgr := newAddressManager(svc, svcNm, region, subnet, loadBalancerName, targetIP, schemeInternal)
+	mgr := newAddressManager(svc, testSvcName, testRegion, testSubnet, testLBName, targetIP, schemeInternal)
 	ipToUse, err := mgr.HoldAddress()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotEmpty(t, ipToUse)
 
-	addr, err = svc.GetBetaRegionAddress(addrName, region)
-	assert.NoError(t, err)
-	assert.EqualValues(t, targetIP, addr.Address)
+	_, err = svc.GetRegionAddress(testLBName, testRegion)
+	assert.True(t, isNotFound(err))
 
-	err = mgr.ReleaseAddress()
-	assert.NoError(t, err)
-	_, err = svc.GetRegionAddress(addrName, region)
-	assert.NoError(t, err)
+	testReleaseAddress(t, mgr, svc, testLBName, testRegion)
 }
 
 // TestAddressManagerExternallyOwned tests the case where the address exists but isn't
 // owned by the controller. However, this address has the wrong type.
 func TestAddressManagerBadExternallyOwned(t *testing.T) {
 	svc := NewFakeCloudAddressService()
-	loadBalancerName := "a111111111111111"
-	forwardingRuleAddr := "1.1.1.1"
-	loadBalancerIP := ""
-	region := "us-central1"
-	addrName := "my-important-address"
-	targetIP := getTargetIP(forwardingRuleAddr, loadBalancerIP)
+	targetIP := "1.1.1.1"
 
-	addr := &computebeta.Address{Name: addrName, Address: targetIP, AddressType: string(schemeExternal)}
-	err := svc.ReserveBetaRegionAddress(addr, region)
-	assert.NoError(t, err)
+	addr := &computebeta.Address{Name: "my-important-address", Address: targetIP, AddressType: string(schemeExternal)}
+	err := svc.ReserveBetaRegionAddress(addr, testRegion)
+	require.NoError(t, err)
 
-	mgr := newAddressManager(svc, svcNm, region, subnet, loadBalancerName, targetIP, schemeInternal)
+	mgr := newAddressManager(svc, testSvcName, testRegion, testSubnet, testLBName, targetIP, schemeInternal)
 	_, err = mgr.HoldAddress()
 	assert.NotNil(t, err)
 }
 
-func getTargetIP(forwardingRuleAddr, loadBalancerIP string) string {
-	if loadBalancerIP != "" {
-		return loadBalancerIP
+func testHoldAddress(t *testing.T, mgr *addressManager, svc CloudAddressService, name, region, targetIP, scheme string) {
+	ipToUse, err := mgr.HoldAddress()
+	require.NoError(t, err)
+	assert.NotEmpty(t, ipToUse)
+
+	addr, err := svc.GetBetaRegionAddress(name, region)
+	require.NoError(t, err)
+	if targetIP != "" {
+		assert.EqualValues(t, targetIP, addr.Address)
 	}
-	return forwardingRuleAddr
+	assert.EqualValues(t, scheme, addr.AddressType)
+}
+
+func testReleaseAddress(t *testing.T, mgr *addressManager, svc CloudAddressService, name, region string) {
+	err := mgr.ReleaseAddress()
+	require.NoError(t, err)
+	_, err = svc.GetBetaRegionAddress(name, region)
+	assert.True(t, isNotFound(err))
 }

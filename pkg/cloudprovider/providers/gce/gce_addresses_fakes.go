@@ -17,6 +17,7 @@ limitations under the License.
 package gce
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -202,11 +203,13 @@ func convertToBetaAddress(object gceObject) *computebeta.Address {
 	return &addr
 }
 
-func (cas *FakeCloudAddressService) Print() {
+func (cas *FakeCloudAddressService) String() string {
+	var b bytes.Buffer
 	for region, regAddresses := range cas.addrsByRegionAndName {
-		fmt.Printf("%v:\n", region)
+		b.WriteString(fmt.Sprintf("%v:\n", region))
 		for name, addr := range regAddresses {
-			fmt.Printf(" %v:  %v\n", name, addr.Address)
+			b.WriteString(fmt.Sprintf(" %v:  %v\n", name, addr.Address))
 		}
 	}
+	return b.String()
 }
