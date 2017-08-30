@@ -183,7 +183,10 @@ type updateOp struct {
 }
 
 func (op *updateOp) String() string {
-	return fmt.Sprintf("updateOp(%q,%v)", node.Name, node.Spec.PodCIDR)
+	if op.node == nil {
+		return fmt.Sprintf("updateOp(nil)")
+	}
+	return fmt.Sprintf("updateOp(%q,%v)", op.node.Name, op.node.Spec.PodCIDR)
 }
 
 func (op *updateOp) run(sync *NodeSync) error {
@@ -353,7 +356,10 @@ type deleteOp struct {
 }
 
 func (op *deleteOp) String() string {
-	return fmt.Sprintf("deleteOp(%q,%v)", node.Name, node.Spec.PodCIDR)
+	if op.node == nil {
+		return fmt.Sprintf("deleteOp(nil)")
+	}
+	return fmt.Sprintf("deleteOp(%q,%v)", op.node.Name, op.node.Spec.PodCIDR)
 }
 
 func (op *deleteOp) run(sync *NodeSync) error {
