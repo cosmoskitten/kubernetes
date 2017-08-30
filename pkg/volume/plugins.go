@@ -278,6 +278,7 @@ type Spec struct {
 	Volume           *v1.Volume
 	PersistentVolume *v1.PersistentVolume
 	ReadOnly         bool
+	Namespace        string // Namespace is only filled in Detach(). It helps plugins to locate objects in Pod's namespace.
 }
 
 // Name returns the name of either Volume or PersistentVolume, one of which must not be nil.
@@ -359,6 +360,23 @@ func NewSpecFromPersistentVolume(pv *v1.PersistentVolume, readOnly bool) *Spec {
 	return &Spec{
 		PersistentVolume: pv,
 		ReadOnly:         readOnly,
+	}
+}
+
+// NewSpecFromVolumeWithNS creates an Spec from an v1.Volume and a namespace.
+func NewSpecFromVolumeWithNS(vs *v1.Volume, namespace string) *Spec {
+	return &Spec{
+		Volume:    vs,
+		Namespace: namespace,
+	}
+}
+
+// NewSpecFromPersistentVolumeWithNS creates an Spec from an v1.PersistentVolume and a namespace.
+func NewSpecFromPersistentVolumeWithNS(pv *v1.PersistentVolume, readOnly bool, namespace string) *Spec {
+	return &Spec{
+		PersistentVolume: pv,
+		ReadOnly:         readOnly,
+		Namespace:        namespace,
 	}
 }
 
