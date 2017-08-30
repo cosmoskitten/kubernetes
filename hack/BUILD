@@ -15,6 +15,11 @@ filegroup(
 )
 
 filegroup(
+    name = "test-shlib",
+    srcs = ["test-shlib.sh"],
+)
+
+filegroup(
     name = "all-srcs",
     srcs = [
         ":package-srcs",
