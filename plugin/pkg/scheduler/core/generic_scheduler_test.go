@@ -548,10 +548,10 @@ func TestZeroRequest(t *testing.T) {
 	}
 }
 
-func checkPreemptionVictims(testName string, expected map[string]map[string]bool, nodeToPods map[string][]*v1.Pod) error {
+func checkPreemptionVictims(testName string, expected map[string]map[string]bool, nodeToPods map[*v1.Node][]*v1.Pod) error {
 	if len(expected) == len(nodeToPods) {
 		for k, pods := range nodeToPods {
-			if expPods, ok := expected[k]; ok {
+			if expPods, ok := expected[k.Name]; ok {
 				if len(pods) != len(expPods) {
 					return fmt.Errorf("test [%v]: unexpected number of pods. expected: %v, got: %v", testName, expected, nodeToPods)
 				}
@@ -787,19 +787,16 @@ func TestSelectNodesForPreemption(t *testing.T) {
 
 	for _, test := range tests {
 		nodes := []*v1.Node{}
-		potentialNodeNames := map[string]bool{}
 		for _, n := range test.nodes {
 			node := makeNode(n, priorityutil.DefaultMilliCpuRequest*5, priorityutil.DefaultMemoryRequest*5)
 			node.ObjectMeta.Labels = map[string]string{"hostname": node.Name}
 			nodes = append(nodes, node)
-			potentialNodeNames[node.Name] = true
-
 		}
 		if test.addAffinityPredicate {
 			test.predicates["affinity"] = algorithmpredicates.NewPodAffinityPredicate(FakeNodeInfo(*nodes[0]), schedulertesting.FakePodLister(test.pods))
 		}
 		nodeNameToInfo := schedulercache.CreateNodeNameToInfoMap(test.pods, nodes)
-		nodeToPods, err := selectNodesForPreemption(test.pod, nodeNameToInfo, nodes, potentialNodeNames, test.predicates, PredicateMetadata, nil)
+		nodeToPods, err := selectNodesForPreemption(test.pod, nodeNameToInfo, nodes, test.predicates, PredicateMetadata)
 		if err != nil {
 			t.Error(err)
 		}
@@ -956,11 +953,11 @@ func TestPickOneNodeForPreemption(t *testing.T) {
 			nodes = append(nodes, makeNode(n, priorityutil.DefaultMilliCpuRequest*5, priorityutil.DefaultMemoryRequest*5))
 		}
 		nodeNameToInfo := schedulercache.CreateNodeNameToInfoMap(test.pods, nodes)
-		candidateNodes, _ := selectNodesForPreemption(test.pod, nodeNameToInfo, nodes, nil, test.predicates, PredicateMetadata, nil)
+		candidateNodes, _ := selectNodesForPreemption(test.pod, nodeNameToInfo, nodes, test.predicates, PredicateMetadata)
 		node := pickOneNodeForPreemption(candidateNodes)
 		found := false
 		for _, nodeName := range test.expected {
-			if node == nodeName {
+			if node.Name == nodeName {
 				found = true
 				break
 			}
@@ -982,7 +979,7 @@ func TestNodesWherePreemptionMightHelp(t *testing.T) {
 		name          string
 		failedPredMap FailedPredicateMap
 		pod           *v1.Pod
-		expected      []string // list of nodes
+		expected      map[string]bool // set of expected node names. Value is ignored.
 	}{
 		{
 			name: "No node should be attempted",
@@ -993,13 +990,14 @@ func TestNodesWherePreemptionMightHelp(t *testing.T) {
 				"machine4": []algorithm.PredicateFailureReason{predicates.ErrNodeLabelPresenceViolated},
 			},
 			pod:      &v1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "pod1"}},
-			expected: []string{},
+			expected: map[string]bool{},
 		},
 		{
-			name: "pod affinity should not be tried",
+			name: "pod affinity should be tried",
 			failedPredMap: FailedPredicateMap{
 				"machine1": []algorithm.PredicateFailureReason{predicates.ErrPodAffinityNotMatch},
 				"machine2": []algorithm.PredicateFailureReason{predicates.ErrPodNotMatchHostName},
+				"machine3": []algorithm.PredicateFailureReason{predicates.ErrNodeUnschedulable},
 			},
 			pod: &v1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "pod1"}, Spec: v1.PodSpec{Affinity: &v1.Affinity{
 				PodAffinity: &v1.PodAffinity{
@@ -1018,7 +1016,7 @@ func TestNodesWherePreemptionMightHelp(t *testing.T) {
 						},
 					},
 				}}}},
-			expected: []string{"machine3", "machine4"},
+			expected: map[string]bool{"machine1": true, "machine4": true},
 		},
 		{
 			name: "pod with both pod affinity and anti-affinity should be tried",
@@ -1060,7 +1058,7 @@ func TestNodesWherePreemptionMightHelp(t *testing.T) {
 					},
 				},
 			}}},
-			expected: []string{"machine1", "machine3", "machine4"},
+			expected: map[string]bool{"machine1": true, "machine3": true, "machine4": true},
 		},
 		{
 			name: "Mix of failed predicates works fine",
@@ -1071,7 +1069,7 @@ func TestNodesWherePreemptionMightHelp(t *testing.T) {
 				"machine4": []algorithm.PredicateFailureReason{},
 			},
 			pod:      &v1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "pod1"}},
-			expected: []string{"machine3", "machine4"},
+			expected: map[string]bool{"machine3": true, "machine4": true},
 		},
 	}
 
@@ -1080,9 +1078,9 @@ func TestNodesWherePreemptionMightHelp(t *testing.T) {
 		if len(test.expected) != len(nodes) {
 			t.Errorf("test [%v]:number of nodes is not the same as expected. exptectd: %d, got: %d. Nodes: %v", test.name, len(test.expected), len(nodes), nodes)
 		}
-		for _, node := range test.expected {
-			if _, ok := nodes[node]; !ok {
-				t.Errorf("test [%v]: expected node %v was not in the map.", test.name, node)
+		for _, node := range nodes {
+			if _, found := test.expected[node.Name]; !found {
+				t.Errorf("test [%v]: node %v is not expected.", test.name, node.Name)
 			}
 		}
 	}
@@ -1204,7 +1202,7 @@ func TestPreempt(t *testing.T) {
 		if err != nil {
 			t.Errorf("test [%v]: unexpected error in preemption: %v", test.name, err)
 		}
-		if node != test.expectedNode {
+		if (node != nil && node.Name != test.expectedNode) || (node == nil && len(test.expectedNode) != 0) {
 			t.Errorf("test [%v]: expected node: %v, got: %v", test.name, test.expectedNode, node)
 		}
 		if len(victims) != len(test.expectedPods) {
@@ -1225,14 +1223,14 @@ func TestPreempt(t *testing.T) {
 			now := metav1.Now()
 			victim.DeletionTimestamp = &now
 			test.pod.Annotations = make(map[string]string)
-			test.pod.Annotations[NominatedNodeAnnotationKey] = node
+			test.pod.Annotations[NominatedNodeAnnotationKey] = node.Name
 		}
 		// Call preempt again and make sure it doesn't preempt any more pods.
 		node, victims, err = scheduler.Preempt(test.pod, schedulertesting.FakeNodeLister(makeNodeList(nodeNames)), error(&FitError{test.pod, failedPredMap}))
 		if err != nil {
 			t.Errorf("test [%v]: unexpected error in preemption: %v", test.name, err)
 		}
-		if node != "" && len(victims) > 0 {
+		if node != nil && len(victims) > 0 {
 			t.Errorf("test [%v]: didn't expect any more preemption. Node %v is selected for preemption.", test.name, node)
 		}
 		close(stop)
