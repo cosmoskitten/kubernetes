@@ -77,7 +77,6 @@ go_library(
     srcs = [
         "apply.go",
         "autoscale.go",
-        "bash_comp_utils.go",
         "cluster.go",
         "clusterrolebinding.go",
         "configmap.go",
