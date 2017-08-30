@@ -77,8 +77,10 @@ func (gce *GCECloud) ensureExternalLoadBalancer(clusterName, clusterID string, a
 		glog.Errorf("EnsureLoadBalancer(%s): failed to get the desired network tier: %v", lbRefStr, err)
 		return nil, err
 	}
-	glog.V(2).Infof("EnsureLoadBalancer(%s): desired network tier %q ", lbRefStr, netTier)
-	gce.deleteWrongNetworkTieredResources(loadBalancerName, lbRefStr, netTier)
+	glog.V(4).Infof("EnsureLoadBalancer(%s): desired network tier %q ", lbRefStr, netTier)
+	if gce.AlphaFeatureGate.Enabled(AlphaFeatureNetworkTiers) {
+		gce.deleteWrongNetworkTieredResources(loadBalancerName, lbRefStr, netTier)
+	}
 
 	// Check if the forwarding rule exists, and if so, what its IP is.
 	fwdRuleExists, fwdRuleNeedsUpdate, fwdRuleIP, err := gce.forwardingRuleNeedsUpdate(loadBalancerName, gce.region, requestedIP, ports)
@@ -933,6 +935,7 @@ func ensureStaticIP(s CloudAddressService, name, serviceName, region, existingIP
 	existed := false
 	desc := makeServiceDescription(serviceName)
 
+	var creationErr error
 	switch netTier {
 	case NetworkTierPremium:
 		addressObj := &compute.Address{
@@ -942,14 +945,7 @@ func ensureStaticIP(s CloudAddressService, name, serviceName, region, existingIP
 		if existingIP != "" {
 			addressObj.Address = existingIP
 		}
-		if err = s.ReserveRegionAddress(addressObj, region); err != nil {
-			// GCE returns StatusConflict if the name conflicts; it returns
-			// StatusBadRequest if the IP conflicts.
-			if !isHTTPErrorCode(err, http.StatusConflict) && !isHTTPErrorCode(err, http.StatusBadRequest) {
-				return "", false, fmt.Errorf("error creating gce static IP address: %v", err)
-			}
-			existed = true
-		}
+		creationErr = s.ReserveRegionAddress(addressObj, region)
 	default:
 		addressObj := &computealpha.Address{
 			Name:        name,
@@ -959,14 +955,16 @@ func ensureStaticIP(s CloudAddressService, name, serviceName, region, existingIP
 		if existingIP != "" {
 			addressObj.Address = existingIP
 		}
-		if err = s.ReserveAlphaRegionAddress(addressObj, region); err != nil {
-			// GCE returns StatusConflict if the name conflicts; it returns
-			// StatusBadRequest if the IP conflicts.
-			if !isHTTPErrorCode(err, http.StatusConflict) && !isHTTPErrorCode(err, http.StatusBadRequest) {
-				return "", false, fmt.Errorf("error creating gce static IP address: %v", err)
-			}
-			existed = true
+		creationErr = s.ReserveAlphaRegionAddress(addressObj, region)
+	}
+
+	if creationErr != nil {
+		// GCE returns StatusConflict if the name conflicts; it returns
+		// StatusBadRequest if the IP conflicts.
+		if !isHTTPErrorCode(creationErr, http.StatusConflict) && !isHTTPErrorCode(err, http.StatusBadRequest) {
+			return "", false, fmt.Errorf("error creating gce static IP address: %v", err)
 		}
+		existed = true
 	}
 
 	addr, err := s.GetRegionAddress(name, region)
@@ -990,10 +988,6 @@ func (gce *GCECloud) getServiceNetworkTier(svc *v1.Service) (NetworkTier, error)
 }
 
 func (gce *GCECloud) deleteWrongNetworkTieredResources(lbName, lbRef string, desiredNetTier NetworkTier) error {
-	if !gce.AlphaFeatureGate.Enabled(AlphaFeatureNetworkTiers) {
-		// Do nothing if the feature is disabled.
-		return nil
-	}
 	logPrefix := fmt.Sprintf("deleteWrongNetworkTieredResources:(%s)", lbRef)
 	if err := deleteFWDRuleWithWrongTier(gce, gce.region, lbName, logPrefix, desiredNetTier); err != nil {
 		return err
