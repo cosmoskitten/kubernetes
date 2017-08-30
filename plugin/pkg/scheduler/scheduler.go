@@ -30,7 +30,6 @@ import (
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/plugin/pkg/scheduler/algorithm"
 	schedulerapi "k8s.io/kubernetes/plugin/pkg/scheduler/api"
@@ -201,30 +200,31 @@ func (sched *Scheduler) preempt(preemptor *v1.Pod, scheduleErr error) (string, e
 		glog.Errorf("Error getting the updated preemptor pod object: %v", err)
 		return "", err
 	}
-	nodeName, victims, err := sched.config.Algorithm.Preempt(preemptor, sched.config.NodeLister, scheduleErr)
+	node, victims, err := sched.config.Algorithm.Preempt(preemptor, sched.config.NodeLister, scheduleErr)
 	if err != nil {
 		glog.Errorf("Error preempting victims to make room for %v/%v.", preemptor.Namespace, preemptor.Name)
 	}
-	if len(nodeName) != 0 {
-		glog.Infof("Preempting %d pod(s) on node %v to make room for %v/%v.", len(victims), nodeName, preemptor.Namespace, preemptor.Name)
-		annotations := map[string]string{core.NominatedNodeAnnotationKey: nodeName}
-		err = sched.config.PodPreemptor.UpdatePodAnnotations(preemptor, annotations)
-		if err != nil {
-			glog.Errorf("Error in preemption process. Cannot update pod %v annotations: %v", preemptor.Name, err)
+	if node == nil {
+		return "", err
+	}
+	glog.Infof("Preempting %d pod(s) on node %v to make room for %v/%v.", len(victims), node.Name, preemptor.Namespace, preemptor.Name)
+	annotations := map[string]string{core.NominatedNodeAnnotationKey: node.Name}
+	err = sched.config.PodPreemptor.UpdatePodAnnotations(preemptor, annotations)
+	if err != nil {
+		glog.Errorf("Error in preemption process. Cannot update pod %v annotations: %v", preemptor.Name, err)
+		return "", err
+	}
+	var victimNames bytes.Buffer
+	for _, victim := range victims {
+		if err := sched.config.PodPreemptor.PreemptPod(victim); err != nil {
+			glog.Errorf("Error preempting pod %v: %v", victim.Name, err)
 			return "", err
 		}
-		var victimNames bytes.Buffer
-		for _, victim := range victims {
-			if err := sched.config.PodPreemptor.PreemptPod(victim); err != nil {
-				glog.Errorf("Error preempting pod %v: %v", victim.Name, err)
-				return "", err
-			}
-			victimNames.WriteString(fmt.Sprintf("%v/%v, ", victim.Namespace, victim.Name))
-			sched.config.Recorder.Eventf(victim, v1.EventTypeNormal, "GotPreempted", "by %v/%v on node %v", preemptor.Namespace, preemptor.Name, nodeName)
-		}
-		sched.config.Recorder.Eventf(preemptor, v1.EventTypeNormal, "Preempted", "pods %v on node %v", victimNames.String(), nodeName)
+		victimNames.WriteString(fmt.Sprintf("%v/%v, ", victim.Namespace, victim.Name))
+		sched.config.Recorder.Eventf(victim, v1.EventTypeNormal, "GotPreempted", "by %v/%v on node %v", preemptor.Namespace, preemptor.Name, node.Name)
 	}
-	return nodeName, err
+	sched.config.Recorder.Eventf(preemptor, v1.EventTypeNormal, "Preempted", "pods %v on node %v", victimNames.String(), node.Name)
+	return node.Name, err
 }
 
 // assume signals to the cache that a pod is already in the cache, so that binding can be asnychronous.
