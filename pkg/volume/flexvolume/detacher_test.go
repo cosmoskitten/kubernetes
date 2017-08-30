@@ -28,7 +28,7 @@ func TestDetach(t *testing.T) {
 	)
 
 	d, _ := plugin.NewDetacher()
-	d.Detach("sdx", "localhost")
+	d.Detach(nil, "sdx", "localhost")
 }
 
 func TestUnmountDevice(t *testing.T) {
