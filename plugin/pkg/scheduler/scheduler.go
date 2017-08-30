@@ -57,6 +57,7 @@ type PodConditionUpdater interface {
 // PodPreemptor has methods needed to evict a pod and to update
 // annotations of the preemptor pod.
 type PodPreemptor interface {
+	GetUpdatedPod(pod *v1.Pod) (*v1.Pod, error)
 	PreemptPod(pod *v1.Pod) error
 	UpdatePodAnnotations(pod *v1.Pod, annots map[string]string) error
 }
@@ -200,6 +201,11 @@ func (sched *Scheduler) preempt(preemptor *v1.Pod, scheduleErr error) (string, e
 	if !utilfeature.DefaultFeatureGate.Enabled(features.PodPriority) {
 		glog.V(3).Infof("Pod priority feature is not enabled. No preemption is performed.")
 		return "", nil
+	}
+	preemptor, err := sched.config.PodPreemptor.GetUpdatedPod(preemptor)
+	if err != nil {
+		glog.Errorf("Error getting the updated preemptor pod object: %v", err)
+		return "", err
 	}
 	nodeName, victims, err := sched.config.Algorithm.Preempt(preemptor, sched.config.NodeLister, scheduleErr)
 	if err != nil {
