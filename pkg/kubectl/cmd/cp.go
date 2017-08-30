@@ -195,6 +195,11 @@ func makeTar(filepath string, writer io.Writer) error {
 	// TODO: use compression here?
 	tarWriter := tar.NewWriter(writer)
 	defer tarWriter.Close()
+
+	if strings.HasSuffix(filepath,"/") {
+		len := len(filepath)
+		filepath = filepath[:len-1]
+	}
 	return recursiveTar(path.Dir(filepath), path.Base(filepath), tarWriter)
 }
 
