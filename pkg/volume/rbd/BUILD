@@ -16,7 +16,6 @@ go_library(
     ],
     deps = [
         "//pkg/util/mount:go_default_library",
-        "//pkg/util/node:go_default_library",
         "//pkg/util/strings:go_default_library",
         "//pkg/volume:go_default_library",
         "//pkg/volume/util:go_default_library",
