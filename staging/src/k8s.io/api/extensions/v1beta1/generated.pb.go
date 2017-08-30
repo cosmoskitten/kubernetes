@@ -339,54 +339,54 @@ func (*RollingUpdateDeployment) Descriptor() ([]byte, []int) {
 func (m *RunAsGroupStrategyOptions) Reset()      { *m = RunAsGroupStrategyOptions{} }
 func (*RunAsGroupStrategyOptions) ProtoMessage() {}
 func (*RunAsGroupStrategyOptions) Descriptor() ([]byte, []int) {
-	return fileDescriptorGenerated, []int{49}
+	return fileDescriptorGenerated, []int{51}
 }
 
 func (m *RunAsUserStrategyOptions) Reset()      { *m = RunAsUserStrategyOptions{} }
 func (*RunAsUserStrategyOptions) ProtoMessage() {}
 func (*RunAsUserStrategyOptions) Descriptor() ([]byte, []int) {
-	return fileDescriptorGenerated, []int{51}
+	return fileDescriptorGenerated, []int{52}
 }
 
 func (m *SELinuxStrategyOptions) Reset()                    { *m = SELinuxStrategyOptions{} }
 func (*SELinuxStrategyOptions) ProtoMessage()               {}
-func (*SELinuxStrategyOptions) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{52} }
+func (*SELinuxStrategyOptions) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{53} }
 
 func (m *Scale) Reset()                    { *m = Scale{} }
 func (*Scale) ProtoMessage()               {}
-func (*Scale) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{53} }
+func (*Scale) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{54} }
 
 func (m *ScaleSpec) Reset()                    { *m = ScaleSpec{} }
 func (*ScaleSpec) ProtoMessage()               {}
-func (*ScaleSpec) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{54} }
+func (*ScaleSpec) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{55} }
 
 func (m *ScaleStatus) Reset()                    { *m = ScaleStatus{} }
 func (*ScaleStatus) ProtoMessage()               {}
-func (*ScaleStatus) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{55} }
+func (*ScaleStatus) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{56} }
 
 func (m *SupplementalGroupsStrategyOptions) Reset()      { *m = SupplementalGroupsStrategyOptions{} }
 func (*SupplementalGroupsStrategyOptions) ProtoMessage() {}
 func (*SupplementalGroupsStrategyOptions) Descriptor() ([]byte, []int) {
-	return fileDescriptorGenerated, []int{56}
+	return fileDescriptorGenerated, []int{57}
 }
 
 func (m *ThirdPartyResource) Reset()                    { *m = ThirdPartyResource{} }
 func (*ThirdPartyResource) ProtoMessage()               {}
-func (*ThirdPartyResource) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{57} }
+func (*ThirdPartyResource) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{58} }
 
 func (m *ThirdPartyResourceData) Reset()                    { *m = ThirdPartyResourceData{} }
 func (*ThirdPartyResourceData) ProtoMessage()               {}
-func (*ThirdPartyResourceData) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{58} }
+func (*ThirdPartyResourceData) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{59} }
 
 func (m *ThirdPartyResourceDataList) Reset()      { *m = ThirdPartyResourceDataList{} }
 func (*ThirdPartyResourceDataList) ProtoMessage() {}
 func (*ThirdPartyResourceDataList) Descriptor() ([]byte, []int) {
-	return fileDescriptorGenerated, []int{59}
+	return fileDescriptorGenerated, []int{60}
 }
 
 func (m *ThirdPartyResourceList) Reset()                    { *m = ThirdPartyResourceList{} }
 func (*ThirdPartyResourceList) ProtoMessage()               {}
-func (*ThirdPartyResourceList) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{60} }
+func (*ThirdPartyResourceList) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{61} }
 
 func init() {
 	proto.RegisterType((*APIVersion)(nil), "k8s.io.api.extensions.v1beta1.APIVersion")
@@ -2207,7 +2207,7 @@ func (m *PodSecurityPolicySpec) MarshalTo(dAtA []byte) (int, error) {
 	}
 	if len(m.AllowedHostPaths) > 0 {
 		for _, msg := range m.AllowedHostPaths {
-			dAtA[i] = 0x8a
+			dAtA[i] = 0x92
 			i++
 			dAtA[i] = 0x1
 			i++
@@ -10284,9 +10284,8 @@ func (m *PodSecurityPolicySpec) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
-			b := bool(v != 0)
-			m.AllowPrivilegeEscalation = &b
-		case 17:
+			m.AllowPrivilegeEscalation = bool(v != 0)
+		case 18:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field AllowedHostPaths", wireType)
 			}

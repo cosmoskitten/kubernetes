@@ -54,6 +54,9 @@ func validNewPodSecurityPolicy() *extensions.PodSecurityPolicy {
 			RunAsUser: extensions.RunAsUserStrategyOptions{
 				Rule: extensions.RunAsUserStrategyRunAsAny,
 			},
+			RunAsGroup: extensions.RunAsGroupStrategyOptions{
+				Rule: extensions.RunAsGroupStrategyRunAsAny,
+			},
 			FSGroup: extensions.FSGroupStrategyOptions{
 				Rule: extensions.FSGroupStrategyRunAsAny,
 			},
