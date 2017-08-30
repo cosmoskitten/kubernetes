@@ -379,7 +379,25 @@ func (vs *VSphere) ExternalID(nodeName k8stypes.NodeName) (string, error) {
 // InstanceExistsByProviderID returns true if the instance with the given provider id still exists and is running.
 // If false is returned with no error, the instance will be immediately deleted by the cloud controller manager.
 func (vs *VSphere) InstanceExistsByProviderID(providerID string) (bool, error) {
-	return false, errors.New("unimplemented")
+	vmName := path.Base(providerID)
+	nodeName := vmNameToNodeName(vmName)
+	// Create context
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	// Ensure client is logged in and session is valid
+	err := vs.conn.Connect(ctx)
+	if err != nil {
+		return false, err
+	}
+	_, err = vs.getVMByName(ctx, nodeName)
+	if err != nil {
+		if vclib.IsNotFound(err) {
+			return false, nil
+		}
+		return false, err
+	}
+
+	return true, nil
 }
 
 // InstanceID returns the cloud provider ID of the node with the specified Name.
