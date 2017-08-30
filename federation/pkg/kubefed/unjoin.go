@@ -32,6 +32,7 @@ import (
 	"k8s.io/kubernetes/pkg/kubectl"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	"k8s.io/kubernetes/pkg/kubectl/constants"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
 
 	"github.com/spf13/cobra"
@@ -304,7 +305,7 @@ func removeConfigMapString(str string, toRemove string) string {
 // deleteServiceAccountFromCluster removes the service account that the federation control plane uses
 // to access the cluster from the cluster that is leaving the federation.
 func deleteServiceAccountFromCluster(unjoiningClusterClientset internalclientset.Interface, cluster *federationapi.Cluster, fedSystemNamespace string) error {
-	serviceAccountName, ok := cluster.ObjectMeta.Annotations[kubectl.ServiceAccountNameAnnotation]
+	serviceAccountName, ok := cluster.ObjectMeta.Annotations[constants.ServiceAccountNameAnnotation]
 	if !ok {
 		// If there is no service account name annotation, assume that this cluster does not have a federation control plane service account.
 		return nil

@@ -145,7 +145,7 @@ func annotateRuntimeObject(t *testing.T, originalObj, currentObj runtime.Object,
 	// In tests, the validatePatchApplication() gets called in PATCH request
 	// handler in fake round tripper. validatePatchApplication call
 	// checks that this DELETE_ME label was deleted by the apply implementation in
-	// kubectl.
+	// generators.
 	originalLabels := originalAccessor.GetLabels()
 	originalLabels["DELETE_ME"] = "DELETE_ME"
 	originalAccessor.SetLabels(originalLabels)
@@ -1008,7 +1008,7 @@ func checkPatchString(t *testing.T, req *http.Request) {
 		t.Fatalf("patch does not contain annotation:\n%s\n", patch)
 	}
 
-	resultString := annotationsMap["kubectl.kubernetes.io/last-applied-configuration"]
+	resultString := annotationsMap["generators.kubernetes.io/last-applied-configuration"]
 	if resultString != checkString {
 		t.Fatalf("patch annotation is not correct, expect:%s\n but got:%s\n", checkString, resultString)
 	}
