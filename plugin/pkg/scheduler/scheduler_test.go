@@ -103,8 +103,8 @@ func (es mockScheduler) Prioritizers() []algorithm.PriorityConfig {
 	return nil
 }
 
-func (es mockScheduler) Preempt(pod *v1.Pod, nodeLister algorithm.NodeLister, scheduleErr error) (string, []*v1.Pod, error) {
-	return "", nil, nil
+func (es mockScheduler) Preempt(pod *v1.Pod, nodeLister algorithm.NodeLister, scheduleErr error) (*v1.Node, []*v1.Pod, error) {
+	return nil, nil, nil
 }
 
 func TestScheduler(t *testing.T) {
