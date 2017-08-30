@@ -993,7 +993,6 @@ func MakePodSpec() v1.PodSpec {
 }
 
 func makeCreatePod(client clientset.Interface, namespace string, podTemplate *v1.Pod) error {
-	var err error
 	for attempt := 0; attempt < retries; attempt++ {
 		if _, err := client.Core().Pods(namespace).Create(podTemplate); err == nil {
 			return nil
@@ -1038,7 +1037,6 @@ func createController(client clientset.Interface, controllerName, namespace stri
 			},
 		},
 	}
-	var err error
 	for attempt := 0; attempt < retries; attempt++ {
 		if _, err := client.Core().ReplicationControllers(namespace).Create(rc); err == nil {
 			return nil
