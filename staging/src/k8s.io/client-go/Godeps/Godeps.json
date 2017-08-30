@@ -219,6 +219,10 @@
 			"Rev": "72f9bd7c4e0c2a40055ab3d0f09654f730cce982"
 		},
 		{
+			"ImportPath": "github.com/json-iterator/go",
+			"Rev": "cdbd2ed8105904f45698861f5abe9fa354c1f92a"
+		},
+		{
 			"ImportPath": "github.com/juju/ratelimit",
 			"Rev": "5b9ff866471762aa2ab2dced63c9fb6f53921342"
 		},
@@ -245,10 +249,6 @@
 		{
 			"ImportPath": "github.com/stretchr/testify/assert",
 			"Rev": "f6abca593680b2315d2075e0f5e2a9751e3f431a"
-		},
-		{
-			"ImportPath": "github.com/ugorji/go/codec",
-			"Rev": "ded73eae5db7e7a0ef6f55aace87a2873c5d2b74"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/ssh/terminal",
