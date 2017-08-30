@@ -19,6 +19,7 @@ package certificates
 import (
 	"fmt"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
@@ -142,6 +143,11 @@ func (csrStatusStrategy) PrepareForUpdate(ctx genericapirequest.Context, obj, ol
 	// approval and certificate issuance.
 	newCSR.Spec = oldCSR.Spec
 	newCSR.Status.Conditions = oldCSR.Status.Conditions
+	for i, _ := range newCSR.Status.Conditions {
+		if newCSR.Status.Conditions[i].LastUpdateTime.IsZero() {
+			newCSR.Status.Conditions[i].LastUpdateTime = metav1.Now()
+		}
+	}
 }
 
 func (csrStatusStrategy) ValidateUpdate(ctx genericapirequest.Context, obj, old runtime.Object) field.ErrorList {
@@ -166,6 +172,11 @@ func (csrApprovalStrategy) PrepareForUpdate(ctx genericapirequest.Context, obj, 
 	// Updating the approval should only update the conditions.
 	newCSR.Spec = oldCSR.Spec
 	oldCSR.Status.Conditions = newCSR.Status.Conditions
+	for i, _ := range newCSR.Status.Conditions {
+		if newCSR.Status.Conditions[i].LastUpdateTime.IsZero() {
+			newCSR.Status.Conditions[i].LastUpdateTime = metav1.Now()
+		}
+	}
 	newCSR.Status = oldCSR.Status
 }
 

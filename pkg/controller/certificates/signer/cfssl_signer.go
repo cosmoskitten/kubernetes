@@ -96,6 +96,9 @@ func newCFSSLSigner(caFile, caKeyFile string, client clientset.Interface, certif
 }
 
 func (s *cfsslSigner) handle(csr *capi.CertificateSigningRequest) error {
+	if csr.Status.Certificate != nil {
+		return nil
+	}
 	if !certificates.IsCertificateRequestApproved(csr) {
 		return nil
 	}

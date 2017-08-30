@@ -46,7 +46,8 @@ type CertificateController struct {
 
 	handler func(*certificates.CertificateSigningRequest) error
 
-	queue workqueue.RateLimitingInterface
+	queuingDelay time.Duration
+	queue        workqueue.RateLimitingInterface
 }
 
 func NewCertificateController(
@@ -54,15 +55,30 @@ func NewCertificateController(
 	csrInformer certificatesinformers.CertificateSigningRequestInformer,
 	handler func(*certificates.CertificateSigningRequest) error,
 ) (*CertificateController, error) {
+	return NewCertificateControllerWithDelay(
+		kubeClient,
+		csrInformer,
+		handler,
+		0,
+	)
+}
+
+func NewCertificateControllerWithDelay(
+	kubeClient clientset.Interface,
+	csrInformer certificatesinformers.CertificateSigningRequestInformer,
+	handler func(*certificates.CertificateSigningRequest) error,
+	queuingDelay time.Duration,
+) (*CertificateController, error) {
 	// Send events to the apiserver
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(glog.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: v1core.New(kubeClient.Core().RESTClient()).Events("")})
 
 	cc := &CertificateController{
-		kubeClient: kubeClient,
-		queue:      workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "certificate"),
-		handler:    handler,
+		kubeClient:   kubeClient,
+		queue:        workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "certificate"),
+		handler:      handler,
+		queuingDelay: queuingDelay,
 	}
 
 	// Manage the addition/update of certificate requests
@@ -97,7 +113,6 @@ func NewCertificateController(
 	})
 	cc.csrLister = csrInformer.Lister()
 	cc.csrsSynced = csrInformer.Informer().HasSynced
-	cc.handler = handler
 	return cc, nil
 }
 
@@ -142,7 +157,6 @@ func (cc *CertificateController) processNextWorkItem() bool {
 
 	cc.queue.Forget(cKey)
 	return true
-
 }
 
 func (cc *CertificateController) enqueueCertificateRequest(obj interface{}) {
@@ -151,13 +165,13 @@ func (cc *CertificateController) enqueueCertificateRequest(obj interface{}) {
 		utilruntime.HandleError(fmt.Errorf("Couldn't get key for object %+v: %v", obj, err))
 		return
 	}
-	cc.queue.Add(key)
+	cc.queue.AddAfter(key, cc.queuingDelay)
 }
 
-// maybeSignCertificate will inspect the certificate request and, if it has
-// been approved and meets policy expectations, generate an X509 cert using the
-// cluster CA assets. If successful it will update the CSR approve subresource
-// with the signed certificate.
+// syncFunc will inspect the certificate request and, if it has been approved
+// and meets policy expectations, generate an X509 cert using the cluster CA
+// assets. If successful it will update the CSR approve subresource with the
+// signed certificate.
 func (cc *CertificateController) syncFunc(key string) error {
 	startTime := time.Now()
 	defer func() {
@@ -170,11 +184,6 @@ func (cc *CertificateController) syncFunc(key string) error {
 	}
 	if err != nil {
 		return err
-	}
-
-	if csr.Status.Certificate != nil {
-		// no need to do anything because it already has a cert
-		return nil
 	}
 
 	// need to operate on a copy so we don't mutate the csr in the shared cache
