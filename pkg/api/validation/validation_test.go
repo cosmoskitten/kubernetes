@@ -7702,6 +7702,8 @@ func TestValidateNode(t *testing.T) {
 					api.ResourceName(api.ResourceCPU):    resource.MustParse("10"),
 					api.ResourceName(api.ResourceMemory): resource.MustParse("10G"),
 					api.ResourceName("my.org/gpu"):       resource.MustParse("10"),
+					api.ResourceName("hugepages-2Mi"):    resource.MustParse("10Gi"),
+					api.ResourceName("hugepages-1Gi"):    resource.MustParse("0"),
 				},
 			},
 			Spec: api.NodeSpec{
@@ -7977,6 +7979,27 @@ func TestValidateNode(t *testing.T) {
 				Capacity: api.ResourceList{
 					api.ResourceName(api.ResourceCPU):    resource.MustParse("10"),
 					api.ResourceName(api.ResourceMemory): resource.MustParse("0"),
+				},
+			},
+			Spec: api.NodeSpec{
+				ExternalID: "external",
+			},
+		},
+		"multiple-pre-allocated-hugepages": {
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   "abc",
+				Labels: validSelector,
+			},
+			Status: api.NodeStatus{
+				Addresses: []api.NodeAddress{
+					{Type: api.NodeExternalIP, Address: "something"},
+				},
+				Capacity: api.ResourceList{
+					api.ResourceName(api.ResourceCPU):    resource.MustParse("10"),
+					api.ResourceName(api.ResourceMemory): resource.MustParse("10G"),
+					api.ResourceName("my.org/gpu"):       resource.MustParse("10"),
+					api.ResourceName("hugepages-2Mi"):    resource.MustParse("10Gi"),
+					api.ResourceName("hugepages-1Gi"):    resource.MustParse("10Gi"),
 				},
 			},
 			Spec: api.NodeSpec{
