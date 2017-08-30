@@ -67,6 +67,7 @@ var (
 
 var registerMetrics sync.Once
 
+// Register the metrics that are to be monitored.
 func Register() {
 	registerMetrics.Do(func() {
 		prometheus.MustRegister(zoneHealth)
