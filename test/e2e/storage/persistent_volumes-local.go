@@ -252,6 +252,39 @@ var _ = SIGDescribe("PersistentVolumes-local [Feature:LocalPersistentVolumes] [S
 		})
 	})
 
+	Context("when pod using local volume with non-existant path", func() {
+		It("should not be able to mount", func() {
+			for _, testVolType := range LocalVolumeTypes {
+				By(fmt.Sprintf("local-volume-type: %s", testVolType))
+				testVol := &localTestVolume{
+					node:            config.node0,
+					hostDir:         "/non-existent/location/nowhere",
+					localVolumeType: testVolType,
+				}
+				By("Creating local PVC and PV")
+				createLocalPVCPV(config, testVol)
+				_, pod1Err := createLocalPod(config, testVol)
+				Expect(pod1Err).To(HaveOccurred())
+			}
+		})
+	})
+	Context("when pod has nodeName set to a different node than the PV node affinity", func() {
+		It("should not be able to mount", func() {
+			for _, testVolType := range LocalVolumeTypes {
+				var testVol *localTestVolume
+				By(fmt.Sprintf("local-volume-type: %s", testVolType))
+				testVol = setupLocalVolumePVCPV(config, testVolType)
+				wrongNode := fmt.Sprintf("%s-%s", config.node0.Name, "wrong")
+				pod := makeLocalPodWithNodeSelector(config, testVol, wrongNode)
+				pod, err := config.client.CoreV1().Pods(config.ns).Create(pod)
+				Expect(err).NotTo(HaveOccurred())
+				err = framework.WaitForPodNameRunningInNamespace(config.client, pod.Name, config.ns)
+				Expect(err).To(HaveOccurred())
+				cleanupLocalVolume(config, testVol)
+			}
+		})
+	})
+
 	Context("when using local volume provisioner", func() {
 		var (
 			volumePath string
@@ -502,6 +535,32 @@ func createLocalPVCPV(config *localTestConfig, volume *localTestVolume) {
 
 func makeLocalPod(config *localTestConfig, volume *localTestVolume, cmd string) *v1.Pod {
 	return framework.MakeSecPod(config.ns, []*v1.PersistentVolumeClaim{volume.pvc}, false, cmd, false, false, selinuxLabel)
+}
+
+func makeLocalPodWithNodeSelector(config *localTestConfig, volume *localTestVolume, nodeSelector string) (pod *v1.Pod) {
+	pod = framework.MakeSecPod(config.ns, []*v1.PersistentVolumeClaim{volume.pvc}, false, "", false, false, selinuxLabel)
+	if pod == nil {
+		return
+	}
+	affinity := &v1.Affinity{
+		NodeAffinity: &v1.NodeAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: &v1.NodeSelector{
+				NodeSelectorTerms: []v1.NodeSelectorTerm{
+					{
+						MatchExpressions: []v1.NodeSelectorRequirement{
+							{
+								Key:      "kubernetes.io/hostname",
+								Operator: v1.NodeSelectorOpIn,
+								Values:   []string{nodeSelector},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	pod.Spec.Affinity = affinity
+	return
 }
 
 // createSecPod should be used when Pod requires non default SELinux labels
