@@ -531,6 +531,10 @@ func (svcInfo *serviceInfo) deleteAllHnsLoadBalancerPolicy() {
 	// Remove the Hns Policy corresponding to this service
 	deleteHnsLoadBalancerPolicy(svcInfo.hnsID)
 	svcInfo.hnsID = ""
+
+	deleteHnsLoadBalancerPolicy(svcInfo.nodePorthnsID)
+	svcInfo.nodePorthnsID = ""
+
 	for _, externalIp := range svcInfo.externalIPs {
 		deleteHnsLoadBalancerPolicy(externalIp.hnsID)
 		externalIp.hnsID = ""
@@ -576,7 +580,7 @@ func getHnsLoadBalancer(endpoints []hcsshim.HNSEndpoint, isILB bool, vip string,
 		}
 		if elbPolicy.Protocol == protocol && elbPolicy.InternalPort == internalPort && elbPolicy.ExternalPort == externalPort && elbPolicy.ILB == isILB {
 			if len(vip) > 0 {
-				if len(elbPolicy.VIPs) > 0 && elbPolicy.VIPs[0] != vip {
+				if len(elbPolicy.VIPs) == 0 || elbPolicy.VIPs[0] != vip {
 					continue
 				}
 			}
@@ -1058,7 +1062,7 @@ func (proxier *Proxier) syncProxyRules() {
 			}
 
 			svcInfo.nodePorthnsID = hnsLoadBalancer.ID
-			glog.V(3).Infof("Hns LoadBalancer resource created for cluster ip resources %v, Id [%s]", svcInfo.clusterIP, hnsLoadBalancer.ID)
+			glog.V(3).Infof("Hns LoadBalancer resource created for nodePort resources %v, Id [%s]", svcInfo.clusterIP, hnsLoadBalancer.ID)
 		}
 
 		// Create a Load Balancer Policy for each external IP
