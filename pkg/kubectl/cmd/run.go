@@ -40,6 +40,7 @@ import (
 	"k8s.io/kubernetes/pkg/kubectl"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	"k8s.io/kubernetes/pkg/kubectl/generators"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
 	"k8s.io/kubernetes/pkg/kubectl/util/i18n"
 	"k8s.io/kubernetes/pkg/util/interrupt"
@@ -261,13 +262,13 @@ func RunRun(f cmdutil.Factory, cmdIn io.Reader, cmdOut, cmdErr io.Writer, cmd *c
 		return fmt.Errorf("CronJob generator specified, but batch/v2alpha1.CronJobs are not available")
 	}
 
-	generators := f.Generators("run")
-	generator, found := generators[generatorName]
+	gs := f.Generators("run")
+	generator, found := gs[generatorName]
 	if !found {
 		return cmdutil.UsageErrorf(cmd, "generator %q not found", generatorName)
 	}
 	names := generator.ParamNames()
-	params := kubectl.MakeParams(cmd, names)
+	params := generators.MakeParams(cmd, names)
 	params["name"] = args[0]
 	if len(args) > 1 {
 		params["args"] = args[1:]
@@ -538,8 +539,8 @@ func verifyImagePullPolicy(cmd *cobra.Command) error {
 }
 
 func generateService(f cmdutil.Factory, cmd *cobra.Command, args []string, serviceGenerator string, paramsIn map[string]interface{}, namespace string, out io.Writer) (*RunObject, error) {
-	generators := f.Generators("expose")
-	generator, found := generators[serviceGenerator]
+	gs := f.Generators("expose")
+	generator, found := gs[serviceGenerator]
 	if !found {
 		return nil, fmt.Errorf("missing service generator: %s", serviceGenerator)
 	}
@@ -587,8 +588,8 @@ func generateService(f cmdutil.Factory, cmd *cobra.Command, args []string, servi
 	return runObject, nil
 }
 
-func createGeneratedObject(f cmdutil.Factory, cmd *cobra.Command, generator kubectl.Generator, names []kubectl.GeneratorParam, params map[string]interface{}, overrides, namespace string) (*RunObject, error) {
-	err := kubectl.ValidateParams(names, params)
+func createGeneratedObject(f cmdutil.Factory, cmd *cobra.Command, generator generators.Generator, names []generators.GeneratorParam, params map[string]interface{}, overrides, namespace string) (*RunObject, error) {
+	err := generators.ValidateParams(names, params)
 	if err != nil {
 		return nil, err
 	}
