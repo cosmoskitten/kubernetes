@@ -61,7 +61,7 @@ func (am *addressManager) HoldAddress() (string, error) {
 	// could be reserving another address; therefore, it would need to be deleted. In the normal
 	// case of using a controller address, retrieving the address by name results in the fewest API
 	// calls since it indicates whether a Delete is necessary before Reserve.
-	glog.V(2).Infof("%v: attempting hold of IP %q Type %q", am.logPrefix, am.targetIP, am.addressType)
+	glog.V(4).Infof("%v: attempting hold of IP %q Type %q", am.logPrefix, am.targetIP, am.addressType)
 	// Get the address in case it was orphaned earlier
 	addr, err := am.svc.GetBetaRegionAddress(am.name, am.region)
 	if err != nil && !isNotFound(err) {
