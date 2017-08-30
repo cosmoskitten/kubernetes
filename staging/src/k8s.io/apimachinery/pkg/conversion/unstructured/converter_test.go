@@ -19,10 +19,14 @@ package unstructured
 import (
 	"fmt"
 	"reflect"
+	"strconv"
 	"testing"
 
 	"k8s.io/apimachinery/pkg/util/diff"
 	"k8s.io/apimachinery/pkg/util/json"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // Definte a number of test types.
@@ -72,14 +76,27 @@ type F struct {
 }
 
 type G struct {
-	Custom Custom `json:"custom"`
+	CustomValue1   CustomValue    `json:"customValue1"`
+	CustomValue2   *CustomValue   `json:"customValue2"`
+	CustomPointer1 CustomPointer  `json:"customPointer1"`
+	CustomPointer2 *CustomPointer `json:"customPointer2"`
 }
 
-type Custom struct {
+type CustomValue struct {
 	data []byte
 }
 
-func (c Custom) MarshalJSON() ([]byte, error) {
+// MarshalJSON has a value receiver on this type.
+func (c CustomValue) MarshalJSON() ([]byte, error) {
+	return c.data, nil
+}
+
+type CustomPointer struct {
+	data []byte
+}
+
+// MarshalJSON has a pointer receiver on this type.
+func (c *CustomPointer) MarshalJSON() ([]byte, error) {
 	return c.data, nil
 }
 
@@ -469,18 +486,37 @@ func TestCustomToUnstructured(t *testing.T) {
 	}
 
 	for _, tc := range testcases {
-		result, err := DefaultConverter.ToUnstructured(&G{Custom: Custom{data: []byte(tc.Data)}})
-		if err != nil {
-			t.Errorf("%s: %v", tc.Data, err)
-			continue
-		}
+		tc := tc
+		t.Run(tc.Data, func(t *testing.T) {
+			t.Parallel()
+			result, err := DefaultConverter.ToUnstructured(&G{
+				CustomValue1:   CustomValue{data: []byte(tc.Data)},
+				CustomValue2:   &CustomValue{data: []byte(tc.Data)},
+				CustomPointer1: CustomPointer{data: []byte(tc.Data)},
+				CustomPointer2: &CustomPointer{data: []byte(tc.Data)},
+			})
+			require.NoError(t, err)
+			for field, fieldResult := range result {
+				assert.Equal(t, tc.Expected, fieldResult, field)
+			}
+		})
+	}
+}
 
-		fieldResult := result["custom"]
-		if !reflect.DeepEqual(fieldResult, tc.Expected) {
-			t.Errorf("%s: expected %v, got %v", tc.Data, tc.Expected, fieldResult)
-			// t.Log("expected", spew.Sdump(tc.Expected))
-			// t.Log("actual", spew.Sdump(fieldResult))
-			continue
-		}
+func TestCustomToUnstructuredTopLevel(t *testing.T) {
+	// Only objects are supported at the top level
+	topLevelCases := []interface{}{
+		&CustomValue{data: []byte(`{"a":1}`)},
+		&CustomPointer{data: []byte(`{"a":1}`)},
+	}
+	expected := map[string]interface{}{"a": int64(1)}
+	for i, obj := range topLevelCases {
+		obj := obj
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			t.Parallel()
+			result, err := DefaultConverter.ToUnstructured(obj)
+			require.NoError(t, err)
+			assert.Equal(t, expected, result)
+		})
 	}
 }
