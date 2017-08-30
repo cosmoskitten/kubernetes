@@ -22,7 +22,6 @@ limitations under the License.
 package rbd
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -35,15 +34,26 @@ import (
 
 	"github.com/golang/glog"
 	"k8s.io/api/core/v1"
-	"k8s.io/kubernetes/pkg/util/mount"
-	"k8s.io/kubernetes/pkg/util/node"
 	"k8s.io/kubernetes/pkg/volume"
 )
 
+// rbdUtil interfaces provides utility functions to setup RBD Volume.
+type rbdUtil interface {
+	diskManager
+	// Fencing acquires a lock for image on the given node.
+	// It does nothing if volume is read-only.
+	Fencing(r rbdMounter, nodeName string) error
+	// Defencing releases lock for image from the given node if needed.
+	// It does nothing if volume is read-only.
+	Defencing(r rbdMounter, nodeName string) error
+	// IsLocked checks for the existence of a lock on the given node.
+	IsLocked(r rbdMounter, nodeName string) (bool, error)
+}
+
 const (
+	rbdCmdErr       = "executable file not found in $PATH"
 	imageWatcherStr = "watcher="
 	kubeLockMagic   = "kubelet_lock_magic_"
-	rbdCmdErr       = "executable file not found in $PATH"
 )
 
 // search /sys/bus for rbd device that matches given pool and image
@@ -107,11 +117,15 @@ func makePDNameInternal(host volume.VolumeHost, pool string, image string) strin
 	return path.Join(host.GetPluginDir(rbdPluginName), "rbd", pool+"-image-"+image)
 }
 
+// RBDUtil implements rbdUtil interface.
 type RBDUtil struct{}
+
+var _ rbdUtil = &RBDUtil{}
 
 func (util *RBDUtil) MakeGlobalPDName(rbd rbd) string {
 	return makePDNameInternal(rbd.plugin.host, rbd.Pool, rbd.Image)
 }
+
 func rbdErrors(runErr, resultErr error) error {
 	if runErr.Error() == rbdCmdErr {
 		return fmt.Errorf("rbd: rbd cmd not found")
@@ -119,7 +133,20 @@ func rbdErrors(runErr, resultErr error) error {
 	return resultErr
 }
 
-func (util *RBDUtil) rbdLock(b rbdMounter, lock bool) error {
+const (
+	opLock = iota
+	opUnlock
+	opQuery
+)
+
+// rbdLock acquires or releases or queries a lock on image for given node.
+// op has three possible values:
+//
+//  opLock:   acquires a lock
+//  opUnlock: releases a lock
+//  opQuery:  queries a lock
+//
+func (util *RBDUtil) rbdLock(b rbdMounter, node string, op int) (bool, error) {
 	var err error
 	var output, locker string
 	var cmd []byte
@@ -138,7 +165,7 @@ func (util *RBDUtil) rbdLock(b rbdMounter, lock bool) error {
 	}
 
 	// construct lock id using host name and a magic prefix
-	lock_id := kubeLockMagic + node.GetHostname("")
+	lock_id := kubeLockMagic + node
 
 	l := len(b.Mon)
 	// avoid mount storm, pick a host randomly
@@ -154,17 +181,19 @@ func (util *RBDUtil) rbdLock(b rbdMounter, lock bool) error {
 		args = append(args, secret_opt...)
 		cmd, err = b.exec.Run("rbd", args...)
 		output = string(cmd)
-		glog.Infof("lock list output %q", output)
+		glog.V(4).Infof("lock list output %q", output)
 		if err != nil {
 			continue
 		}
 
-		if lock {
+		if op == opQuery {
+			return strings.Contains(output, lock_id), nil
+		} else if op == opLock {
 			// check if lock is already held for this host by matching lock_id and rbd lock id
 			if strings.Contains(output, lock_id) {
 				// this host already holds the lock, exit
 				glog.V(1).Infof("rbd: lock already held for %s", lock_id)
-				return nil
+				return true, nil
 			}
 			// clean up orphaned lock if no watcher on the image
 			used, statusErr := util.rbdStatus(&b)
@@ -204,79 +233,16 @@ func (util *RBDUtil) rbdLock(b rbdMounter, lock bool) error {
 		}
 
 		if err == nil {
-			//lock is acquired
+			// break if operation succeeds
 			break
 		}
 	}
-	return err
+	return false, err
 }
 
-func (util *RBDUtil) persistRBD(rbd rbdMounter, mnt string) error {
-	file := path.Join(mnt, "rbd.json")
-	fp, err := os.Create(file)
-	if err != nil {
-		return fmt.Errorf("rbd: create err %s/%s", file, err)
-	}
-	defer fp.Close()
-
-	encoder := json.NewEncoder(fp)
-	if err = encoder.Encode(rbd); err != nil {
-		return fmt.Errorf("rbd: encode err: %v.", err)
-	}
-
-	return nil
-}
-
-func (util *RBDUtil) loadRBD(mounter *rbdMounter, mnt string) error {
-	file := path.Join(mnt, "rbd.json")
-	fp, err := os.Open(file)
-	if err != nil {
-		return fmt.Errorf("rbd: open err %s/%s", file, err)
-	}
-	defer fp.Close()
-
-	decoder := json.NewDecoder(fp)
-	if err = decoder.Decode(mounter); err != nil {
-		return fmt.Errorf("rbd: decode err: %v.", err)
-	}
-
-	return nil
-}
-
-func (util *RBDUtil) fencing(b rbdMounter) error {
-	// no need to fence readOnly
-	if (&b).GetAttributes().ReadOnly {
-		return nil
-	}
-	return util.rbdLock(b, true)
-}
-
-func (util *RBDUtil) defencing(c rbdUnmounter) error {
-	// no need to fence readOnly
-	if c.ReadOnly {
-		return nil
-	}
-
-	return util.rbdLock(*c.rbdMounter, false)
-}
-
-func (util *RBDUtil) AttachDisk(b rbdMounter) error {
+func (util *RBDUtil) AttachDisk(b rbdMounter) (string, error) {
 	var err error
 	var output []byte
-
-	// create mount point
-	globalPDPath := b.manager.MakeGlobalPDName(*b.rbd)
-	notMnt, err := b.mounter.IsLikelyNotMountPoint(globalPDPath)
-	// in the first time, the path shouldn't exist and IsLikelyNotMountPoint is expected to get NotExist
-	if err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("rbd: %s failed to check mountpoint", globalPDPath)
-	}
-	if !notMnt {
-		return nil
-	}
-	if err = os.MkdirAll(globalPDPath, 0750); err != nil {
-		return fmt.Errorf("rbd: failed to mkdir %s, error", globalPDPath)
-	}
 
 	devicePath, found := waitForPath(b.Pool, b.Image, 1)
 	if !found {
@@ -284,17 +250,6 @@ func (util *RBDUtil) AttachDisk(b rbdMounter) error {
 		if err != nil {
 			glog.Warningf("rbd: failed to load rbd kernel module:%v", err)
 		}
-
-		// fence off other mappers
-		if err = util.fencing(b); err != nil {
-			return rbdErrors(err, fmt.Errorf("rbd: failed to lock image %s (maybe locked by other nodes), error %v", b.Image, err))
-		}
-		// rbd lock remove needs ceph and image config
-		// but kubelet doesn't get them from apiserver during teardown
-		// so persit rbd config so upon disk detach, rbd lock can be removed
-		// since rbd json is persisted in the same local directory that is used as rbd mountpoint later,
-		// the json file remains invisible during rbd mount and thus won't be removed accidentally.
-		util.persistRBD(b, globalPDPath)
 
 		// rbd map
 		l := len(b.Mon)
@@ -317,47 +272,22 @@ func (util *RBDUtil) AttachDisk(b rbdMounter) error {
 			glog.V(1).Infof("rbd: map error %v %s", err, string(output))
 		}
 		if err != nil {
-			return fmt.Errorf("rbd: map failed %v %s", err, string(output))
+			return "", fmt.Errorf("rbd: map failed %v %s", err, string(output))
 		}
 		devicePath, found = waitForPath(b.Pool, b.Image, 10)
 		if !found {
-			return errors.New("Could not map image: Timeout after 10s")
+			return "", errors.New("Could not map image: Timeout after 10s")
 		}
-		glog.V(3).Infof("rbd: successfully map image %s/%s to %s", b.Pool, b.Image, devicePath)
 	}
-
-	// mount it
-	if err = b.mounter.FormatAndMount(devicePath, globalPDPath, b.fsType, nil); err != nil {
-		err = fmt.Errorf("rbd: failed to mount rbd volume %s [%s] to %s, error %v", devicePath, b.fsType, globalPDPath, err)
-	}
-	glog.V(3).Infof("rbd: successfully mount image %s/%s at %s", b.Pool, b.Image, globalPDPath)
-	return err
+	return devicePath, err
 }
 
-func (util *RBDUtil) DetachDisk(c rbdUnmounter, mntPath string) error {
-	device, cnt, err := mount.GetDeviceNameFromMount(c.mounter, mntPath)
+func (util *RBDUtil) DetachDisk(plugin *rbdPlugin, device string) error {
+	var err error
+	// rbd unmap
+	_, err = plugin.exec.Run("rbd", "unmap", device)
 	if err != nil {
-		return fmt.Errorf("rbd detach disk: failed to get device from mnt: %s\nError: %v", mntPath, err)
-	}
-	if err = c.mounter.Unmount(mntPath); err != nil {
-		return fmt.Errorf("rbd detach disk: failed to umount: %s\nError: %v", mntPath, err)
-	}
-	glog.V(3).Infof("rbd: successfully umount mountpoint %s", mntPath)
-	// if device is no longer used, see if can unmap
-	if cnt <= 1 {
-		// rbd unmap
-		_, err = c.exec.Run("rbd", "unmap", device)
-		if err != nil {
-			return rbdErrors(err, fmt.Errorf("rbd: failed to unmap device %s:Error: %v", device, err))
-		}
-
-		// load ceph and image/pool info to remove fencing
-		if err := util.loadRBD(c.rbdMounter, mntPath); err == nil {
-			// remove rbd lock
-			util.defencing(c)
-		}
-
-		glog.V(3).Infof("rbd: successfully unmap device %s", device)
+		return rbdErrors(err, fmt.Errorf("rbd: failed to unmap device %s:Error: %v", device, err))
 	}
 	return nil
 }
@@ -473,4 +403,24 @@ func (util *RBDUtil) rbdStatus(b *rbdMounter) (bool, error) {
 		}
 	}
 	return false, nil
+}
+
+func (util *RBDUtil) Fencing(r rbdMounter, nodeName string) error {
+	if (&r).GetAttributes().ReadOnly {
+		return nil
+	}
+	_, err := util.rbdLock(r, nodeName, opLock)
+	return err
+}
+
+func (util *RBDUtil) Defencing(r rbdMounter, nodeName string) error {
+	if (&r).GetAttributes().ReadOnly {
+		return nil
+	}
+	_, err := util.rbdLock(r, nodeName, opUnlock)
+	return err
+}
+
+func (util *RBDUtil) IsLocked(r rbdMounter, nodeName string) (bool, error) {
+	return util.rbdLock(r, nodeName, opQuery)
 }
