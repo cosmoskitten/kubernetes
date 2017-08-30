@@ -36,7 +36,7 @@ import (
 	cmfake "k8s.io/metrics/pkg/client/custom_metrics/fake"
 
 	cmapi "k8s.io/metrics/pkg/apis/custom_metrics/v1alpha1"
-	metricsapi "k8s.io/metrics/pkg/apis/metrics/v1alpha1"
+	metricsapi "k8s.io/metrics/pkg/apis/metrics/v1beta1"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
