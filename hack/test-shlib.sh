@@ -15,5 +15,9 @@
 
 # Generic support library for shell tests.
 
+set -o errexit
+set -o nounset
+set -o pipefail
+
 # HOME is, by default, not set.  Give it a bogus value.
 HOME=$(pwd)
