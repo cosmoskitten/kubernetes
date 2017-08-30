@@ -820,15 +820,11 @@ message PodSecurityPolicySpec {
   // AllowPrivilegeEscalation determines if a pod can request to allow
   // privilege escalation.
   // +optional
-<<<<<<< d0eccc550580486d374c1949ca10c70a33223497
-  optional bool allowPrivilegeEscalation = 16;
+  optional bool allowPrivilegeEscalation = 17;
 
   // is a white list of allowed host paths. Empty indicates that all host paths may be used.
   // +optional
-  repeated AllowedHostPath allowedHostPaths = 17;
-=======
-  optional bool allowPrivilegeEscalation = 17;
->>>>>>> add primary gid for containers and generated code
+  repeated AllowedHostPath allowedHostPaths = 18;
 }
 
 // DEPRECATED - This group version of ReplicaSet is deprecated by apps/v1beta2/ReplicaSet. See the release notes for

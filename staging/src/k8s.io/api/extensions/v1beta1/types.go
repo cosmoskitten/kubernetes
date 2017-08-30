@@ -979,10 +979,10 @@ type PodSecurityPolicySpec struct {
 	// AllowPrivilegeEscalation determines if a pod can request to allow
 	// privilege escalation.
 	// +optional
-	AllowPrivilegeEscalation bool `json:"allowPrivilegeEscalation,omitempty" protobuf:"varint,16,opt,name=allowPrivilegeEscalation"`
+	AllowPrivilegeEscalation bool `json:"allowPrivilegeEscalation,omitempty" protobuf:"varint,17,opt,name=allowPrivilegeEscalation"`
 	// is a white list of allowed host paths. Empty indicates that all host paths may be used.
 	// +optional
-	AllowedHostPaths []AllowedHostPath `json:"allowedHostPaths,omitempty" protobuf:"bytes,17,rep,name=allowedHostPaths"`
+	AllowedHostPaths []AllowedHostPath `json:"allowedHostPaths,omitempty" protobuf:"bytes,18,rep,name=allowedHostPaths"`
 }
 
 // defines the host volume conditions that will be enabled by a policy

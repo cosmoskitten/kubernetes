@@ -762,6 +762,26 @@ func validatePSPRunAsUser(fldPath *field.Path, runAsUser *extensions.RunAsUserSt
 	return allErrs
 }
 
+// validatePSPRunAsGroup validates the RunAsGroup fields of PodSecurityPolicy.
+func validatePSPRunAsGroup(fldPath *field.Path, runAsGroup *extensions.RunAsGroupStrategyOptions) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	// ensure the group strategy has a valid rule
+	supportedRunAsGroupRules := sets.NewString(string(extensions.RunAsGroupStrategyMustRunAs),
+		string(extensions.RunAsGroupStrategyMustRunAsNonRoot),
+		string(extensions.RunAsGroupStrategyRunAsAny))
+	if !supportedRunAsGroupRules.Has(string(runAsGroup.Rule)) {
+		allErrs = append(allErrs, field.NotSupported(fldPath.Child("rule"), runAsGroup.Rule, supportedRunAsGroupRules.List()))
+	}
+
+	// validate range settings
+	for idx, rng := range runAsGroup.Ranges {
+		allErrs = append(allErrs, validateGroupIDRange(fldPath.Child("ranges").Index(idx), rng)...)
+	}
+
+	return allErrs
+}
+
 // validatePSPFSGroup validates the FSGroupStrategyOptions fields of the PodSecurityPolicy.
 func validatePSPFSGroup(fldPath *field.Path, groupOptions *extensions.FSGroupStrategyOptions) field.ErrorList {
 	allErrs := field.ErrorList{}

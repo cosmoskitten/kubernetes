@@ -8761,6 +8761,11 @@
       "format": "int64",
       "description": "The UID to run the entrypoint of the container process. Defaults to user specified in image metadata if unspecified. May also be set in PodSecurityContext.  If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence."
      },
+     "runAsGroup": {
+      "type": "integer",
+      "format": "int64",
+      "description": "The GID to run the entrypoint of the container process. Defaults to group specified in image metadata if unspecified. May also be set in PodSecurityContext.  If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence."
+     },
      "runAsNonRoot": {
       "type": "boolean",
       "description": "Indicates that the container must run as a non-root user. If true, the Kubelet will validate the image at runtime to ensure that it does not run as UID 0 (root) and fail to start the container if it does. If unset or false, no such validation will be performed. May also be set in PodSecurityContext.  If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence."
@@ -8833,6 +8838,11 @@
       "type": "integer",
       "format": "int64",
       "description": "The UID to run the entrypoint of the container process. Defaults to user specified in image metadata if unspecified. May also be set in SecurityContext.  If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence for that container."
+     },
+     "runAsGroup": {
+      "type": "integer",
+      "format": "int64",
+      "description": "The GID to run the entrypoint of the container process. Defaults to group specified in image metadata if unspecified. May also be set in SecurityContext.  If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence for that container."
      },
      "runAsNonRoot": {
       "type": "boolean",
@@ -9982,6 +9992,7 @@
     "required": [
      "seLinux",
      "runAsUser",
+     "runAsGroup",
      "supplementalGroups",
      "fsGroup"
     ],
@@ -10044,6 +10055,10 @@
      "runAsUser": {
       "$ref": "v1beta1.RunAsUserStrategyOptions",
       "description": "runAsUser is the strategy that will dictate the allowable RunAsUser values that may be set."
+     },
+     "runAsGroup": {
+      "$ref": "v1beta1.RunAsGroupStrategyOptions",
+      "description": "runAsGroup is the strategy that will dictate the allowable RunAsGroup values that may be set."
      },
      "supplementalGroups": {
       "$ref": "v1beta1.SupplementalGroupsStrategyOptions",
@@ -10152,6 +10167,26 @@
       "type": "integer",
       "format": "int64",
       "description": "Max is the end of the range, inclusive."
+     }
+    }
+   },
+   "v1beta1.RunAsGroupStrategyOptions": {
+    "id": "v1beta1.RunAsGroupStrategyOptions",
+    "description": "RunAsGroupStrategyOptions defines the strategy type and any options used to create the strategy.",
+    "required": [
+     "rule"
+    ],
+    "properties": {
+     "rule": {
+      "type": "string",
+      "description": "Rule is the strategy that will dictate the allowable RunAsUser values that may be set."
+     },
+     "ranges": {
+      "type": "array",
+      "items": {
+       "$ref": "v1beta1.IDRange"
+      },
+      "description": "Ranges are the allowed ranges of uids that may be used."
      }
     }
    },

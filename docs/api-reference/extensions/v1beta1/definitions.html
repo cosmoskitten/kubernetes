@@ -731,6 +731,47 @@ Examples: <code>/foo</code> would allow <code>/foo</code>, <code>/foo/</code> an
 
 </div>
 <div class="sect2">
+<h3 id="_v1beta1_runasgroupstrategyoptions">v1beta1.RunAsGroupStrategyOptions</h3>
+<div class="paragraph">
+<p>RunAsGroupStrategyOptions defines the strategy type and any options used to create the strategy.</p>
+</div>
+<table class="tableblock frame-all grid-all" style="width:100%; ">
+<colgroup>
+<col style="width:20%;">
+<col style="width:20%;">
+<col style="width:20%;">
+<col style="width:20%;">
+<col style="width:20%;"> 
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Name</th>
+<th class="tableblock halign-left valign-top">Description</th>
+<th class="tableblock halign-left valign-top">Required</th>
+<th class="tableblock halign-left valign-top">Schema</th>
+<th class="tableblock halign-left valign-top">Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">rule</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Rule is the strategy that will dictate the allowable RunAsUser values that may be set.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">string</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ranges</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Ranges are the allowed ranges of uids that may be used.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">false</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#_v1beta1_idrange">v1beta1.IDRange</a> array</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+</tbody>
+</table>
+
+</div>
+<div class="sect2">
 <h3 id="_v1_nodeselectorterm">v1.NodeSelectorTerm</h3>
 <div class="paragraph">
 <p>A null or empty node selector term matches no objects.</p>
@@ -6455,6 +6496,13 @@ Both these may change in the future. Incoming requests are matched against the h
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">runAsGroup</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The GID to run the entrypoint of the container process. Defaults to group specified in image metadata if unspecified. May also be set in SecurityContext.  If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence for that container.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">false</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">integer (int64)</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">runAsNonRoot</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Indicates that the container must run as a non-root user. If true, the Kubelet will validate the image at runtime to ensure that it does not run as UID 0 (root) and fail to start the container if it does. If unset or false, no such validation will be performed. May also be set in SecurityContext.  If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">false</p></td>
@@ -7155,6 +7203,13 @@ Both these may change in the future. Incoming requests are matched against the h
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">runAsGroup</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The GID to run the entrypoint of the container process. Defaults to group specified in image metadata if unspecified. May also be set in PodSecurityContext.  If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">false</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">integer (int64)</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">runAsNonRoot</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Indicates that the container must run as a non-root user. If true, the Kubelet will validate the image at runtime to ensure that it does not run as UID 0 (root) and fail to start the container if it does. If unset or false, no such validation will be performed. May also be set in PodSecurityContext.  If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">false</p></td>
@@ -7777,6 +7832,13 @@ Both these may change in the future. Incoming requests are matched against the h
 <td class="tableblock halign-left valign-top"><p class="tableblock">runAsUser is the strategy that will dictate the allowable RunAsUser values that may be set.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#_v1beta1_runasuserstrategyoptions">v1beta1.RunAsUserStrategyOptions</a></p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">runAsGroup</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">runAsGroup is the strategy that will dictate the allowable RunAsGroup values that may be set.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#_v1beta1_runasgroupstrategyoptions">v1beta1.RunAsGroupStrategyOptions</a></p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
