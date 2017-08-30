@@ -187,6 +187,7 @@ go_test(
     ],
     data = [
         "testdata",
+        "//api/openapi-spec:swagger-spec",
         "//examples:config",
         "//test/fixtures",
     ],
@@ -204,6 +205,7 @@ go_test(
         "//pkg/kubectl/cmd/testing:go_default_library",
         "//pkg/kubectl/cmd/util:go_default_library",
         "//pkg/kubectl/cmd/util/openapi:go_default_library",
+        "//pkg/kubectl/cmd/util/openapi/testing:go_default_library",
         "//pkg/kubectl/plugins:go_default_library",
         "//pkg/kubectl/resource:go_default_library",
         "//pkg/kubectl/util/i18n:go_default_library",
