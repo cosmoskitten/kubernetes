@@ -82,12 +82,12 @@ func (gce *GCECloud) ensureInternalLoadBalancer(clusterName, clusterID string, s
 	// Determine IP which will be used for this LB. If no forwarding rule has been established
 	// or specified in the Service spec, then requestedIP = "".
 	requestedIP := determineRequestedIP(svc, existingFwdRule)
-	glog.V(2).Infof("ensureInternalLoadBalancer(%v): Existing forwarding rule or service spec says to use IP: %q", loadBalancerName, requestedIP)
 	addrMgr := newAddressManager(gce, nm.String(), gce.Region(), gce.SubnetworkURL(), loadBalancerName, requestedIP, schemeInternal)
 	ipToUse, err := addrMgr.HoldAddress()
 	if err != nil {
 		return nil, err
 	}
+	glog.V(2).Infof("ensureInternalLoadBalancer(%v): reserved IP %q for the forwarding rule", loadBalancerName, ipToUse)
 
 	// Ensure firewall rules if necessary
 	if gce.OnXPN() {
@@ -136,6 +136,7 @@ func (gce *GCECloud) ensureInternalLoadBalancer(clusterName, clusterID string, s
 		if err = gce.CreateRegionForwardingRule(expectedFwdRule, gce.region); err != nil {
 			return nil, err
 		}
+		glog.V(2).Infof("ensureInternalLoadBalancer(%v): created forwarding rule", loadBalancerName)
 	}
 
 	// Delete the previous internal load balancer resources if necessary
