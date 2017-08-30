@@ -25,6 +25,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/kubernetes/pkg/cloudprovider"
+	"strconv"
 )
 
 const instanceInfoURL = "http://169.254.169.254/metadata/v1/InstanceInfo"
@@ -80,8 +81,11 @@ func (az *Cloud) GetZoneByNodeName(nodeName types.NodeName) (cloudprovider.Zone,
 	if !exists {
 		return cloudprovider.Zone{}, nil
 	}
+
+	failureDomain := strconv.Itoa(int(*vm.VirtualMachineProperties.InstanceView.PlatformFaultDomain))
+
 	zone := cloudprovider.Zone{
-		FailureDomain: *(vm.AvailabilitySet.ID),
+		FailureDomain: failureDomain,
 		Region:        *(vm.Location),
 	}
 	return zone, nil
