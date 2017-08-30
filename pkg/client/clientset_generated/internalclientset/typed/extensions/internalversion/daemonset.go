@@ -42,6 +42,9 @@ type DaemonSetInterface interface {
 	List(opts v1.ListOptions) (*extensions.DaemonSetList, error)
 	Watch(opts v1.ListOptions) (watch.Interface, error)
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *extensions.DaemonSet, err error)
+	GetScale(daemonSetName string, options v1.GetOptions) (*extensions.Scale, error)
+	UpdateScale(daemonSetName string, scale *extensions.Scale) (*extensions.Scale, error)
+
 	DaemonSetExpansion
 }
 
@@ -166,6 +169,34 @@ func (c *daemonSets) Patch(name string, pt types.PatchType, data []byte, subreso
 		SubResource(subresources...).
 		Name(name).
 		Body(data).
+		Do().
+		Into(result)
+	return
+}
+
+// GetScale takes name of the daemonSet, and returns the corresponding extensions.Scale object, and an error if there is any.
+func (c *daemonSets) GetScale(daemonSetName string, options v1.GetOptions) (result *extensions.Scale, err error) {
+	result = &extensions.Scale{}
+	err = c.client.Get().
+		Namespace(c.ns).
+		Resource("daemonsets").
+		Name(daemonSetName).
+		SubResource("scale").
+		VersionedParams(&options, scheme.ParameterCodec).
+		Do().
+		Into(result)
+	return
+}
+
+// UpdateScale takes the top resource name and the representation of a scale and updates it. Returns the server's representation of the scale, and an error, if there is any.
+func (c *daemonSets) UpdateScale(daemonSetName string, scale *extensions.Scale) (result *extensions.Scale, err error) {
+	result = &extensions.Scale{}
+	err = c.client.Put().
+		Namespace(c.ns).
+		Resource("daemonsets").
+		Name(daemonSetName).
+		SubResource("scale").
+		Body(scale).
 		Do().
 		Into(result)
 	return
