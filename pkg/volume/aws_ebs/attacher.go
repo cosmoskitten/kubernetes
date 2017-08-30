@@ -253,7 +253,7 @@ func (plugin *awsElasticBlockStorePlugin) NewDetacher() (volume.Detacher, error)
 	}, nil
 }
 
-func (detacher *awsElasticBlockStoreDetacher) Detach(deviceMountPath string, nodeName types.NodeName) error {
+func (detacher *awsElasticBlockStoreDetacher) Detach(_ *volume.Spec, deviceMountPath string, nodeName types.NodeName) error {
 	volumeID := aws.KubernetesVolumeID(path.Base(deviceMountPath))
 
 	attached, err := detacher.awsVolumes.DiskIsAttached(volumeID, nodeName)
