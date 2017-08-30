@@ -39,6 +39,7 @@ import (
 	ipvstest "k8s.io/kubernetes/pkg/util/ipvs/testing"
 
 	"github.com/davecgh/go-spew/spew"
+	"bytes"
 )
 
 const testHostname = "test-hostname"
@@ -112,6 +113,9 @@ func NewFakeProxier(ipt utiliptables.Interface, ipvs utilipvs.Interface, nodeIPs
 		healthChecker:    newFakeHealthChecker(),
 		ipvsScheduler:    DefaultScheduler,
 		ipGetter:         &fakeIPGetter{nodeIPs: nodeIPs},
+		iptablesData:     bytes.NewBuffer(nil),
+		natChains:        bytes.NewBuffer(nil),
+		natRules:         bytes.NewBuffer(nil),
 	}
 }
 
