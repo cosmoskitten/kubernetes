@@ -46,3 +46,33 @@ pkg_tar(
         "//cluster/saltbase:salt-manifests",
     ],
 )
+
+sh_test(
+    name = "common",
+    srcs = ["common_test.sh"],
+    deps = ["//hack:test-shlib"],
+    data = [
+        "all-srcs",
+        "//hack/lib:all-srcs",
+    ],
+)
+
+sh_test(
+    name = "clientbin",
+    srcs = ["clientbin_test.sh"],
+    deps = ["//hack:test-shlib"],
+    data = [
+        "all-srcs",
+        "//hack/lib:all-srcs",
+    ],
+)
+
+sh_test(
+    name = "kube-util",
+    srcs = ["kube-util_test.sh"],
+    deps = ["//hack:test-shlib"],
+    data = [
+        "all-srcs",
+        "//hack/lib:all-srcs",
+    ],
+)
