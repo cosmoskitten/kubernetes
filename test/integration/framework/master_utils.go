@@ -59,6 +59,8 @@ import (
 	extclient "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
+	kubeapiserveroptions "k8s.io/kubernetes/cmd/kube-apiserver/app/options"
+	kubeapiservertesting "k8s.io/kubernetes/cmd/kube-apiserver/app/testing"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/testapi"
 	"k8s.io/kubernetes/pkg/apis/batch"
@@ -514,4 +516,12 @@ func FindFreeLocalPort() (int, error) {
 		return 0, err
 	}
 	return port, nil
+}
+
+// NewInProcessEtcd create an independent etcd server instance in-process.
+func NewKubeApiserverTestingEtcd(t *testing.T) (kubeapiservertesting.EtcdServer, *storagebackend.Config) {
+	kubeAPIServerOptions := kubeapiserveroptions.NewServerRunOptions()
+	cfg := kubeAPIServerOptions.Etcd.StorageConfig
+	cfg.ServerList = []string{GetEtcdURL()}
+	return &sharedEtcdServer{}, &cfg
 }

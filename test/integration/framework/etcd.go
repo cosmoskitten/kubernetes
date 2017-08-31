@@ -27,9 +27,9 @@ import (
 	"path/filepath"
 	"sync"
 
-	"k8s.io/kubernetes/pkg/util/env"
-
 	"github.com/golang/glog"
+
+	"k8s.io/kubernetes/pkg/util/env"
 )
 
 var (
@@ -106,4 +106,10 @@ func EtcdMain(tests func() int) {
 // return the EtcdURL
 func GetEtcdURL() string {
 	return etcdURL
+}
+
+type sharedEtcdServer struct {
+}
+
+func (s *sharedEtcdServer) Release() {
 }
