@@ -13,7 +13,8 @@ go_library(
     tags = ["automanaged"],
     deps = [
         "//vendor/github.com/googleapis/gnostic/OpenAPIv2:go_default_library",
-        "//vendor/k8s.io/apimachinery/pkg/util/openapiparsing/testing:go_default_library",
+        "//vendor/github.com/googleapis/gnostic/compiler:go_default_library",
+        "//vendor/gopkg.in/yaml.v2:go_default_library",
     ],
 )
 
