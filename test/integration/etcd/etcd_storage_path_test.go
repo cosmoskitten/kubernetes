@@ -20,36 +20,24 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"mime"
-	"net"
 	"net/http"
-	"os"
 	"reflect"
 	"strings"
-	"sync/atomic"
 	"testing"
 	"time"
 
-	"k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/diff"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/apimachinery/pkg/util/wait"
-	genericapiserver "k8s.io/apiserver/pkg/server"
 	"k8s.io/apiserver/pkg/storage/storagebackend"
-	clientset "k8s.io/client-go/kubernetes"
-	kclient "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/client-go/util/flowcontrol"
-	"k8s.io/kubernetes/cmd/kube-apiserver/app"
-	"k8s.io/kubernetes/cmd/kube-apiserver/app/options"
 	kapi "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/test/integration/framework"
@@ -59,6 +47,7 @@ import (
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/pkg/transport"
+	testing2 "k8s.io/kubernetes/cmd/kube-apiserver/app/testing"
 )
 
 // Etcd data for all persisted objects.
@@ -490,12 +479,10 @@ const testNamespace = "etcdstoragepathtestnamespace"
 // It will also fail when a type gets moved to a different location. Be very careful in this situation because
 // it essentially means that you will be break old clusters unless you create some migration path for the old data.
 func TestEtcdStoragePath(t *testing.T) {
-	certDir, _ := ioutil.TempDir("", "test-integration-etcd")
-	defer os.RemoveAll(certDir)
-
-	client, kvClient, mapper := startRealMasterOrDie(t, certDir)
+	client, kvClient, mapper, tearDown := startRealMasterOrDie(t)
 	defer func() {
 		dumpEtcdKVOnFailure(t, kvClient)
+		tearDown()
 	}()
 
 	kindSeen := sets.NewString()
@@ -645,101 +632,21 @@ func TestEtcdStoragePath(t *testing.T) {
 	}
 }
 
-func startRealMasterOrDie(t *testing.T, certDir string) (*allClient, clientv3.KV, meta.RESTMapper) {
-	_, defaultServiceClusterIPRange, err := net.ParseCIDR("10.0.0.0/24")
+func startRealMasterOrDie(t *testing.T) (*allClient, clientv3.KV, meta.RESTMapper, func()) {
+	restConfig, opts, tearDown := testing2.StartTestServerOrDie(t, framework.NewKubeApiserverTestingEtcd)
+	client, err := newClient(*restConfig)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	kubeClientConfigValue := atomic.Value{}
-	storageConfigValue := atomic.Value{}
-
-	go func() {
-		for {
-			kubeAPIServerOptions := options.NewServerRunOptions()
-			kubeAPIServerOptions.SecureServing.BindAddress = net.ParseIP("127.0.0.1")
-			kubeAPIServerOptions.SecureServing.ServerCert.CertDirectory = certDir
-			kubeAPIServerOptions.Etcd.StorageConfig.ServerList = []string{framework.GetEtcdURL()}
-			kubeAPIServerOptions.Etcd.DefaultStorageMediaType = runtime.ContentTypeJSON // TODO use protobuf?
-			kubeAPIServerOptions.ServiceClusterIPRange = *defaultServiceClusterIPRange
-			kubeAPIServerOptions.Authorization.Mode = "RBAC"
-
-			// always get a fresh port in case something claimed the old one
-			kubePort, err := framework.FindFreeLocalPort()
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			kubeAPIServerOptions.SecureServing.BindPort = kubePort
-
-			tunneler, proxyTransport, err := app.CreateNodeDialer(kubeAPIServerOptions)
-			if err != nil {
-				t.Fatal(err)
-			}
-			kubeAPIServerConfig, sharedInformers, _, _, _, err := app.CreateKubeAPIServerConfig(kubeAPIServerOptions, tunneler, proxyTransport)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			kubeAPIServerConfig.APIResourceConfigSource = &allResourceSource{} // force enable all resources
-
-			kubeAPIServer, err := app.CreateKubeAPIServer(kubeAPIServerConfig, genericapiserver.EmptyDelegate, sharedInformers)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			kubeClientConfigValue.Store(kubeAPIServerConfig.GenericConfig.LoopbackClientConfig)
-			storageConfigValue.Store(kubeAPIServerOptions.Etcd.StorageConfig)
-
-			if err := kubeAPIServer.GenericAPIServer.PrepareRun().Run(wait.NeverStop); err != nil {
-				t.Log(err)
-			}
-
-			time.Sleep(100 * time.Millisecond)
-		}
-	}()
-
-	if err := wait.PollImmediate(100*time.Millisecond, 10*time.Second, func() (done bool, err error) {
-		obj := kubeClientConfigValue.Load()
-		if obj == nil {
-			return false, nil
-		}
-		kubeClientConfig := kubeClientConfigValue.Load().(*restclient.Config)
-		kubeClient, err := kclient.NewForConfig(kubeClientConfig)
-		if err != nil {
-			// this happens because we race the API server start
-			t.Log(err)
-			return false, nil
-		}
-		if _, err := kubeClient.Discovery().ServerVersion(); err != nil {
-			return false, nil
-		}
-		return true, nil
-	}); err != nil {
-		t.Fatal(err)
-	}
-
-	kubeClientConfig := kubeClientConfigValue.Load().(*restclient.Config)
-	storageConfig := storageConfigValue.Load().(storagebackend.Config)
-
-	kubeClient := clientset.NewForConfigOrDie(kubeClientConfig)
-	if _, err := kubeClient.CoreV1().Namespaces().Create(&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: testNamespace}}); err != nil {
-		t.Fatal(err)
-	}
-
-	client, err := newClient(*kubeClientConfig)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	kvClient, err := getEtcdKVClient(storageConfig)
+	kvClient, err := getEtcdKVClient(opts.Etcd.StorageConfig)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	mapper, _ := util.NewFactory(clientcmd.NewDefaultClientConfig(*clientcmdapi.NewConfig(), &clientcmd.ConfigOverrides{})).Object()
 
-	return client, kvClient, mapper
+	return client, kvClient, mapper, tearDown
 }
 
 func dumpEtcdKVOnFailure(t *testing.T, kvClient clientv3.KV) {
