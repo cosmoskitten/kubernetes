@@ -27,7 +27,6 @@ import (
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
-	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -40,7 +39,7 @@ import (
 	utilfeaturetesting "k8s.io/apiserver/pkg/util/feature/testing"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/kube-aggregator/pkg/apis/apiregistration"
+	apiregistrationv1beta1 "k8s.io/kube-aggregator/pkg/apis/apiregistration"
 )
 
 func TestRun(t *testing.T) {
@@ -429,10 +428,10 @@ func TestOpenAPIDelegationChainPlumbing(t *testing.T) {
 	}
 
 	matchedExtension := false
-	extensionsPrefix := "/apis/" + apiextensions.GroupName
+	extensionsPrefix := "/apis/" + apiextensionsv1beta1.GroupName
 
 	matchedRegistration := false
-	registrationPrefix := "/apis/" + apiregistration.GroupName
+	registrationPrefix := "/apis/" + apiregistrationv1beta1.GroupName
 
 	for path := range doc.Paths {
 		if strings.HasPrefix(path, extensionsPrefix) {
