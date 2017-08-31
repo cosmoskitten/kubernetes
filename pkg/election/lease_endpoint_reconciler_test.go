@@ -18,7 +18,7 @@ package election
 
 /*
 Original Source:
-https://github.com/openshift/origin/blob/master/pkg/cmd/server/election/lease_endpoint_reconciler.go
+https://github.com/openshift/origin/blob/master/pkg/cmd/server/election/lease_endpoint_reconciler_test.go
 */
 
 import (
