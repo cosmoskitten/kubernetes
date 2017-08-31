@@ -22,12 +22,15 @@ import (
 	"os"
 	"path"
 
+	"strings"
+
 	"github.com/golang/glog"
 	"k8s.io/api/core/v1"
 	storage "k8s.io/api/storage/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/sets"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/pkg/api"
 	v1helper "k8s.io/kubernetes/pkg/api/v1/helper"
@@ -234,4 +237,18 @@ func LoadPodFromFile(filePath string) (*v1.Pod, error) {
 		return nil, fmt.Errorf("failed decoding file: %v", err)
 	}
 	return pod, nil
+}
+
+// ZonesToSet converts a string containing a comma separated list of zones to set
+func ZonesToSet(zonesString string) (sets.String, error) {
+	zonesSlice := strings.Split(zonesString, ",")
+	zonesSet := make(sets.String)
+	for _, zone := range zonesSlice {
+		trimmedZone := strings.TrimSpace(zone)
+		if trimmedZone == "" {
+			return make(sets.String), fmt.Errorf("comma separated list of zones (%q) must not contain an empty zone", zonesString)
+		}
+		zonesSet.Insert(trimmedZone)
+	}
+	return zonesSet, nil
 }
