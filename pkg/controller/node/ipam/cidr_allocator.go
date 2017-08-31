@@ -79,21 +79,14 @@ func New(kubeClient clientset.Interface, cloud cloudprovider.Interface, allocato
 		return nil, err
 	}
 
-	var cidrAllocator CIDRAllocator
-
 	switch allocatorType {
 	case RangeAllocatorType:
-		cidrAllocator, err = NewCIDRRangeAllocator(kubeClient, clusterCIDR, serviceCIDR, nodeCIDRMaskSize, nodeList)
+		return NewCIDRRangeAllocator(kubeClient, clusterCIDR, serviceCIDR, nodeCIDRMaskSize, nodeList)
 	case CloudAllocatorType:
-		cidrAllocator, err = NewCloudCIDRAllocator(kubeClient, cloud)
+		return NewCloudCIDRAllocator(kubeClient, cloud)
 	default:
 		return nil, fmt.Errorf("Invalid CIDR allocator type: %v", allocatorType)
 	}
-	if err != nil {
-		return nil, err
-	}
-
-	return cidrAllocator, nil
 }
 
 func listNodes(kubeClient clientset.Interface) (*v1.NodeList, error) {

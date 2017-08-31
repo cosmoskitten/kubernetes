@@ -327,9 +327,9 @@ func (op *updateOp) allocateRange(ctx context.Context, sync *NodeSync, node *v1.
 	if err != nil {
 		return err
 	}
-	// If addAlias returns an hard error, cidrRange will be is leaked as there
-	// is no durable record of the range. The missing space will be recovered on
-	// the next restart of the controller.
+	// If addAlias returns a hard error, cidrRange will be leaked as there
+	// is no durable record of the range. The missing space will be
+	// recovered on the next restart of the controller.
 	if err := sync.cloudAlias.AddAlias(ctx, node.Name, cidrRange); err != nil {
 		glog.Errorf("Could not add alias %v for node %q: %v", cidrRange, node.Name, err)
 		return err
