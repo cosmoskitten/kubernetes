@@ -3619,3 +3619,96 @@ func TestVolumeZonePredicate(t *testing.T) {
 
 	}
 }
+
+func TestVolumeZonePredicateMultiZone(t *testing.T) {
+	pvInfo := FakePersistentVolumeInfo{
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: "Vol_1", Labels: map[string]string{kubeletapis.LabelZoneFailureDomain: "zone_1"}},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: "Vol_2", Labels: map[string]string{kubeletapis.LabelZoneFailureDomain: "zone_2", "uselessLabel": "none"}},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: "Vol_3", Labels: map[string]string{kubeletapis.LabelZoneFailureDomain: "zone_3, zone_1"}},
+		},
+	}
+
+	pvcInfo := FakePersistentVolumeClaimInfo{
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: "PVC_1", Namespace: "default"},
+			Spec:       v1.PersistentVolumeClaimSpec{VolumeName: "Vol_1"},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: "PVC_2", Namespace: "default"},
+			Spec:       v1.PersistentVolumeClaimSpec{VolumeName: "Vol_2"},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: "PVC_3", Namespace: "default"},
+			Spec:       v1.PersistentVolumeClaimSpec{VolumeName: "Vol_3"},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: "PVC_4", Namespace: "default"},
+			Spec:       v1.PersistentVolumeClaimSpec{VolumeName: "Vol_not_exist"},
+		},
+	}
+
+	tests := []struct {
+		Name string
+		Pod  *v1.Pod
+		Fits bool
+		Node *v1.Node
+	}{
+		{
+			Name: "node without labels",
+			Pod:  createPodWithVolume("pod_1", "Vol_3", "PVC_3"),
+			Node: &v1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "host1",
+				},
+			},
+			Fits: true,
+		},
+		{
+			Name: "label zone failure domain matched",
+			Pod:  createPodWithVolume("pod_1", "Vol_3", "PVC_3"),
+			Node: &v1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:   "host1",
+					Labels: map[string]string{kubeletapis.LabelZoneFailureDomain: "zone_1", "uselessLabel": "none"},
+				},
+			},
+			Fits: true,
+		},
+		{
+			Name: "label zone failure domain failed match",
+			Pod:  createPodWithVolume("pod_1", "vol_1", "PVC_1"),
+			Node: &v1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:   "host1",
+					Labels: map[string]string{kubeletapis.LabelZoneFailureDomain: "zone_2", "uselessLabel": "none"},
+				},
+			},
+			Fits: false,
+		},
+	}
+
+	expectedFailureReasons := []algorithm.PredicateFailureReason{ErrVolumeZoneConflict}
+
+	for _, test := range tests {
+		fit := NewVolumeZonePredicate(pvInfo, pvcInfo)
+		node := &schedulercache.NodeInfo{}
+		node.SetNode(test.Node)
+
+		fits, reasons, err := fit(test.Pod, nil, node)
+		if err != nil {
+			t.Errorf("%s: unexpected error: %v", test.Name, err)
+		}
+		if !fits && !reflect.DeepEqual(reasons, expectedFailureReasons) {
+			t.Errorf("%s: unexpected failure reasons: %v, want: %v", test.Name, reasons, expectedFailureReasons)
+		}
+		if fits != test.Fits {
+			t.Errorf("%s: expected %v got %v", test.Name, test.Fits, fits)
+		}
+
+	}
+}
