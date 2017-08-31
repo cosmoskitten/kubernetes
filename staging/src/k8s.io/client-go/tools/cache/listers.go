@@ -31,30 +31,12 @@ import (
 type AppendFunc func(interface{})
 
 func ListAll(store Store, selector labels.Selector, appendFn AppendFunc) error {
-	for _, m := range store.List() {
-		metadata, err := meta.Accessor(m)
-		if err != nil {
-			return err
-		}
-		if selector.Matches(labels.Set(metadata.GetLabels())) {
-			appendFn(m)
-		}
-	}
-	return nil
+	return listAll(store.List(), selector, appendFn)
 }
 
 func ListAllByNamespace(indexer Indexer, namespace string, selector labels.Selector, appendFn AppendFunc) error {
 	if namespace == metav1.NamespaceAll {
-		for _, m := range indexer.List() {
-			metadata, err := meta.Accessor(m)
-			if err != nil {
-				return err
-			}
-			if selector.Matches(labels.Set(metadata.GetLabels())) {
-				appendFn(m)
-			}
-		}
-		return nil
+		return ListAll(indexer, selector, appendFn)
 	}
 
 	items, err := indexer.Index(NamespaceIndex, &metav1.ObjectMeta{Namespace: namespace})
@@ -73,7 +55,11 @@ func ListAllByNamespace(indexer Indexer, namespace string, selector labels.Selec
 		}
 		return nil
 	}
-	for _, m := range items {
+	return listAll(items, selector, appendFn)
+}
+
+func listAll(list []interface{}, selector labels.Selector, appendFn AppendFunc) error {
+	for _, m := range list {
 		metadata, err := meta.Accessor(m)
 		if err != nil {
 			return err
@@ -82,7 +68,6 @@ func ListAllByNamespace(indexer Indexer, namespace string, selector labels.Selec
 			appendFn(m)
 		}
 	}
-
 	return nil
 }
 
