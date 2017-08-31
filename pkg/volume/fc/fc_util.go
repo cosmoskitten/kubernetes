@@ -22,9 +22,11 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/golang/glog"
+	"k8s.io/api/core/v1"
 	"k8s.io/kubernetes/pkg/volume"
 )
 
@@ -143,12 +145,21 @@ func scsiHostRescan(io ioHandler) {
 	}
 }
 
-// make a directory like /var/lib/kubelet/plugins/kubernetes.io/pod/fc/target-lun-0
+// make a directory like /var/lib/kubelet/plugins/kubernetes.io/fc/target-lun-0
 func makePDNameInternal(host volume.VolumeHost, wwns []string, lun string, wwids []string) string {
 	if len(wwns) != 0 {
 		return path.Join(host.GetPluginDir(fcPluginName), wwns[0]+"-lun-"+lun)
 	} else {
 		return path.Join(host.GetPluginDir(fcPluginName), wwids[0])
+	}
+}
+
+// make a directory like /var/lib/kubelet/plugins/kubernetes.io/fc/volumeDevices/target-lun-0
+func makeVDPDNameInternal(host volume.VolumeHost, wwns []string, lun string, wwids []string) string {
+	if len(wwns) != 0 {
+		return path.Join(host.GetVolumeDevicePluginDir(fcPluginName), wwns[0]+"-lun-"+lun)
+	} else {
+		return path.Join(host.GetVolumeDevicePluginDir(fcPluginName), wwids[0])
 	}
 }
 
@@ -158,7 +169,12 @@ func (util *FCUtil) MakeGlobalPDName(fc fcDisk) string {
 	return makePDNameInternal(fc.plugin.host, fc.wwns, fc.lun, fc.wwids)
 }
 
-func searchDisk(b fcDiskMounter) (string, string) {
+// Global volume device plugin dir
+func (util *FCUtil) MakeGlobalVDPDName(fc fcDisk) string {
+	return makeVDPDNameInternal(fc.plugin.host, fc.wwns, fc.lun, fc.wwids)
+}
+
+func searchDisk(b fcDiskMounter) (string, error) {
 	var diskIds []string
 	var disk string
 	var dm string
@@ -198,14 +214,6 @@ func searchDisk(b fcDiskMounter) (string, string) {
 		scsiHostRescan(io)
 		rescaned = true
 	}
-	return disk, dm
-}
-
-func (util *FCUtil) AttachDisk(b fcDiskMounter) (string, error) {
-	devicePath := ""
-	var disk, dm string
-
-	disk, dm = searchDisk(b)
 	// if no disk matches input wwn and lun, exit
 	if disk == "" && dm == "" {
 		return "", fmt.Errorf("no fc disk found")
@@ -213,10 +221,41 @@ func (util *FCUtil) AttachDisk(b fcDiskMounter) (string, error) {
 
 	// if multipath devicemapper device is found, use it; otherwise use raw disk
 	if dm != "" {
-		devicePath = dm
-	} else {
-		devicePath = disk
+		return dm, nil
 	}
+	return disk, nil
+}
+
+func GetWwnsLunWwids(fc *v1.FCVolumeSource) ([]string, string, []string, error) {
+	var lun string
+	var wwids []string
+	if fc.Lun != nil && len(fc.TargetWWNs) != 0 {
+		lun = strconv.Itoa(int(*fc.Lun))
+		return fc.TargetWWNs, lun, wwids, nil
+	}
+	if len(fc.WWIDs) != 0 {
+		for _, wwid := range fc.WWIDs {
+			wwids = append(wwids, strings.Replace(wwid, " ", "_", -1))
+		}
+		return fc.TargetWWNs, lun, wwids, nil
+	}
+	return nil, "", nil, fmt.Errorf("fc: no fc disk information found. failed to make a new mounter")
+}
+
+func (util *FCUtil) AttachDisk(b fcDiskMounter) (string, error) {
+	devicePath, err := searchDisk(b)
+	if err != nil {
+		return "", err
+	}
+	glog.Infof("#### DEBUG LOG ####: AttachDisk devicePath: %s", devicePath)
+	glog.Infof("#### DEBUG LOG ####: AttachDisk b.volumeMode: %s", b.volumeMode)
+	glog.Infof("#### DEBUG LOG ####: AttachDisk b: %v", b)
+	// If the volumeMode is 'Block', plugin don't have to format the volume.
+	// The globalPDPath will be created by operationexecutor. Just return devicePath here.
+	if b.volumeMode == v1.PersistentVolumeBlock {
+		return devicePath, nil
+	}
+
 	// mount it
 	globalPDPath := util.MakeGlobalPDName(*b.fcDisk)
 	if err := os.MkdirAll(globalPDPath, 0750); err != nil {
