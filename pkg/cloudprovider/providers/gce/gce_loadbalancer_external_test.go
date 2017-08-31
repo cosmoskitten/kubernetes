@@ -119,11 +119,10 @@ func TestVerifyRequestedIP(t *testing.T) {
 			expectErr: false,
 		},
 		"requested IP exists, but network tier does not match": {
-			requestedIP:     "1.1.1.1",
-			netTier:         NetworkTierStandard,
-			addrList:        []*computealpha.Address{{Name: "foo", Address: "1.1.1.1", NetworkTier: "PREMIUM"}},
-			expectErr:       true,
-			expectUserOwned: true,
+			requestedIP: "1.1.1.1",
+			netTier:     NetworkTierStandard,
+			addrList:    []*computealpha.Address{{Name: "foo", Address: "1.1.1.1", NetworkTier: "PREMIUM"}},
+			expectErr:   true,
 		},
 	} {
 		t.Run(desc, func(t *testing.T) {
