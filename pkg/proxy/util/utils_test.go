@@ -21,8 +21,12 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/kubernetes/pkg/api"
+	proxytest "k8s.io/kubernetes/pkg/proxy/util/testing"
 )
+
+const dummyDevice = "kube-ipvs0"
 
 func TestShouldSkipService(t *testing.T) {
 	testCases := []struct {
@@ -107,5 +111,54 @@ func TestShouldSkipService(t *testing.T) {
 		if skip != testCases[i].shouldSkip {
 			t.Errorf("case %d: expect %v, got %v", i, testCases[i].shouldSkip, skip)
 		}
+	}
+}
+
+func TestEnsureAddressBind(t *testing.T) {
+	testIP := "10.20.30.40"
+	handle := proxytest.NewFakeNetlinkHandle()
+	// Success.
+	exists, err := EnsureAddressBind(testIP, dummyDevice, handle)
+	if err != nil {
+		t.Errorf("expected success, got %v", err)
+	}
+	if exists {
+		t.Errorf("expected exists = false")
+	}
+	if _, ok := handle.BoundIP[dummyDevice]; !ok {
+		t.Errorf("expected ip bound on %s", dummyDevice)
+	}
+	if handle.BoundIP[dummyDevice].Len() != 1 || !handle.BoundIP[dummyDevice].Has(testIP+"/32") {
+		t.Errorf("wrong bound ip, got %v", handle.BoundIP[dummyDevice].List())
+	}
+	// Exists.
+	exists, err = EnsureAddressBind(testIP, dummyDevice, handle)
+	if err != nil {
+		t.Errorf("expected success, got %v", err)
+	}
+	if !exists {
+		t.Errorf("expected exists = true")
+	}
+}
+
+func TestUnbindAddress(t *testing.T) {
+	testIP := "10.20.30.41"
+	handle := proxytest.NewFakeNetlinkHandle()
+	handle.BoundIP[dummyDevice] = sets.NewString(testIP+"/32", "10.20.30.42/32")
+	// Success.
+	err := UnbindAddress(testIP, dummyDevice, handle)
+	if err != nil {
+		t.Errorf("expected success, got %v", err)
+	}
+	if handle.BoundIP[dummyDevice].Len() != 1 {
+		t.Errorf("expected 1 ip left, got %v", handle.BoundIP[dummyDevice].List())
+	}
+	if handle.BoundIP[dummyDevice].Has(testIP + "/32") {
+		t.Errorf("wrong ip left, got %v", handle.BoundIP[dummyDevice].List())
+	}
+	// Failure.
+	err = UnbindAddress(testIP, dummyDevice, handle)
+	if err == nil {
+		t.Errorf("expected failure")
 	}
 }

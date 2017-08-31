@@ -17,13 +17,16 @@ limitations under the License.
 package util
 
 import (
+	"fmt"
 	"net"
+	"syscall"
 
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/helper"
 
 	"github.com/golang/glog"
+	"github.com/vishvananda/netlink"
 )
 
 func IsLocalIP(ip string) (bool, error) {
@@ -55,4 +58,46 @@ func ShouldSkipService(svcName types.NamespacedName, service *api.Service) bool 
 		return true
 	}
 	return false
+}
+
+type NetlinkHandle interface {
+	AddrAdd(link netlink.Link, addr *netlink.Addr) error
+	AddrDel(link netlink.Link, addr *netlink.Addr) error
+	LinkByName(dev string) (netlink.Link, error)
+}
+
+// EnsureAddressBind checks if address is bound to the interface and, if not, binds it. If the address is already bound, return true.
+func EnsureAddressBind(address, devName string, h NetlinkHandle) (exist bool, err error) {
+	dev, err := h.LinkByName(devName)
+	if err != nil {
+		return false, fmt.Errorf("error get interface: %s, err: %v", devName, err)
+	}
+	addr, err := netlink.ParseAddr(address + "/32")
+	if err != nil {
+		return false, fmt.Errorf("error parse ip address: %s/32, err: %v", address, err)
+	}
+	if err := h.AddrAdd(dev, addr); err != nil {
+		// "EEXIST" will be returned if the address is already bound to device
+		if err == syscall.Errno(syscall.EEXIST) {
+			return true, nil
+		}
+		return false, fmt.Errorf("error bind address: %s to interface: %s, err: %v", address, devName, err)
+	}
+	return false, nil
+}
+
+// UnbindAddress unbind address with the interface
+func UnbindAddress(address, devName string, h NetlinkHandle) error {
+	dev, err := h.LinkByName(devName)
+	if err != nil {
+		return fmt.Errorf("error get interface: %s, err: %v", devName, err)
+	}
+	addr, err := netlink.ParseAddr(address + "/32")
+	if err != nil {
+		return fmt.Errorf("error parse ip address: %s/32, err: %v", address, err)
+	}
+	if err := h.AddrDel(dev, addr); err != nil {
+		return fmt.Errorf("error unbind address: %s from interface: %s, err: %v", address, devName, err)
+	}
+	return nil
 }

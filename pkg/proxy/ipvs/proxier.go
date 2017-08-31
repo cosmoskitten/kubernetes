@@ -31,6 +31,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	"github.com/vishvananda/netlink"
 
 	clientv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -125,7 +126,8 @@ type Proxier struct {
 	healthzServer  healthcheck.HealthzUpdater
 	ipvsScheduler  string
 	// Added as a member to the struct to allow injection for testing.
-	ipGetter IPGetter
+	ipGetter      IPGetter
+	netlinkHandle utilproxy.NetlinkHandle
 }
 
 // IPGetter helps get node network interface IP
@@ -268,6 +270,7 @@ func NewProxier(ipt utiliptables.Interface, ipvs utilipvs.Interface,
 		ipvs:             ipvs,
 		ipvsScheduler:    scheduler,
 		ipGetter:         &realIPGetter{},
+		netlinkHandle:    &netlink.Handle{},
 	}, nil
 }
 
@@ -1239,7 +1242,7 @@ func (proxier *Proxier) syncService(svcName string, vs *utilipvs.VirtualServer, 
 	// bind service address to dummy interface even if service not changed,
 	// in case that service IP was removed by other processes
 	if bindAddr {
-		_, err := proxier.ipvs.EnsureVirtualServerAddressBind(vs, DefaultDummyDevice)
+		_, err := utilproxy.EnsureAddressBind(vs.Address.String(), DefaultDummyDevice, proxier.netlinkHandle)
 		if err != nil {
 			glog.Errorf("Failed to bind service address to dummy device %q: %v", svcName, err)
 			return err
@@ -1328,6 +1331,7 @@ func (proxier *Proxier) syncEndpoint(svcPortName proxy.ServicePortName, onlyNode
 }
 
 func (proxier *Proxier) cleanLegacyService(atciveServices map[string]bool, currentServices map[string]*utilipvs.VirtualServer) {
+	unbindIPAddr := sets.NewString()
 	for cS := range currentServices {
 		if !atciveServices[cS] {
 			svc := currentServices[cS]
@@ -1335,10 +1339,14 @@ func (proxier *Proxier) cleanLegacyService(atciveServices map[string]bool, curre
 			if err != nil {
 				glog.Errorf("Failed to delete service, error: %v", err)
 			}
-			err = proxier.ipvs.UnbindVirtualServerAddress(svc, DefaultDummyDevice)
-			if err != nil {
-				glog.Errorf("Failed to unbind service from dummy interface, error: %v", err)
-			}
+			unbindIPAddr.Insert(svc.Address.String())
+		}
+	}
+
+	for _, addr := range unbindIPAddr.UnsortedList() {
+		err := utilproxy.UnbindAddress(addr, DefaultDummyDevice, proxier.netlinkHandle)
+		if err != nil {
+			glog.Errorf("Failed to unbind service from dummy interface, error: %v", err)
 		}
 	}
 }

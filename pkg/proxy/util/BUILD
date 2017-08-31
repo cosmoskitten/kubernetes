@@ -12,6 +12,7 @@ go_library(
         "//pkg/api:go_default_library",
         "//pkg/api/helper:go_default_library",
         "//vendor/github.com/golang/glog:go_default_library",
+        "//vendor/github.com/vishvananda/netlink:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/types:go_default_library",
         "//vendor/k8s.io/utils/exec:go_default_library",
     ],
@@ -27,8 +28,10 @@ go_test(
     library = ":go_default_library",
     deps = [
         "//pkg/api:go_default_library",
+        "//pkg/proxy/util/testing:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/types:go_default_library",
+        "//vendor/k8s.io/apimachinery/pkg/util/sets:go_default_library",
         "//vendor/k8s.io/utils/exec:go_default_library",
         "//vendor/k8s.io/utils/exec/testing:go_default_library",
     ],
