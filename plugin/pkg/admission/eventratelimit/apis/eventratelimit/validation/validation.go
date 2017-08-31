@@ -25,11 +25,11 @@ import (
 	eventratelimitapi "k8s.io/kubernetes/plugin/pkg/admission/eventratelimit/apis/eventratelimit"
 )
 
-var LimitTypes map[eventratelimitapi.LimitType]bool = map[eventratelimitapi.LimitType]bool{
-	eventratelimitapi.ServerLimitType:       true,
-	eventratelimitapi.NamespaceLimitType:    true,
-	eventratelimitapi.UserLimitType:         true,
-	eventratelimitapi.SourceObjectLimitType: true,
+var limitTypes map[eventratelimitapi.LimitType]bool = map[eventratelimitapi.LimitType]bool{
+	eventratelimitapi.ServerLimitType:          true,
+	eventratelimitapi.NamespaceLimitType:       true,
+	eventratelimitapi.UserLimitType:            true,
+	eventratelimitapi.SourceAndObjectLimitType: true,
 }
 
 // ValidateConfiguration validates the configuration.
@@ -41,14 +41,14 @@ func ValidateConfiguration(config *eventratelimitapi.Configuration) field.ErrorL
 	}
 	for i, limit := range config.Limits {
 		idxPath := limitsPath.Index(i)
-		if !LimitTypes[limit.Type] {
-			limitTypes := make([]string, len(LimitTypes))
+		if !limitTypes[limit.Type] {
+			allowedValues := make([]string, len(LimitTypes))
 			i := 0
 			for limitType := range LimitTypes {
-				limitTypes[i] = string(limitType)
+				allowedValues[i] = string(limitType)
 				i++
 			}
-			allErrs = append(allErrs, field.NotSupported(idxPath.Child("type"), limit.Type, limitTypes))
+			allErrs = append(allErrs, field.NotSupported(idxPath.Child("type"), limit.Type, allowedValues))
 		}
 		if limit.Burst <= 0 {
 			allErrs = append(allErrs, field.Invalid(idxPath.Child("burst"), limit.Burst, "must be positive"))

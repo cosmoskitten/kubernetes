@@ -18,51 +18,68 @@ package v1alpha1
 
 import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-// Type of limit (e.g., per-namespace)
+// LimitType is the type of the limit (e.g., per-namespace)
 type LimitType string
 
 const (
-	// ServerLimitType limits are maintained against all events received by the server
+	// ServerLimitType is a type of limit where there is one bucket shared by
+	// all of the event queries received by the API Server.
 	ServerLimitType LimitType = "server"
-	// NamespaceLimitType limits are maintained against events from each namespace
+	// NamespaceLimitType is a type of limit where there is one bucket used by
+	// each namespace
 	NamespaceLimitType LimitType = "namespace"
-	// UserLimitType limits are maintained against events from each user
+	// UserLimitType is a type of limit where there is one bucket used by each
+	// user
 	UserLimitType LimitType = "user"
-	// SourceObjectLimitType limits are maintained against events from each source+object
-	SourceObjectLimitType LimitType = "source+object"
+	// SourceAndObjectLimitType is a type of limit where there is one bucket used
+	// by each combination of source and involved object of the event.
+	SourceAndObjectLimitType LimitType = "sourceAndObject"
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// Configuration provides configuration for the ResourceQuota admission controller.
+// Configuration provides configuration for the EventRateLimit admission
+// controller.
 type Configuration struct {
 	metav1.TypeMeta `json:",inline"`
 
-	// Limits to place on events received.
+	// limits are the limits to place on event queries received.
 	// Limits can be placed on events received server-wide, per namespace,
 	// per user, and per source+object.
 	// At least one limit is required.
 	Limits []Limit `json:"limits"`
 }
 
+// Limit is the configuration for a particular limit type
 type Limit struct {
-	// Type of limit.
+	// type is the type of limit to which this configuration applies
 	Type LimitType `json:"type"`
 
-	// Maximum QPS of events for this limit
+	// qps is the number of event queries per second that are allowed for this
+	// type of limit. The qps and burst fields are used together to determine if
+	// a particular event query is accepted. The qps determines how many queries
+	// are accepted once the burst amount of queries has been exhausted.
 	QPS float32 `json:"qps"`
 
-	// Maximum burst for throttle of events for this limit
-	Burst int64 ` json:"burst"`
+	// burst is the burst number of event queries that are allowed for this type
+	// of limit. The qps and burst fields are used together to determine if a
+	// particular event query is accepted. The burst determines the maximum size
+	// of the allowance granted for a particular bucket. For example, if the burst
+	// is 10 and the qps is 3, then the admission control will accept 10 queries
+	// before blocking any queries. Every second, 3 more queries will be allowed.
+	// If some of that allowance is not used, then it will roll over to the next
+	// second, until the maximum allowance of 10 is reached.
+	Burst int64 `json:"burst"`
 
-	// Size of the LRU cache for this limit. If a bucket is evicted from the cache,
-	// then the stats for that bucket are reset. If more events are later received
-	// for that bucket, then that bucket will re-enter the cache with a clean slate,
-	// giving that bucket a full Burst number of tokens to use.
+	// cacheSize is the size of the LRU cache for this type of limit. If a bucket
+	// is evicted from the cache, then the allowance for that bucket is reset. If
+	// more queries are later received for an evicted bucket, then that bucket
+	// will re-enter the cache with a clean slate, giving that bucket a full
+	// allowance of burst queries.
 	//
 	// The default cache size is 4096.
 	//
-	// If LimitType is ServerLimitType, then CacheSize is ignored.
+	// If limitType is 'server', then cacheSize is ignored.
 	// +optional
 	CacheSize int64 `json:"cacheSize,omitempty"`
 }

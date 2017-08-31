@@ -107,9 +107,9 @@ func (r request) withDelay(delayInSeconds int) request {
 	return r
 }
 
-// createSourceObjectKeyInclusionRequests creates a series of requests that can be used
+// createSourceAndObjectKeyInclusionRequests creates a series of requests that can be used
 // to test that a particular part of the event is included in the source+object key
-func createSourceObjectKeyInclusionRequests(eventFactory func(label string) *api.Event) []request {
+func createSourceAndObjectKeyInclusionRequests(eventFactory func(label string) *api.Event) []request {
 	return []request{
 		newEventRequest().withEvent(eventFactory("A")),
 		newEventRequest().withEvent(eventFactory("A")).blocked(),
@@ -119,15 +119,15 @@ func createSourceObjectKeyInclusionRequests(eventFactory func(label string) *api
 
 func TestEventRateLimiting(t *testing.T) {
 	cases := []struct {
-		name                  string
-		serverBurst           int64
-		namespaceBurst        int64
-		namespaceCacheSize    int64
-		sourceObjectBurst     int64
-		sourceObjectCacheSize int64
-		userBurst             int64
-		userCacheSize         int64
-		requests              []request
+		name                     string
+		serverBurst              int64
+		namespaceBurst           int64
+		namespaceCacheSize       int64
+		sourceAndObjectBurst     int64
+		sourceAndObjectCacheSize int64
+		userBurst                int64
+		userCacheSize            int64
+		requests                 []request
 	}{
 		{
 			name:        "event not blocked when tokens available",
@@ -267,10 +267,10 @@ func TestEventRateLimiting(t *testing.T) {
 			},
 		},
 		{
-			name:                  "event blocked by source+object limits",
-			serverBurst:           100,
-			sourceObjectBurst:     3,
-			sourceObjectCacheSize: 10,
+			name:                     "event blocked by source+object limits",
+			serverBurst:              100,
+			sourceAndObjectBurst:     3,
+			sourceAndObjectCacheSize: 10,
 			requests: []request{
 				newEventRequest().withEventComponent("A"),
 				newEventRequest().withEventComponent("A"),
@@ -279,10 +279,10 @@ func TestEventRateLimiting(t *testing.T) {
 			},
 		},
 		{
-			name:                  "event from other source+object not blocked",
-			serverBurst:           100,
-			sourceObjectBurst:     3,
-			sourceObjectCacheSize: 10,
+			name:                     "event from other source+object not blocked",
+			serverBurst:              100,
+			sourceAndObjectBurst:     3,
+			sourceAndObjectCacheSize: 10,
 			requests: []request{
 				newEventRequest().withEventComponent("A"),
 				newEventRequest().withEventComponent("A"),
@@ -291,10 +291,10 @@ func TestEventRateLimiting(t *testing.T) {
 			},
 		},
 		{
-			name:                  "events from other source+object should not count against limit",
-			serverBurst:           100,
-			sourceObjectBurst:     3,
-			sourceObjectCacheSize: 10,
+			name:                     "events from other source+object should not count against limit",
+			serverBurst:              100,
+			sourceAndObjectBurst:     3,
+			sourceAndObjectCacheSize: 10,
 			requests: []request{
 				newEventRequest().withEventComponent("A"),
 				newEventRequest().withEventComponent("A"),
@@ -303,10 +303,10 @@ func TestEventRateLimiting(t *testing.T) {
 			},
 		},
 		{
-			name:                  "event accepted after source+object token refill",
-			serverBurst:           100,
-			sourceObjectBurst:     3,
-			sourceObjectCacheSize: 10,
+			name:                     "event accepted after source+object token refill",
+			serverBurst:              100,
+			sourceAndObjectBurst:     3,
+			sourceAndObjectCacheSize: 10,
 			requests: []request{
 				newEventRequest().withEventComponent("A"),
 				newEventRequest().withEventComponent("A"),
@@ -316,10 +316,10 @@ func TestEventRateLimiting(t *testing.T) {
 			},
 		},
 		{
-			name:                  "event from other source+object should not clear source+object limits",
-			serverBurst:           100,
-			sourceObjectBurst:     3,
-			sourceObjectCacheSize: 10,
+			name:                     "event from other source+object should not clear source+object limits",
+			serverBurst:              100,
+			sourceAndObjectBurst:     3,
+			sourceAndObjectCacheSize: 10,
 			requests: []request{
 				newEventRequest().withEventComponent("A"),
 				newEventRequest().withEventComponent("A"),
@@ -329,10 +329,10 @@ func TestEventRateLimiting(t *testing.T) {
 			},
 		},
 		{
-			name:                  "source+object limits from lru source+object should clear when cache size exceeded",
-			serverBurst:           100,
-			sourceObjectBurst:     3,
-			sourceObjectCacheSize: 2,
+			name:                     "source+object limits from lru source+object should clear when cache size exceeded",
+			serverBurst:              100,
+			sourceAndObjectBurst:     3,
+			sourceAndObjectCacheSize: 2,
 			requests: []request{
 				newEventRequest().withEventComponent("A"),
 				newEventRequest().withEventComponent("A"),
@@ -349,56 +349,56 @@ func TestEventRateLimiting(t *testing.T) {
 			},
 		},
 		{
-			name:                  "source host should be included in source+object key",
-			serverBurst:           100,
-			sourceObjectBurst:     1,
-			sourceObjectCacheSize: 10,
-			requests: createSourceObjectKeyInclusionRequests(func(label string) *api.Event {
+			name:                     "source host should be included in source+object key",
+			serverBurst:              100,
+			sourceAndObjectBurst:     1,
+			sourceAndObjectCacheSize: 10,
+			requests: createSourceAndObjectKeyInclusionRequests(func(label string) *api.Event {
 				return &api.Event{Source: api.EventSource{Host: label}}
 			}),
 		},
 		{
-			name:                  "involved object kind should be included in source+object key",
-			serverBurst:           100,
-			sourceObjectBurst:     1,
-			sourceObjectCacheSize: 10,
-			requests: createSourceObjectKeyInclusionRequests(func(label string) *api.Event {
+			name:                     "involved object kind should be included in source+object key",
+			serverBurst:              100,
+			sourceAndObjectBurst:     1,
+			sourceAndObjectCacheSize: 10,
+			requests: createSourceAndObjectKeyInclusionRequests(func(label string) *api.Event {
 				return &api.Event{InvolvedObject: api.ObjectReference{Kind: label}}
 			}),
 		},
 		{
-			name:                  "involved object namespace should be included in source+object key",
-			serverBurst:           100,
-			sourceObjectBurst:     1,
-			sourceObjectCacheSize: 10,
-			requests: createSourceObjectKeyInclusionRequests(func(label string) *api.Event {
+			name:                     "involved object namespace should be included in source+object key",
+			serverBurst:              100,
+			sourceAndObjectBurst:     1,
+			sourceAndObjectCacheSize: 10,
+			requests: createSourceAndObjectKeyInclusionRequests(func(label string) *api.Event {
 				return &api.Event{InvolvedObject: api.ObjectReference{Namespace: label}}
 			}),
 		},
 		{
-			name:                  "involved object name should be included in source+object key",
-			serverBurst:           100,
-			sourceObjectBurst:     1,
-			sourceObjectCacheSize: 10,
-			requests: createSourceObjectKeyInclusionRequests(func(label string) *api.Event {
+			name:                     "involved object name should be included in source+object key",
+			serverBurst:              100,
+			sourceAndObjectBurst:     1,
+			sourceAndObjectCacheSize: 10,
+			requests: createSourceAndObjectKeyInclusionRequests(func(label string) *api.Event {
 				return &api.Event{InvolvedObject: api.ObjectReference{Name: label}}
 			}),
 		},
 		{
-			name:                  "involved object UID should be included in source+object key",
-			serverBurst:           100,
-			sourceObjectBurst:     1,
-			sourceObjectCacheSize: 10,
-			requests: createSourceObjectKeyInclusionRequests(func(label string) *api.Event {
+			name:                     "involved object UID should be included in source+object key",
+			serverBurst:              100,
+			sourceAndObjectBurst:     1,
+			sourceAndObjectCacheSize: 10,
+			requests: createSourceAndObjectKeyInclusionRequests(func(label string) *api.Event {
 				return &api.Event{InvolvedObject: api.ObjectReference{UID: types.UID(label)}}
 			}),
 		},
 		{
-			name:                  "involved object APIVersion should be included in source+object key",
-			serverBurst:           100,
-			sourceObjectBurst:     1,
-			sourceObjectCacheSize: 10,
-			requests: createSourceObjectKeyInclusionRequests(func(label string) *api.Event {
+			name:                     "involved object APIVersion should be included in source+object key",
+			serverBurst:              100,
+			sourceAndObjectBurst:     1,
+			sourceAndObjectCacheSize: 10,
+			requests: createSourceAndObjectKeyInclusionRequests(func(label string) *api.Event {
 				return &api.Event{InvolvedObject: api.ObjectReference{APIVersion: label}}
 			}),
 		},
@@ -463,14 +463,14 @@ func TestEventRateLimiting(t *testing.T) {
 				}
 				config.Limits = append(config.Limits, userLimit)
 			}
-			if tc.sourceObjectBurst > 0 {
-				sourceObjectLimit := eventratelimitapi.Limit{
-					Type:      eventratelimitapi.SourceObjectLimitType,
-					Burst:     tc.sourceObjectBurst,
+			if tc.sourceAndObjectBurst > 0 {
+				sourceAndObjectLimit := eventratelimitapi.Limit{
+					Type:      eventratelimitapi.SourceAndObjectLimitType,
+					Burst:     tc.sourceAndObjectBurst,
 					QPS:       qps,
-					CacheSize: tc.sourceObjectCacheSize,
+					CacheSize: tc.sourceAndObjectCacheSize,
 				}
-				config.Limits = append(config.Limits, sourceObjectLimit)
+				config.Limits = append(config.Limits, sourceAndObjectLimit)
 			}
 			eventratelimit, err := newEventRateLimit(config, clock)
 			if err != nil {

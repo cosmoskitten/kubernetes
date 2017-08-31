@@ -78,8 +78,8 @@ func newLimitEnforcer(config eventratelimitapi.Limit, clock flowcontrol.Clock) (
 		keyFunc = getNamespaceKey
 	case eventratelimitapi.UserLimitType:
 		keyFunc = getUserKey
-	case eventratelimitapi.SourceObjectLimitType:
-		keyFunc = getSourceObjectKey
+	case eventratelimitapi.SourceAndObjectLimitType:
+		keyFunc = getSourceAndObjectKey
 	default:
 		return nil, fmt.Errorf("unknown event rate limit type: %v", t)
 	}
@@ -123,8 +123,8 @@ func getUserKey(attr admission.Attributes) string {
 	return userInfo.GetName()
 }
 
-// getSourceObjectKey returns a cache key that is based on the source+object of the event
-func getSourceObjectKey(attr admission.Attributes) string {
+// getSourceAndObjectKey returns a cache key that is based on the source+object of the event
+func getSourceAndObjectKey(attr admission.Attributes) string {
 	object := attr.GetObject()
 	if object == nil {
 		return ""
