@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	computebeta "google.golang.org/api/compute/v0.beta"
 
 	"k8s.io/kubernetes/pkg/cloudprovider/providers/gce"
 )
@@ -75,6 +76,50 @@ func CreateGCEStaticIP(name string) (string, error) {
 	} else {
 		return "", fmt.Errorf("static IP %q could not be reserved: %v", name, output)
 	}
+}
+
+func CreateGCEInternalStaticIP(name string) (string, error) {
+	gceCloud := TestContext.CloudConfig.Provider.(*gce.GCECloud)
+
+	subnet := gceCloud.SubnetworkURL()
+	if subnet == "" {
+		subnet = subnetURL(gceCloud.NetworkProjectID(), gceCloud.Region(), getNameFromLink(gceCloud.NetworkURL()))
+	}
+
+	addr := &computebeta.Address{
+		Name:        name,
+		AddressType: "INTERNAL",
+		Subnetwork:  subnet,
+	}
+
+	if err := gceCloud.ReserveBetaRegionAddress(addr, gceCloud.Region()); err != nil {
+		return "", err
+	}
+
+	addr, err := gceCloud.GetBetaRegionAddress(name, gceCloud.Region())
+	if err != nil {
+		return "", err
+	}
+
+	return addr.Address, nil
+}
+
+func DeleteGCEInternalStaticIP(name string) error {
+	gceCloud := TestContext.CloudConfig.Provider.(*gce.GCECloud)
+	return gceCloud.DeleteRegionAddress(name, gceCloud.Region())
+}
+
+func getNameFromLink(link string) string {
+	if link == "" {
+		return ""
+	}
+
+	fields := strings.Split(link, "/")
+	return fields[len(fields)-1]
+}
+
+func subnetURL(project, region, subnetwork string) string {
+	return "https://www.googleapis.com/compute/v1/" + strings.Join([]string{"projects", project, "regions", region, "subnetworks", subnetwork}, "/")
 }
 
 func DeleteGCEStaticIP(name string) error {
