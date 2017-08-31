@@ -42,7 +42,7 @@ import (
 	"k8s.io/kubernetes/pkg/api/testapi"
 	apitesting "k8s.io/kubernetes/pkg/api/testing"
 	cmdtesting "k8s.io/kubernetes/pkg/kubectl/cmd/testing"
-	"k8s.io/kubernetes/pkg/kubectl/cmd/util/openapi"
+	openapi "k8s.io/apimachinery/pkg/util/openapiparsing"
 )
 
 func testData() (*api.PodList, *api.ServiceList, *api.ReplicationControllerList) {
