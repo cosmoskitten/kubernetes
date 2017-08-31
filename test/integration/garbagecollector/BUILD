@@ -8,7 +8,10 @@ load(
 go_test(
     name = "go_default_test",
     size = "large",
-    srcs = ["garbage_collector_test.go"],
+    srcs = [
+        "garbage_collector_test.go",
+        "main_test.go",
+    ],
     tags = ["integration"],
     deps = [
         "//cmd/kube-apiserver/app/testing:go_default_library",
