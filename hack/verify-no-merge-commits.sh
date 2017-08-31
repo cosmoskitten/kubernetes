@@ -23,6 +23,9 @@ source "${KUBE_ROOT}/hack/lib/init.sh"
 
 cd "${KUBE_ROOT}"
 
+git show HEAD
+git log --oneline | head -n 50
+
 # potentially skip final merge commit used by CI
 head=HEAD
 if [ "$(git show -q --format="%an")" = "k8s_bootstrap" ]; then
