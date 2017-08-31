@@ -63,6 +63,7 @@ var _ = framework.KubeDescribe("CronJob", func() {
 
 	// multiple jobs running at once
 	It("should schedule multiple jobs concurrently", func() {
+		framework.SkipUnlessServerVersionLT(removedScheduledJobsVersion, f.ClientSet.Discovery())
 		By("Creating a cronjob")
 		cronJob := newTestCronJob("concurrent", "*/1 * * * ?", batchv2alpha1.AllowConcurrent,
 			sleepCommand, nil)
