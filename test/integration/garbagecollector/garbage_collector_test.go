@@ -41,7 +41,7 @@ import (
 	"k8s.io/client-go/informers"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
-	apitesting "k8s.io/kubernetes/cmd/kube-apiserver/app/testing"
+	kubeapiservertesting "k8s.io/kubernetes/cmd/kube-apiserver/app/testing"
 	"k8s.io/kubernetes/pkg/controller/garbagecollector"
 	"k8s.io/kubernetes/test/integration"
 
@@ -201,7 +201,7 @@ type testContext struct {
 
 // if workerCount > 0, will start the GC, otherwise it's up to the caller to Run() the GC.
 func setup(t *testing.T, workerCount int) *testContext {
-	masterConfig, tearDownMaster := apitesting.StartTestServerOrDie(t)
+	masterConfig, _, tearDownMaster := kubeapiservertesting.StartTestServerOrDie(t, nil, kubeapiservertesting.SharedInProcessEtcd(t))
 
 	// TODO: Disable logging here until we resolve teardown issues which result in
 	// massive log spam. Another path forward would be to refactor

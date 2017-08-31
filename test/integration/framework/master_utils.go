@@ -31,6 +31,8 @@ import (
 	"github.com/golang/glog"
 	"github.com/pborman/uuid"
 
+	"path"
+
 	apps "k8s.io/api/apps/v1beta1"
 	autoscaling "k8s.io/api/autoscaling/v1"
 	certificates "k8s.io/api/certificates/v1beta1"
@@ -520,4 +522,11 @@ func FindFreeLocalPort() (int, error) {
 		return 0, err
 	}
 	return port, nil
+}
+
+// SharedEtcd create an independent etcd server instance in-process.
+func SharedEtcd(t *testing.T) *storagebackend.Config {
+	cfg := storagebackend.NewDefaultConfig(path.Join(uuid.New(), "registry"), nil)
+	cfg.ServerList = []string{GetEtcdURL()}
+	return cfg
 }
