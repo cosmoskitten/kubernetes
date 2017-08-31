@@ -154,6 +154,10 @@ func makeGoogleAPINotFoundError(message string) error {
 	return &googleapi.Error{Code: http.StatusNotFound, Message: message}
 }
 
+func makeGoogleAPIError(code int, message string) error {
+	return &googleapi.Error{Code: code, Message: message}
+}
+
 func isForbidden(err error) bool {
 	return isHTTPErrorCode(err, http.StatusForbidden)
 }

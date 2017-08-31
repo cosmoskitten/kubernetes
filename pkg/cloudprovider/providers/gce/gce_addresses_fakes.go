@@ -23,7 +23,6 @@ import (
 
 	computealpha "google.golang.org/api/compute/v0.alpha"
 	compute "google.golang.org/api/compute/v1"
-	"google.golang.org/api/googleapi"
 )
 
 type FakeCloudAddressService struct {
@@ -64,8 +63,19 @@ func (cas *FakeCloudAddressService) ReserveAlphaRegionAddress(addr *computealpha
 		cas.count++
 	}
 
+	if addr.AddressType == "" {
+		addr.AddressType = string(schemeExternal)
+	}
+
 	if cas.reservedAddrs[addr.Address] {
-		return &googleapi.Error{Code: http.StatusConflict}
+		msg := "IP in use"
+		// Depending on the type of address, different error messages may be returned.
+		switch lbScheme(addr.AddressType) {
+		case schemeExternal:
+			return makeGoogleAPIError(http.StatusBadRequest, msg)
+		default:
+			return makeGoogleAPIError(http.StatusConflict, msg)
+		}
 	}
 
 	if _, exists := cas.addrsByRegionAndName[region]; !exists {
@@ -73,7 +83,7 @@ func (cas *FakeCloudAddressService) ReserveAlphaRegionAddress(addr *computealpha
 	}
 
 	if _, exists := cas.addrsByRegionAndName[region][addr.Name]; exists {
-		return &googleapi.Error{Code: http.StatusConflict}
+		return makeGoogleAPIError(http.StatusConflict, "name in use")
 	}
 
 	cas.addrsByRegionAndName[region][addr.Name] = addr
