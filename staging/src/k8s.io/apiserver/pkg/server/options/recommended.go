@@ -37,7 +37,7 @@ type RecommendedOptions struct {
 
 func NewRecommendedOptions(prefix string, copier runtime.ObjectCopier, codec runtime.Codec) *RecommendedOptions {
 	return &RecommendedOptions{
-		Etcd:           NewEtcdOptions(storagebackend.NewDefaultConfig(prefix, copier, codec)),
+		Etcd:           NewEtcdOptions(storagebackend.NewDefaultConfig(prefix, codec)),
 		SecureServing:  NewSecureServingOptions(),
 		Authentication: NewDelegatingAuthenticationOptions(),
 		Authorization:  NewDelegatingAuthorizationOptions(),

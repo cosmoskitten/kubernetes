@@ -38,7 +38,7 @@ import (
 )
 
 func NewEtcdStorage(t *testing.T, group string) (*storagebackend.Config, *etcdtesting.EtcdTestServer) {
-	server, config := etcdtesting.NewUnsecuredEtcd3TestClientServer(t, api.Scheme)
+	server, config := etcdtesting.NewUnsecuredEtcd3TestClientServer(t)
 	config.Codec = testapi.Groups[group].StorageCodec()
 	return config, server
 }

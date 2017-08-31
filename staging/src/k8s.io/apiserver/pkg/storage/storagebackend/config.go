@@ -52,13 +52,12 @@ type Config struct {
 	Transformer value.Transformer
 }
 
-func NewDefaultConfig(prefix string, copier runtime.ObjectCopier, codec runtime.Codec) *Config {
+func NewDefaultConfig(prefix string, codec runtime.Codec) *Config {
 	return &Config{
 		Prefix: prefix,
 		// Default cache size to 0 - if unset, its size will be set based on target
 		// memory usage.
 		DeserializationCacheSize: 0,
-		Copier: copier,
 		Codec:  codec,
 	}
 }
