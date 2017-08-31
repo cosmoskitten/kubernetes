@@ -45,7 +45,7 @@ func listAzureDiskPath(io ioHandler) []string {
 	return azureDiskList
 }
 
-func scsiHostRescan(io ioHandler) {
+func scsiHostRescan(io ioHandler, exec mount.Exec) {
 	scsi_path := "/sys/class/scsi_host/"
 	if dirs, err := io.ReadDir(scsi_path); err == nil {
 		for _, f := range dirs {
@@ -60,7 +60,7 @@ func scsiHostRescan(io ioHandler) {
 	}
 }
 
-func findDiskByLun(lun int, io ioHandler) (string, error) {
+func findDiskByLun(lun int, io ioHandler, exec mount.Exec) (string, error) {
 	azureDisks := listAzureDiskPath(io)
 	return findDiskByLunWithConstraint(lun, io, azureDisks)
 }

@@ -21,15 +21,17 @@ package mount
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
 
-	"k8s.io/utils/exec"
-
 	"github.com/golang/glog"
 )
 
+// Mounter provides the default implementation of mount.Interface
+// for the windows platform.  This implementation assumes that the
+// kubelet is running in the host's root mount namespace.
 type Mounter struct {
 	mounterPath string
 }
@@ -43,11 +45,12 @@ func New(mounterPath string) Interface {
 	}
 }
 
+// Mount : mounts source to target as NTFS with given options.
 func (mounter *Mounter) Mount(source string, target string, fstype string, options []string) error {
 	target = normalizeWindowsPath(target)
 
 	if source == "tmpfs" {
-		glog.Infof("azureDisk: mounting source (%q), target (%q), with options (%q)", source, target, options)
+		glog.V(3).Infof("azureMount: mounting source (%q), target (%q), with options (%q)", source, target, options)
 		return os.MkdirAll(target, 0755)
 	}
 
@@ -56,25 +59,26 @@ func (mounter *Mounter) Mount(source string, target string, fstype string, optio
 		return err
 	}
 
-	glog.V(4).Infof("azureDisk: mount options(%q) source:%q, target:%q, fstype:%q, begin to mount",
+	glog.V(4).Infof("azureMount: mount options(%q) source:%q, target:%q, fstype:%q, begin to mount",
 		options, source, target, fstype)
 	bindSource := ""
-	ex := exec.New()
 
+	// tell it's going to mount azure disk or azure file according to options
 	if bind, _ := isBind(options); bind {
+		// mount azure disk
 		bindSource = normalizeWindowsPath(source)
 	} else {
-		// mount azure file
 		if len(options) < 2 {
-			glog.Warningf("azureDisk: mount options(%q) command number(%d) less than 2, source:%q, target:%q, skip mounting",
+			glog.Warningf("azureMount: mount options(%q) command number(%d) less than 2, source:%q, target:%q, skip mounting",
 				options, len(options), source, target)
 			return nil
 		}
 
+		// empty implementation for mounting azure file
 		return os.MkdirAll(target, 0755)
 	}
 
-	if output, err := ex.Command("cmd", "/c", "mklink", "/D", target, bindSource).CombinedOutput(); err != nil {
+	if output, err := exec.Command("cmd", "/c", "mklink", "/D", target, bindSource).CombinedOutput(); err != nil {
 		glog.Errorf("mklink failed: %v, source(%q) target(%q) output: %q", err, bindSource, target, string(output))
 		return err
 	}
@@ -82,29 +86,33 @@ func (mounter *Mounter) Mount(source string, target string, fstype string, optio
 	return nil
 }
 
+// Unmount unmounts the target.
 func (mounter *Mounter) Unmount(target string) error {
-	glog.V(4).Infof("azureDisk: Unmount target (%q)", target)
+	glog.V(4).Infof("azureMount: Unmount target (%q)", target)
 	target = normalizeWindowsPath(target)
-	ex := exec.New()
-	if output, err := ex.Command("cmd", "/c", "rmdir", target).CombinedOutput(); err != nil {
+	if output, err := exec.Command("cmd", "/c", "rmdir", target).CombinedOutput(); err != nil {
 		glog.Errorf("rmdir failed: %v, output: %q", err, string(output))
 		return err
 	}
 	return nil
 }
 
+// List returns a list of all mounted filesystems. todo
 func (mounter *Mounter) List() ([]MountPoint, error) {
 	return []MountPoint{}, nil
 }
 
+// IsMountPointMatch determines if the mountpoint matches the dir
 func (mounter *Mounter) IsMountPointMatch(mp MountPoint, dir string) bool {
 	return mp.Path == dir
 }
 
+// IsNotMountPoint determines if a directory is a mountpoint.
 func (mounter *Mounter) IsNotMountPoint(dir string) (bool, error) {
 	return IsNotMountPoint(mounter, dir)
 }
 
+// IsLikelyNotMountPoint determines if a directory is not a mountpoint.
 func (mounter *Mounter) IsLikelyNotMountPoint(file string) (bool, error) {
 	stat, err := os.Lstat(file)
 	if err != nil {
@@ -118,14 +126,17 @@ func (mounter *Mounter) IsLikelyNotMountPoint(file string) (bool, error) {
 	return true, nil
 }
 
+// GetDeviceNameFromMount given a mnt point, find the device
 func (mounter *Mounter) GetDeviceNameFromMount(mountPath, pluginDir string) (string, error) {
 	return getDeviceNameFromMount(mounter, mountPath, pluginDir)
 }
 
+// DeviceOpened determines if the device is in use elsewhere
 func (mounter *Mounter) DeviceOpened(pathname string) (bool, error) {
 	return false, nil
 }
 
+// PathIsDevice determines if a path is a device.
 func (mounter *Mounter) PathIsDevice(pathname string) (bool, error) {
 	return false, nil
 }
@@ -135,38 +146,22 @@ func (mounter *SafeFormatAndMount) formatAndMount(source string, target string, 
 	glog.V(4).Infof("Attempting to formatAndMount disk: %s %s %s", fstype, source, target)
 
 	if err := ValidateDiskNumber(source); err != nil {
-		glog.Errorf("azureDisk Mount: formatAndMount failed, err: %v\n", err)
+		glog.Errorf("azureMount: formatAndMount failed, err: %v\n", err)
 		return err
 	}
 
-	driveLetter, err := getDriveLetterByDiskNumber(source)
+	driveLetter, err := getDriveLetterByDiskNumber(source, mounter.Exec)
 	if err != nil {
 		return err
 	}
 	driverPath := driveLetter + ":"
 	target = normalizeWindowsPath(target)
 	glog.V(4).Infof("Attempting to formatAndMount disk: %s %s %s", fstype, driverPath, target)
-	ex := exec.New()
-	if output, err := ex.Command("cmd", "/c", "mklink", "/D", target, driverPath).CombinedOutput(); err != nil {
+	if output, err := mounter.Exec.Run("cmd", "/c", "mklink", "/D", target, driverPath); err != nil {
 		glog.Errorf("mklink failed: %v, output: %q", err, string(output))
 		return err
 	}
 	return nil
-}
-
-func getAvailableDriveLetter() (string, error) {
-	cmd := "$used = Get-PSDrive | Select-Object -Expand Name | Where-Object { $_.Length -eq 1 }"
-	cmd += ";$drive = 67..90 | ForEach-Object { [string][char]$_ } | Where-Object { $used -notcontains $_ } | Select-Object -First 1;$drive"
-	ex := exec.New()
-	output, err := ex.Command("powershell", "/c", cmd).CombinedOutput()
-	if err != nil {
-		return "", fmt.Errorf("getAvailableDriveLetter failed: %v, output: %q", err, string(output))
-	}
-
-	if len(output) == 0 {
-		return "", fmt.Errorf("azureDisk: there is no available drive letter now")
-	}
-	return string(output)[:1], nil
 }
 
 func normalizeWindowsPath(path string) string {
@@ -191,15 +186,15 @@ func ValidateDiskNumber(disk string) error {
 	return nil
 }
 
-func getDriveLetterByDiskNumber(diskNum string) (string, error) {
-	ex := exec.New()
+// Get drive letter according to windows disk number
+func getDriveLetterByDiskNumber(diskNum string, exec Exec) (string, error) {
 	cmd := fmt.Sprintf("(Get-Partition -DiskNumber %s).DriveLetter", diskNum)
-	output, err := ex.Command("powershell", "/c", cmd).CombinedOutput()
+	output, err := exec.Run("powershell", "/c", cmd)
 	if err != nil {
-		return "", fmt.Errorf("azureDisk: Get Drive Letter failed: %v, output: %q", err, string(output))
+		return "", fmt.Errorf("azureMount: Get Drive Letter failed: %v, output: %q", err, string(output))
 	}
 	if len(string(output)) < 1 {
-		return "", fmt.Errorf("azureDisk: Get Drive Letter failed, output is empty")
+		return "", fmt.Errorf("azureMount: Get Drive Letter failed, output is empty")
 	}
 	return string(output)[:1], nil
 }

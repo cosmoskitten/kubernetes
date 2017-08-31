@@ -27,22 +27,20 @@ import (
 	"github.com/golang/glog"
 
 	"k8s.io/kubernetes/pkg/util/mount"
-	"k8s.io/utils/exec"
 )
 
-func scsiHostRescan(io ioHandler) {
+func scsiHostRescan(io ioHandler, exec mount.Exec) {
 	cmd := "Update-HostStorageCache"
-	ex := exec.New()
-	output, err := ex.Command("powershell", "/c", cmd).CombinedOutput()
+	output, err := exec.Run("powershell", "/c", cmd)
 	if err != nil {
 		glog.Errorf("Update-HostStorageCache failed in scsiHostRescan, error: %v, output: %q", err, string(output))
 	}
 }
 
-func findDiskByLun(lun int, iohandler ioHandler) (string, error) {
+// search Windows disk number by LUN
+func findDiskByLun(lun int, iohandler ioHandler, exec mount.Exec) (string, error) {
 	cmd := `Get-Disk | select number, location | ConvertTo-Json`
-	ex := exec.New()
-	output, err := ex.Command("powershell", "/c", cmd).CombinedOutput()
+	output, err := exec.Run("powershell", "/c", cmd)
 	if err != nil {
 		glog.Errorf("Get-Disk failed in findDiskByLun, error: %v, output: %q", err, string(output))
 		return "", err
