@@ -11,6 +11,7 @@ go_library(
     srcs = [
         "attacher.go",
         "azure_common.go",
+        "azure_common_unsupported.go",
         "azure_dd.go",
         "azure_mounter.go",
         "azure_provision.go",
