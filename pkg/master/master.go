@@ -91,6 +91,8 @@ const (
 	// DefaultEndpointReconcilerInterval is the default amount of time for how often the endpoints for
 	// the kubernetes Service are reconciled.
 	DefaultEndpointReconcilerInterval = 10 * time.Second
+	// DefaultEndpointReconcilerTTL is the default TTL timeout for the storage layer
+	DefaultEndpointReconcilerTTL = 15
 )
 
 // EndpointReconcilerEnum selects which reconciler to use
@@ -237,9 +239,6 @@ func (c *Config) Complete() completedConfig {
 	if c.APIServerServiceIP == nil {
 		c.APIServerServiceIP = apiServerServiceIP
 	}
-	if c.MasterEndpointReconcileTTL == 0 {
-		c.MasterEndpointReconcileTTL = 15
-	}
 
 	discoveryAddresses := discovery.DefaultAddresses{DefaultAddress: c.GenericConfig.ExternalAddress}
 	discoveryAddresses.CIDRRules = append(discoveryAddresses.CIDRRules,
@@ -260,6 +259,10 @@ func (c *Config) Complete() completedConfig {
 
 	if c.EndpointReconcilerConfig.Interval == 0 {
 		c.EndpointReconcilerConfig.Interval = DefaultEndpointReconcilerInterval
+	}
+
+	if c.MasterEndpointReconcileTTL == 0 {
+		c.MasterEndpointReconcileTTL = DefaultEndpointReconcilerTTL
 	}
 
 	if c.EndpointReconcilerConfig.Reconciler == nil {
