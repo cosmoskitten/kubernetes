@@ -55,7 +55,7 @@ func TestEnsureVirtualServerAddressBind(t *testing.T) {
 	}
 	runner := New(&fexec)
 	// Success.
-	exists, err := runner.EnsureVirtualServerAddressBind(vs, dummyDevice)
+	exists, err := runner.EnsureVirtualServerAddressBind(vs.Address.String(), dummyDevice)
 	if err != nil {
 		t.Errorf("expected success, got %v", err)
 	}
@@ -69,7 +69,7 @@ func TestEnsureVirtualServerAddressBind(t *testing.T) {
 		t.Errorf("wrong CombinedOutput() log, got %s", fcmd.CombinedOutputLog[0])
 	}
 	// Exists.
-	exists, err = runner.EnsureVirtualServerAddressBind(vs, dummyDevice)
+	exists, err = runner.EnsureVirtualServerAddressBind(vs.Address.String(), dummyDevice)
 	if err != nil {
 		t.Errorf("expected success, got %v", err)
 	}
@@ -100,7 +100,7 @@ func TestUnbindVirtualServerAddress(t *testing.T) {
 	}
 	runner := New(&fexec)
 	// Success.
-	err := runner.UnbindVirtualServerAddress(svc, dummyDevice)
+	err := runner.UnbindVirtualServerAddress(svc.Address.String(), dummyDevice)
 	if err != nil {
 		t.Errorf("expected success, got %v", err)
 	}
@@ -111,7 +111,7 @@ func TestUnbindVirtualServerAddress(t *testing.T) {
 		t.Errorf("wrong CombinedOutput() log, got %s", fcmd.CombinedOutputLog[0])
 	}
 	// Failure.
-	err = runner.UnbindVirtualServerAddress(svc, dummyDevice)
+	err = runner.UnbindVirtualServerAddress(svc.Address.String(), dummyDevice)
 	if err == nil {
 		t.Errorf("expected failure")
 	}

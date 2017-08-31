@@ -36,11 +36,11 @@ func (runner *runner) Flush() error {
 	return fmt.Errorf("IPVS not supported for this platform")
 }
 
-func (runner *runner) EnsureVirtualServerAddressBind(*VirtualServer, string) (bool, error) {
+func (runner *runner) EnsureVirtualServerAddressBind(string, string) (bool, error) {
 	return false, fmt.Errorf("IPVS not supported for this platform")
 }
 
-func (runner *runner) UnbindVirtualServerAddress(*VirtualServer, string) error {
+func (runner *runner) UnbindVirtualServerAddress(string, string) error {
 	return fmt.Errorf("IPVS not supported for this platform")
 }
 

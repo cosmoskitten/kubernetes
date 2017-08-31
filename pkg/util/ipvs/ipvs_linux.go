@@ -52,9 +52,8 @@ func New(exec utilexec.Interface) Interface {
 }
 
 // EnsureVirtualServerAddressBind is part of Interface.
-func (runner *runner) EnsureVirtualServerAddressBind(vs *VirtualServer, dummyDev string) (exist bool, err error) {
-	addr := vs.Address.String() + "/32"
-	args := []string{"addr", "add", addr, "dev", dummyDev}
+func (runner *runner) EnsureVirtualServerAddressBind(addr string, dummyDev string) (exist bool, err error) {
+	args := []string{"addr", "add", addr + "/32", "dev", dummyDev}
 	out, err := runner.exec.Command(cmdIP, args...).CombinedOutput()
 	if err != nil {
 		// "exit status 2" will be returned if the address is already bound to dummy device
@@ -63,18 +62,17 @@ func (runner *runner) EnsureVirtualServerAddressBind(vs *VirtualServer, dummyDev
 				return true, nil
 			}
 		}
-		return false, fmt.Errorf("error bind address: %s to dummy interface: %s, err: %v: %s", vs.Address.String(), dummyDev, err, out)
+		return false, fmt.Errorf("error bind address: %s to dummy interface: %s, err: %v: %s", addr, dummyDev, err, out)
 	}
 	return false, nil
 }
 
 // UnbindVirtualServerAddress is part of Interface.
-func (runner *runner) UnbindVirtualServerAddress(vs *VirtualServer, dummyDev string) error {
-	addr := vs.Address.String() + "/32"
-	args := []string{"addr", "del", addr, "dev", dummyDev}
+func (runner *runner) UnbindVirtualServerAddress(addr string, dummyDev string) error {
+	args := []string{"addr", "del", addr + "/32", "dev", dummyDev}
 	out, err := runner.exec.Command(cmdIP, args...).CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("error unbind address: %s from dummy interface: %s, err: %v: %s", vs.Address.String(), dummyDev, err, out)
+		return fmt.Errorf("error unbind address: %s from dummy interface: %s, err: %v: %s", addr, dummyDev, err, out)
 	}
 	return nil
 }

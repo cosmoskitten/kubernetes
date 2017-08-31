@@ -1239,7 +1239,7 @@ func (proxier *Proxier) syncService(svcName string, vs *utilipvs.VirtualServer, 
 	// bind service address to dummy interface even if service not changed,
 	// in case that service IP was removed by other processes
 	if bindAddr {
-		_, err := proxier.ipvs.EnsureVirtualServerAddressBind(vs, DefaultDummyDevice)
+		_, err := proxier.ipvs.EnsureVirtualServerAddressBind(vs.Address.String(), DefaultDummyDevice)
 		if err != nil {
 			glog.Errorf("Failed to bind service address to dummy device %q: %v", svcName, err)
 			return err
@@ -1328,6 +1328,7 @@ func (proxier *Proxier) syncEndpoint(svcPortName proxy.ServicePortName, onlyNode
 }
 
 func (proxier *Proxier) cleanLegacyService(atciveServices map[string]bool, currentServices map[string]*utilipvs.VirtualServer) {
+	unbindIPAddr := map[string]bool{}
 	for cS := range currentServices {
 		if !atciveServices[cS] {
 			svc := currentServices[cS]
@@ -1335,10 +1336,14 @@ func (proxier *Proxier) cleanLegacyService(atciveServices map[string]bool, curre
 			if err != nil {
 				glog.Errorf("Failed to delete service, error: %v", err)
 			}
-			err = proxier.ipvs.UnbindVirtualServerAddress(svc, DefaultDummyDevice)
-			if err != nil {
-				glog.Errorf("Failed to unbind service from dummy interface, error: %v", err)
-			}
+			unbindIPAddr[svc.Address.String()] = true
+		}
+	}
+
+	for addr := range unbindIPAddr {
+		err := proxier.ipvs.UnbindVirtualServerAddress(addr, DefaultDummyDevice)
+		if err != nil {
+			glog.Errorf("Failed to unbind service from dummy interface, error: %v", err)
 		}
 	}
 }
