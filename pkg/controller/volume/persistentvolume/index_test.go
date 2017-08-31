@@ -129,6 +129,15 @@ func TestMatchVolume(t *testing.T) {
 				pvc.Spec.StorageClassName = &classSilver
 			}),
 		},
+		"successful-match-vlarge": {
+			expectedMatch: "local-pd-vlarge",
+			// we keep the pvc size less than int64 so that in case the pv overflows
+			// the pvc does not overflow equally and give us false matching signals.
+			claim: makePVC("1E", func(pvc *v1.PersistentVolumeClaim) {
+				pvc.Spec.AccessModes = []v1.PersistentVolumeAccessMode{v1.ReadWriteOnce}
+				pvc.Spec.StorageClassName = &classVLarge
+			}),
+		},
 	}
 
 	for name, scenario := range scenarios {
@@ -143,7 +152,7 @@ func TestMatchVolume(t *testing.T) {
 			t.Errorf("Expected %s but got volume %s in scenario %s", scenario.expectedMatch, volume.UID, name)
 		}
 		if len(scenario.expectedMatch) == 0 && volume != nil {
-			t.Errorf("Unexpected match for scenario: %s", name)
+			t.Errorf("Unexpected match for scenario: %s, matched with %s instead", name, volume.UID)
 		}
 	}
 }
@@ -587,6 +596,26 @@ func createTestVolumes() []*v1.PersistentVolume {
 					v1.ReadWriteOnce,
 				},
 				StorageClassName: classGold,
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				UID:  "local-pd-vlarge",
+				Name: "local001",
+			},
+			Spec: v1.PersistentVolumeSpec{
+				Capacity: v1.ResourceList{
+					v1.ResourceName(v1.ResourceStorage): resource.MustParse("200E"),
+				},
+				PersistentVolumeSource: v1.PersistentVolumeSource{
+					Local: &v1.LocalVolumeSource{},
+				},
+				AccessModes: []v1.PersistentVolumeAccessMode{
+					v1.ReadWriteOnce,
+					v1.ReadOnlyMany,
+					v1.ReadWriteMany,
+				},
+				StorageClassName: classVLarge,
 			},
 		},
 	}

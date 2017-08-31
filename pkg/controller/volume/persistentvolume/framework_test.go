@@ -805,6 +805,7 @@ var (
 	classExternal                string = "external"
 	classUnknownInternal         string = "unknown-internal"
 	classUnsupportedMountOptions string = "unsupported-mountoptions"
+	classVLarge                  string = "vlarge"
 )
 
 // wrapTestWithPluginCalls returns a testCall that:
