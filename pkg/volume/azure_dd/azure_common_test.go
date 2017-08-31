@@ -116,7 +116,7 @@ func (handler *fakeIOHandler) ReadFile(filename string) ([]byte, error) {
 }
 
 func TestIoHandler(t *testing.T) {
-	disk, err := findDiskByLun(lun, &fakeIOHandler{})
+	disk, err := findDiskByLun(lun, &fakeIOHandler{}, nil)
 	// if no disk matches lun, exit
 	if disk != "/dev/"+devName || err != nil {
 		t.Errorf("no data disk found: disk %v err %v", disk, err)
