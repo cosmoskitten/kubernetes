@@ -40,6 +40,7 @@ fi
 readonly master_ssh_supported_providers="gce aws"
 readonly node_ssh_supported_providers="gce gke aws"
 readonly gcloud_supported_providers="gce gke"
+readonly detect_project_supported_providers="gce gke"
 
 readonly master_logfiles="kube-apiserver kube-scheduler rescheduler kube-controller-manager etcd etcd-events glbc cluster-autoscaler kube-addon-manager fluentd"
 readonly node_logfiles="kube-proxy fluentd node-problem-detector"
@@ -62,8 +63,10 @@ function setup() {
     : ${KUBE_CONFIG_FILE:="config-test.sh"}
     echo "Sourcing kube-util.sh"
     source "${KUBE_ROOT}/cluster/kube-util.sh"
-    echo "Detecting project"
-    detect-project 2>&1
+    if [[ "${detect_project_supported_providers}" =~ "${KUBERNETES_PROVIDER}" ]]; then
+      echo "Detecting project"
+      detect-project 2>&1
+    fi
   elif [[ "${KUBERNETES_PROVIDER}" == "gke" ]]; then
     echo "Using 'use_custom_instance_list' with gke, skipping check for LOG_DUMP_SSH_KEY and LOG_DUMP_SSH_USER"
   elif [[ -z "${LOG_DUMP_SSH_KEY:-}" ]]; then
