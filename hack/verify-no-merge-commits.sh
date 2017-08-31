@@ -23,6 +23,10 @@ source "${KUBE_ROOT}/hack/lib/init.sh"
 
 cd "${KUBE_ROOT}"
 
+set -x
+git show HEAD
+git log --oneline | head -n 50
+
 # potentially skip final merge commit used by CI
 head=HEAD
 while [ "$(git show -q --format="%an" ${head})" = "k8s_bootstrap" ] && git show -q ${head} | grep -q "^Merge: "; do
