@@ -409,38 +409,38 @@ type certKeyLocation struct {
 
 // UsingExternalCA determines whether the user is relying on an external CA.  We currently implicitly determine this is the case when the CA Cert
 // is present but the CA Key is not. This allows us to, e.g., skip generating certs or not start the csr signing controller.
-func UsingExternalCA(cfg *kubeadmapi.MasterConfiguration) (bool, string) {
+func UsingExternalCA(cfg *kubeadmapi.MasterConfiguration) (bool, error) {
 
 	if err := validateCACert(certKeyLocation{cfg.CertificatesDir, kubeadmconstants.CACertAndKeyBaseName, "", "CA"}); err != nil {
-		return false, err.Error()
+		return false, err
 	}
 
 	caKeyPath := filepath.Join(cfg.CertificatesDir, kubeadmconstants.CAKeyName)
 	if _, err := os.Stat(caKeyPath); !os.IsNotExist(err) {
-		return false, fmt.Sprintf("ca.key exists")
+		return false, fmt.Errorf("ca.key exists")
 	}
 
 	if err := validateSignedCert(certKeyLocation{cfg.CertificatesDir, kubeadmconstants.CACertAndKeyBaseName, kubeadmconstants.APIServerCertAndKeyBaseName, "API server"}); err != nil {
-		return false, err.Error()
+		return false, err
 	}
 
 	if err := validateSignedCert(certKeyLocation{cfg.CertificatesDir, kubeadmconstants.CACertAndKeyBaseName, kubeadmconstants.APIServerKubeletClientCertAndKeyBaseName, "API server kubelet client"}); err != nil {
-		return false, err.Error()
+		return false, err
 	}
 
 	if err := validatePrivatePublicKey(certKeyLocation{cfg.CertificatesDir, "", kubeadmconstants.ServiceAccountKeyBaseName, "service account"}); err != nil {
-		return false, err.Error()
+		return false, err
 	}
 
 	if err := validateCACertAndKey(certKeyLocation{cfg.CertificatesDir, kubeadmconstants.FrontProxyCACertAndKeyBaseName, "", "front-proxy CA"}); err != nil {
-		return false, err.Error()
+		return false, err
 	}
 
 	if err := validateSignedCert(certKeyLocation{cfg.CertificatesDir, kubeadmconstants.FrontProxyCACertAndKeyBaseName, kubeadmconstants.FrontProxyClientCertAndKeyBaseName, "front-proxy client"}); err != nil {
-		return false, err.Error()
+		return false, err
 	}
 
-	return true, ""
+	return true, nil
 }
 
 // validateCACert tries to load a x509 certificate from pkiDir and validates that it is a CA
