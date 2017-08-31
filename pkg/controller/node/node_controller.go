@@ -112,6 +112,7 @@ type nodeStatusData struct {
 	status                   v1.NodeStatus
 }
 
+// NodeController is the controller that manages node related cluster state.
 type NodeController struct {
 	allocateNodeCIDRs bool
 	allocatorType     ipam.CIDRAllocatorType
