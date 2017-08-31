@@ -39,6 +39,7 @@ fi
 
 readonly master_ssh_supported_providers="gce aws kubemark"
 readonly node_ssh_supported_providers="gce gke aws kubemark"
+readonly detect_project_supported_providers="gce pre-existing"
 
 readonly master_logfiles="kube-apiserver kube-scheduler rescheduler kube-controller-manager etcd etcd-events glbc cluster-autoscaler kube-addon-manager fluentd"
 readonly node_logfiles="kube-proxy fluentd node-problem-detector"
@@ -66,8 +67,10 @@ function setup() {
     : ${KUBE_CONFIG_FILE:="config-test.sh"}
     echo "Sourcing kube-util.sh"
     source "${KUBE_ROOT}/cluster/kube-util.sh"
-    echo "Detecting project"
-    detect-project 2>&1
+    if [[ "${detect_project_supported_providers}" =~ "${KUBERNETES_PROVIDER}" ]]; then
+      echo "Detecting project"
+      detect-project 2>&1
+    fi
   elif [[ -z "${LOG_DUMP_SSH_KEY:-}" ]]; then
     echo "LOG_DUMP_SSH_KEY not set, but required when using log_dump_custom_get_instances"
     exit 1
