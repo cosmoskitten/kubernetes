@@ -60,7 +60,7 @@ const (
 func alwaysReady() bool { return true }
 
 type nodeController struct {
-	*NodeController
+	*Controller
 	nodeInformer      coreinformers.NodeInformer
 	daemonSetInformer extensionsinformers.DaemonSetInformer
 }
