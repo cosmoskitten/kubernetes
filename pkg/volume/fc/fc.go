@@ -249,7 +249,7 @@ type fcDisk struct {
 
 func (fc *fcDisk) GetPath() string {
 	name := fcPluginName
-	// safe to use PodppingVolumeDir now: volume teardown occurs before pod is cleaned up
+	// safe to use PodVolumeDir now: volume teardown occurs before pod is cleaned up
 	return fc.plugin.host.GetPodVolumeDir(fc.podUID, utilstrings.EscapeQualifiedNameForDisk(name), fc.volName)
 }
 
