@@ -236,11 +236,11 @@ func (gc *GarbageCollector) runAttemptToDeleteWorker() {
 
 func (gc *GarbageCollector) attemptToDeleteWorker() bool {
 	item, quit := gc.attemptToDelete.Get()
+        if quit {
+                return false
+        }
 	gc.workerLock.RLock()
 	defer gc.workerLock.RUnlock()
-	if quit {
-		return false
-	}
 	defer gc.attemptToDelete.Done(item)
 	n, ok := item.(*node)
 	if !ok {
