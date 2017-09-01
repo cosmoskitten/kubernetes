@@ -127,6 +127,10 @@ func (s *EtcdOptions) AddFlags(fs *pflag.FlagSet) {
 
 	fs.StringVar(&s.EncryptionProviderConfigFilepath, "experimental-encryption-provider-config", s.EncryptionProviderConfigFilepath,
 		"The file containing configuration for encryption providers to be used for storing secrets in etcd")
+
+	fs.BoolVar(&s.StorageConfig.DisableCompaction, "etcd-disable-compaction", s.StorageConfig.DisableCompaction,
+		"If true, disable issuing compaction request from apiserver.")
+
 }
 
 func (s *EtcdOptions) ApplyTo(c *server.Config) error {
