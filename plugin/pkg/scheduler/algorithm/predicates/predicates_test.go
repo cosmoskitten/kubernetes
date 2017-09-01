@@ -18,6 +18,7 @@ package predicates
 
 import (
 	"fmt"
+	"os"
 	"reflect"
 	"testing"
 
@@ -3741,5 +3742,45 @@ func TestVolumeZonePredicateMultiZone(t *testing.T) {
 			t.Errorf("%s: expected %v got %v", test.Name, test.Fits, fits)
 		}
 
+	}
+}
+
+func TestGetMaxVols(t *testing.T) {
+	previousValue := os.Getenv(KubeMaxPDVols)
+	defaultValue := 39
+
+	tests := []struct {
+		rawMaxVols string
+		expected   int
+		test       string
+	}{
+		{
+			rawMaxVols: "invalid",
+			expected:   defaultValue,
+			test:       "Unable to parse maximum PD volumes value, using default value",
+		},
+		{
+			rawMaxVols: "-2",
+			expected:   defaultValue,
+			test:       "Maximum PD volumes must be a positive value, using default value",
+		},
+		{
+			rawMaxVols: "40",
+			expected:   40,
+			test:       "Parse maximum PD volumes value from env",
+		},
+	}
+
+	for _, test := range tests {
+		os.Setenv(KubeMaxPDVols, test.rawMaxVols)
+		result := getMaxVols(defaultValue)
+		if result != test.expected {
+			t.Errorf("%s: expected %v got %v", test.test, test.expected, result)
+		}
+	}
+
+	os.Unsetenv(KubeMaxPDVols)
+	if previousValue != "" {
+		os.Setenv(KubeMaxPDVols, previousValue)
 	}
 }
