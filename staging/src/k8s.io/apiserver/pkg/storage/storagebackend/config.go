@@ -50,6 +50,9 @@ type Config struct {
 	Copier runtime.ObjectCopier
 	// Transformer allows the value to be transformed prior to persisting into etcd.
 	Transformer value.Transformer
+
+	// DoCompaction is a flag to turn on or off requesting compaction from apiserver.
+	DoCompaction bool
 }
 
 func NewDefaultConfig(prefix string, copier runtime.ObjectCopier, codec runtime.Codec) *Config {
@@ -58,7 +61,8 @@ func NewDefaultConfig(prefix string, copier runtime.ObjectCopier, codec runtime.
 		// Default cache size to 0 - if unset, its size will be set based on target
 		// memory usage.
 		DeserializationCacheSize: 0,
-		Copier: copier,
-		Codec:  codec,
+		Copier:       copier,
+		Codec:        codec,
+		DoCompaction: true,
 	}
 }
