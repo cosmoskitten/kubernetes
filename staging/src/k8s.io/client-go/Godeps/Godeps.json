@@ -267,6 +267,10 @@
 			"Rev": "f6abca593680b2315d2075e0f5e2a9751e3f431a"
 		},
 		{
+			"ImportPath": "github.com/stretchr/testify/require",
+			"Rev": "f6abca593680b2315d2075e0f5e2a9751e3f431a"
+		},
+		{
 			"ImportPath": "golang.org/x/crypto/ssh/terminal",
 			"Rev": "81e90905daefcd6fd217b62423c0908922eadb30"
 		},
