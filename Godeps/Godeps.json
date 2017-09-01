@@ -5,6 +5,7 @@
 	"Packages": [
 		"github.com/onsi/ginkgo/ginkgo",
 		"github.com/jteeuwen/go-bindata/go-bindata",
+		"github.com/tools/godep",
 		"./..."
 	],
 	"Deps": [
@@ -1062,6 +1063,7 @@
 		},
 		{
 			"ImportPath": "github.com/docker/libnetwork/ipvs",
+			"Comment": "v0.8.0-dev.2-840-gc3393f1d",
 			"Rev": "c3393f1d3e1ba69b596eca45a9f1da9398e17ca5"
 		},
 		{
@@ -1856,7 +1858,7 @@
 		},
 		{
 			"ImportPath": "github.com/json-iterator/go",
-			"Comment": "jsoniter-go-0.9.19-25-g36b1496",
+			"Comment": "1.0.0",
 			"Rev": "36b14963da70d11297d313183d7e6388c8510e1e"
 		},
 		{
@@ -1887,9 +1889,18 @@
 			"Rev": "2788f0dbd16903de03cb8186e5c7d97b69ad387b"
 		},
 		{
+			"ImportPath": "github.com/kr/pretty",
+			"Comment": "go.weekly.2011-12-22-24-gf31442d",
+			"Rev": "f31442d60e51465c69811e2107ae978868dbea5c"
+		},
+		{
 			"ImportPath": "github.com/kr/pty",
 			"Comment": "release.r56-29-gf7ee69f",
 			"Rev": "f7ee69f31298ecbe5d2b349c711e2547a617d398"
+		},
+		{
+			"ImportPath": "github.com/kr/text",
+			"Rev": "6807e777504f54ad073ecef66747de158294b639"
 		},
 		{
 			"ImportPath": "github.com/libopenstorage/openstorage/api",
@@ -2544,6 +2555,11 @@
 			"Rev": "e7cb7fa329f456b3855136a2642b197bad7366ba"
 		},
 		{
+			"ImportPath": "github.com/tools/godep",
+			"Comment": "v79",
+			"Rev": "f15f6db5da33a4ac48be83e20b9dd838e14f117b"
+		},
+		{
 			"ImportPath": "github.com/ugorji/go/codec",
 			"Rev": "ded73eae5db7e7a0ef6f55aace87a2873c5d2b74"
 		},
@@ -2885,6 +2901,10 @@
 		},
 		{
 			"ImportPath": "golang.org/x/tools/container/intsets",
+			"Rev": "2382e3994d48b1d22acc2c86bcad0a2aff028e32"
+		},
+		{
+			"ImportPath": "golang.org/x/tools/go/vcs",
 			"Rev": "2382e3994d48b1d22acc2c86bcad0a2aff028e32"
 		},
 		{
