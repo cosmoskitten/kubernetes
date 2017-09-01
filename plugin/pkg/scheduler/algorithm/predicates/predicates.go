@@ -19,6 +19,7 @@ package predicates
 import (
 	"fmt"
 	"math/rand"
+	"os"
 	"strconv"
 	"sync"
 	"time"
@@ -33,6 +34,7 @@ import (
 	"k8s.io/client-go/util/workqueue"
 	v1helper "k8s.io/kubernetes/pkg/api/v1/helper"
 	v1qos "k8s.io/kubernetes/pkg/api/v1/helper/qos"
+	"k8s.io/kubernetes/pkg/cloudprovider/providers/aws"
 	"k8s.io/kubernetes/pkg/features"
 	kubeletapis "k8s.io/kubernetes/pkg/kubelet/apis"
 	volumeutil "k8s.io/kubernetes/pkg/volume/util"
@@ -43,6 +45,22 @@ import (
 	"k8s.io/metrics/pkg/client/clientset_generated/clientset"
 
 	"github.com/golang/glog"
+)
+
+const (
+	// DefaultMaxGCEPDVolumes defines the maximum number of PD Volumes for GCE
+	// GCE instances can have up to 16 PD volumes attached.
+	DefaultMaxGCEPDVolumes = 16
+	// DefaultMaxAzureDiskVolumes defines the maximum number of PD Volumes for Azure
+	// Larger Azure VMs can actually have much more disks attached.
+	// TODO We should determine the max based on VM size
+	DefaultMaxAzureDiskVolumes = 16
+	// KubeMaxPDVols defines the maximum number of PD Volumes per kubelet
+	KubeMaxPDVols = "KUBE_MAX_PD_VOLS"
+
+	EBSVolume       = "EBSVolume"
+	GCEPDVolume     = "GCEPDVolume"
+	AzureDiskVolume = "AzureDiskVolume"
 )
 
 // NodeInfo: Other types for predicate functions...
@@ -178,13 +196,30 @@ type VolumeFilter struct {
 }
 
 // NewMaxPDVolumeCountPredicate creates a predicate which evaluates whether a pod can fit based on the
-// number of volumes which match a filter that it requests, and those that are already present.  The
-// maximum number is configurable to accommodate different systems.
+// number of volumes which match a filter that it requests, and those that are already present.
 //
 // The predicate looks for both volumes used directly, as well as PVC volumes that are backed by relevant volume
 // types, counts the number of unique volumes, and rejects the new pod if it would place the total count over
 // the maximum.
-func NewMaxPDVolumeCountPredicate(filter VolumeFilter, maxVolumes int, pvInfo PersistentVolumeInfo, pvcInfo PersistentVolumeClaimInfo) algorithm.FitPredicate {
+func NewMaxPDVolumeCountPredicate(filterName string, pvInfo PersistentVolumeInfo, pvcInfo PersistentVolumeClaimInfo) algorithm.FitPredicate {
+
+	var maxVolumes int
+	var filter VolumeFilter
+	switch filterName {
+	case EBSVolume:
+		filter = EBSVolumeFilter
+		maxVolumes = getMaxVols(aws.DefaultMaxEBSVolumes)
+	case GCEPDVolume:
+		filter = GCEPDVolumeFilter
+		maxVolumes = getMaxVols(DefaultMaxGCEPDVolumes)
+	case AzureDiskVolume:
+		filter = AzureDiskVolumeFilter
+		maxVolumes = getMaxVols(DefaultMaxAzureDiskVolumes)
+	default:
+		glog.Errorln("Wrong filterName")
+		return nil
+	}
+
 	c := &MaxPDVolumeCountChecker{
 		filter:     filter,
 		maxVolumes: maxVolumes,
@@ -193,6 +228,21 @@ func NewMaxPDVolumeCountPredicate(filter VolumeFilter, maxVolumes int, pvInfo Pe
 	}
 
 	return c.predicate
+}
+
+// getMaxVols checks the max PD volumes environment variable, otherwise returning a default value
+func getMaxVols(defaultVal int) int {
+	if rawMaxVols := os.Getenv(KubeMaxPDVols); rawMaxVols != "" {
+		if parsedMaxVols, err := strconv.Atoi(rawMaxVols); err != nil {
+			glog.Errorf("Unable to parse maximum PD volumes value, using default of %v: %v", defaultVal, err)
+		} else if parsedMaxVols <= 0 {
+			glog.Errorf("Maximum PD volumes must be a positive value, using default of %v", defaultVal)
+		} else {
+			return parsedMaxVols
+		}
+	}
+
+	return defaultVal
 }
 
 func (c *MaxPDVolumeCountChecker) filterVolumes(volumes []v1.Volume, namespace string, filteredVolumes map[string]bool) error {

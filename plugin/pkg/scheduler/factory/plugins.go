@@ -118,6 +118,9 @@ func RegisterMandatoryFitPredicate(name string, predicate algorithm.FitPredicate
 func RegisterFitPredicateFactory(name string, predicateFactory FitPredicateFactory) string {
 	schedulerFactoryMutex.Lock()
 	defer schedulerFactoryMutex.Unlock()
+	if predicateFactory == nil {
+		return name
+	}
 	validateAlgorithmNameOrDie(name)
 	fitPredicateMap[name] = predicateFactory
 	return name
