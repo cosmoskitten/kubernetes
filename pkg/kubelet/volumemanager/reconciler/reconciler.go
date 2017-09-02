@@ -343,7 +343,9 @@ type reconstructedVolume struct {
 	pluginIsAttachable  bool
 	volumeGidValue      string
 	devicePath          string
+	deviceMountPath     string
 	reportedInUse       bool
+	isAttached          bool
 	mounter             volumepkg.Mounter
 }
 
@@ -462,6 +464,31 @@ func (rc *reconciler) reconstructVolume(volume podVolume) (*reconstructedVolume,
 			newMounterErr)
 	}
 
+	deviceMountPath := ""
+	if attachablePlugin != nil {
+		attacher, newAttacherErr := attachablePlugin.NewAttacher()
+		if newAttacherErr != nil {
+			return nil, fmt.Errorf(
+				"AttachableVolumePlugin.NewAttacher failed for volume %q (spec.Name: %q) pod %q (UID: %q) with: %v",
+				uniqueVolumeName,
+				volumeSpec.Name(),
+				volume.podName,
+				pod.UID,
+				newAttacherErr)
+		}
+
+		var getDeviceMountPathErr error
+		deviceMountPath, getDeviceMountPathErr = attacher.GetDeviceMountPath(volumeSpec)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"Attacher.GetDeviceMountPath failed for volume %q (spec.Name: %q) pod %q (UID: %q) with: %v",
+				uniqueVolumeName,
+				volumeSpec.Name(),
+				volume.podName,
+				pod.UID,
+				getDeviceMountPathErr)
+		}
+	}
 	reconstructedVolume := &reconstructedVolume{
 		volumeName: uniqueVolumeName,
 		podName:    volume.podName,
@@ -475,6 +502,7 @@ func (rc *reconciler) reconstructVolume(volume podVolume) (*reconstructedVolume,
 		pluginIsAttachable:  attachablePlugin != nil,
 		volumeGidValue:      "",
 		devicePath:          "",
+		deviceMountPath:     deviceMountPath,
 		mounter:             volumeMounter,
 	}
 	return reconstructedVolume, nil
@@ -489,6 +517,7 @@ func (rc *reconciler) updateStates(volumesNeedUpdate map[v1.UniqueVolumeName]*re
 		for _, attachedVolume := range node.Status.VolumesAttached {
 			if volume, exists := volumesNeedUpdate[attachedVolume.Name]; exists {
 				volume.devicePath = attachedVolume.DevicePath
+				volume.isAttached = true
 				volumesNeedUpdate[attachedVolume.Name] = volume
 				glog.V(4).Infof("Update devicePath from node status for volume (%q): %q", attachedVolume.Name, volume.devicePath)
 			}
@@ -507,6 +536,10 @@ func (rc *reconciler) updateStates(volumesNeedUpdate map[v1.UniqueVolumeName]*re
 	}
 
 	for _, volume := range volumesNeedUpdate {
+		if volume.pluginIsAttachable && !volume.isAttached {
+			continue
+		}
+
 		err := rc.actualStateOfWorld.MarkVolumeAsAttached(
 			volume.volumeName, volume.volumeSpec, "" /* nodeName */, volume.devicePath)
 		if err != nil {
@@ -520,18 +553,32 @@ func (rc *reconciler) updateStates(volumesNeedUpdate map[v1.UniqueVolumeName]*re
 			volume.volumeName,
 			volume.mounter,
 			volume.outerVolumeSpecName,
-			volume.volumeGidValue)
+			volume.volumeGidValue,
+			volume.devicePath)
+
 		if err != nil {
 			glog.Errorf("Could not add pod to volume information to actual state of world: %v", err)
 			continue
 		}
+
 		if volume.pluginIsAttachable {
-			err = rc.actualStateOfWorld.MarkDeviceAsMounted(volume.volumeName)
-			if err != nil {
-				glog.Errorf("Could not mark device is mounted to actual state of world: %v", err)
+			if isNotMount, err := rc.mounter.IsLikelyNotMountPoint(volume.deviceMountPath); err != nil {
+				glog.Errorf("Could not check whether the volume: %v device %v is mounted at path: %v, error: %v",
+					volume.volumeName,
+					volume.devicePath,
+					volume.deviceMountPath,
+					err)
 				continue
+			} else if !isNotMount {
+				err = rc.actualStateOfWorld.MarkDeviceAsMounted(volume.volumeName)
+				if err != nil {
+					glog.Errorf("Could not mark device is mounted to actual state of world: %v", err)
+					continue
+				}
+				glog.Infof("Volume: %v is mounted", volume.volumeName)
 			}
 		}
+
 		_, err = rc.desiredStateOfWorld.AddPodToVolume(volume.podName,
 			volume.pod,
 			volume.volumeSpec,
