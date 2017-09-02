@@ -11,6 +11,7 @@ go_library(
     srcs = ["options.go"],
     deps = [
         "//pkg/apis/componentconfig:go_default_library",
+        "//pkg/apis/componentconfig/validation:go_default_library",
         "//pkg/client/leaderelectionconfig:go_default_library",
         "//pkg/controller/garbagecollector:go_default_library",
         "//pkg/features:go_default_library",
@@ -47,5 +48,6 @@ go_test(
         "//vendor/github.com/spf13/pflag:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/util/diff:go_default_library",
+        "//vendor/k8s.io/apimachinery/pkg/util/errors:go_default_library",
     ],
 )
