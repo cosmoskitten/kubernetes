@@ -1143,6 +1143,9 @@ func printServiceAccountList(list *api.ServiceAccountList, options printers.Prin
 }
 
 func printNode(obj *api.Node, options printers.PrintOptions) ([]metav1alpha1.TableRow, error) {
+	if options.WithNamespace {
+		return nil, fmt.Errorf("node is not namespaced")
+	}
 	row := metav1alpha1.TableRow{
 		Object: runtime.RawExtension{Object: obj},
 	}
@@ -1237,6 +1240,9 @@ func printNodeList(list *api.NodeList, options printers.PrintOptions) ([]metav1a
 }
 
 func printPersistentVolume(obj *api.PersistentVolume, options printers.PrintOptions) ([]metav1alpha1.TableRow, error) {
+	if options.WithNamespace {
+		return nil, fmt.Errorf("persistentVolume is not namespaced")
+	}
 	row := metav1alpha1.TableRow{
 		Object: runtime.RawExtension{Object: obj},
 	}
@@ -1367,6 +1373,9 @@ func printRoleBindingList(list *rbac.RoleBindingList, options printers.PrintOpti
 }
 
 func printClusterRoleBinding(obj *rbac.ClusterRoleBinding, options printers.PrintOptions) ([]metav1alpha1.TableRow, error) {
+	if options.WithNamespace {
+		return nil, fmt.Errorf("clusterrolobinding is not namespaced")
+	}
 	row := metav1alpha1.TableRow{
 		Object: runtime.RawExtension{Object: obj},
 	}
@@ -1445,6 +1454,9 @@ func printCertificateSigningRequestList(list *certificates.CertificateSigningReq
 }
 
 func printComponentStatus(obj *api.ComponentStatus, options printers.PrintOptions) ([]metav1alpha1.TableRow, error) {
+	if options.WithNamespace {
+		return nil, fmt.Errorf("componentstatus is not namespaced")
+	}
 	row := metav1alpha1.TableRow{
 		Object: runtime.RawExtension{Object: obj},
 	}
@@ -1702,6 +1714,9 @@ func printNetworkPolicyList(list *networking.NetworkPolicyList, options printers
 }
 
 func printStorageClass(obj *storage.StorageClass, options printers.PrintOptions) ([]metav1alpha1.TableRow, error) {
+	if options.WithNamespace {
+		return nil, fmt.Errorf("storageclass is not namespaced")
+	}
 	row := metav1alpha1.TableRow{
 		Object: runtime.RawExtension{Object: obj},
 	}

@@ -48,6 +48,7 @@ import (
 	"k8s.io/kubernetes/pkg/apis/batch"
 	"k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/apis/policy"
+	"k8s.io/kubernetes/pkg/apis/rbac"
 	"k8s.io/kubernetes/pkg/apis/storage"
 	kubectltesting "k8s.io/kubernetes/pkg/kubectl/testing"
 	"k8s.io/kubernetes/pkg/printers"
@@ -1384,12 +1385,6 @@ func TestPrintHumanReadableWithNamespace(t *testing.T) {
 			isNamespaced: true,
 		},
 		{
-			obj: &api.Namespace{
-				ObjectMeta: metav1.ObjectMeta{Name: name},
-			},
-			isNamespaced: false,
-		},
-		{
 			obj: &api.Secret{
 				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespaceName},
 			},
@@ -1401,20 +1396,6 @@ func TestPrintHumanReadableWithNamespace(t *testing.T) {
 				Secrets:    []api.ObjectReference{},
 			},
 			isNamespaced: true,
-		},
-		{
-			obj: &api.Node{
-				ObjectMeta: metav1.ObjectMeta{Name: name},
-				Status:     api.NodeStatus{},
-			},
-			isNamespaced: false,
-		},
-		{
-			obj: &api.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespaceName},
-				Spec:       api.PersistentVolumeSpec{},
-			},
-			isNamespaced: false,
 		},
 		{
 			obj: &api.PersistentVolumeClaim{
@@ -1455,6 +1436,38 @@ func TestPrintHumanReadableWithNamespace(t *testing.T) {
 			},
 			isNamespaced: false,
 		},
+		{
+			obj: &storage.StorageClass{
+				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespaceName},
+			},
+			isNamespaced: false,
+		},
+		{
+			obj: &api.Node{
+				ObjectMeta: metav1.ObjectMeta{Name: name},
+				Status:     api.NodeStatus{},
+			},
+			isNamespaced: false,
+		},
+		{
+			obj: &api.PersistentVolume{
+				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespaceName},
+				Spec:       api.PersistentVolumeSpec{},
+			},
+			isNamespaced: false,
+		},
+		{
+			obj: &api.Namespace{
+				ObjectMeta: metav1.ObjectMeta{Name: name},
+			},
+			isNamespaced: false,
+		},
+		{
+			obj: &rbac.ClusterRoleBinding{
+				ObjectMeta: metav1.ObjectMeta{Name: name},
+			},
+			isNamespaced: false,
+		},
 	}
 
 	for i, test := range table {
@@ -1478,10 +1491,12 @@ func TestPrintHumanReadableWithNamespace(t *testing.T) {
 			printer := printers.NewHumanReadablePrinter(nil, nil, printers.PrintOptions{
 				WithNamespace: true,
 			})
+			AddHandlers(printer)
 			buffer := &bytes.Buffer{}
 			err := printer.PrintObj(test.obj, buffer)
 			if err == nil {
-				t.Errorf("Expected error when printing un-namespaced type")
+				fmt.Println(test.obj)
+				t.Errorf("%d:Expected error when printing un-namespaced type", i)
 			}
 		}
 	}
