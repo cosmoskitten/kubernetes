@@ -462,6 +462,42 @@ func (rc *reconciler) reconstructVolume(volume podVolume) (*reconstructedVolume,
 			newMounterErr)
 	}
 
+	deviceMountPath := ""
+	if attachablePlugin != nil {
+		attacher, newAttacherErr := attachablePlugin.NewAttacher()
+		if newAttacherErr != nil {
+			return nil, fmt.Errorf(
+				"AttachableVolumePlugin.NewAttacher failed for volume %q (spec.Name: %q) pod %q (UID: %q) with: %v",
+				uniqueVolumeName,
+				volumeSpec.Name(),
+				volume.podName,
+				pod.UID,
+				newAttacherErr)
+		}
+
+		var getDeviceMountPathErr error
+		deviceMountPath, getDeviceMountPathErr = attacher.GetDeviceMountPath(volumeSpec)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"Attacher.GetDeviceMountPath failed for volume %q (spec.Name: %q) pod %q (UID: %q) with: %v",
+				uniqueVolumeName,
+				volumeSpec.Name(),
+				volume.podName,
+				pod.UID,
+				getDeviceMountPathErr)
+		}
+		if isNotMount, mountCheckErr := rc.mounter.IsLikelyNotMountPoint(deviceMountPath); mountCheckErr != nil {
+			return nil, fmt.Errorf("Could not check whether the volume %q (spec.Name: %q) pod %q (UID: %q) is mounted at path: %v with: %v",
+				uniqueVolumeName,
+				volumeSpec.Name(),
+				volume.podName,
+				pod.UID,
+				deviceMountPath,
+				mountCheckErr)
+		} else if isNotMount {
+			return nil, fmt.Errorf("Volume: %q is not mounted", uniqueVolumeName)
+		}
+	}
 	reconstructedVolume := &reconstructedVolume{
 		volumeName: uniqueVolumeName,
 		podName:    volume.podName,
@@ -531,7 +567,9 @@ func (rc *reconciler) updateStates(volumesNeedUpdate map[v1.UniqueVolumeName]*re
 				glog.Errorf("Could not mark device is mounted to actual state of world: %v", err)
 				continue
 			}
+			glog.Infof("Volume: %v is mounted", volume.volumeName)
 		}
+
 		_, err = rc.desiredStateOfWorld.AddPodToVolume(volume.podName,
 			volume.pod,
 			volume.volumeSpec,
