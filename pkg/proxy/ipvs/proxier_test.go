@@ -33,6 +33,7 @@ import (
 	fakeexec "k8s.io/utils/exec/testing"
 
 	"k8s.io/apimachinery/pkg/util/sets"
+	netlinktest "k8s.io/kubernetes/pkg/proxy/ipvs/testing"
 	proxyutil "k8s.io/kubernetes/pkg/proxy/util"
 	utiliptables "k8s.io/kubernetes/pkg/util/iptables"
 	iptablestest "k8s.io/kubernetes/pkg/util/iptables/testing"
@@ -116,6 +117,7 @@ func NewFakeProxier(ipt utiliptables.Interface, ipvs utilipvs.Interface, nodeIPs
 		iptablesData:     bytes.NewBuffer(nil),
 		natChains:        bytes.NewBuffer(nil),
 		natRules:         bytes.NewBuffer(nil),
+		netlinkHandle:    netlinktest.NewFakeNetlinkHandle(),
 	}
 }
 

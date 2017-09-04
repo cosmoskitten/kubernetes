@@ -133,6 +133,8 @@ type Proxier struct {
 	iptablesData *bytes.Buffer
 	natChains    *bytes.Buffer
 	natRules     *bytes.Buffer
+	// Added as a member to the struct to allow injection for testing.
+	netlinkHandle NetLinkHandle
 }
 
 // IPGetter helps get node network interface IP
@@ -269,6 +271,7 @@ func NewProxier(ipt utiliptables.Interface, ipvs utilipvs.Interface,
 		iptablesData:     bytes.NewBuffer(nil),
 		natChains:        bytes.NewBuffer(nil),
 		natRules:         bytes.NewBuffer(nil),
+		netlinkHandle:    NewNetLinkHandle(),
 	}
 	burstSyncs := 2
 	glog.V(3).Infof("minSyncPeriod: %v, syncPeriod: %v, burstSyncs: %d", minSyncPeriod, syncPeriod, burstSyncs)
@@ -1293,7 +1296,7 @@ func (proxier *Proxier) syncService(svcName string, vs *utilipvs.VirtualServer, 
 	// bind service address to dummy interface even if service not changed,
 	// in case that service IP was removed by other processes
 	if bindAddr {
-		_, err := proxier.ipvs.EnsureVirtualServerAddressBind(vs, DefaultDummyDevice)
+		_, err := proxier.netlinkHandle.EnsureAddressBind(vs.Address.String(), DefaultDummyDevice)
 		if err != nil {
 			glog.Errorf("Failed to bind service address to dummy device %q: %v", svcName, err)
 			return err
@@ -1382,6 +1385,7 @@ func (proxier *Proxier) syncEndpoint(svcPortName proxy.ServicePortName, onlyNode
 }
 
 func (proxier *Proxier) cleanLegacyService(atciveServices map[string]bool, currentServices map[string]*utilipvs.VirtualServer) {
+	unbindIPAddr := sets.NewString()
 	for cS := range currentServices {
 		if !atciveServices[cS] {
 			svc := currentServices[cS]
@@ -1389,10 +1393,14 @@ func (proxier *Proxier) cleanLegacyService(atciveServices map[string]bool, curre
 			if err != nil {
 				glog.Errorf("Failed to delete service, error: %v", err)
 			}
-			err = proxier.ipvs.UnbindVirtualServerAddress(svc, DefaultDummyDevice)
-			if err != nil {
-				glog.Errorf("Failed to unbind service from dummy interface, error: %v", err)
-			}
+			unbindIPAddr.Insert(svc.Address.String())
+		}
+	}
+
+	for _, addr := range unbindIPAddr.UnsortedList() {
+		err := proxier.netlinkHandle.UnbindAddress(addr, DefaultDummyDevice)
+		if err != nil {
+			glog.Errorf("Failed to unbind service from dummy interface, error: %v", err)
 		}
 	}
 }
