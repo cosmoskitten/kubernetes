@@ -420,7 +420,7 @@ func (kl *Kubelet) GenerateRunContainerOptions(pod *v1.Pod, container *v1.Contai
 	}
 	opts.Mounts = append(opts.Mounts, mounts...)
 
-	opts.Envs, err = kl.GenerateRunContainerEnvs(pod, container, podIP)
+	envs, err = kl.GenerateRunContainerEnvs(pod, container, podIP)
 	if err != nil {
 		return nil, false, err
 	}
