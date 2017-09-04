@@ -46,6 +46,10 @@ const (
 	rbdCmdErr       = "executable file not found in $PATH"
 )
 
+var (
+	clientKubeLockMagicRe = regexp.MustCompile("client.* " + kubeLockMagic + ".*")
+)
+
 // search /sys/bus for rbd device that matches given pool and image
 func getDevFromImageAndPool(pool, image string) (string, bool) {
 	// /sys/bus/rbd/devices/X/name and /sys/bus/rbd/devices/X/pool
@@ -169,8 +173,7 @@ func (util *RBDUtil) rbdLock(b rbdMounter, lock bool) error {
 			// clean up orphaned lock if no watcher on the image
 			used, statusErr := util.rbdStatus(&b)
 			if statusErr == nil && !used {
-				re := regexp.MustCompile("client.* " + kubeLockMagic + ".*")
-				locks := re.FindAllStringSubmatch(output, -1)
+				locks := clientKubeLockMagicRe.FindAllStringSubmatch(output, -1)
 				for _, v := range locks {
 					if len(v) > 0 {
 						lockInfo := strings.Split(v[0], " ")

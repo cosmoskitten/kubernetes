@@ -57,6 +57,7 @@ var ErrNotFound = errors.New("Failed to find object")
 var ErrMultipleResults = errors.New("Multiple results where only one expected")
 var ErrNoAddressFound = errors.New("No address found for host")
 var ErrAttrNotFound = errors.New("Expected attribute not found")
+var providerIDRegexp = regexp.MustCompile(`^rackspace://([^/]+)$`)
 
 // encoding.TextUnmarshaler interface for time.Duration
 type MyDuration struct {
@@ -482,7 +483,6 @@ func srvInstanceType(srv *osservers.Server) (string, error) {
 }
 
 func instanceIDFromProviderID(providerID string) (instanceID string, err error) {
-	var providerIDRegexp = regexp.MustCompile(`^rackspace://([^/]+)$`)
 	matches := providerIDRegexp.FindStringSubmatch(providerID)
 	if len(matches) != 2 {
 		return "", fmt.Errorf("ProviderID \"%s\" didn't match expected format \"rackspace://InstanceID\"", providerID)

@@ -43,6 +43,8 @@ var (
 		"node.session.auth.password",
 		"node.session.auth.username_in",
 		"node.session.auth.password_in"}
+	ifaceTransportNameRe = regexp.MustCompile(`iface.transport_name = (.*)\n`)
+	ifaceRe              = regexp.MustCompile(`.+/iface-([^/]+)/.+`)
 )
 
 func updateISCSIDiscoverydb(b iscsiDiskMounter, tp string) error {
@@ -426,9 +428,7 @@ func (util *ISCSIUtil) DetachDisk(c iscsiDiskUnmounter, mntPath string) error {
 }
 
 func extractTransportname(ifaceOutput string) (iscsiTransport string) {
-	re := regexp.MustCompile(`iface.transport_name = (.*)\n`)
-
-	rexOutput := re.FindStringSubmatch(ifaceOutput)
+	rexOutput := ifaceTransportNameRe.FindStringSubmatch(ifaceOutput)
 	if rexOutput == nil {
 		return ""
 	}
@@ -457,9 +457,7 @@ func extractDeviceAndPrefix(mntPath string) (string, string, error) {
 }
 
 func extractIface(mntPath string) (string, bool) {
-	re := regexp.MustCompile(`.+/iface-([^/]+)/.+`)
-
-	reOutput := re.FindStringSubmatch(mntPath)
+	reOutput := ifaceRe.FindStringSubmatch(mntPath)
 	if reOutput != nil {
 		return reOutput[1], true
 	}
