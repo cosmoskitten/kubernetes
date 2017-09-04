@@ -21,8 +21,12 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/kubernetes/pkg/api"
+	proxytest "k8s.io/kubernetes/pkg/proxy/util/testing"
 )
+
+const dummyDevice = "kube-ipvs0"
 
 func TestShouldSkipService(t *testing.T) {
 	testCases := []struct {
@@ -107,5 +111,63 @@ func TestShouldSkipService(t *testing.T) {
 		if skip != testCases[i].shouldSkip {
 			t.Errorf("case %d: expect %v, got %v", i, testCases[i].shouldSkip, skip)
 		}
+	}
+}
+
+func TestEnsureAddressBind(t *testing.T) {
+	testIpv4 := "10.20.30.40"
+	testIpv6 := "2001::1"
+	handle := proxytest.NewFakeNetlinkHandle()
+	// Success.
+	if exists, err := EnsureAddressBind(testIpv4, dummyDevice, handle); err != nil {
+		t.Errorf("expected success, got %v", err)
+	} else if exists {
+		t.Errorf("expected exists = false")
+	}
+
+	if exists, err := EnsureAddressBind(testIpv6, dummyDevice, handle); err != nil {
+		t.Errorf("expected success, got %v", err)
+	} else if exists {
+		t.Errorf("expected exists = false")
+	}
+
+	if _, ok := handle.BoundIP[dummyDevice]; !ok {
+		t.Errorf("expected ip bound on %s", dummyDevice)
+	}
+	if handle.BoundIP[dummyDevice].Len() != 2 ||
+		!handle.BoundIP[dummyDevice].Has(testIpv4+"/32") ||
+		!handle.BoundIP[dummyDevice].Has(testIpv6+"/128") {
+		t.Errorf("wrong bound ip, got %v", handle.BoundIP[dummyDevice].List())
+	}
+	// Exists.
+	if exists, err := EnsureAddressBind(testIpv4, dummyDevice, handle); err != nil {
+		t.Errorf("expected success, got %v", err)
+	} else if !exists {
+		t.Errorf("expected exists = true")
+	}
+}
+
+func TestUnbindAddress(t *testing.T) {
+	testIpv4 := "10.20.30.41"
+	testIpv6 := "2001::1"
+	handle := proxytest.NewFakeNetlinkHandle()
+	handle.BoundIP[dummyDevice] = sets.NewString(testIpv4+"/32", testIpv6+"/128", "10.20.30.42/32")
+	// Success.
+	if err := UnbindAddress(testIpv4, dummyDevice, handle); err != nil {
+		t.Errorf("expected success, got %v", err)
+	}
+	if err := UnbindAddress(testIpv6, dummyDevice, handle); err != nil {
+		t.Errorf("expected success, got %v", err)
+	}
+	if handle.BoundIP[dummyDevice].Len() != 1 {
+		t.Errorf("expected 1 ip left, got %v", handle.BoundIP[dummyDevice].List())
+	}
+	if handle.BoundIP[dummyDevice].Has(testIpv4+"/32") ||
+		handle.BoundIP[dummyDevice].Has(testIpv6+"/128") {
+		t.Errorf("wrong ip left, got %v", handle.BoundIP[dummyDevice].List())
+	}
+	// Failure.
+	if err := UnbindAddress(testIpv6, dummyDevice, handle); err == nil {
+		t.Errorf("expected failure")
 	}
 }

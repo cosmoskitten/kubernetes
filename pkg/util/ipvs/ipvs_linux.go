@@ -20,7 +20,6 @@ package ipvs
 
 import (
 	"errors"
-	"fmt"
 	"net"
 	"strings"
 	"syscall"
@@ -29,8 +28,6 @@ import (
 	"github.com/golang/glog"
 	utilexec "k8s.io/utils/exec"
 )
-
-const cmdIP = "ip"
 
 // runner implements Interface.
 type runner struct {
@@ -49,34 +46,6 @@ func New(exec utilexec.Interface) Interface {
 		exec:       exec,
 		ipvsHandle: ihandle,
 	}
-}
-
-// EnsureVirtualServerAddressBind is part of Interface.
-func (runner *runner) EnsureVirtualServerAddressBind(vs *VirtualServer, dummyDev string) (exist bool, err error) {
-	addr := vs.Address.String() + "/32"
-	args := []string{"addr", "add", addr, "dev", dummyDev}
-	out, err := runner.exec.Command(cmdIP, args...).CombinedOutput()
-	if err != nil {
-		// "exit status 2" will be returned if the address is already bound to dummy device
-		if ee, ok := err.(utilexec.ExitError); ok {
-			if ee.Exited() && ee.ExitStatus() == 2 {
-				return true, nil
-			}
-		}
-		return false, fmt.Errorf("error bind address: %s to dummy interface: %s, err: %v: %s", vs.Address.String(), dummyDev, err, out)
-	}
-	return false, nil
-}
-
-// UnbindVirtualServerAddress is part of Interface.
-func (runner *runner) UnbindVirtualServerAddress(vs *VirtualServer, dummyDev string) error {
-	addr := vs.Address.String() + "/32"
-	args := []string{"addr", "del", addr, "dev", dummyDev}
-	out, err := runner.exec.Command(cmdIP, args...).CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("error unbind address: %s from dummy interface: %s, err: %v: %s", vs.Address.String(), dummyDev, err, out)
-	}
-	return nil
 }
 
 // AddVirtualServer is part of Interface.
