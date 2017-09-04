@@ -22,7 +22,6 @@ import (
 
 	"github.com/golang/glog"
 	"k8s.io/api/core/v1"
-	clientv1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/informers"
 	clientset "k8s.io/client-go/kubernetes"
 	clientv1core "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -35,6 +34,8 @@ import (
 	"k8s.io/kubernetes/plugin/pkg/scheduler/factory"
 	"k8s.io/kubernetes/test/integration/framework"
 )
+
+const enableEquivalenceCache = true
 
 // mustSetupScheduler starts the following components:
 // - k8s api server (a.k.a. master)
@@ -74,13 +75,14 @@ func mustSetupScheduler() (schedulerConfigurator scheduler.Configurator, destroy
 		informerFactory.Apps().V1beta1().StatefulSets(),
 		informerFactory.Core().V1().Services(),
 		v1.DefaultHardPodAffinitySymmetricWeight,
+		enableEquivalenceCache,
 	)
 
 	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartRecordingToSink(&clientv1core.EventSinkImpl{Interface: clientv1core.New(clientSet.Core().RESTClient()).Events("")})
+	eventBroadcaster.StartRecordingToSink(&clientv1core.EventSinkImpl{Interface: clientv1core.New(clientSet.CoreV1().RESTClient()).Events("")})
 
 	sched, err := scheduler.NewFromConfigurator(schedulerConfigurator, func(conf *scheduler.Config) {
-		conf.Recorder = eventBroadcaster.NewRecorder(api.Scheme, clientv1.EventSource{Component: "scheduler"})
+		conf.Recorder = eventBroadcaster.NewRecorder(api.Scheme, v1.EventSource{Component: "scheduler"})
 	})
 	if err != nil {
 		glog.Fatalf("Error creating scheduler: %v", err)

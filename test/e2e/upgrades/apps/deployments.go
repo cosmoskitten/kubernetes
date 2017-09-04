@@ -27,6 +27,7 @@ import (
 	"k8s.io/kubernetes/test/e2e/upgrades"
 
 	. "github.com/onsi/ginkgo"
+	imageutils "k8s.io/kubernetes/test/utils/image"
 )
 
 // TODO: Test that the deployment stays available during master (and maybe
@@ -64,7 +65,7 @@ var _ upgrades.Skippable = DeploymentUpgradeTest{}
 func (t *DeploymentUpgradeTest) Setup(f *framework.Framework) {
 	deploymentName := "deployment-hash-test"
 	c := f.ClientSet
-	nginxImage := "gcr.io/google_containers/nginx-slim:0.8"
+	nginxImage := imageutils.GetE2EImage(imageutils.NginxSlim)
 
 	ns := f.Namespace.Name
 
@@ -81,7 +82,7 @@ func (t *DeploymentUpgradeTest) Setup(f *framework.Framework) {
 	By(fmt.Sprintf("Waiting deployment %q to complete", deploymentName))
 	framework.ExpectNoError(framework.WaitForDeploymentStatusValid(c, deployment))
 
-	rs, err := deploymentutil.GetNewReplicaSet(deployment, c)
+	rs, err := deploymentutil.GetNewReplicaSet(deployment, c.ExtensionsV1beta1())
 	framework.ExpectNoError(err)
 	if rs == nil {
 		framework.ExpectNoError(fmt.Errorf("expected a new replica set for deployment %q, found none", deployment.Name))
@@ -108,7 +109,7 @@ func (t *DeploymentUpgradeTest) Setup(f *framework.Framework) {
 	By(fmt.Sprintf("Waiting deployment %q to complete", deploymentName))
 	framework.ExpectNoError(framework.WaitForDeploymentStatus(c, deployment))
 
-	rs, err = deploymentutil.GetNewReplicaSet(deployment, c)
+	rs, err = deploymentutil.GetNewReplicaSet(deployment, c.ExtensionsV1beta1())
 	framework.ExpectNoError(err)
 	if rs == nil {
 		framework.ExpectNoError(fmt.Errorf("expected a new replica set for deployment %q", deployment.Name))
@@ -141,7 +142,7 @@ func (t *DeploymentUpgradeTest) Test(f *framework.Framework, done <-chan struct{
 	framework.ExpectNoError(framework.WaitForDeploymentStatus(c, deployment))
 
 	By(fmt.Sprintf("Checking that replica sets for deployment %q are the same as prior to the upgrade", t.updatedD.Name))
-	_, allOldRSs, newRS, err := deploymentutil.GetAllReplicaSets(t.updatedD, c)
+	_, allOldRSs, newRS, err := deploymentutil.GetAllReplicaSets(t.updatedD, c.ExtensionsV1beta1())
 	framework.ExpectNoError(err)
 	if newRS == nil {
 		By(t.spewDeploymentAndReplicaSets(newRS, allOldRSs))

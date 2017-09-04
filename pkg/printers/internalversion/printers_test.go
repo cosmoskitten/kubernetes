@@ -215,10 +215,24 @@ type TestPrintType struct {
 }
 
 func (obj *TestPrintType) GetObjectKind() schema.ObjectKind { return schema.EmptyObjectKind }
+func (obj *TestPrintType) DeepCopyObject() runtime.Object {
+	if obj == nil {
+		return nil
+	}
+	clone := *obj
+	return &clone
+}
 
 type TestUnknownType struct{}
 
 func (obj *TestUnknownType) GetObjectKind() schema.ObjectKind { return schema.EmptyObjectKind }
+func (obj *TestUnknownType) DeepCopyObject() runtime.Object {
+	if obj == nil {
+		return nil
+	}
+	clone := *obj
+	return &clone
+}
 
 func TestPrinter(t *testing.T) {
 	//test inputs
@@ -825,6 +839,51 @@ func TestPrintNodeStatus(t *testing.T) {
 	}
 }
 
+func TestPrintNodeRole(t *testing.T) {
+	printer := printers.NewHumanReadablePrinter(nil, nil, printers.PrintOptions{})
+	AddHandlers(printer)
+	table := []struct {
+		node     api.Node
+		expected string
+	}{
+		{
+			node: api.Node{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo9"},
+			},
+			expected: "<none>",
+		},
+		{
+			node: api.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:   "foo10",
+					Labels: map[string]string{"node-role.kubernetes.io/master": "", "node-role.kubernetes.io/proxy": "", "kubernetes.io/role": "node"},
+				},
+			},
+			expected: "master,node,proxy",
+		},
+		{
+			node: api.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:   "foo11",
+					Labels: map[string]string{"kubernetes.io/role": "node"},
+				},
+			},
+			expected: "node",
+		},
+	}
+
+	for _, test := range table {
+		buffer := &bytes.Buffer{}
+		err := printer.PrintObj(&test.node, buffer)
+		if err != nil {
+			t.Fatalf("An error occurred printing Node: %#v", err)
+		}
+		if !contains(strings.Fields(buffer.String()), test.expected) {
+			t.Fatalf("Expect printing node %s with role %#v, got: %#v", test.node.Name, test.expected, buffer.String())
+		}
+	}
+}
+
 func TestPrintNodeOSImage(t *testing.T) {
 	printer := printers.NewHumanReadablePrinter(nil, nil, printers.PrintOptions{
 		ColumnLabels: []string{},
@@ -1080,10 +1139,14 @@ func TestPrintHunmanReadableIngressWithColumnLabels(t *testing.T) {
 			},
 		},
 	}
-	buff := bytes.Buffer{}
-	printIngress(&ingress, &buff, printers.PrintOptions{
-		ColumnLabels: []string{"app_name"},
-	})
+	buff := bytes.NewBuffer([]byte{})
+	table, err := printers.NewTablePrinter().With(AddHandlers).PrintTable(&ingress, printers.PrintOptions{ColumnLabels: []string{"app_name"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := printers.PrintTable(table, buff, printers.PrintOptions{NoHeaders: true}); err != nil {
+		t.Fatal(err)
+	}
 	output := string(buff.Bytes())
 	appName := ingress.ObjectMeta.Labels["app_name"]
 	if !strings.Contains(output, appName) {
@@ -1205,8 +1268,14 @@ func TestPrintHumanReadableService(t *testing.T) {
 
 	for _, svc := range tests {
 		for _, wide := range []bool{false, true} {
-			buff := bytes.Buffer{}
-			printService(&svc, &buff, printers.PrintOptions{Wide: wide})
+			buff := bytes.NewBuffer([]byte{})
+			table, err := printers.NewTablePrinter().With(AddHandlers).PrintTable(&svc, printers.PrintOptions{Wide: wide})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := printers.PrintTable(table, buff, printers.PrintOptions{NoHeaders: true}); err != nil {
+				t.Fatal(err)
+			}
 			output := string(buff.Bytes())
 			ip := svc.Spec.ClusterIP
 			if !strings.Contains(output, ip) {
@@ -1574,7 +1643,7 @@ func TestPrintPod(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "test5"},
 				Spec:       api.PodSpec{Containers: make([]api.Container, 2)},
 				Status: api.PodStatus{
-					Reason: "OutOfDisk",
+					Reason: "podReason",
 					Phase:  "podPhase",
 					ContainerStatuses: []api.ContainerStatus{
 						{Ready: true, RestartCount: 3, State: api.ContainerState{Running: &api.ContainerStateRunning{}}},
@@ -1582,7 +1651,7 @@ func TestPrintPod(t *testing.T) {
 					},
 				},
 			},
-			[]metav1alpha1.TableRow{{Cells: []interface{}{"test5", "1/2", "OutOfDisk", 6, "<unknown>"}}},
+			[]metav1alpha1.TableRow{{Cells: []interface{}{"test5", "1/2", "podReason", 6, "<unknown>"}}},
 		},
 	}
 
@@ -1878,13 +1947,22 @@ func TestPrintDeployment(t *testing.T) {
 
 	buf := bytes.NewBuffer([]byte{})
 	for _, test := range tests {
-		printDeployment(&test.deployment, buf, printers.PrintOptions{})
+		table, err := printers.NewTablePrinter().With(AddHandlers).PrintTable(&test.deployment, printers.PrintOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := printers.PrintTable(table, buf, printers.PrintOptions{NoHeaders: true}); err != nil {
+			t.Fatal(err)
+		}
 		if buf.String() != test.expect {
 			t.Fatalf("Expected: %s, got: %s", test.expect, buf.String())
 		}
 		buf.Reset()
+		table, err = printers.NewTablePrinter().With(AddHandlers).PrintTable(&test.deployment, printers.PrintOptions{Wide: true})
 		// print deployment with '-o wide' option
-		printDeployment(&test.deployment, buf, printers.PrintOptions{Wide: true})
+		if err := printers.PrintTable(table, buf, printers.PrintOptions{Wide: true, NoHeaders: true}); err != nil {
+			t.Fatal(err)
+		}
 		if buf.String() != test.wideExpect {
 			t.Fatalf("Expected: %s, got: %s", test.wideExpect, buf.String())
 		}
@@ -2352,13 +2430,13 @@ func TestPrintHPA(t *testing.T) {
 
 	buff := bytes.NewBuffer([]byte{})
 	for _, test := range tests {
-		err := printHorizontalPodAutoscaler(&test.hpa, buff, printers.PrintOptions{})
+		table, err := printers.NewTablePrinter().With(AddHandlers).PrintTable(&test.hpa, printers.PrintOptions{})
 		if err != nil {
-			t.Errorf("expected %q, got error: %v", test.expected, err)
-			buff.Reset()
-			continue
+			t.Fatal(err)
 		}
-
+		if err := printers.PrintTable(table, buff, printers.PrintOptions{NoHeaders: true}); err != nil {
+			t.Fatal(err)
+		}
 		if buff.String() != test.expected {
 			t.Errorf("expected %q, got %q", test.expected, buff.String())
 		}
@@ -2580,7 +2658,13 @@ func TestPrintService(t *testing.T) {
 
 	buf := bytes.NewBuffer([]byte{})
 	for _, test := range tests {
-		printService(&test.service, buf, printers.PrintOptions{})
+		table, err := printers.NewTablePrinter().With(AddHandlers).PrintTable(&test.service, printers.PrintOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := printers.PrintTable(table, buf, printers.PrintOptions{NoHeaders: true}); err != nil {
+			t.Fatal(err)
+		}
 		// We ignore time
 		if buf.String() != test.expect {
 			t.Fatalf("Expected: %s, but got: %s", test.expect, buf.String())
@@ -2591,6 +2675,7 @@ func TestPrintService(t *testing.T) {
 
 func TestPrintPodDisruptionBudget(t *testing.T) {
 	minAvailable := intstr.FromInt(22)
+	maxUnavailable := intstr.FromInt(11)
 	tests := []struct {
 		pdb    policy.PodDisruptionBudget
 		expect string
@@ -2610,6 +2695,22 @@ func TestPrintPodDisruptionBudget(t *testing.T) {
 				},
 			},
 			"pdb1\t22\tN/A\t5\t0s\n",
+		},
+		{
+			policy.PodDisruptionBudget{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace:         "ns2",
+					Name:              "pdb2",
+					CreationTimestamp: metav1.Time{Time: time.Now().Add(1.9e9)},
+				},
+				Spec: policy.PodDisruptionBudgetSpec{
+					MaxUnavailable: &maxUnavailable,
+				},
+				Status: policy.PodDisruptionBudgetStatus{
+					PodDisruptionsAllowed: 5,
+				},
+			},
+			"pdb2\tN/A\t11\t5\t0s\n",
 		}}
 
 	buf := bytes.NewBuffer([]byte{})
@@ -2731,7 +2832,13 @@ func TestPrintControllerRevision(t *testing.T) {
 
 	buf := bytes.NewBuffer([]byte{})
 	for _, test := range tests {
-		printControllerRevision(&test.history, buf, printers.PrintOptions{})
+		table, err := printers.NewTablePrinter().With(AddHandlers).PrintTable(&test.history, printers.PrintOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := printers.PrintTable(table, buf, printers.PrintOptions{NoHeaders: true}); err != nil {
+			t.Fatal(err)
+		}
 		if buf.String() != test.expect {
 			t.Fatalf("Expected: %s, but got: %s", test.expect, buf.String())
 		}
@@ -2806,6 +2913,106 @@ func TestPrintReplicaSet(t *testing.T) {
 		}
 		if buf.String() != test.wideExpect {
 			t.Fatalf("Expected: %s, got: %s", test.wideExpect, buf.String())
+		}
+		buf.Reset()
+	}
+}
+
+func TestPrintPersistentVolumeClaim(t *testing.T) {
+	myScn := "my-scn"
+	tests := []struct {
+		pvc    api.PersistentVolumeClaim
+		expect string
+	}{
+		{
+			// Test name, num of containers, restarts, container ready status
+			api.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test1",
+				},
+				Spec: api.PersistentVolumeClaimSpec{
+					VolumeName: "my-volume",
+				},
+				Status: api.PersistentVolumeClaimStatus{
+					Phase:       api.ClaimBound,
+					AccessModes: []api.PersistentVolumeAccessMode{api.ReadOnlyMany},
+					Capacity: map[api.ResourceName]resource.Quantity{
+						api.ResourceStorage: resource.MustParse("4Gi"),
+					},
+				},
+			},
+			"test1\tBound\tmy-volume\t4Gi\tROX\t\t<unknown>\n",
+		},
+		{
+			// Test name, num of containers, restarts, container ready status
+			api.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test2",
+				},
+				Spec: api.PersistentVolumeClaimSpec{},
+				Status: api.PersistentVolumeClaimStatus{
+					Phase:       api.ClaimLost,
+					AccessModes: []api.PersistentVolumeAccessMode{api.ReadOnlyMany},
+					Capacity: map[api.ResourceName]resource.Quantity{
+						api.ResourceStorage: resource.MustParse("4Gi"),
+					},
+				},
+			},
+			"test2\tLost\t\t\t\t\t<unknown>\n",
+		},
+		{
+			// Test name, num of containers, restarts, container ready status
+			api.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test3",
+				},
+				Spec: api.PersistentVolumeClaimSpec{
+					VolumeName: "my-volume",
+				},
+				Status: api.PersistentVolumeClaimStatus{
+					Phase:       api.ClaimPending,
+					AccessModes: []api.PersistentVolumeAccessMode{api.ReadWriteMany},
+					Capacity: map[api.ResourceName]resource.Quantity{
+						api.ResourceStorage: resource.MustParse("10Gi"),
+					},
+				},
+			},
+			"test3\tPending\tmy-volume\t10Gi\tRWX\t\t<unknown>\n",
+		},
+		{
+			// Test name, num of containers, restarts, container ready status
+			api.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test4",
+				},
+				Spec: api.PersistentVolumeClaimSpec{
+					VolumeName:       "my-volume",
+					StorageClassName: &myScn,
+				},
+				Status: api.PersistentVolumeClaimStatus{
+					Phase:       api.ClaimPending,
+					AccessModes: []api.PersistentVolumeAccessMode{api.ReadWriteOnce},
+					Capacity: map[api.ResourceName]resource.Quantity{
+						api.ResourceStorage: resource.MustParse("10Gi"),
+					},
+				},
+			},
+			"test4\tPending\tmy-volume\t10Gi\tRWO\tmy-scn\t<unknown>\n",
+		},
+	}
+	buf := bytes.NewBuffer([]byte{})
+	for _, test := range tests {
+		table, err := printers.NewTablePrinter().With(AddHandlers).PrintTable(&test.pvc, printers.PrintOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := printers.PrintTable(table, buf, printers.PrintOptions{NoHeaders: true}); err != nil {
+			t.Fatal(err)
+		}
+		if buf.String() != test.expect {
+			fmt.Println(buf.String())
+			fmt.Println(test.expect)
+			t.Fatalf("Expected: %s, but got: %s", test.expect, buf.String())
 		}
 		buf.Reset()
 	}

@@ -29,10 +29,10 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = framework.KubeDescribe("[Feature:ClusterSizeAutoscalingScaleUp] [Slow] Autoscaling", func() {
+var _ = SIGDescribe("[Feature:ClusterSizeAutoscalingScaleUp] [Slow] Autoscaling", func() {
 	f := framework.NewDefaultFramework("autoscaling")
 
-	framework.KubeDescribe("Autoscaling a service", func() {
+	SIGDescribe("Autoscaling a service", func() {
 		BeforeEach(func() {
 			// Check if Cloud Autoscaler is enabled by trying to get its ConfigMap.
 			_, err := f.ClientSet.CoreV1().ConfigMaps("kube-system").Get("cluster-autoscaler-status", metav1.GetOptions{})
@@ -70,7 +70,7 @@ var _ = framework.KubeDescribe("[Feature:ClusterSizeAutoscalingScaleUp] [Slow] A
 			AfterEach(func() {
 				// Scale down back to only 'nodesNum' nodes, as expected at the start of the test.
 				framework.ExpectNoError(framework.ResizeGroup(nodeGroupName, nodesNum))
-				framework.ExpectNoError(framework.WaitForClusterSize(f.ClientSet, nodesNum, 15*time.Minute))
+				framework.ExpectNoError(framework.WaitForReadyNodes(f.ClientSet, nodesNum, 15*time.Minute))
 			})
 
 			Measure("takes less than 15 minutes", func(b Benchmarker) {

@@ -1,15 +1,15 @@
 http_archive(
     name = "io_bazel_rules_go",
-    sha256 = "a1596c14c799d5a1b5f49ca28fa948414c2242110d69ef324d6ed160ec890dbf",
-    strip_prefix = "rules_go-03c634753160632c00f506afeafc819fbea4c422",
-    urls = ["https://github.com/bazelbuild/rules_go/archive/03c634753160632c00f506afeafc819fbea4c422.tar.gz"],
+    sha256 = "f9cc31e9d66dad1154de3c214158916411040e2c2614e4fbc2bab67330e95f82",
+    strip_prefix = "rules_go-82483596ec203eb9c1849937636f4cbed83733eb",
+    urls = ["https://github.com/bazelbuild/rules_go/archive/82483596ec203eb9c1849937636f4cbed83733eb.tar.gz"],
 )
 
 http_archive(
     name = "io_kubernetes_build",
-    sha256 = "a9fb7027f060b868cdbd235a0de0971b557b9d26f9c89e422feb80f48d8c0e90",
-    strip_prefix = "repo-infra-9dedd5f4093884c133ad5ea73695b28338b954ab",
-    urls = ["https://github.com/kubernetes/repo-infra/archive/9dedd5f4093884c133ad5ea73695b28338b954ab.tar.gz"],
+    sha256 = "ca8fa1ee0928220d77fcaa6bcf40a26c57800c024e21b08c8dd9cc8fbf910236",
+    strip_prefix = "repo-infra-0aafaab9e158d3628804242c6a9c4dd3eb8bce1f",
+    urls = ["https://github.com/kubernetes/repo-infra/archive/0aafaab9e158d3628804242c6a9c4dd3eb8bce1f.tar.gz"],
 )
 
 ETCD_VERSION = "3.0.17"
@@ -56,10 +56,10 @@ http_file(
 
 docker_pull(
     name = "debian-iptables-amd64",
-    digest = "sha256:bc20977ac38abfb43071b4c61c4b7edb30af894c05eb06758dd61d05118d2842",
+    digest = "sha256:2e747bc7455b46350d8e57f05c03e109fa306861e7b2a2e8e1cd563932170cf1",
     registry = "gcr.io",
     repository = "google-containers/debian-iptables-amd64",
-    tag = "v7",  # ignored, but kept here for documentation
+    tag = "v8",  # ignored, but kept here for documentation
 )
 
 docker_pull(

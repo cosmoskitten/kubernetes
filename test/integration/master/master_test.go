@@ -99,7 +99,7 @@ func TestKubernetesService(t *testing.T) {
 	_, _, closeFn := framework.RunAMaster(config)
 	defer closeFn()
 	coreClient := clientset.NewForConfigOrDie(config.GenericConfig.LoopbackClientConfig)
-	if _, err := coreClient.Services(metav1.NamespaceDefault).Get("kubernetes", metav1.GetOptions{}); err != nil {
+	if _, err := coreClient.Core().Services(metav1.NamespaceDefault).Get("kubernetes", metav1.GetOptions{}); err != nil {
 		t.Fatalf("Expected kubernetes service to exists, got: %v", err)
 	}
 }
@@ -171,7 +171,7 @@ func TestStatus(t *testing.T) {
 			statusCode:   http.StatusForbidden,
 			reqPath:      "/apis",
 			reason:       "Forbidden",
-			message:      ` "" is forbidden: User "" cannot get path "/apis".: "Everything is forbidden."`,
+			message:      `forbidden: User "" cannot get path "/apis".: "Everything is forbidden."`,
 		},
 		{
 			name:         "401",

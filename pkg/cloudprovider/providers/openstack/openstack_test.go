@@ -188,7 +188,7 @@ func TestCheckOpenStackOpts(t *testing.T) {
 					NodeSecurityGroupID:  "b41d28c2-d02f-4e1e-8ffb-23b8e4f5c144",
 				},
 			},
-			expectedError: fmt.Errorf("subnet-id not set in cloud provider config"),
+			expectedError: nil,
 		},
 		{
 			name: "test3",
@@ -473,7 +473,12 @@ func TestVolumes(t *testing.T) {
 
 	WaitForVolumeStatus(t, os, vol, volumeAvailableStatus)
 
-	diskId, err := os.AttachDisk(os.localInstanceID, vol)
+	id, err := os.InstanceID()
+	if err != nil {
+		t.Fatalf("Cannot find instance id: %v", err)
+	}
+
+	diskId, err := os.AttachDisk(id, vol)
 	if err != nil {
 		t.Fatalf("Cannot AttachDisk Cinder volume %s: %v", vol, err)
 	}
@@ -487,7 +492,7 @@ func TestVolumes(t *testing.T) {
 	}
 	t.Logf("Volume (%s) found at path: %s\n", vol, devicePath)
 
-	err = os.DetachDisk(os.localInstanceID, vol)
+	err = os.DetachDisk(id, vol)
 	if err != nil {
 		t.Fatalf("Cannot DetachDisk Cinder volume %s: %v", vol, err)
 	}
@@ -552,9 +557,14 @@ func TestInstanceIDFromProviderID(t *testing.T) {
 		fail       bool
 	}{
 		{
-			providerID: "openstack://7b9cf879-7146-417c-abfd-cb4272f0c935",
+			providerID: ProviderName + "://" + "/" + "7b9cf879-7146-417c-abfd-cb4272f0c935",
 			instanceID: "7b9cf879-7146-417c-abfd-cb4272f0c935",
 			fail:       false,
+		},
+		{
+			providerID: "openstack://7b9cf879-7146-417c-abfd-cb4272f0c935",
+			instanceID: "",
+			fail:       true,
 		},
 		{
 			providerID: "7b9cf879-7146-417c-abfd-cb4272f0c935",
@@ -562,7 +572,7 @@ func TestInstanceIDFromProviderID(t *testing.T) {
 			fail:       true,
 		},
 		{
-			providerID: "other-provider://7b9cf879-7146-417c-abfd-cb4272f0c935",
+			providerID: "other-provider:///7b9cf879-7146-417c-abfd-cb4272f0c935",
 			instanceID: "",
 			fail:       true,
 		},

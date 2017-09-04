@@ -1,7 +1,5 @@
 package(default_visibility = ["//visibility:public"])
 
-licenses(["notice"])
-
 load(
     "@io_bazel_rules_go//go:def.bzl",
     "go_library",
@@ -11,7 +9,6 @@ load(
 go_library(
     name = "go_default_library",
     srcs = ["disruption.go"],
-    tags = ["automanaged"],
     deps = [
         "//pkg/api/v1/pod:go_default_library",
         "//pkg/controller:go_default_library",
@@ -48,7 +45,6 @@ go_test(
     name = "go_default_test",
     srcs = ["disruption_test.go"],
     library = ":go_default_library",
-    tags = ["automanaged"],
     deps = [
         "//pkg/api:go_default_library",
         "//pkg/api/install:go_default_library",
@@ -62,7 +58,6 @@ go_test(
         "//vendor/k8s.io/apimachinery/pkg/util/intstr:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/util/uuid:go_default_library",
         "//vendor/k8s.io/client-go/informers:go_default_library",
-        "//vendor/k8s.io/client-go/kubernetes/scheme:go_default_library",
         "//vendor/k8s.io/client-go/tools/cache:go_default_library",
         "//vendor/k8s.io/client-go/util/workqueue:go_default_library",
     ],

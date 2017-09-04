@@ -3,6 +3,8 @@ approvers:
 - lavalamp
 - smarterclayton
 - thockin
+- liggitt
+# - bgrant0607 # manual escalations only
 reviewers:
 - lavalamp
 - smarterclayton
@@ -20,7 +22,6 @@ reviewers:
 - erictune
 - pmorie
 - sttts
-- kargakis
 - dchen1107
 - saad-ali
 - luxas

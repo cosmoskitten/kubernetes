@@ -22,6 +22,15 @@ type Mounter struct {
 	mounterPath string
 }
 
+// New returns a mount.Interface for the current system.
+// It provides options to override the default mounter behavior.
+// mounterPath allows using an alternative to `/bin/mount` for mounting.
+func New(mounterPath string) Interface {
+	return &Mounter{
+		mounterPath: mounterPath,
+	}
+}
+
 func (mounter *Mounter) Mount(source string, target string, fstype string, options []string) error {
 	return nil
 }
@@ -56,6 +65,10 @@ func (mounter *Mounter) DeviceOpened(pathname string) (bool, error) {
 
 func (mounter *Mounter) PathIsDevice(pathname string) (bool, error) {
 	return true, nil
+}
+
+func (mounter *Mounter) MakeRShared(path string) error {
+	return nil
 }
 
 func (mounter *SafeFormatAndMount) formatAndMount(source string, target string, fstype string, options []string) error {

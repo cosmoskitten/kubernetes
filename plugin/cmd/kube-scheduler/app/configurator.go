@@ -28,7 +28,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 
 	clientset "k8s.io/client-go/kubernetes"
@@ -37,8 +37,9 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/kubernetes/pkg/api"
 
-	clientv1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 
+	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/plugin/pkg/scheduler"
 	_ "k8s.io/kubernetes/plugin/pkg/scheduler/algorithmprovider"
 	schedulerapi "k8s.io/kubernetes/plugin/pkg/scheduler/api"
@@ -51,15 +52,14 @@ import (
 func createRecorder(kubecli *clientset.Clientset, s *options.SchedulerServer) record.EventRecorder {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(glog.Infof)
-	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: v1core.New(kubecli.Core().RESTClient()).Events("")})
-	return eventBroadcaster.NewRecorder(api.Scheme, clientv1.EventSource{Component: s.SchedulerName})
+	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: v1core.New(kubecli.CoreV1().RESTClient()).Events("")})
+	return eventBroadcaster.NewRecorder(api.Scheme, v1.EventSource{Component: s.SchedulerName})
 }
 
-// TODO: convert scheduler to only use client-go's clientset.
-func createClient(s *options.SchedulerServer) (*clientset.Clientset, *kubernetes.Clientset, error) {
+func createClient(s *options.SchedulerServer) (*clientset.Clientset, error) {
 	kubeconfig, err := clientcmd.BuildConfigFromFlags(s.Master, s.Kubeconfig)
 	if err != nil {
-		return nil, nil, fmt.Errorf("unable to build config from flags: %v", err)
+		return nil, fmt.Errorf("unable to build config from flags: %v", err)
 	}
 
 	kubeconfig.ContentType = s.ContentType
@@ -69,19 +69,15 @@ func createClient(s *options.SchedulerServer) (*clientset.Clientset, *kubernetes
 
 	cli, err := clientset.NewForConfig(restclient.AddUserAgent(kubeconfig, "leader-election"))
 	if err != nil {
-		return nil, nil, fmt.Errorf("invalid API configuration: %v", err)
+		return nil, fmt.Errorf("invalid API configuration: %v", err)
 	}
-	clientgoCli, err := kubernetes.NewForConfig(restclient.AddUserAgent(kubeconfig, "leader-election"))
-	if err != nil {
-		return nil, nil, fmt.Errorf("invalid API configuration: %v", err)
-	}
-	return cli, clientgoCli, nil
+	return cli, nil
 }
 
 // CreateScheduler encapsulates the entire creation of a runnable scheduler.
 func CreateScheduler(
 	s *options.SchedulerServer,
-	kubecli *clientset.Clientset,
+	kubecli clientset.Interface,
 	nodeInformer coreinformers.NodeInformer,
 	podInformer coreinformers.PodInformer,
 	pvInformer coreinformers.PersistentVolumeInformer,
@@ -104,6 +100,7 @@ func CreateScheduler(
 		statefulSetInformer,
 		serviceInformer,
 		s.HardPodAffinitySymmetricWeight,
+		utilfeature.DefaultFeatureGate.Enabled(features.EnableEquivalenceClassCache),
 	)
 
 	// Rebuild the configurator with a default Create(...) method.

@@ -183,6 +183,17 @@ func (s *simpleProvider) CreateContainerSecurityContext(pod *api.Pod, container 
 		sc.ReadOnlyRootFilesystem = &readOnlyRootFS
 	}
 
+	// if the PSP sets DefaultAllowPrivilegeEscalation and the container security context
+	// allowPrivilegeEscalation is not set, then default to that set by the PSP.
+	if s.psp.Spec.DefaultAllowPrivilegeEscalation != nil && sc.AllowPrivilegeEscalation == nil {
+		sc.AllowPrivilegeEscalation = s.psp.Spec.DefaultAllowPrivilegeEscalation
+	}
+
+	// if the PSP sets psp.AllowPrivilegeEscalation to false set that as the default
+	if !s.psp.Spec.AllowPrivilegeEscalation && sc.AllowPrivilegeEscalation == nil {
+		sc.AllowPrivilegeEscalation = &s.psp.Spec.AllowPrivilegeEscalation
+	}
+
 	return sc, annotations, nil
 }
 
@@ -228,7 +239,8 @@ func (s *simpleProvider) ValidatePodSecurityContext(pod *api.Pod, fldPath *field
 
 	// TODO(tallclair): ValidatePodSecurityContext should be renamed to ValidatePod since its scope
 	// is not limited to the PodSecurityContext.
-	if len(pod.Spec.Volumes) > 0 && !psputil.PSPAllowsAllVolumes(s.psp) {
+	if len(pod.Spec.Volumes) > 0 {
+		allowsAllVolumeTypes := psputil.PSPAllowsAllVolumes(s.psp)
 		allowedVolumes := psputil.FSTypeToStringSet(s.psp.Spec.Volumes)
 		for i, v := range pod.Spec.Volumes {
 			fsType, err := psputil.GetVolumeFSType(v)
@@ -237,10 +249,19 @@ func (s *simpleProvider) ValidatePodSecurityContext(pod *api.Pod, fldPath *field
 				continue
 			}
 
-			if !allowedVolumes.Has(string(fsType)) {
+			if !allowsAllVolumeTypes && !allowedVolumes.Has(string(fsType)) {
 				allErrs = append(allErrs, field.Invalid(
 					field.NewPath("spec", "volumes").Index(i), string(fsType),
 					fmt.Sprintf("%s volumes are not allowed to be used", string(fsType))))
+				continue
+			}
+
+			if fsType == extensions.HostPath {
+				if !psputil.AllowsHostVolumePath(s.psp, v.HostPath.Path) {
+					allErrs = append(allErrs, field.Invalid(
+						field.NewPath("spec", "volumes").Index(i).Child("hostPath", "pathPrefix"), v.HostPath.Path,
+						fmt.Sprintf("is not allowed to be used")))
+				}
 			}
 		}
 	}
@@ -299,6 +320,15 @@ func (s *simpleProvider) ValidateContainerSecurityContext(pod *api.Pod, containe
 		} else if !*sc.ReadOnlyRootFilesystem {
 			allErrs = append(allErrs, field.Invalid(fldPath.Child("readOnlyRootFilesystem"), *sc.ReadOnlyRootFilesystem, "ReadOnlyRootFilesystem must be set to true"))
 		}
+	}
+
+	if !s.psp.Spec.AllowPrivilegeEscalation && sc.AllowPrivilegeEscalation == nil {
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("allowPrivilegeEscalation"), sc.AllowPrivilegeEscalation, "Allowing privilege escalation for containers is not allowed"))
+
+	}
+
+	if !s.psp.Spec.AllowPrivilegeEscalation && sc.AllowPrivilegeEscalation != nil && *sc.AllowPrivilegeEscalation {
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("allowPrivilegeEscalation"), *sc.AllowPrivilegeEscalation, "Allowing privilege escalation for containers is not allowed"))
 	}
 
 	return allErrs

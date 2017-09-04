@@ -45,6 +45,7 @@ import (
 	storageutil "k8s.io/kubernetes/pkg/apis/storage/v1/util"
 	kubeletapis "k8s.io/kubernetes/pkg/kubelet/apis"
 	"k8s.io/kubernetes/test/e2e/framework"
+	imageutils "k8s.io/kubernetes/test/utils/image"
 )
 
 type storageClassTest struct {
@@ -223,7 +224,7 @@ var _ = SIGDescribe("Dynamic Provisioning", func() {
 		ns = f.Namespace.Name
 	})
 
-	SIGDescribe("DynamicProvisioner", func() {
+	Describe("DynamicProvisioner", func() {
 		It("should provision storage with different parameters [Slow]", func() {
 			cloudZone := getRandomCloudZone(c)
 
@@ -517,11 +518,11 @@ var _ = SIGDescribe("Dynamic Provisioning", func() {
 		})
 	})
 
-	SIGDescribe("DynamicProvisioner External", func() {
+	Describe("DynamicProvisioner External", func() {
 		It("should let an external dynamic provisioner create and delete persistent volumes [Slow]", func() {
 			// external dynamic provisioner pods need additional permissions provided by the
 			// persistent-volume-provisioner role
-			framework.BindClusterRole(c.Rbac(), "system:persistent-volume-provisioner", ns,
+			framework.BindClusterRole(c.RbacV1beta1(), "system:persistent-volume-provisioner", ns,
 				rbacv1beta1.Subject{Kind: rbacv1beta1.ServiceAccountKind, Namespace: ns, Name: "default"})
 
 			err := framework.WaitForAuthorizationUpdate(c.AuthorizationV1beta1(),
@@ -555,7 +556,7 @@ var _ = SIGDescribe("Dynamic Provisioning", func() {
 		})
 	})
 
-	SIGDescribe("DynamicProvisioner Default", func() {
+	Describe("DynamicProvisioner Default", func() {
 		It("should create and delete default persistent volumes [Slow]", func() {
 			framework.SkipUnlessProviderIs("openstack", "gce", "aws", "gke", "vsphere", "azure")
 
@@ -720,7 +721,7 @@ func runInPodWithVolume(c clientset.Interface, ns, claimName, command string) {
 			Containers: []v1.Container{
 				{
 					Name:    "volume-tester",
-					Image:   "gcr.io/google_containers/busybox:1.24",
+					Image:   imageutils.GetBusyBoxImage(),
 					Command: []string{"/bin/sh"},
 					Args:    []string{"-c", command},
 					VolumeMounts: []v1.VolumeMount{

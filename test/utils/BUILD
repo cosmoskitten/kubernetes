@@ -1,7 +1,5 @@
 package(default_visibility = ["//visibility:public"])
 
-licenses(["notice"])
-
 load(
     "@io_bazel_rules_go//go:def.bzl",
     "go_library",
@@ -17,7 +15,6 @@ go_library(
         "runners.go",
         "tmpdir.go",
     ],
-    tags = ["automanaged"],
     deps = [
         "//pkg/api:go_default_library",
         "//pkg/api/v1/pod:go_default_library",
@@ -61,6 +58,7 @@ filegroup(
     name = "all-srcs",
     srcs = [
         ":package-srcs",
+        "//test/utils/image:all-srcs",
         "//test/utils/junit:all-srcs",
     ],
     tags = ["automanaged"],

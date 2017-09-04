@@ -86,6 +86,7 @@ fi
 
 NODE_INSTANCE_PREFIX="${INSTANCE_PREFIX}-minion"
 NODE_TAGS="${NODE_TAG}"
+NODE_NETWORK="${NETWORK}"
 
 ALLOCATE_NODE_CIDRS=true
 PREEXISTING_NETWORK=false
@@ -334,9 +335,9 @@ function detect-node-names() {
   detect-project
   INSTANCE_GROUPS=()
   INSTANCE_GROUPS+=($(gcloud compute instance-groups managed list \
-    --zones "${ZONE}" --project "${PROJECT}" \
-    --regexp "${NODE_INSTANCE_PREFIX}-.+" \
-    --format='value(instanceGroup)' || true))
+    --project "${PROJECT}" \
+    --filter "name ~ '${NODE_INSTANCE_PREFIX}-.+' AND zone:(${ZONE})" \
+    --format='value(name)' || true))
   NODE_NAMES=()
   if [[ -n "${INSTANCE_GROUPS[@]:-}" ]]; then
     for group in "${INSTANCE_GROUPS[@]}"; do
@@ -576,9 +577,13 @@ function create-node-template() {
 
   local local_ssds=""
   if [[ ! -z ${NODE_LOCAL_SSDS+x} ]]; then
+    # The NODE_LOCAL_SSDS check below fixes issue #49171
+    # Some versions of seq will count down from 1 if "seq 0" is specified
+    if [[ ${NODE_LOCAL_SSDS} -ge 1 ]]; then
       for i in $(seq ${NODE_LOCAL_SSDS}); do
-          local_ssds="$local_ssds--local-ssd=interface=SCSI "
+        local_ssds="$local_ssds--local-ssd=interface=SCSI "
       done
+    fi
   fi
 
   local network=$(make-gcloud-network-argument \
@@ -802,12 +807,28 @@ function expand-default-subnetwork() {
     --quiet
 }
 
+
+# Vars set:
+#   NODE_SUBNETWORK
 function create-subnetworks() {
+  NODE_SUBNETWORK=$(gcloud beta compute networks subnets list \
+      --network=${NETWORK} \
+      --regions=${REGION} \
+      --project=${PROJECT} \
+      --limit=1 \
+      --format='value(name)' 2>/dev/null)
+
+  if [[ -z ${NODE_SUBNETWORK:-} ]]; then
+    echo "${color_red}Could not find subnetwork with region ${REGION}, network ${NETWORK}, and project ${PROJECT}"
+    exit 1
+  fi
+  echo "Found subnet for region ${REGION} in network ${NETWORK}: ${NODE_SUBNETWORK}"
+
   case ${ENABLE_IP_ALIASES} in
     true) echo "IP aliases are enabled. Creating subnetworks.";;
     false)
       echo "IP aliases are disabled."
-      if [[ "${ENABLE_BIG_CLUSTER_SUBNETS}" = "true" ]]; then 
+      if [[ "${ENABLE_BIG_CLUSTER_SUBNETS}" = "true" ]]; then
         if [[  "${PREEXISTING_NETWORK}" != "true" ]]; then
           expand-default-subnetwork
         else
@@ -818,6 +839,9 @@ function create-subnetworks() {
     *) echo "${color_red}Invalid argument to ENABLE_IP_ALIASES${color_norm}"
        exit 1;;
   esac
+
+  NODE_SUBNETWORK=${IP_ALIAS_SUBNETWORK}
+  echo "Using IP Aliases subnet ${NODE_SUBNETWORK}"
 
   # Look for the alias subnet, it must exist and have a secondary
   # range configured.
@@ -845,38 +869,14 @@ function create-subnetworks() {
       --network ${NETWORK} \
       --region ${REGION} \
       --range ${NODE_IP_RANGE} \
-      --secondary-range "pods-default=${CLUSTER_IP_RANGE}"
+      --secondary-range "pods-default=${CLUSTER_IP_RANGE}" \
+      --secondary-range "services-default=${SERVICE_CLUSTER_IP_RANGE}"
     echo "Created subnetwork ${IP_ALIAS_SUBNETWORK}"
   else
     if ! echo ${subnet} | grep --quiet secondaryIpRanges ${subnet}; then
       echo "${color_red}Subnet ${IP_ALIAS_SUBNETWORK} does not have a secondary range${color_norm}"
       exit 1
     fi
-  fi
-
-  # Services subnetwork.
-  local subnet=$(gcloud beta compute networks subnets describe \
-    --project "${PROJECT}" \
-    --region ${REGION} \
-    ${SERVICE_CLUSTER_IP_SUBNETWORK} 2>/dev/null)
-
-  if [[ -z ${subnet} ]]; then
-    if [[ ${SERVICE_CLUSTER_IP_SUBNETWORK} != ${INSTANCE_PREFIX}-subnet-services ]]; then
-      echo "${color_red}Subnetwork ${NETWORK}:${SERVICE_CLUSTER_IP_SUBNETWORK} does not exist${color_norm}"
-      exit 1
-    fi
-
-    echo "Creating subnet for reserving service cluster IPs ${NETWORK}:${SERVICE_CLUSTER_IP_SUBNETWORK}"
-    gcloud beta compute networks subnets create \
-      ${SERVICE_CLUSTER_IP_SUBNETWORK} \
-      --description "Automatically generated subnet for ${INSTANCE_PREFIX} cluster. This will be removed on cluster teardown." \
-      --project "${PROJECT}" \
-      --network ${NETWORK} \
-      --region ${REGION} \
-      --range ${SERVICE_CLUSTER_IP_RANGE}
-    echo "Created subnetwork ${SERVICE_CLUSTER_IP_SUBNETWORK}"
-  else
-    echo "Subnet ${SERVICE_CLUSTER_IP_SUBNETWORK} already exists"
   fi
 }
 
@@ -930,50 +930,13 @@ function delete-subnetworks() {
         ${IP_ALIAS_SUBNETWORK}
     fi
   fi
-
-  if [[ ${SERVICE_CLUSTER_IP_SUBNETWORK} == ${INSTANCE_PREFIX}-subnet-services ]]; then
-    echo "Removing auto-created subnet ${NETWORK}:${SERVICE_CLUSTER_IP_SUBNETWORK}"
-    if [[ -n $(gcloud beta compute networks subnets describe \
-          --project "${PROJECT}" \
-          --region ${REGION} \
-          ${SERVICE_CLUSTER_IP_SUBNETWORK} 2>/dev/null) ]]; then
-      gcloud --quiet beta compute networks subnets delete \
-        --project "${PROJECT}" \
-        --region ${REGION} \
-        ${SERVICE_CLUSTER_IP_SUBNETWORK}
-    fi
-  fi
 }
-
-# Assumes:
-#   NUM_NODES
-# Sets:
-#   MASTER_ROOT_DISK_SIZE
-function get-master-root-disk-size() {
-  if [[ "${NUM_NODES}" -le "1000" ]]; then
-    export MASTER_ROOT_DISK_SIZE="20"
-  else
-    export MASTER_ROOT_DISK_SIZE="50"
-  fi
-}
-
-# Assumes:
-#   NUM_NODES
-# Sets:
-#   MASTER_DISK_SIZE
-function get-master-disk-size() {
-  if [[ "${NUM_NODES}" -le "1000" ]]; then
-    export MASTER_DISK_SIZE="20GB"
-  else
-    export MASTER_DISK_SIZE="100GB"
-  fi
-}
-
 
 # Generates SSL certificates for etcd cluster. Uses cfssl program.
 #
 # Assumed vars:
 #   KUBE_TEMP: temporary directory
+#   NUM_NODES: #nodes in the cluster
 #
 # Args:
 #  $1: host name
@@ -1014,7 +977,6 @@ function create-master() {
 
   # We have to make sure the disk is created before creating the master VM, so
   # run this in the foreground.
-  get-master-disk-size
   gcloud compute disks create "${MASTER_NAME}-pd" \
     --project "${PROJECT}" \
     --zone "${ZONE}" \
@@ -1066,10 +1028,13 @@ function create-master() {
   create-certs "${MASTER_RESERVED_IP}"
   create-etcd-certs ${MASTER_NAME}
 
-  # Sets MASTER_ROOT_DISK_SIZE that is used by create-master-instance
-  get-master-root-disk-size
-
-  create-master-instance "${MASTER_RESERVED_IP}" &
+  if [[ "${NUM_NODES}" -ge "50" ]]; then
+    # We block on master creation for large clusters to avoid doing too much
+    # unnecessary work in case master start-up fails (like creation of nodes).
+    create-master-instance "${MASTER_RESERVED_IP}"
+  else
+    create-master-instance "${MASTER_RESERVED_IP}" &
+  fi
 }
 
 # Adds master replica to etcd cluster.
@@ -1103,7 +1068,7 @@ function add-replica-to-etcd() {
 function set-existing-master() {
   local existing_master=$(gcloud compute instances list \
     --project "${PROJECT}" \
-    --regexp "$(get-replica-name-regexp)" \
+    --filter "name ~ '$(get-replica-name-regexp)'" \
     --format "value(name,zone)" | head -n1)
   EXISTING_MASTER_NAME="$(echo "${existing_master}" | cut -f1)"
   EXISTING_MASTER_ZONE="$(echo "${existing_master}" | cut -f2)"
@@ -1127,15 +1092,11 @@ function replicate-master() {
 
   # We have to make sure the disk is created before creating the master VM, so
   # run this in the foreground.
-  get-master-disk-size
   gcloud compute disks create "${REPLICA_NAME}-pd" \
     --project "${PROJECT}" \
     --zone "${ZONE}" \
     --type "${MASTER_DISK_TYPE}" \
     --size "${MASTER_DISK_SIZE}"
-
-  # Sets MASTER_ROOT_DISK_SIZE that is used by create-master-instance
-  get-master-root-disk-size
 
   local existing_master_replicas="$(get-all-replica-names)"
   replicate-master-instance "${EXISTING_MASTER_ZONE}" "${EXISTING_MASTER_NAME}" "${existing_master_replicas}"
@@ -1627,7 +1588,7 @@ function kube-down() {
   # Check if this are any remaining master replicas.
   local REMAINING_MASTER_COUNT=$(gcloud compute instances list \
     --project "${PROJECT}" \
-    --regexp "$(get-replica-name-regexp)" \
+    --filter="name ~ '$(get-replica-name-regexp)'" \
     --format "value(zone)" | wc -l)
 
   # In the replicated scenario, if there's only a single master left, we should also delete load balancer in front of it.
@@ -1669,8 +1630,8 @@ function kube-down() {
     # Find out what minions are running.
     local -a minions
     minions=( $(gcloud compute instances list \
-                  --project "${PROJECT}" --zones "${ZONE}" \
-                  --regexp "${NODE_INSTANCE_PREFIX}-.+" \
+                  --project "${PROJECT}" \
+                  --filter="name ~ '${NODE_INSTANCE_PREFIX}-.+' AND zone:(${ZONE})" \
                   --format='value(name)') )
     # If any minions are running, delete them in batches.
     while (( "${#minions[@]}" > 0 )); do
@@ -1696,7 +1657,7 @@ function kube-down() {
     # first allows the master to cleanup routes itself.
     local TRUNCATED_PREFIX="${INSTANCE_PREFIX:0:26}"
     routes=( $(gcloud compute routes list --project "${PROJECT}" \
-      --regexp "${TRUNCATED_PREFIX}-.{8}-.{4}-.{4}-.{4}-.{12}"  \
+      --filter="name ~ '${TRUNCATED_PREFIX}-.{8}-.{4}-.{4}-.{4}-.{12}'" \
       --format='value(name)') )
     while (( "${#routes[@]}" > 0 )); do
       echo Deleting routes "${routes[*]::${batch}}"
@@ -1762,8 +1723,7 @@ function kube-down() {
 function get-replica-name() {
   echo $(gcloud compute instances list \
     --project "${PROJECT}" \
-    --zones "${ZONE}" \
-    --regexp "$(get-replica-name-regexp)" \
+    --filter="name ~ '$(get-replica-name-regexp)' AND zone:(${ZONE})" \
     --format "value(name)" | head -n1)
 }
 
@@ -1777,7 +1737,7 @@ function get-replica-name() {
 function get-all-replica-names() {
   echo $(gcloud compute instances list \
     --project "${PROJECT}" \
-    --regexp "$(get-replica-name-regexp)" \
+    --filter="name ~ '$(get-replica-name-regexp)'" \
     --format "value(name)" | tr "\n" "," | sed 's/,$//')
 }
 
@@ -1789,7 +1749,7 @@ function get-master-replicas-count() {
   detect-project
   local num_masters=$(gcloud compute instances list \
     --project "${PROJECT}" \
-    --regexp "$(get-replica-name-regexp)" \
+    --filter="name ~ '$(get-replica-name-regexp)'" \
     --format "value(zone)" | wc -l)
   echo -n "${num_masters}"
 }
@@ -1813,7 +1773,7 @@ function get-replica-name-regexp() {
 function set-replica-name() {
   local instances=$(gcloud compute instances list \
     --project "${PROJECT}" \
-    --regexp "$(get-replica-name-regexp)" \
+    --filter="name ~ '$(get-replica-name-regexp)'" \
     --format "value(name)")
 
   suffix=""
@@ -1878,8 +1838,8 @@ function check-resources() {
   # Find out what minions are running.
   local -a minions
   minions=( $(gcloud compute instances list \
-                --project "${PROJECT}" --zones "${ZONE}" \
-                --regexp "${NODE_INSTANCE_PREFIX}-.+" \
+                --project "${PROJECT}" \
+                --filter="name ~ '${NODE_INSTANCE_PREFIX}-.+' AND zone:(${ZONE})" \
                 --format='value(name)') )
   if (( "${#minions[@]}" > 0 )); then
     KUBE_RESOURCE_FOUND="${#minions[@]} matching matching ${NODE_INSTANCE_PREFIX}-.+"
@@ -1898,7 +1858,7 @@ function check-resources() {
 
   local -a routes
   routes=( $(gcloud compute routes list --project "${PROJECT}" \
-    --regexp "${INSTANCE_PREFIX}-minion-.{4}" --format='value(name)') )
+    --filter="name ~ '${INSTANCE_PREFIX}-minion-.{4}'" --format='value(name)') )
   if (( "${#routes[@]}" > 0 )); then
     KUBE_RESOURCE_FOUND="${#routes[@]} routes matching ${INSTANCE_PREFIX}-minion-.{4}"
     return 1
@@ -2064,8 +2024,7 @@ function test-setup() {
   detect-project
 
   if [[ ${MULTIZONE:-} == "true" && -n ${E2E_ZONES:-} ]]; then
-    for KUBE_GCE_ZONE in ${E2E_ZONES}
-    do
+    for KUBE_GCE_ZONE in ${E2E_ZONES}; do
       KUBE_GCE_ZONE="${KUBE_GCE_ZONE}" KUBE_USE_EXISTING_MASTER="${KUBE_USE_EXISTING_MASTER:-}" "${KUBE_ROOT}/cluster/kube-up.sh"
       KUBE_USE_EXISTING_MASTER="true" # For subsequent zones we use the existing master
     done
@@ -2121,15 +2080,14 @@ function test-teardown() {
     "${NODE_TAG}-${INSTANCE_PREFIX}-http-alt" \
     "${NODE_TAG}-${INSTANCE_PREFIX}-nodeports"
   if [[ ${MULTIZONE:-} == "true" && -n ${E2E_ZONES:-} ]]; then
-      local zones=( ${E2E_ZONES} )
-      # tear them down in reverse order, finally tearing down the master too.
-      for ((zone_num=${#zones[@]}-1; zone_num>0; zone_num--))
-      do
-	  KUBE_GCE_ZONE="${zones[zone_num]}" KUBE_USE_EXISTING_MASTER="true" "${KUBE_ROOT}/cluster/kube-down.sh"
-      done
-      KUBE_GCE_ZONE="${zones[0]}" KUBE_USE_EXISTING_MASTER="false" "${KUBE_ROOT}/cluster/kube-down.sh"
+    local zones=( ${E2E_ZONES} )
+    # tear them down in reverse order, finally tearing down the master too.
+    for ((zone_num=${#zones[@]}-1; zone_num>0; zone_num--)); do
+      KUBE_GCE_ZONE="${zones[zone_num]}" KUBE_USE_EXISTING_MASTER="true" "${KUBE_ROOT}/cluster/kube-down.sh"
+    done
+    KUBE_GCE_ZONE="${zones[0]}" KUBE_USE_EXISTING_MASTER="false" "${KUBE_ROOT}/cluster/kube-down.sh"
   else
-      "${KUBE_ROOT}/cluster/kube-down.sh"
+    "${KUBE_ROOT}/cluster/kube-down.sh"
   fi
 }
 

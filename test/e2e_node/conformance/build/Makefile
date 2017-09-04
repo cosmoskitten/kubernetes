@@ -31,8 +31,8 @@ BIN_DIR?=../../../../_output/dockerized/bin/linux/${ARCH}
 TEMP_DIR:=$(shell mktemp -d)
 
 BASEIMAGE_amd64=debian:jessie
-BASEIMAGE_arm=armhf/debian:jessie
-BASEIMAGE_arm64=aarch64/debian:jessie
+BASEIMAGE_arm=arm32v7/debian:jessie
+BASEIMAGE_arm64=arm64v8/debian:jessie
 BASEIMAGE_ppc64le=ppc64le/debian:jessie
 
 BASEIMAGE?=${BASEIMAGE_${ARCH}}
@@ -64,6 +64,7 @@ endif
 	cd ${TEMP_DIR} && sed -i.back \
 	    "s|BASEIMAGE|${BASEIMAGE}|g;\
 	     s|COPY_SYSTEM_SPEC_FILE|${COPY_SYSTEM_SPEC_FILE}|g;\
+	     s|SYSTEM_SPEC_NAME|${SYSTEM_SPEC_NAME}|g;\
 	     s|SYSTEM_SPEC_FILE_PATH|${SYSTEM_SPEC_FILE_PATH}|g" Dockerfile
 
 	# Make scripts executable before they are copied into the Docker image. If we make them executable later, in another layer

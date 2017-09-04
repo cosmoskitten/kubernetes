@@ -25,19 +25,23 @@ import (
 	"time"
 
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
+	appsv1beta2 "k8s.io/api/apps/v1beta2"
 	authenticationv1 "k8s.io/api/authentication/v1"
 	authenticationv1beta1 "k8s.io/api/authentication/v1beta1"
 	authorizationapiv1 "k8s.io/api/authorization/v1"
 	authorizationapiv1beta1 "k8s.io/api/authorization/v1beta1"
 	autoscalingapiv1 "k8s.io/api/autoscaling/v1"
 	batchapiv1 "k8s.io/api/batch/v1"
+	batchapiv1beta1 "k8s.io/api/batch/v1beta1"
 	certificatesapiv1beta1 "k8s.io/api/certificates/v1beta1"
 	apiv1 "k8s.io/api/core/v1"
 	extensionsapiv1beta1 "k8s.io/api/extensions/v1beta1"
 	networkingapiv1 "k8s.io/api/networking/v1"
 	policyapiv1beta1 "k8s.io/api/policy/v1beta1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	rbacv1alpha1 "k8s.io/api/rbac/v1alpha1"
 	rbacv1beta1 "k8s.io/api/rbac/v1beta1"
+	schedulingapiv1alpha1 "k8s.io/api/scheduling/v1alpha1"
 	settingv1alpha1 "k8s.io/api/settings/v1alpha1"
 	storageapiv1 "k8s.io/api/storage/v1"
 	storageapiv1beta1 "k8s.io/api/storage/v1beta1"
@@ -73,6 +77,7 @@ import (
 	networkingrest "k8s.io/kubernetes/pkg/registry/networking/rest"
 	policyrest "k8s.io/kubernetes/pkg/registry/policy/rest"
 	rbacrest "k8s.io/kubernetes/pkg/registry/rbac/rest"
+	schedulingrest "k8s.io/kubernetes/pkg/registry/scheduling/rest"
 	settingsrest "k8s.io/kubernetes/pkg/registry/settings/rest"
 	storagerest "k8s.io/kubernetes/pkg/registry/storage/rest"
 )
@@ -252,7 +257,7 @@ func (c completedConfig) New(delegationTarget genericapiserver.DelegationTarget)
 	// handlers that we have.
 	restStorageProviders := []RESTStorageProvider{
 		authenticationrest.RESTStorageProvider{Authenticator: c.GenericConfig.Authenticator},
-		authorizationrest.RESTStorageProvider{Authorizer: c.GenericConfig.Authorizer},
+		authorizationrest.RESTStorageProvider{Authorizer: c.GenericConfig.Authorizer, RuleResolver: c.GenericConfig.RuleResolver},
 		autoscalingrest.RESTStorageProvider{},
 		batchrest.RESTStorageProvider{},
 		certificatesrest.RESTStorageProvider{},
@@ -260,6 +265,7 @@ func (c completedConfig) New(delegationTarget genericapiserver.DelegationTarget)
 		networkingrest.RESTStorageProvider{},
 		policyrest.RESTStorageProvider{},
 		rbacrest.RESTStorageProvider{Authorizer: c.GenericConfig.Authorizer},
+		schedulingrest.RESTStorageProvider{},
 		settingsrest.RESTStorageProvider{},
 		storagerest.RESTStorageProvider{},
 		// keep apps after extensions so legacy clients resolve the extensions versions of shared resource names.
@@ -273,9 +279,7 @@ func (c completedConfig) New(delegationTarget genericapiserver.DelegationTarget)
 		m.installTunneler(c.Tunneler, corev1client.NewForConfigOrDie(c.GenericConfig.LoopbackClientConfig).Nodes())
 	}
 
-	if err := m.GenericAPIServer.AddPostStartHook("ca-registration", c.ClientCARegistrationHook.PostStartHook); err != nil {
-		glog.Fatalf("Error registering PostStartHook %q: %v", "ca-registration", err)
-	}
+	m.GenericAPIServer.AddPostStartHookOrDie("ca-registration", c.ClientCARegistrationHook.PostStartHook)
 
 	return m, nil
 }
@@ -289,9 +293,7 @@ func (m *Master) InstallLegacyAPI(c *Config, restOptionsGetter generic.RESTOptio
 	if c.EnableCoreControllers {
 		coreClient := coreclient.NewForConfigOrDie(c.GenericConfig.LoopbackClientConfig)
 		bootstrapController := c.NewBootstrapController(legacyRESTStorage, coreClient, coreClient)
-		if err := m.GenericAPIServer.AddPostStartHook("bootstrap-controller", bootstrapController.PostStartHook); err != nil {
-			glog.Fatalf("Error registering PostStartHook %q: %v", "bootstrap-controller", err)
-		}
+		m.GenericAPIServer.AddPostStartHookOrDie("bootstrap-controller", bootstrapController.PostStartHook)
 	}
 
 	if err := m.GenericAPIServer.InstallLegacyAPIGroup(genericapiserver.DefaultLegacyAPIPrefix, &apiGroupInfo); err != nil {
@@ -336,9 +338,7 @@ func (m *Master) InstallAPIs(apiResourceConfigSource serverstorage.APIResourceCo
 			if err != nil {
 				glog.Fatalf("Error building PostStartHook: %v", err)
 			}
-			if err := m.GenericAPIServer.AddPostStartHook(name, hook); err != nil {
-				glog.Fatalf("Error registering PostStartHook %q: %v", name, err)
-			}
+			m.GenericAPIServer.AddPostStartHookOrDie(name, hook)
 		}
 
 		apiGroupsInfo = append(apiGroupsInfo, apiGroupInfo)
@@ -382,11 +382,14 @@ func DefaultAPIResourceConfigSource() *serverstorage.ResourceConfig {
 		apiv1.SchemeGroupVersion,
 		extensionsapiv1beta1.SchemeGroupVersion,
 		batchapiv1.SchemeGroupVersion,
+		batchapiv1beta1.SchemeGroupVersion,
 		authenticationv1.SchemeGroupVersion,
 		authenticationv1beta1.SchemeGroupVersion,
 		autoscalingapiv1.SchemeGroupVersion,
 		appsv1beta1.SchemeGroupVersion,
+		appsv1beta2.SchemeGroupVersion,
 		policyapiv1beta1.SchemeGroupVersion,
+		rbacv1.SchemeGroupVersion,
 		rbacv1beta1.SchemeGroupVersion,
 		// Don't copy this pattern. We enable rbac/v1alpha1 and settings/v1laph1
 		// by default only because they were enabled in previous releases.
@@ -394,6 +397,7 @@ func DefaultAPIResourceConfigSource() *serverstorage.ResourceConfig {
 		// TODO: disable rbac/v1alpha1 and settings/v1alpha1 by default in 1.8
 		rbacv1alpha1.SchemeGroupVersion,
 		settingv1alpha1.SchemeGroupVersion,
+		schedulingapiv1alpha1.SchemeGroupVersion,
 		storageapiv1.SchemeGroupVersion,
 		storageapiv1beta1.SchemeGroupVersion,
 		certificatesapiv1beta1.SchemeGroupVersion,

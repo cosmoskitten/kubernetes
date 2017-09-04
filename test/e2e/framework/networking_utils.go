@@ -41,6 +41,7 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	coreclientset "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/kubernetes/pkg/api/testapi"
+	imageutils "k8s.io/kubernetes/test/utils/image"
 )
 
 const (
@@ -49,8 +50,6 @@ const (
 	TestContainerHttpPort = 8080
 	ClusterHttpPort       = 80
 	ClusterUdpPort        = 90
-	NetexecImageName      = "gcr.io/google_containers/netexec:1.7"
-	HostexecImageName     = "gcr.io/google_containers/hostexec:1.2"
 	testPodName           = "test-container-pod"
 	hostTestPodName       = "host-test-container-pod"
 	nodePortServiceName   = "node-port-service"
@@ -63,6 +62,8 @@ const (
 	// Maximum number of pods in a test, to make test work in large clusters.
 	maxNetProxyPodsCount = 10
 )
+
+var NetexecImageName = imageutils.GetE2EImage(imageutils.Netexec)
 
 // NewNetworkingTestConfig creates and sets up a new test config helper.
 func NewNetworkingTestConfig(f *Framework) *NetworkingTestConfig {
@@ -214,7 +215,7 @@ func (config *NetworkingTestConfig) DialFromContainer(protocol, containerIP, tar
 	}
 
 	config.diagnoseMissingEndpoints(eps)
-	Failf("Failed to find expected endpoints:\nTries %d\nCommand %v\nretrieved %v\nexpected %v\n", minTries, cmd, eps, expectedEps)
+	Failf("Failed to find expected endpoints:\nTries %d\nCommand %v\nretrieved %v\nexpected %v\n", maxTries, cmd, eps, expectedEps)
 }
 
 // DialFromNode executes a tcp or udp request based on protocol via kubectl exec
@@ -270,7 +271,7 @@ func (config *NetworkingTestConfig) DialFromNode(protocol, targetIP string, targ
 	}
 
 	config.diagnoseMissingEndpoints(eps)
-	Failf("Failed to find expected endpoints:\nTries %d\nCommand %v\nretrieved %v\nexpected %v\n", minTries, cmd, eps, expectedEps)
+	Failf("Failed to find expected endpoints:\nTries %d\nCommand %v\nretrieved %v\nexpected %v\n", maxTries, cmd, eps, expectedEps)
 }
 
 // GetSelfURL executes a curl against the given path via kubectl exec into a
@@ -279,9 +280,22 @@ func (config *NetworkingTestConfig) DialFromNode(protocol, targetIP string, targ
 func (config *NetworkingTestConfig) GetSelfURL(port int32, path string, expected string) {
 	cmd := fmt.Sprintf("curl -i -q -s --connect-timeout 1 http://localhost:%d%s", port, path)
 	By(fmt.Sprintf("Getting kube-proxy self URL %s", path))
+	config.executeCurlCmd(cmd, expected)
+}
 
+// GetSelfStatusCode executes a curl against the given path via kubectl exec into a
+// test container running with host networking, and fails if the returned status
+// code doesn't match the expected string.
+func (config *NetworkingTestConfig) GetSelfURLStatusCode(port int32, path string, expected string) {
+	// check status code
+	cmd := fmt.Sprintf("curl -o /dev/null -i -q -s -w %%{http_code} --connect-timeout 1 http://localhost:%d%s", port, path)
+	By(fmt.Sprintf("Checking status code against http://localhost:%d%s", port, path))
+	config.executeCurlCmd(cmd, expected)
+}
+
+func (config *NetworkingTestConfig) executeCurlCmd(cmd string, expected string) {
 	// These are arbitrary timeouts. The curl command should pass on first try,
-	// unless kubeproxy is starved/bootstrapping/restarting etc.
+	// unless remote server is starved/bootstrapping/restarting etc.
 	const retryInterval = 1 * time.Second
 	const retryTimeout = 30 * time.Second
 	podName := config.HostTestContainerPod.Name

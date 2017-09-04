@@ -22,7 +22,7 @@ set -o pipefail
 
 KUBE_ROOT=$(cd $(dirname "${BASH_SOURCE}")/.. && pwd)
 
-DEFAULT_KUBECONFIG="${HOME}/.kube/config"
+DEFAULT_KUBECONFIG="${HOME:-.}/.kube/config"
 
 source "${KUBE_ROOT}/hack/lib/util.sh"
 source "${KUBE_ROOT}/cluster/lib/logging.sh"
@@ -610,6 +610,8 @@ ENV_TIMESTAMP: $(yaml-quote $(date -u +%Y-%m-%dT%T%z))
 INSTANCE_PREFIX: $(yaml-quote ${INSTANCE_PREFIX})
 NODE_INSTANCE_PREFIX: $(yaml-quote ${NODE_INSTANCE_PREFIX})
 NODE_TAGS: $(yaml-quote ${NODE_TAGS:-})
+NODE_NETWORK: $(yaml-quote ${NODE_NETWORK:-})
+NODE_SUBNETWORK: $(yaml-quote ${NODE_SUBNETWORK:-})
 CLUSTER_IP_RANGE: $(yaml-quote ${CLUSTER_IP_RANGE:-10.244.0.0/16})
 SERVER_BINARY_TAR_URL: $(yaml-quote ${server_binary_tar_url})
 SERVER_BINARY_TAR_HASH: $(yaml-quote ${SERVER_BINARY_TAR_HASH})
@@ -638,6 +640,7 @@ DNS_SERVER_IP: $(yaml-quote ${DNS_SERVER_IP:-})
 DNS_DOMAIN: $(yaml-quote ${DNS_DOMAIN:-})
 ENABLE_DNS_HORIZONTAL_AUTOSCALER: $(yaml-quote ${ENABLE_DNS_HORIZONTAL_AUTOSCALER:-false})
 KUBELET_TOKEN: $(yaml-quote ${KUBELET_TOKEN:-})
+KUBE_PROXY_DAEMONSET: $(yaml-quote ${KUBE_PROXY_DAEMONSET:-false})
 KUBE_PROXY_TOKEN: $(yaml-quote ${KUBE_PROXY_TOKEN:-})
 NODE_PROBLEM_DETECTOR_TOKEN: $(yaml-quote ${NODE_PROBLEM_DETECTOR_TOKEN:-})
 ADMISSION_CONTROL: $(yaml-quote ${ADMISSION_CONTROL:-})
@@ -668,6 +671,10 @@ ENABLE_CACHE_MUTATION_DETECTOR: $(yaml-quote ${ENABLE_CACHE_MUTATION_DETECTOR:-f
 ENABLE_PATCH_CONVERSION_DETECTOR: $(yaml-quote ${ENABLE_PATCH_CONVERSION_DETECTOR:-false})
 ADVANCED_AUDIT_BACKEND: $(yaml-quote ${ADVANCED_AUDIT_BACKEND:-log})
 GCE_API_ENDPOINT: $(yaml-quote ${GCE_API_ENDPOINT:-})
+PROMETHEUS_TO_SD_ENDPOINT: $(yaml-quote ${PROMETHEUS_TO_SD_ENDPOINT:-})
+PROMETHEUS_TO_SD_PREFIX: $(yaml-quote ${PROMETHEUS_TO_SD_PREFIX:-})
+ENABLE_PROMETHEUS_TO_SD: $(yaml-quote ${ENABLE_PROMETHEUS_TO_SD:-false})
+ENABLE_POD_PRIORITY: $(yaml-quote ${ENABLE_POD_PRIORITY:-})
 EOF
   if [ -n "${KUBELET_PORT:-}" ]; then
     cat >>$file <<EOF
@@ -749,7 +756,7 @@ EOF
   if [[ "${master}" == "true" && "${MASTER_OS_DISTRIBUTION}" == "gci" ]] ||
      [[ "${master}" == "false" && "${NODE_OS_DISTRIBUTION}" == "gci" ]]; then
     cat >>$file <<EOF
-VOLUME_PLUGIN_DIR: $(yaml-quote ${VOLUME_PLUGIN_DIR:-/home/kubernetes/flexvolume})
+VOLUME_PLUGIN_DIR: $(yaml-quote ${VOLUME_PLUGIN_DIR:-/etc/srv/kubernetes/kubelet-plugins/volume/exec})
 EOF
   fi
 
@@ -759,7 +766,9 @@ EOF
 
     for var_name in ${PROVIDER_VARS}; do
       eval "local var_value=\$(yaml-quote \${${var_name}})"
-      echo "${var_name}: ${var_value}" >>$file
+      cat >>$file <<EOF
+${var_name}: ${var_value}
+EOF
     done
   fi
 
@@ -789,6 +798,13 @@ ETCD_CA_CERT: $(yaml-quote ${ETCD_CA_CERT_BASE64:-})
 ETCD_PEER_KEY: $(yaml-quote ${ETCD_PEER_KEY_BASE64:-})
 ETCD_PEER_CERT: $(yaml-quote ${ETCD_PEER_CERT_BASE64:-})
 EOF
+    # KUBE_APISERVER_REQUEST_TIMEOUT_SEC (if set) controls the --request-timeout
+    # flag
+    if [ -n "${KUBE_APISERVER_REQUEST_TIMEOUT_SEC:-}" ]; then
+      cat >>$file <<EOF
+KUBE_APISERVER_REQUEST_TIMEOUT_SEC: $(yaml-quote ${KUBE_APISERVER_REQUEST_TIMEOUT_SEC})
+EOF
+    fi
     # ETCD_IMAGE (if set) allows to use a custom etcd image.
     if [ -n "${ETCD_IMAGE:-}" ]; then
       cat >>$file <<EOF

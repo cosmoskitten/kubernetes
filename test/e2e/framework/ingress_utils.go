@@ -48,10 +48,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
 	gcecloud "k8s.io/kubernetes/pkg/cloudprovider/providers/gce"
-	"k8s.io/kubernetes/pkg/util"
-	utilexec "k8s.io/kubernetes/pkg/util/exec"
+	utilfile "k8s.io/kubernetes/pkg/util/file"
 	"k8s.io/kubernetes/test/e2e/manifest"
 	testutils "k8s.io/kubernetes/test/utils"
+	utilexec "k8s.io/utils/exec"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -763,7 +763,7 @@ func gcloudComputeResourceList(resource, regex, project string, out interface{})
 	// so we only look at stdout.
 	command := []string{
 		"compute", resource, "list",
-		fmt.Sprintf("--regexp=%q", regex),
+		fmt.Sprintf("--filter='name ~ \"%q\"'", regex),
 		fmt.Sprintf("--project=%v", project),
 		"-q", "--format=json",
 	}
@@ -823,7 +823,7 @@ func (j *IngressTestJig) CreateIngress(manifestPath, ns string, ingAnnotations m
 	Logf("creating service")
 	RunKubectlOrDie("create", "-f", mkpath("svc.yaml"), fmt.Sprintf("--namespace=%v", ns))
 
-	if exists, _ := util.FileExists(mkpath("secret.yaml")); exists {
+	if exists, _ := utilfile.FileExists(mkpath("secret.yaml")); exists {
 		Logf("creating secret")
 		RunKubectlOrDie("create", "-f", mkpath("secret.yaml"), fmt.Sprintf("--namespace=%v", ns))
 	}

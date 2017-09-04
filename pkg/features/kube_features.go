@@ -17,6 +17,7 @@ limitations under the License.
 package features
 
 import (
+	apiextensionsfeatures "k8s.io/apiextensions-apiserver/pkg/features"
 	genericfeatures "k8s.io/apiserver/pkg/features"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 )
@@ -44,12 +45,9 @@ const (
 	// alpha: v1.4
 	DynamicKubeletConfig utilfeature.Feature = "DynamicKubeletConfig"
 
-	// owner: tallclair
-	// alpha: v1.5
-	//
-	// StreamingProxyRedirects controls whether the apiserver should intercept (and follow)
-	// redirects from the backend (Kubelet) for streaming requests (exec/attach/port-forward).
-	StreamingProxyRedirects utilfeature.Feature = genericfeatures.StreamingProxyRedirects
+	// owner: @mtaufen
+	// alpha: v1.8
+	KubeletConfigFile utilfeature.Feature = "KubeletConfigFile"
 
 	// owner: @pweil-
 	// alpha: v1.5
@@ -74,6 +72,13 @@ const (
 	// Only Nvidia GPUs are supported as of v1.6.
 	// Works only with Docker Container Runtime.
 	Accelerators utilfeature.Feature = "Accelerators"
+
+	// owner: @jiayingz
+	// alpha: v1.8
+	//
+	// Enables support for Device Plugins
+	// Only Nvidia GPUs are tested as of v1.8.
+	DevicePlugins utilfeature.Feature = "DevicePlugins"
 
 	// owner: @gmarek
 	// alpha: v1.6
@@ -120,6 +125,31 @@ const (
 	//
 	// Add priority to pods. Priority affects scheduling and preemption of pods.
 	PodPriority utilfeature.Feature = "PodPriority"
+
+	// owner: @resouer
+	// alpha: v1.8
+	//
+	// Enable equivalence class cache for scheduler.
+	EnableEquivalenceClassCache utilfeature.Feature = "EnableEquivalenceClassCache"
+
+	// owner: @k82cn
+	// alpha: v1.8
+	//
+	// Taint nodes based on their condition status for 'NetworkUnavailable',
+	// 'MemoryPressure', 'OutOfDisk' and 'DiskPressure'.
+	TaintNodesByCondition utilfeature.Feature = "TaintNodesByCondition"
+
+	// owner: @haibinxie
+	// alpha: v1.8
+	//
+	// Implement IPVS-based in-cluster service load balancing
+	SupportIPVSProxyMode utilfeature.Feature = "SupportIPVSProxyMode"
+
+	// owner: @jsafrane
+	// alpha: v1.8
+	//
+	// Enable mount propagation of volumes.
+	MountPropagation utilfeature.Feature = "MountPropagation"
 )
 
 func init() {
@@ -133,20 +163,33 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	ExternalTrafficLocalOnly:                    {Default: true, PreRelease: utilfeature.GA},
 	AppArmor:                                    {Default: true, PreRelease: utilfeature.Beta},
 	DynamicKubeletConfig:                        {Default: false, PreRelease: utilfeature.Alpha},
+	KubeletConfigFile:                           {Default: false, PreRelease: utilfeature.Alpha},
 	DynamicVolumeProvisioning:                   {Default: true, PreRelease: utilfeature.Alpha},
 	ExperimentalHostUserNamespaceDefaultingGate: {Default: false, PreRelease: utilfeature.Beta},
 	ExperimentalCriticalPodAnnotation:           {Default: false, PreRelease: utilfeature.Alpha},
 	Accelerators:                                {Default: false, PreRelease: utilfeature.Alpha},
+	DevicePlugins:                               {Default: false, PreRelease: utilfeature.Alpha},
 	TaintBasedEvictions:                         {Default: false, PreRelease: utilfeature.Alpha},
 	RotateKubeletServerCertificate:              {Default: false, PreRelease: utilfeature.Alpha},
-	RotateKubeletClientCertificate:              {Default: false, PreRelease: utilfeature.Alpha},
+	RotateKubeletClientCertificate:              {Default: true, PreRelease: utilfeature.Beta},
 	PersistentLocalVolumes:                      {Default: false, PreRelease: utilfeature.Alpha},
 	LocalStorageCapacityIsolation:               {Default: false, PreRelease: utilfeature.Alpha},
 	DebugContainers:                             {Default: false, PreRelease: utilfeature.Alpha},
 	PodPriority:                                 {Default: false, PreRelease: utilfeature.Alpha},
+	EnableEquivalenceClassCache:                 {Default: false, PreRelease: utilfeature.Alpha},
+	TaintNodesByCondition:                       {Default: false, PreRelease: utilfeature.Alpha},
+	MountPropagation:                            {Default: false, PreRelease: utilfeature.Alpha},
 
 	// inherited features from generic apiserver, relisted here to get a conflict if it is changed
 	// unintentionally on either side:
-	StreamingProxyRedirects:          {Default: true, PreRelease: utilfeature.Beta},
-	genericfeatures.AdvancedAuditing: {Default: false, PreRelease: utilfeature.Alpha},
+	genericfeatures.StreamingProxyRedirects: {Default: true, PreRelease: utilfeature.Beta},
+	genericfeatures.AdvancedAuditing:        {Default: false, PreRelease: utilfeature.Alpha},
+	genericfeatures.APIResponseCompression:  {Default: false, PreRelease: utilfeature.Alpha},
+	genericfeatures.Initializers:            {Default: false, PreRelease: utilfeature.Alpha},
+	genericfeatures.APIListChunking:         {Default: false, PreRelease: utilfeature.Alpha},
+
+	// inherited features from apiextensions-apiserver, relisted here to get a conflict if it is changed
+	// unintentionally on either side:
+	apiextensionsfeatures.CustomResourceValidation: {Default: false, PreRelease: utilfeature.Alpha},
+	SupportIPVSProxyMode:                           {Default: false, PreRelease: utilfeature.Alpha},
 }

@@ -149,3 +149,27 @@ func ignoreNotFound(err error) error {
 func isNotFoundOrInUse(err error) bool {
 	return isNotFound(err) || isInUsedByError(err)
 }
+
+func makeGoogleAPINotFoundError(message string) error {
+	return &googleapi.Error{Code: http.StatusNotFound, Message: message}
+}
+
+func makeGoogleAPIError(code int, message string) error {
+	return &googleapi.Error{Code: code, Message: message}
+}
+
+func isForbidden(err error) bool {
+	return isHTTPErrorCode(err, http.StatusForbidden)
+}
+
+// TODO(#51665): Remove this once Network Tiers becomes Beta in GCP.
+func handleAlphaNetworkTierGetError(err error) (string, error) {
+	if isForbidden(err) {
+		// Network tier is still an Alpha feature in GCP, and not every project
+		// is whitelisted to access the API. If we cannot access the API, just
+		// assume the tier is premium.
+		return NetworkTierDefault.ToGCEValue(), nil
+	}
+	// Can't get the network tier, just return an error.
+	return "", err
+}

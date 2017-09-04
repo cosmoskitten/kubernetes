@@ -38,6 +38,7 @@ import (
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/kubernetes/pkg/api/testapi"
 	"k8s.io/kubernetes/test/e2e/framework"
+	imageutils "k8s.io/kubernetes/test/utils/image"
 )
 
 const (
@@ -449,17 +450,17 @@ var _ = SIGDescribe("Pod Disks", func() {
 		// Verify that disk shows up in node 0's volumeInUse list
 		framework.ExpectNoError(waitForPDInVolumesInUse(nodeClient, diskName, host0Name, nodeStatusTimeout, true /* should exist*/))
 
-		output, err := exec.Command("gcloud", "compute", "instances", "list").CombinedOutput()
-		framework.ExpectNoError(err, fmt.Sprintf("Unable to get list of node instances %v", err))
+		output, err := exec.Command("gcloud", "compute", "instances", "list", "--project="+framework.TestContext.CloudConfig.ProjectID).CombinedOutput()
+		framework.ExpectNoError(err, fmt.Sprintf("Unable to get list of node instances err=%v output=%s", err, output))
 		Expect(true, strings.Contains(string(output), string(host0Name)))
 
 		By("deleting host0")
 
 		output, err = exec.Command("gcloud", "compute", "instances", "delete", string(host0Name), "--project="+framework.TestContext.CloudConfig.ProjectID, "--zone="+framework.TestContext.CloudConfig.Zone).CombinedOutput()
-		framework.ExpectNoError(err, fmt.Sprintf("Failed to delete host0pod: %v", err))
+		framework.ExpectNoError(err, fmt.Sprintf("Failed to delete host0pod: err=%v output=%s", err, output))
 
-		output, err = exec.Command("gcloud", "compute", "instances", "list").CombinedOutput()
-		framework.ExpectNoError(err, fmt.Sprintf("Unable to get list of node instances %v", err))
+		output, err = exec.Command("gcloud", "compute", "instances", "list", "--project="+framework.TestContext.CloudConfig.ProjectID).CombinedOutput()
+		framework.ExpectNoError(err, fmt.Sprintf("Unable to get list of node instances err=%v output=%s", err, output))
 		Expect(false, strings.Contains(string(output), string(host0Name)))
 
 		// The disk should be detached from host0 on it's deletion
@@ -601,7 +602,7 @@ func testPDPod(diskNames []string, targetNode types.NodeName, readOnly bool, num
 			containers[i].Name = fmt.Sprintf("mycontainer%v", i+1)
 		}
 
-		containers[i].Image = "gcr.io/google_containers/busybox:1.24"
+		containers[i].Image = imageutils.GetBusyBoxImage()
 
 		containers[i].Command = []string{"sleep", "6000"}
 

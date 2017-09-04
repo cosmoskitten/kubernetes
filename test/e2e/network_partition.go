@@ -34,6 +34,7 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/pkg/api"
 	nodepkg "k8s.io/kubernetes/pkg/controller/node"
+	"k8s.io/kubernetes/test/e2e/common"
 	"k8s.io/kubernetes/test/e2e/framework"
 	testutils "k8s.io/kubernetes/test/utils"
 
@@ -42,7 +43,11 @@ import (
 )
 
 const (
-	timeout = 60 * time.Second
+	timeout                = 60 * time.Second
+	podReadyTimeout        = 2 * time.Minute
+	podNotReadyTimeout     = 1 * time.Minute
+	nodeReadinessTimeout   = 3 * time.Minute
+	resizeNodeReadyTimeout = 2 * time.Minute
 )
 
 func expectNodeReadiness(isReady bool, newNode chan *v1.Node) {
@@ -231,9 +236,9 @@ var _ = framework.KubeDescribe("[sig-apps] Network Partition [Disruptive] [Slow]
 			// Create a replication controller for a service that serves its hostname.
 			// The source for the Docker container kubernetes/serve_hostname is in contrib/for-demos/serve_hostname
 			name := "my-hostname-net"
-			newSVCByName(c, ns, name)
+			common.NewSVCByName(c, ns, name)
 			replicas := int32(framework.TestContext.CloudConfig.NumNodes)
-			newRCByName(c, ns, name, replicas, nil)
+			common.NewRCByName(c, ns, name, replicas, nil)
 			err := framework.VerifyPods(c, ns, name, true, replicas)
 			Expect(err).NotTo(HaveOccurred(), "Each pod should start running and responding")
 
@@ -296,9 +301,9 @@ var _ = framework.KubeDescribe("[sig-apps] Network Partition [Disruptive] [Slow]
 			name := "my-hostname-net"
 			gracePeriod := int64(30)
 
-			newSVCByName(c, ns, name)
+			common.NewSVCByName(c, ns, name)
 			replicas := int32(framework.TestContext.CloudConfig.NumNodes)
-			newRCByName(c, ns, name, replicas, &gracePeriod)
+			common.NewRCByName(c, ns, name, replicas, &gracePeriod)
 			err := framework.VerifyPods(c, ns, name, true, replicas)
 			Expect(err).NotTo(HaveOccurred(), "Each pod should start running and responding")
 
@@ -364,7 +369,7 @@ var _ = framework.KubeDescribe("[sig-apps] Network Partition [Disruptive] [Slow]
 			petMounts := []v1.VolumeMount{{Name: "datadir", MountPath: "/data/"}}
 			podMounts := []v1.VolumeMount{{Name: "home", MountPath: "/home"}}
 			ps := framework.NewStatefulSet(psName, ns, headlessSvcName, 3, petMounts, podMounts, labels)
-			_, err := c.Apps().StatefulSets(ns).Create(ps)
+			_, err := c.AppsV1beta1().StatefulSets(ns).Create(ps)
 			Expect(err).NotTo(HaveOccurred())
 
 			pst := framework.NewStatefulSetTester(c)
@@ -372,7 +377,7 @@ var _ = framework.KubeDescribe("[sig-apps] Network Partition [Disruptive] [Slow]
 			nn := framework.TestContext.CloudConfig.NumNodes
 			nodeNames, err := framework.CheckNodesReady(f.ClientSet, framework.NodeReadyInitialTimeout, nn)
 			framework.ExpectNoError(err)
-			restartNodes(f, nodeNames)
+			common.RestartNodes(f.ClientSet, nodeNames)
 
 			By("waiting for pods to be running again")
 			pst.WaitForRunningAndReady(*ps.Spec.Replicas, ps)
@@ -380,7 +385,7 @@ var _ = framework.KubeDescribe("[sig-apps] Network Partition [Disruptive] [Slow]
 
 		It("should not reschedule stateful pods if there is a network partition [Slow] [Disruptive]", func() {
 			ps := framework.NewStatefulSet(psName, ns, headlessSvcName, 3, []v1.VolumeMount{}, []v1.VolumeMount{}, labels)
-			_, err := c.Apps().StatefulSets(ns).Create(ps)
+			_, err := c.AppsV1beta1().StatefulSets(ns).Create(ps)
 			Expect(err).NotTo(HaveOccurred())
 
 			pst := framework.NewStatefulSetTester(c)
@@ -413,9 +418,10 @@ var _ = framework.KubeDescribe("[sig-apps] Network Partition [Disruptive] [Slow]
 		It("should create new pods when node is partitioned", func() {
 			parallelism := int32(2)
 			completions := int32(4)
+			backoffLimit := int32(6) // default value
 
 			job := framework.NewTestJob("notTerminate", "network-partition", v1.RestartPolicyNever,
-				parallelism, completions)
+				parallelism, completions, nil, backoffLimit)
 			job, err := framework.CreateJob(f.ClientSet, f.Namespace.Name, job)
 			Expect(err).NotTo(HaveOccurred())
 			label := labels.SelectorFromSet(labels.Set(map[string]string{framework.JobSelectorKey: job.Name}))

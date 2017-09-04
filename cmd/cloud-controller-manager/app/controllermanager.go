@@ -27,7 +27,7 @@ import (
 	"strings"
 	"time"
 
-	clientv1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/server/healthz"
@@ -44,7 +44,7 @@ import (
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/cloudprovider"
 	"k8s.io/kubernetes/pkg/controller"
-	nodecontroller "k8s.io/kubernetes/pkg/controller/cloud"
+	cloudcontrollers "k8s.io/kubernetes/pkg/controller/cloud"
 	routecontroller "k8s.io/kubernetes/pkg/controller/route"
 	servicecontroller "k8s.io/kubernetes/pkg/controller/service"
 	"k8s.io/kubernetes/pkg/util/configz"
@@ -107,32 +107,9 @@ func Run(s *options.CloudControllerManagerServer, cloud cloudprovider.Interface)
 	leaderElectionClient := kubernetes.NewForConfigOrDie(restclient.AddUserAgent(kubeconfig, "leader-election"))
 
 	// Start the external controller manager server
-	go func() {
-		mux := http.NewServeMux()
-		healthz.InstallHandler(mux)
-		if s.EnableProfiling {
-			mux.HandleFunc("/debug/pprof/", pprof.Index)
-			mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
-			mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
-			mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
-			if s.EnableContentionProfiling {
-				goruntime.SetBlockProfileRate(1)
-			}
-		}
-		configz.InstallHandler(mux)
-		mux.Handle("/metrics", prometheus.Handler())
+	go startHTTP(s)
 
-		server := &http.Server{
-			Addr:    net.JoinHostPort(s.Address, strconv.Itoa(int(s.Port))),
-			Handler: mux,
-		}
-		glog.Fatal(server.ListenAndServe())
-	}()
-
-	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartLogging(glog.Infof)
-	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: v1core.New(kubeClient.Core().RESTClient()).Events("")})
-	recorder := eventBroadcaster.NewRecorder(api.Scheme, clientv1.EventSource{Component: "cloud-controller-manager"})
+	recorder := createRecorder(kubeClient)
 
 	run := func(stop <-chan struct{}) {
 		rootClientBuilder := controller.SimpleControllerClientBuilder{
@@ -142,7 +119,7 @@ func Run(s *options.CloudControllerManagerServer, cloud cloudprovider.Interface)
 		if len(s.ServiceAccountKeyFile) > 0 && s.UseServiceAccountCredentials {
 			clientBuilder = controller.SAControllerClientBuilder{
 				ClientConfig:         restclient.AnonymousClientConfig(kubeconfig),
-				CoreClient:           kubeClient.Core(),
+				CoreClient:           kubeClient.CoreV1(),
 				AuthenticationClient: kubeClient.Authentication(),
 				Namespace:            "kube-system",
 			}
@@ -172,7 +149,7 @@ func Run(s *options.CloudControllerManagerServer, cloud cloudprovider.Interface)
 			Namespace: "kube-system",
 			Name:      "cloud-controller-manager",
 		},
-		Client: leaderElectionClient,
+		Client: leaderElectionClient.CoreV1(),
 		LockConfig: resourcelock.ResourceLockConfig{
 			Identity:      id + "-external-cloud-controller",
 			EventRecorder: recorder,
@@ -211,13 +188,19 @@ func StartControllers(s *options.CloudControllerManagerServer, kubeconfig *restc
 	sharedInformers := informers.NewSharedInformerFactory(versionedClient, resyncPeriod(s)())
 
 	// Start the CloudNodeController
-	nodeController := nodecontroller.NewCloudNodeController(
+	nodeController := cloudcontrollers.NewCloudNodeController(
 		sharedInformers.Core().V1().Nodes(),
 		client("cloud-node-controller"), cloud,
 		s.NodeMonitorPeriod.Duration,
 		s.NodeStatusUpdateFrequency.Duration)
 
 	nodeController.Run()
+	time.Sleep(wait.Jitter(s.ControllerStartInterval.Duration, ControllerStartJitter))
+
+	// Start the PersistentVolumeLabelController
+	pvlController := cloudcontrollers.NewPersistentVolumeLabelController(client("pvl-controller"), cloud)
+	threads := 5
+	go pvlController.Run(threads, stop)
 	time.Sleep(wait.Jitter(s.ControllerStartInterval.Duration, ControllerStartJitter))
 
 	// Start the service controller
@@ -272,4 +255,33 @@ func StartControllers(s *options.CloudControllerManagerServer, kubeconfig *restc
 	sharedInformers.Start(stop)
 
 	select {}
+}
+
+func startHTTP(s *options.CloudControllerManagerServer) {
+	mux := http.NewServeMux()
+	healthz.InstallHandler(mux)
+	if s.EnableProfiling {
+		mux.HandleFunc("/debug/pprof/", pprof.Index)
+		mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+		mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+		mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+		if s.EnableContentionProfiling {
+			goruntime.SetBlockProfileRate(1)
+		}
+	}
+	configz.InstallHandler(mux)
+	mux.Handle("/metrics", prometheus.Handler())
+
+	server := &http.Server{
+		Addr:    net.JoinHostPort(s.Address, strconv.Itoa(int(s.Port))),
+		Handler: mux,
+	}
+	glog.Fatal(server.ListenAndServe())
+}
+
+func createRecorder(kubeClient *clientset.Clientset) record.EventRecorder {
+	eventBroadcaster := record.NewBroadcaster()
+	eventBroadcaster.StartLogging(glog.Infof)
+	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: v1core.New(kubeClient.CoreV1().RESTClient()).Events("")})
+	return eventBroadcaster.NewRecorder(api.Scheme, v1.EventSource{Component: "cloud-controller-manager"})
 }

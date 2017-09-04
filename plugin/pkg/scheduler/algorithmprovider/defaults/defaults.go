@@ -20,10 +20,10 @@ import (
 	"os"
 	"strconv"
 
-	"k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/kubernetes/pkg/cloudprovider/providers/aws"
+	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/plugin/pkg/scheduler/algorithm"
 	"k8s.io/kubernetes/plugin/pkg/scheduler/algorithm/predicates"
 	"k8s.io/kubernetes/plugin/pkg/scheduler/algorithm/priorities"
@@ -89,7 +89,7 @@ func init() {
 	factory.RegisterFitPredicate("MatchNodeSelector", predicates.PodMatchNodeSelector)
 
 	// Use equivalence class to speed up predicates & priorities
-	factory.RegisterGetEquivalencePodFunction(GetEquivalencePod)
+	factory.RegisterGetEquivalencePodFunction(predicates.GetEquivalencePod)
 
 	// ServiceSpreadingPriority is a priority config factory that spreads pods by minimizing
 	// the number of pods (belonging to the same service) on the same node.
@@ -118,7 +118,7 @@ func init() {
 }
 
 func defaultPredicates() sets.String {
-	return sets.NewString(
+	predSet := sets.NewString(
 		// Fit is determined by volume zone requirements.
 		factory.RegisterFitPredicateFactory(
 			"NoVolumeZoneConflict",
@@ -168,9 +168,6 @@ func defaultPredicates() sets.String {
 		// (e.g. kubelet and all schedulers)
 		factory.RegisterFitPredicate("GeneralPredicates", predicates.GeneralPredicates),
 
-		// Fit is determined based on whether a pod can tolerate all of the node's taints
-		factory.RegisterFitPredicate("PodToleratesNodeTaints", predicates.PodToleratesNodeTaints),
-
 		// Fit is determined by node memory pressure condition.
 		factory.RegisterFitPredicate("CheckNodeMemoryPressure", predicates.CheckNodeMemoryPressurePredicate),
 
@@ -185,6 +182,19 @@ func defaultPredicates() sets.String {
 			},
 		),
 	)
+
+	if utilfeature.DefaultFeatureGate.Enabled(features.TaintNodesByCondition) {
+		// Fit is determined based on whether a pod can tolerate all of the node's taints
+		predSet.Insert(factory.RegisterMandatoryFitPredicate("PodToleratesNodeTaints", predicates.PodToleratesNodeTaints))
+		glog.Warningf("TaintNodesByCondition is enabled, PodToleratesNodeTaints predicate is mandatory")
+	} else {
+		// Fit is determied by node condtions: not ready, network unavailable and out of disk.
+		predSet.Insert(factory.RegisterMandatoryFitPredicate("CheckNodeCondition", predicates.CheckNodeConditionPredicate))
+		// Fit is determined based on whether a pod can tolerate all of the node's taints
+		predSet.Insert(factory.RegisterFitPredicate("PodToleratesNodeTaints", predicates.PodToleratesNodeTaints))
+	}
+
+	return predSet
 }
 
 func defaultPriorities() sets.String {
@@ -224,7 +234,7 @@ func defaultPriorities() sets.String {
 		// Prioritizes nodes that have labels matching NodeAffinity
 		factory.RegisterPriorityFunction2("NodeAffinityPriority", priorities.CalculateNodeAffinityPriorityMap, priorities.CalculateNodeAffinityPriorityReduce, 1),
 
-		// TODO: explain what it does.
+		// Prioritizes nodes that marked with taint which pod can tolerate.
 		factory.RegisterPriorityFunction2("TaintTolerationPriority", priorities.ComputeTaintTolerationPriorityMap, priorities.ComputeTaintTolerationPriorityReduce, 1),
 	)
 }
@@ -251,28 +261,4 @@ func copyAndReplace(set sets.String, replaceWhat, replaceWith string) sets.Strin
 		result.Insert(replaceWith)
 	}
 	return result
-}
-
-// GetEquivalencePod returns a EquivalencePod which contains a group of pod attributes which can be reused.
-func GetEquivalencePod(pod *v1.Pod) interface{} {
-	// For now we only consider pods:
-	// 1. OwnerReferences is Controller
-	// 2. with same OwnerReferences
-	// to be equivalent
-	if len(pod.OwnerReferences) != 0 {
-		for _, ref := range pod.OwnerReferences {
-			if *ref.Controller {
-				// a pod can only belongs to one controller
-				return &EquivalencePod{
-					ControllerRef: ref,
-				}
-			}
-		}
-	}
-	return nil
-}
-
-// EquivalencePod is a group of pod attributes which can be reused as equivalence to schedule other pods.
-type EquivalencePod struct {
-	ControllerRef metav1.OwnerReference
 }

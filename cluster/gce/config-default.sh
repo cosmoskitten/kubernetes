@@ -31,7 +31,8 @@ NODE_SIZE=${NODE_SIZE:-n1-standard-2}
 NUM_NODES=${NUM_NODES:-3}
 MASTER_SIZE=${MASTER_SIZE:-n1-standard-$(get-master-size)}
 MASTER_DISK_TYPE=pd-ssd
-MASTER_DISK_SIZE=${MASTER_DISK_SIZE:-20GB}
+MASTER_DISK_SIZE=${MASTER_DISK_SIZE:-$(get-master-disk-size)}
+MASTER_ROOT_DISK_SIZE=${MASTER_ROOT_DISK_SIZE:-$(get-master-root-disk-size)}
 NODE_DISK_TYPE=${NODE_DISK_TYPE:-pd-standard}
 NODE_DISK_SIZE=${NODE_DISK_SIZE:-100GB}
 NODE_LOCAL_SSDS=${NODE_LOCAL_SSDS:-0}
@@ -72,7 +73,7 @@ fi
 # Also please update corresponding image for node e2e at:
 # https://github.com/kubernetes/kubernetes/blob/master/test/e2e_node/jenkins/image-config.yaml
 CVM_VERSION=${CVM_VERSION:-container-vm-v20170627}
-GCI_VERSION=${KUBE_GCI_VERSION:-cos-stable-59-9460-64-0}
+GCI_VERSION=${KUBE_GCI_VERSION:-cos-stable-60-9592-84-0}
 MASTER_IMAGE=${KUBE_GCE_MASTER_IMAGE:-}
 MASTER_IMAGE_PROJECT=${KUBE_GCE_MASTER_PROJECT:-cos-cloud}
 NODE_IMAGE=${KUBE_GCE_NODE_IMAGE:-${GCI_VERSION}}
@@ -91,7 +92,7 @@ ETCD_QUORUM_READ="${ENABLE_ETCD_QUORUM_READ:-false}"
 MASTER_TAG="${INSTANCE_PREFIX}-master"
 NODE_TAG="${INSTANCE_PREFIX}-minion"
 
-CLUSTER_IP_RANGE="${CLUSTER_IP_RANGE:-10.244.0.0/14}"
+CLUSTER_IP_RANGE="${CLUSTER_IP_RANGE:-$(get-cluster-ip-range)}"
 MASTER_IP_RANGE="${MASTER_IP_RANGE:-10.246.0.0/24}"
 
 if [[ "${FEDERATION:-}" == true ]]; then
@@ -228,12 +229,12 @@ if [ ${ENABLE_IP_ALIASES} = true ]; then
   # the subnet and is the range used for node instance IPs.
   NODE_IP_RANGE="$(get-node-ip-range)"
   # Add to the provider custom variables.
-  PROVIDER_VARS="${PROVIDER_VARS} ENABLE_IP_ALIASES"
+  PROVIDER_VARS="${PROVIDER_VARS:-} ENABLE_IP_ALIASES"
 fi
 
 # Admission Controllers to invoke prior to persisting objects in cluster
 # If we included ResourceQuota, we should keep it at the end of the list to prevent incrementing quota usage prematurely.
-ADMISSION_CONTROL=Initializers,NamespaceLifecycle,LimitRanger,ServiceAccount,PersistentVolumeLabel,DefaultStorageClass,DefaultTolerationSeconds,NodeRestriction,ResourceQuota
+ADMISSION_CONTROL=Initializers,NamespaceLifecycle,LimitRanger,ServiceAccount,PersistentVolumeLabel,DefaultStorageClass,DefaultTolerationSeconds,NodeRestriction,Priority,ResourceQuota
 
 # Optional: if set to true kube-up will automatically check for existing resources and clean them up.
 KUBE_UP_AUTOMATIC_CLEANUP=${KUBE_UP_AUTOMATIC_CLEANUP:-false}
@@ -277,3 +278,32 @@ SOFTLOCKUP_PANIC="${SOFTLOCKUP_PANIC:-false}" # true, false
 METADATA_CLOBBERS_CONFIG="${METADATA_CLOBBERS_CONFIG:-false}"
 
 ENABLE_BIG_CLUSTER_SUBNETS="${ENABLE_BIG_CLUSTER_SUBNETS:-false}"
+
+if [[ -n "${LOGROTATE_FILES_MAX_COUNT:-}" ]]; then
+  PROVIDER_VARS="${PROVIDER_VARS:-} LOGROTATE_FILES_MAX_COUNT"
+fi
+if [[ -n "${LOGROTATE_MAX_SIZE:-}" ]]; then
+  PROVIDER_VARS="${PROVIDER_VARS:-} LOGROTATE_MAX_SIZE"
+fi
+
+# Fluentd requirements
+FLUENTD_GCP_MEMORY_LIMIT="${FLUENTD_GCP_MEMORY_LIMIT:-300Mi}"
+FLUENTD_GCP_CPU_REQUEST="${FLUENTD_GCP_CPU_REQUEST:-100m}"
+FLUENTD_GCP_MEMORY_REQUEST="${FLUENTD_GCP_MEMORY_REQUEST:-200Mi}"
+# Adding to PROVIDER_VARS, since this is GCP-specific.
+PROVIDER_VARS="${PROVIDER_VARS:-} FLUENTD_GCP_MEMORY_LIMIT FLUENTD_GCP_CPU_REQUEST FLUENTD_GCP_MEMORY_REQUEST"
+
+# prometheus-to-sd configuration
+PROMETHEUS_TO_SD_ENDPOINT="${PROMETHEUS_TO_SD_ENDPOINT:-https://monitoring.googleapis.com/}"
+PROMETHEUS_TO_SD_PREFIX="${PROMETHEUS_TO_SD_PREFIX:-custom.googleapis.com}"
+ENABLE_PROMETHEUS_TO_SD="${ENABLE_PROMETHEUS_TO_SD:-false}"
+
+# TODO(#51292): Make kube-proxy Daemonset default and remove the configuration here.
+# Optional: Run kube-proxy as a DaemonSet if set to true, run as static pods otherwise.
+KUBE_PROXY_DAEMONSET="${KUBE_PROXY_DAEMONSET:-false}" # true, false
+
+# Optional: enable pod priority
+ENABLE_POD_PRIORITY="${ENABLE_POD_PRIORITY:-}"
+if [[ "${ENABLE_POD_PRIORITY}" == "true" ]]; then
+    FEATURE_GATES="${FEATURE_GATES},PodPriority=true"
+fi

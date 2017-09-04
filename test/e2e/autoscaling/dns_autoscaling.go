@@ -41,7 +41,7 @@ const (
 	DNSAutoscalerLabelName = "kube-dns-autoscaler"
 )
 
-var _ = framework.KubeDescribe("DNS horizontal autoscaling", func() {
+var _ = SIGDescribe("DNS horizontal autoscaling", func() {
 	f := framework.NewDefaultFramework("dns-autoscaling")
 	var c clientset.Interface
 	var previousParams map[string]string
@@ -151,7 +151,7 @@ var _ = framework.KubeDescribe("DNS horizontal autoscaling", func() {
 
 		By("Restoring cluster size")
 		setMigSizes(originalSizes)
-		Expect(framework.WaitForClusterSize(c, sum, scaleDownTimeout)).NotTo(HaveOccurred())
+		Expect(framework.WaitForReadyNodes(c, sum, scaleDownTimeout)).NotTo(HaveOccurred())
 
 		By("Wait for kube-dns scaled to expected number")
 		Expect(waitForDNSReplicasSatisfied(c, getExpectReplicasLinear, DNSdefaultTimeout)).NotTo(HaveOccurred())

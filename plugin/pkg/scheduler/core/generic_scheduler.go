@@ -24,7 +24,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/golang/glog"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/errors"
 	utiltrace "k8s.io/apiserver/pkg/util/trace"
@@ -33,6 +32,8 @@ import (
 	"k8s.io/kubernetes/plugin/pkg/scheduler/algorithm/predicates"
 	schedulerapi "k8s.io/kubernetes/plugin/pkg/scheduler/api"
 	"k8s.io/kubernetes/plugin/pkg/scheduler/schedulercache"
+
+	"github.com/golang/glog"
 )
 
 type FailedPredicateMap map[string][]algorithm.PredicateFailureReason
@@ -244,14 +245,13 @@ func podFitsOnNode(pod *v1.Pod, meta interface{}, info *schedulercache.NodeInfo,
 	)
 	if ecache != nil {
 		// getHashEquivalencePod will return immediately if no equivalence pod found
-		equivalenceHash = ecache.getHashEquivalencePod(pod)
-		eCacheAvailable = (equivalenceHash != 0)
+		equivalenceHash, eCacheAvailable = ecache.getHashEquivalencePod(pod)
 	}
 	for predicateKey, predicate := range predicateFuncs {
 		// If equivalenceCache is available
 		if eCacheAvailable {
 			// PredicateWithECache will returns it's cached predicate results
-			fit, reasons, invalid = ecache.PredicateWithECache(pod, info.Node().GetName(), predicateKey, equivalenceHash)
+			fit, reasons, invalid = ecache.PredicateWithECache(pod.GetName(), info.Node().GetName(), predicateKey, equivalenceHash)
 		}
 
 		if !eCacheAvailable || invalid {
@@ -264,7 +264,7 @@ func podFitsOnNode(pod *v1.Pod, meta interface{}, info *schedulercache.NodeInfo,
 			if eCacheAvailable {
 				// update equivalence cache with newly computed fit & reasons
 				// TODO(resouer) should we do this in another thread? any race?
-				ecache.UpdateCachedPredicateItem(pod, info.Node().GetName(), predicateKey, fit, reasons, equivalenceHash)
+				ecache.UpdateCachedPredicateItem(pod.GetName(), info.Node().GetName(), predicateKey, fit, reasons, equivalenceHash)
 			}
 		}
 
@@ -315,10 +315,8 @@ func PrioritizeNodes(
 		errs = append(errs, err)
 	}
 
-	results := make([]schedulerapi.HostPriorityList, 0, len(priorityConfigs))
-	for range priorityConfigs {
-		results = append(results, nil)
-	}
+	results := make([]schedulerapi.HostPriorityList, len(priorityConfigs), len(priorityConfigs))
+
 	for i, priorityConfig := range priorityConfigs {
 		if priorityConfig.Function != nil {
 			// DEPRECATED
