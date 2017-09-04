@@ -142,7 +142,7 @@ var _ = framework.KubeDescribe("Variable Expansion", func() {
 				Containers: []v1.Container{
 					{
 						Name:    "dapi-container",
-						Image:   "gcr.io/google_containers/busybox:1.24",
+						Image:   busyboxImage,
 						Command: []string{"sh", "-c", "test -d /testcontainer/" + podName + ";echo $?"},
 						Env: []v1.EnvVar{
 							{
