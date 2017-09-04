@@ -19,6 +19,7 @@ package cm
 import (
 	"k8s.io/api/core/v1"
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha1"
+	"k8s.io/kubernetes/pkg/kubelet/lifecycle"
 )
 
 // A simple stub implementation for DevicePluginHandler.
@@ -39,4 +40,8 @@ func (h *DevicePluginHandlerStub) Devices() map[string][]*pluginapi.Device {
 func (h *DevicePluginHandlerStub) Allocate(pod *v1.Pod, container *v1.Container, activePods []*v1.Pod) ([]*pluginapi.AllocateResponse, error) {
 	var ret []*pluginapi.AllocateResponse
 	return ret, nil
+}
+
+func (h *DevicePluginHandlerStub) Admit(attrs *lifecycle.PodAdmitAttributes) lifecycle.PodAdmitResult {
+	return lifecycle.PodAdmitResult{}
 }

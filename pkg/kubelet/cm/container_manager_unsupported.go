@@ -27,6 +27,7 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/cadvisor"
 	"k8s.io/kubernetes/pkg/kubelet/cm/cpumanager"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
+	"k8s.io/kubernetes/pkg/kubelet/lifecycle"
 	"k8s.io/kubernetes/pkg/kubelet/status"
 	"k8s.io/kubernetes/pkg/util/mount"
 )
@@ -82,6 +83,10 @@ func (cm *unsupportedContainerManager) GetResources(pod *v1.Pod, container *v1.C
 
 func (cm *unsupportedContainerManager) InternalContainerLifecycle() InternalContainerLifecycle {
 	return &internalContainerLifecycleImpl{cpumanager.NewFakeManager()}
+}
+
+func (cm *unsupportedContainerManager) Admit(attrs *lifecycle.PodAdmitAttributes) lifecycle.PodAdmitResult {
+	return lifecycle.PodAdmitResult{}
 }
 
 func NewContainerManager(_ mount.Interface, _ cadvisor.Interface, _ NodeConfig, failSwapOn bool, devicePluginEnabled bool, recorder record.EventRecorder) (ContainerManager, error) {

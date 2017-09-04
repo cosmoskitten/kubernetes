@@ -839,6 +839,9 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 	klet.appArmorValidator = apparmor.NewValidator(kubeCfg.ContainerRuntime)
 	klet.softAdmitHandlers.AddPodAdmitHandler(lifecycle.NewAppArmorAdmitHandler(klet.appArmorValidator))
 	klet.softAdmitHandlers.AddPodAdmitHandler(lifecycle.NewNoNewPrivsAdmitHandler(klet.containerRuntime))
+	if utilfeature.DefaultFeatureGate.Enabled(features.DevicePlugins) {
+		klet.admitHandlers.AddPodAdmitHandler(klet.containerManager)
+	}
 	if utilfeature.DefaultFeatureGate.Enabled(features.Accelerators) {
 		if kubeCfg.ContainerRuntime == kubetypes.DockerContainerRuntime {
 			if klet.gpuManager, err = nvidia.NewNvidiaGPUManager(klet, kubeDeps.DockerClient); err != nil {

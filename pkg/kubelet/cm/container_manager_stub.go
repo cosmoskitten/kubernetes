@@ -23,6 +23,7 @@ import (
 	internalapi "k8s.io/kubernetes/pkg/kubelet/apis/cri"
 	"k8s.io/kubernetes/pkg/kubelet/cm/cpumanager"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
+	"k8s.io/kubernetes/pkg/kubelet/lifecycle"
 	"k8s.io/kubernetes/pkg/kubelet/status"
 )
 
@@ -77,6 +78,10 @@ func (cm *containerManagerStub) GetResources(pod *v1.Pod, container *v1.Containe
 
 func (cm *containerManagerStub) InternalContainerLifecycle() InternalContainerLifecycle {
 	return &internalContainerLifecycleImpl{cpumanager.NewFakeManager()}
+}
+
+func (cm *containerManagerStub) Admit(attrs *lifecycle.PodAdmitAttributes) lifecycle.PodAdmitResult {
+	return lifecycle.PodAdmitResult{}
 }
 
 func NewStubContainerManager() ContainerManager {

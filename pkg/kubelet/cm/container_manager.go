@@ -26,6 +26,7 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/apis/kubeletconfig"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
 	evictionapi "k8s.io/kubernetes/pkg/kubelet/eviction/api"
+	"k8s.io/kubernetes/pkg/kubelet/lifecycle"
 	"k8s.io/kubernetes/pkg/kubelet/status"
 
 	"fmt"
@@ -77,6 +78,9 @@ type ContainerManager interface {
 	GetResources(pod *v1.Pod, container *v1.Container, activePods []*v1.Pod) (*kubecontainer.RunContainerOptions, error)
 
 	InternalContainerLifecycle() InternalContainerLifecycle
+
+	// Evaluates if a pod can be admitted.
+	Admit(attrs *lifecycle.PodAdmitAttributes) lifecycle.PodAdmitResult
 }
 
 type NodeConfig struct {

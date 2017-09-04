@@ -30,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha1"
 	"k8s.io/kubernetes/pkg/kubelet/deviceplugin"
+	"k8s.io/kubernetes/pkg/kubelet/lifecycle"
 )
 
 // podDevices represents a list of pod to device Id mappings.
@@ -91,6 +92,8 @@ type DevicePluginHandler interface {
 	// the input container, issues an Allocate rpc request for each of such
 	// resources, and returns their AllocateResponses on success.
 	Allocate(pod *v1.Pod, container *v1.Container, activePods []*v1.Pod) ([]*pluginapi.AllocateResponse, error)
+	// Admit determine if device resources requests by the pod is satisfied
+	Admit(attrs *lifecycle.PodAdmitAttributes) lifecycle.PodAdmitResult
 }
 
 type DevicePluginHandlerImpl struct {
@@ -170,25 +173,11 @@ func (h *DevicePluginHandlerImpl) Allocate(pod *v1.Pod, container *v1.Container,
 			continue
 		}
 		h.Lock()
-		// Gets list of devices that have already been allocated.
-		// This can happen if a container restarts for example.
-		if h.allocatedDevices[resource] == nil {
-			h.allocatedDevices[resource] = make(podDevices)
-		}
-		devices := h.allocatedDevices[resource].getDevices(string(pod.UID), container.Name)
-		if devices != nil {
-			glog.V(3).Infof("Found pre-allocated devices for resource %s container %q in Pod %q: %v", resource, container.Name, pod.UID, devices.List())
-			needed = needed - devices.Len()
-		}
-		// Get Devices in use.
-		devicesInUse := h.allocatedDevices[resource].devices()
-		// Get a list of available devices.
-		available := h.allDevices[resource].Difference(devicesInUse)
-		if int(available.Len()) < needed {
+		allocated, preAllocated, err := h.requestedDevicesSatisfied(string(pod.UID), container.Name, resource, needed)
+		if err != nil {
 			h.Unlock()
-			return nil, fmt.Errorf("requested number of devices unavailable for %s. Requested: %d, Available: %d", resource, needed, available.Len())
+			return nil, err
 		}
-		allocated := available.UnsortedList()[:needed]
 		for _, device := range allocated {
 			// Update internal allocated device cache.
 			h.allocatedDevices[resource].insert(string(pod.UID), container.Name, device)
@@ -204,7 +193,7 @@ func (h *DevicePluginHandlerImpl) Allocate(pod *v1.Pod, container *v1.Container,
 		// requests may fail if we serve them in mixed order.
 		// TODO: may revisit this part later if we see inefficient resource allocation
 		// in real use as the result of this.
-		resp, err := h.devicePluginManager.Allocate(resource, append(devices.UnsortedList(), allocated...))
+		resp, err := h.devicePluginManager.Allocate(resource, append(preAllocated.UnsortedList(), allocated...))
 		if err != nil {
 			return nil, err
 		}
@@ -215,6 +204,58 @@ func (h *DevicePluginHandlerImpl) Allocate(pod *v1.Pod, container *v1.Container,
 		return nil, err
 	}
 	return ret, nil
+}
+
+func (h *DevicePluginHandlerImpl) Admit(attrs *lifecycle.PodAdmitAttributes) lifecycle.PodAdmitResult {
+	pod := attrs.Pod
+	for _, container := range attrs.Pod.Spec.Containers {
+		for k, v := range container.Resources.Limits {
+			resource := string(k)
+			needed := int(v.Value())
+			if !deviceplugin.IsDeviceName(k) || needed == 0 {
+				continue
+			}
+			h.Lock()
+			_, _, err := h.requestedDevicesSatisfied(string(pod.UID), container.Name, resource, needed)
+			if err != nil {
+				h.Unlock()
+				return lifecycle.PodAdmitResult{
+					Admit:   false,
+					Reason:  "DeviceNotSatisfied",
+					Message: err.Error(),
+				}
+			}
+			h.Unlock()
+		}
+	}
+	return lifecycle.PodAdmitResult{Admit: true}
+}
+
+// requestedDevicesSatisfied check if existing devices satisfied the request of certain container
+// return pre-allocated devices and devices to be allocated if satisfied
+// and return corresponding error if not
+func (h *DevicePluginHandlerImpl) requestedDevicesSatisfied(podUID, containerName, resource string, needed int) (allocated []string, preAllocated sets.String, err error) {
+	// Gets list of devices that have already been allocated.
+	// This can happen if a container restarts for example.
+	if h.allocatedDevices[resource] == nil {
+		h.allocatedDevices[resource] = make(podDevices)
+	}
+	preAllocated = h.allocatedDevices[resource].getDevices(podUID, containerName)
+	if preAllocated != nil {
+		glog.V(3).Infof("Found pre-allocated devices for resource %s container %q in Pod %q: %v", resource, containerName, podUID, preAllocated.List())
+		needed = needed - preAllocated.Len()
+	}
+	// Get Devices in use.
+	devicesInUse := h.allocatedDevices[resource].devices()
+	// Get a list of available devices.
+	available := h.allDevices[resource].Difference(devicesInUse)
+	if int(available.Len()) < needed {
+		err = fmt.Errorf("requested number of devices unavailable for %s. Requested: %d, Available: %d", resource, needed, available.Len())
+		return
+	}
+	allocated = available.UnsortedList()[:needed]
+
+	return
 }
 
 // updateAllocatedDevices updates the list of GPUs in use.

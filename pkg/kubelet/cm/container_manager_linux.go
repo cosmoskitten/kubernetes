@@ -47,6 +47,7 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/cm/cpumanager"
 	cmutil "k8s.io/kubernetes/pkg/kubelet/cm/util"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
+	"k8s.io/kubernetes/pkg/kubelet/lifecycle"
 	"k8s.io/kubernetes/pkg/kubelet/qos"
 	"k8s.io/kubernetes/pkg/kubelet/status"
 	utilfile "k8s.io/kubernetes/pkg/util/file"
@@ -695,6 +696,10 @@ func (cm *containerManagerImpl) GetResources(pod *v1.Pod, container *v1.Containe
 		}
 	}
 	return opts, nil
+}
+
+func (cm *containerManagerImpl) Admit(attrs *lifecycle.PodAdmitAttributes) lifecycle.PodAdmitResult {
+	return cm.devicePluginHandler.Admit(attrs)
 }
 
 func (cm *containerManagerImpl) SystemCgroupsLimit() v1.ResourceList {
