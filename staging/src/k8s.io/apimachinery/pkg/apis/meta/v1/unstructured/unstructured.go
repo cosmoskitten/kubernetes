@@ -189,7 +189,8 @@ func (in *UnstructuredList) DeepCopy() *UnstructuredList {
 	return out
 }
 
-func getNestedField(obj map[string]interface{}, fields ...string) interface{} {
+// NestedField returns the value of a nested field.
+func NestedField(obj map[string]interface{}, fields ...string) interface{} {
 	var val interface{} = obj
 	for _, field := range fields {
 		if _, ok := val.(map[string]interface{}); !ok {
@@ -200,22 +201,28 @@ func getNestedField(obj map[string]interface{}, fields ...string) interface{} {
 	return val
 }
 
-func getNestedString(obj map[string]interface{}, fields ...string) string {
-	if str, ok := getNestedField(obj, fields...).(string); ok {
+// NestedString returns the string value of a nested field.
+// Returns empty string if value is not found or is not a string.
+func NestedString(obj map[string]interface{}, fields ...string) string {
+	if str, ok := NestedField(obj, fields...).(string); ok {
 		return str
 	}
 	return ""
 }
 
-func getNestedInt64(obj map[string]interface{}, fields ...string) int64 {
-	if str, ok := getNestedField(obj, fields...).(int64); ok {
+// NestedInt64 returns the int64 value of a nested field.
+// Returns 0 if value is not found or is not an int64.
+func NestedInt64(obj map[string]interface{}, fields ...string) int64 {
+	if str, ok := NestedField(obj, fields...).(int64); ok {
 		return str
 	}
 	return 0
 }
 
-func getNestedInt64Pointer(obj map[string]interface{}, fields ...string) *int64 {
-	nested := getNestedField(obj, fields...)
+// NestedInt64Pointer returns the *int64 value of a nested field.
+// Returns nil if value is not found or is not an int64/*int64.
+func NestedInt64Pointer(obj map[string]interface{}, fields ...string) *int64 {
+	nested := NestedField(obj, fields...)
 	switch n := nested.(type) {
 	case int64:
 		return &n
@@ -226,8 +233,10 @@ func getNestedInt64Pointer(obj map[string]interface{}, fields ...string) *int64 
 	}
 }
 
-func getNestedSlice(obj map[string]interface{}, fields ...string) []string {
-	if m, ok := getNestedField(obj, fields...).([]interface{}); ok {
+// NestedStringSlice returns the []string value of a nested field.
+// Returns nil if value is not found or is not a []interface{}.
+func NestedStringSlice(obj map[string]interface{}, fields ...string) []string {
+	if m, ok := NestedField(obj, fields...).([]interface{}); ok {
 		strSlice := make([]string, 0, len(m))
 		for _, v := range m {
 			if str, ok := v.(string); ok {
@@ -239,8 +248,21 @@ func getNestedSlice(obj map[string]interface{}, fields ...string) []string {
 	return nil
 }
 
-func getNestedMap(obj map[string]interface{}, fields ...string) map[string]string {
-	if m, ok := getNestedField(obj, fields...).(map[string]interface{}); ok {
+// NestedSlice returns the []interface{} value of a nested field.
+// Returns nil if value is not found or is not a []interface{}.
+func NestedSlice(obj map[string]interface{}, fields ...string) []interface{} {
+	if m, ok := NestedField(obj, fields...).([]interface{}); ok {
+		slice := make([]interface{}, len(m))
+		copy(slice, m)
+		return slice
+	}
+	return nil
+}
+
+// NestedStringMap returns the map[string]string value of a nested field.
+// Returns nil if value is not found or is not a map[string]interface{}.
+func NestedStringMap(obj map[string]interface{}, fields ...string) map[string]string {
+	if m, ok := NestedField(obj, fields...).(map[string]interface{}); ok {
 		strMap := make(map[string]string, len(m))
 		for k, v := range m {
 			if str, ok := v.(string); ok {
@@ -252,54 +274,97 @@ func getNestedMap(obj map[string]interface{}, fields ...string) map[string]strin
 	return nil
 }
 
-func setNestedField(obj map[string]interface{}, value interface{}, fields ...string) {
-	m := obj
-	if len(fields) > 1 {
-		for _, field := range fields[0 : len(fields)-1] {
-			if _, ok := m[field].(map[string]interface{}); !ok {
-				m[field] = make(map[string]interface{})
-			}
-			m = m[field].(map[string]interface{})
+// NestedMap returns the map[string]interface{} value of a nested field.
+// Returns nil if value is not found or is not a map[string]interface{}.
+func NestedMap(obj map[string]interface{}, fields ...string) map[string]interface{} {
+	if m, ok := NestedField(obj, fields...).(map[string]interface{}); ok {
+		nMap := make(map[string]interface{}, len(m))
+		for k, v := range m {
+			nMap[k] = v
 		}
+		return nMap
+	}
+	return nil
+}
+
+// SetNestedField sets the value of a nested field.
+func SetNestedField(obj map[string]interface{}, value interface{}, fields ...string) {
+	m := obj
+	for _, field := range fields[:len(fields)-1] {
+		if _, ok := m[field].(map[string]interface{}); !ok {
+			m[field] = make(map[string]interface{})
+		}
+		m = m[field].(map[string]interface{})
 	}
 	m[fields[len(fields)-1]] = value
 }
 
-func setNestedSlice(obj map[string]interface{}, value []string, fields ...string) {
+// SetNestedStringSlice sets the string slice value of a nested field.
+func SetNestedStringSlice(obj map[string]interface{}, value []string, fields ...string) {
 	m := make([]interface{}, 0, len(value))
 	for _, v := range value {
 		m = append(m, v)
 	}
-	setNestedField(obj, m, fields...)
+	SetNestedField(obj, m, fields...)
 }
 
-func setNestedMap(obj map[string]interface{}, value map[string]string, fields ...string) {
+// SetNestedSlice sets the slice value of a nested field.
+func SetNestedSlice(obj map[string]interface{}, value []interface{}, fields ...string) {
+	m := make([]interface{}, len(value))
+	copy(m, value)
+	SetNestedField(obj, m, fields...)
+}
+
+// SetNestedStringMap sets the map[string]string value of a nested field.
+func SetNestedStringMap(obj map[string]interface{}, value map[string]string, fields ...string) {
 	m := make(map[string]interface{}, len(value))
 	for k, v := range value {
 		m[k] = v
 	}
-	setNestedField(obj, m, fields...)
+	SetNestedField(obj, m, fields...)
+}
+
+// SetNestedMap sets the map[string]interface{} value of a nested field.
+func SetNestedMap(obj map[string]interface{}, value map[string]interface{}, fields ...string) {
+	m := make(map[string]interface{}, len(value))
+	for k, v := range value {
+		m[k] = v
+	}
+	SetNestedField(obj, m, fields...)
+}
+
+// RemoveNestedField removes the nested field from the obj.
+func RemoveNestedField(obj map[string]interface{}, fields ...string) {
+	m := obj
+	for _, field := range fields[:len(fields)-1] {
+		if x, ok := m[field].(map[string]interface{}); ok {
+			m = x
+		} else {
+			return
+		}
+	}
+	delete(m, fields[len(fields)-1])
 }
 
 func (u *Unstructured) setNestedField(value interface{}, fields ...string) {
 	if u.Object == nil {
 		u.Object = make(map[string]interface{})
 	}
-	setNestedField(u.Object, value, fields...)
+	SetNestedField(u.Object, value, fields...)
 }
 
 func (u *Unstructured) setNestedSlice(value []string, fields ...string) {
 	if u.Object == nil {
 		u.Object = make(map[string]interface{})
 	}
-	setNestedSlice(u.Object, value, fields...)
+	SetNestedStringSlice(u.Object, value, fields...)
 }
 
 func (u *Unstructured) setNestedMap(value map[string]string, fields ...string) {
 	if u.Object == nil {
 		u.Object = make(map[string]interface{})
 	}
-	setNestedMap(u.Object, value, fields...)
+	SetNestedStringMap(u.Object, value, fields...)
 }
 
 func extractOwnerReference(src interface{}) metav1.OwnerReference {
@@ -307,7 +372,7 @@ func extractOwnerReference(src interface{}) metav1.OwnerReference {
 	// though this field is a *bool, but when decoded from JSON, it's
 	// unmarshalled as bool.
 	var controllerPtr *bool
-	controller, ok := (getNestedField(v, "controller")).(bool)
+	controller, ok := NestedField(v, "controller").(bool)
 	if !ok {
 		controllerPtr = nil
 	} else {
@@ -315,7 +380,7 @@ func extractOwnerReference(src interface{}) metav1.OwnerReference {
 		controllerPtr = &controllerCopy
 	}
 	var blockOwnerDeletionPtr *bool
-	blockOwnerDeletion, ok := (getNestedField(v, "blockOwnerDeletion")).(bool)
+	blockOwnerDeletion, ok := NestedField(v, "blockOwnerDeletion").(bool)
 	if !ok {
 		blockOwnerDeletionPtr = nil
 	} else {
@@ -323,10 +388,10 @@ func extractOwnerReference(src interface{}) metav1.OwnerReference {
 		blockOwnerDeletionPtr = &blockOwnerDeletionCopy
 	}
 	return metav1.OwnerReference{
-		Kind:               getNestedString(v, "kind"),
-		Name:               getNestedString(v, "name"),
-		APIVersion:         getNestedString(v, "apiVersion"),
-		UID:                (types.UID)(getNestedString(v, "uid")),
+		Kind:               NestedString(v, "kind"),
+		Name:               NestedString(v, "name"),
+		APIVersion:         NestedString(v, "apiVersion"),
+		UID:                (types.UID)(NestedString(v, "uid")),
 		Controller:         controllerPtr,
 		BlockOwnerDeletion: blockOwnerDeletionPtr,
 	}
@@ -334,24 +399,24 @@ func extractOwnerReference(src interface{}) metav1.OwnerReference {
 
 func setOwnerReference(src metav1.OwnerReference) map[string]interface{} {
 	ret := make(map[string]interface{})
-	setNestedField(ret, src.Kind, "kind")
-	setNestedField(ret, src.Name, "name")
-	setNestedField(ret, src.APIVersion, "apiVersion")
-	setNestedField(ret, string(src.UID), "uid")
+	SetNestedField(ret, src.Kind, "kind")
+	SetNestedField(ret, src.Name, "name")
+	SetNestedField(ret, src.APIVersion, "apiVersion")
+	SetNestedField(ret, string(src.UID), "uid")
 	// json.Unmarshal() extracts boolean json fields as bool, not as *bool and hence extractOwnerReference()
 	// expects bool or a missing field, not *bool. So if pointer is nil, fields are omitted from the ret object.
 	// If pointer is non-nil, they are set to the referenced value.
 	if src.Controller != nil {
-		setNestedField(ret, *src.Controller, "controller")
+		SetNestedField(ret, *src.Controller, "controller")
 	}
 	if src.BlockOwnerDeletion != nil {
-		setNestedField(ret, *src.BlockOwnerDeletion, "blockOwnerDeletion")
+		SetNestedField(ret, *src.BlockOwnerDeletion, "blockOwnerDeletion")
 	}
 	return ret
 }
 
 func getOwnerReferences(object map[string]interface{}) ([]map[string]interface{}, error) {
-	field := getNestedField(object, "metadata", "ownerReferences")
+	field := NestedField(object, "metadata", "ownerReferences")
 	if field == nil {
 		return nil, fmt.Errorf("cannot find field metadata.ownerReferences in %v", object)
 	}
@@ -397,7 +462,7 @@ func (u *Unstructured) SetOwnerReferences(references []metav1.OwnerReference) {
 }
 
 func (u *Unstructured) GetAPIVersion() string {
-	return getNestedString(u.Object, "apiVersion")
+	return NestedString(u.Object, "apiVersion")
 }
 
 func (u *Unstructured) SetAPIVersion(version string) {
@@ -405,7 +470,7 @@ func (u *Unstructured) SetAPIVersion(version string) {
 }
 
 func (u *Unstructured) GetKind() string {
-	return getNestedString(u.Object, "kind")
+	return NestedString(u.Object, "kind")
 }
 
 func (u *Unstructured) SetKind(kind string) {
@@ -413,7 +478,7 @@ func (u *Unstructured) SetKind(kind string) {
 }
 
 func (u *Unstructured) GetNamespace() string {
-	return getNestedString(u.Object, "metadata", "namespace")
+	return NestedString(u.Object, "metadata", "namespace")
 }
 
 func (u *Unstructured) SetNamespace(namespace string) {
@@ -421,7 +486,7 @@ func (u *Unstructured) SetNamespace(namespace string) {
 }
 
 func (u *Unstructured) GetName() string {
-	return getNestedString(u.Object, "metadata", "name")
+	return NestedString(u.Object, "metadata", "name")
 }
 
 func (u *Unstructured) SetName(name string) {
@@ -429,7 +494,7 @@ func (u *Unstructured) SetName(name string) {
 }
 
 func (u *Unstructured) GetGenerateName() string {
-	return getNestedString(u.Object, "metadata", "generateName")
+	return NestedString(u.Object, "metadata", "generateName")
 }
 
 func (u *Unstructured) SetGenerateName(name string) {
@@ -437,7 +502,7 @@ func (u *Unstructured) SetGenerateName(name string) {
 }
 
 func (u *Unstructured) GetUID() types.UID {
-	return types.UID(getNestedString(u.Object, "metadata", "uid"))
+	return types.UID(NestedString(u.Object, "metadata", "uid"))
 }
 
 func (u *Unstructured) SetUID(uid types.UID) {
@@ -445,7 +510,7 @@ func (u *Unstructured) SetUID(uid types.UID) {
 }
 
 func (u *Unstructured) GetResourceVersion() string {
-	return getNestedString(u.Object, "metadata", "resourceVersion")
+	return NestedString(u.Object, "metadata", "resourceVersion")
 }
 
 func (u *Unstructured) SetResourceVersion(version string) {
@@ -453,7 +518,7 @@ func (u *Unstructured) SetResourceVersion(version string) {
 }
 
 func (u *Unstructured) GetGeneration() int64 {
-	return getNestedInt64(u.Object, "metadata", "generation")
+	return NestedInt64(u.Object, "metadata", "generation")
 }
 
 func (u *Unstructured) SetGeneration(generation int64) {
@@ -461,7 +526,7 @@ func (u *Unstructured) SetGeneration(generation int64) {
 }
 
 func (u *Unstructured) GetSelfLink() string {
-	return getNestedString(u.Object, "metadata", "selfLink")
+	return NestedString(u.Object, "metadata", "selfLink")
 }
 
 func (u *Unstructured) SetSelfLink(selfLink string) {
@@ -469,7 +534,7 @@ func (u *Unstructured) SetSelfLink(selfLink string) {
 }
 
 func (u *Unstructured) GetContinue() string {
-	return getNestedString(u.Object, "metadata", "continue")
+	return NestedString(u.Object, "metadata", "continue")
 }
 
 func (u *Unstructured) SetContinue(c string) {
@@ -478,7 +543,7 @@ func (u *Unstructured) SetContinue(c string) {
 
 func (u *Unstructured) GetCreationTimestamp() metav1.Time {
 	var timestamp metav1.Time
-	timestamp.UnmarshalQueryParameter(getNestedString(u.Object, "metadata", "creationTimestamp"))
+	timestamp.UnmarshalQueryParameter(NestedString(u.Object, "metadata", "creationTimestamp"))
 	return timestamp
 }
 
@@ -489,7 +554,7 @@ func (u *Unstructured) SetCreationTimestamp(timestamp metav1.Time) {
 
 func (u *Unstructured) GetDeletionTimestamp() *metav1.Time {
 	var timestamp metav1.Time
-	timestamp.UnmarshalQueryParameter(getNestedString(u.Object, "metadata", "deletionTimestamp"))
+	timestamp.UnmarshalQueryParameter(NestedString(u.Object, "metadata", "deletionTimestamp"))
 	if timestamp.IsZero() {
 		return nil
 	}
@@ -506,7 +571,7 @@ func (u *Unstructured) SetDeletionTimestamp(timestamp *metav1.Time) {
 }
 
 func (u *Unstructured) GetDeletionGracePeriodSeconds() *int64 {
-	return getNestedInt64Pointer(u.Object, "metadata", "deletionGracePeriodSeconds")
+	return NestedInt64Pointer(u.Object, "metadata", "deletionGracePeriodSeconds")
 }
 
 func (u *Unstructured) SetDeletionGracePeriodSeconds(deletionGracePeriodSeconds *int64) {
@@ -514,7 +579,7 @@ func (u *Unstructured) SetDeletionGracePeriodSeconds(deletionGracePeriodSeconds 
 }
 
 func (u *Unstructured) GetLabels() map[string]string {
-	return getNestedMap(u.Object, "metadata", "labels")
+	return NestedStringMap(u.Object, "metadata", "labels")
 }
 
 func (u *Unstructured) SetLabels(labels map[string]string) {
@@ -522,7 +587,7 @@ func (u *Unstructured) SetLabels(labels map[string]string) {
 }
 
 func (u *Unstructured) GetAnnotations() map[string]string {
-	return getNestedMap(u.Object, "metadata", "annotations")
+	return NestedStringMap(u.Object, "metadata", "annotations")
 }
 
 func (u *Unstructured) SetAnnotations(annotations map[string]string) {
@@ -546,7 +611,7 @@ func (u *Unstructured) GroupVersionKind() schema.GroupVersionKind {
 var converter = unstructured.NewConverter(false)
 
 func (u *Unstructured) GetInitializers() *metav1.Initializers {
-	field := getNestedField(u.Object, "metadata", "initializers")
+	field := NestedField(u.Object, "metadata", "initializers")
 	if field == nil {
 		return nil
 	}
@@ -566,18 +631,18 @@ func (u *Unstructured) SetInitializers(initializers *metav1.Initializers) {
 		u.Object = make(map[string]interface{})
 	}
 	if initializers == nil {
-		setNestedField(u.Object, nil, "metadata", "initializers")
+		SetNestedField(u.Object, nil, "metadata", "initializers")
 		return
 	}
 	out, err := converter.ToUnstructured(initializers)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("unable to retrieve initializers for object: %v", err))
 	}
-	setNestedField(u.Object, out, "metadata", "initializers")
+	SetNestedField(u.Object, out, "metadata", "initializers")
 }
 
 func (u *Unstructured) GetFinalizers() []string {
-	return getNestedSlice(u.Object, "metadata", "finalizers")
+	return NestedStringSlice(u.Object, "metadata", "finalizers")
 }
 
 func (u *Unstructured) SetFinalizers(finalizers []string) {
@@ -585,7 +650,7 @@ func (u *Unstructured) SetFinalizers(finalizers []string) {
 }
 
 func (u *Unstructured) GetClusterName() string {
-	return getNestedString(u.Object, "metadata", "clusterName")
+	return NestedString(u.Object, "metadata", "clusterName")
 }
 
 func (u *Unstructured) SetClusterName(clusterName string) {
@@ -625,11 +690,11 @@ func (u *UnstructuredList) setNestedField(value interface{}, fields ...string) {
 	if u.Object == nil {
 		u.Object = make(map[string]interface{})
 	}
-	setNestedField(u.Object, value, fields...)
+	SetNestedField(u.Object, value, fields...)
 }
 
 func (u *UnstructuredList) GetAPIVersion() string {
-	return getNestedString(u.Object, "apiVersion")
+	return NestedString(u.Object, "apiVersion")
 }
 
 func (u *UnstructuredList) SetAPIVersion(version string) {
@@ -637,7 +702,7 @@ func (u *UnstructuredList) SetAPIVersion(version string) {
 }
 
 func (u *UnstructuredList) GetKind() string {
-	return getNestedString(u.Object, "kind")
+	return NestedString(u.Object, "kind")
 }
 
 func (u *UnstructuredList) SetKind(kind string) {
@@ -645,7 +710,7 @@ func (u *UnstructuredList) SetKind(kind string) {
 }
 
 func (u *UnstructuredList) GetResourceVersion() string {
-	return getNestedString(u.Object, "metadata", "resourceVersion")
+	return NestedString(u.Object, "metadata", "resourceVersion")
 }
 
 func (u *UnstructuredList) SetResourceVersion(version string) {
@@ -653,7 +718,7 @@ func (u *UnstructuredList) SetResourceVersion(version string) {
 }
 
 func (u *UnstructuredList) GetSelfLink() string {
-	return getNestedString(u.Object, "metadata", "selfLink")
+	return NestedString(u.Object, "metadata", "selfLink")
 }
 
 func (u *UnstructuredList) SetSelfLink(selfLink string) {
@@ -661,7 +726,7 @@ func (u *UnstructuredList) SetSelfLink(selfLink string) {
 }
 
 func (u *UnstructuredList) GetContinue() string {
-	return getNestedString(u.Object, "metadata", "continue")
+	return NestedString(u.Object, "metadata", "continue")
 }
 
 func (u *UnstructuredList) SetContinue(c string) {

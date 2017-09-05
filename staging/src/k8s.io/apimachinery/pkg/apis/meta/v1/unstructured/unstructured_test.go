@@ -24,6 +24,23 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestRemoveNestedField(t *testing.T) {
+	obj := map[string]interface{}{
+		"x": map[string]interface{}{
+			"y": 1,
+			"a": "foo",
+		},
+	}
+	RemoveNestedField(obj, "x", "a")
+	assert.Len(t, obj["x"], 1)
+	RemoveNestedField(obj, "x", "y")
+	assert.Empty(t, obj["x"])
+	RemoveNestedField(obj, "x")
+	assert.Empty(t, obj)
+	RemoveNestedField(obj, "x") // Remove of a non-existent field
+	assert.Empty(t, obj)
+}
+
 // TestCodecOfUnstructuredList tests that there are no data races in Encode().
 // i.e. that it does not mutate the object being encoded.
 func TestCodecOfUnstructuredList(t *testing.T) {
@@ -54,7 +71,7 @@ func TestUnstructuredList(t *testing.T) {
 	if len(items) != 1 {
 		t.Fatalf("unexpected items: %#v", items)
 	}
-	if getNestedField(items[0].(map[string]interface{}), "metadata", "name") != "test" {
+	if NestedField(items[0].(map[string]interface{}), "metadata", "name") != "test" {
 		t.Fatalf("unexpected fields: %#v", items[0])
 	}
 }
