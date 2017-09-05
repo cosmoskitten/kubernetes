@@ -112,10 +112,10 @@ tests=(
 examples/persistent-volume-provisioning/rbd/rbd-storage-class.yaml,storageclasses,,slow,v1beta1,v1
 )
 
-KUBE_OLD_API_VERSION="networking.k8s.io/v1,storage.k8s.io/v1beta1,extensions/v1beta1"
-KUBE_NEW_API_VERSION="networking.k8s.io/v1,storage.k8s.io/v1,extensions/v1beta1"
-KUBE_OLD_STORAGE_VERSIONS="storage.k8s.io/v1beta1"
-KUBE_NEW_STORAGE_VERSIONS="storage.k8s.io/v1"
+KUBE_OLD_API_VERSION="storage.k8s.io/v1beta1,extensions/v1beta1"
+KUBE_NEW_API_VERSION="networking.k8s.io/v1,storage.k8s.io/v1"
+KUBE_OLD_STORAGE_VERSIONS="extensions/v1beta1,storage.k8s.io/v1beta1"
+KUBE_NEW_STORAGE_VERSIONS="networking.k8s.io/v1,storage.k8s.io/v1"
 
 ### END TEST DEFINITION CUSTOMIZATION ###
 

@@ -234,6 +234,7 @@ var etcdStorageData = map[schema.GroupVersionResource]struct {
 	gvr("extensions", "v1beta1", "networkpolicies"): {
 		stub:             `{"metadata": {"name": "np1"}, "spec": {"podSelector": {"matchLabels": {"e": "f"}}}}`,
 		expectedEtcdPath: "/registry/networkpolicies/etcdstoragepathtestnamespace/np1",
+		expectedGVK:      gvkP("networking.k8s.io", "v1", "NetworkPolicy"),
 	},
 	gvr("extensions", "v1beta1", "deployments"): {
 		stub:             `{"metadata": {"name": "deployment1"}, "spec": {"selector": {"matchLabels": {"f": "z"}}, "template": {"metadata": {"labels": {"f": "z"}}, "spec": {"containers": [{"image": "fedora:latest", "name": "container6"}]}}}}`,
@@ -249,7 +250,6 @@ var etcdStorageData = map[schema.GroupVersionResource]struct {
 	gvr("networking.k8s.io", "v1", "networkpolicies"): {
 		stub:             `{"metadata": {"name": "np2"}, "spec": {"podSelector": {"matchLabels": {"e": "f"}}}}`,
 		expectedEtcdPath: "/registry/networkpolicies/etcdstoragepathtestnamespace/np2",
-		expectedGVK:      gvkP("extensions", "v1beta1", "NetworkPolicy"),
 	},
 	// --
 
