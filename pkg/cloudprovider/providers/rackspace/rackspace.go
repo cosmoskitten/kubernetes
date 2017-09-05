@@ -436,10 +436,21 @@ func (i *Instances) ExternalID(nodeName types.NodeName) (string, error) {
 	return probeInstanceID(i.compute, serverName)
 }
 
-// InstanceExistsByProviderID returns true if the instance with the given provider id still exists and is running.
+// InstanceExistsByProviderID returns true if the instance with the given provider id still exists.
 // If false is returned with no error, the instance will be immediately deleted by the cloud controller manager.
 func (i *Instances) InstanceExistsByProviderID(providerID string) (bool, error) {
-	return false, errors.New("unimplemented")
+	instanceID, err := instanceIDFromProviderID(providerID)
+	if err != nil {
+		return false, err
+	}
+
+	_, err = servers.Get(i.compute, instanceID).Extract()
+	if err != nil {
+		// TODO: check whether instance is not found
+		return false, err
+	}
+
+	return true, nil
 }
 
 // InstanceID returns the cloud provider ID of the kubelet's instance.
