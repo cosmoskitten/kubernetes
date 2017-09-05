@@ -21,27 +21,89 @@ import (
 
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/kubernetes/cmd/kubeadm/app/constants"
 )
 
 func TestIsMasterNode(t *testing.T) {
+	labelMater := map[string]string{
+		constants.LabelNodeRoleMaster: string(v1.TaintEffectNoSchedule),
+	}
 	testCases := []struct {
-		input  string
+		node   v1.Node
 		result bool
 	}{
-		{"foo-master", true},
-		{"foo-master-", false},
-		{"foo-master-a", false},
-		{"foo-master-ab", false},
-		{"foo-master-abc", true},
-		{"foo-master-abdc", false},
-		{"foo-bar", false},
+		{
+			node: v1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "foo-master",
+				},
+			},
+			result: true,
+		},
+		{
+			node: v1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "foo-master-",
+				},
+			},
+			result: false,
+		},
+		{
+			node: v1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "foo-master-a",
+				},
+			},
+			result: false,
+		},
+		{
+			node: v1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "foo-master-ab",
+				},
+			},
+			result: false,
+		},
+		{
+			node: v1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "foo-master-abc",
+				},
+			},
+			result: true,
+		},
+		{
+			node: v1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "foo-master-abdc",
+				},
+			},
+			result: false,
+		},
+		{
+			node: v1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "foo-bar",
+				},
+			},
+			result: false,
+		},
+		{
+			node: v1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:   "foo-bar",
+					Labels: labelMater,
+				},
+			},
+			result: true,
+		},
 	}
 
 	for _, tc := range testCases {
-		node := v1.Node{ObjectMeta: metav1.ObjectMeta{Name: tc.input}}
-		res := IsMasterNode(node.Name)
+		node := tc.node
+		res := IsMasterNode(node)
 		if res != tc.result {
-			t.Errorf("case \"%s\": expected %t, got %t", tc.input, tc.result, res)
+			t.Errorf("case \"%v\": expected %t, got %t", tc.node, tc.result, res)
 		}
 	}
 }

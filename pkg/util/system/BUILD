@@ -9,6 +9,10 @@ load(
 go_library(
     name = "go_default_library",
     srcs = ["system_utils.go"],
+    deps = [
+        "//cmd/kubeadm/app/constants:go_default_library",
+        "//vendor/k8s.io/api/core/v1:go_default_library",
+    ],
 )
 
 go_test(
@@ -16,6 +20,7 @@ go_test(
     srcs = ["system_utils_test.go"],
     library = ":go_default_library",
     deps = [
+        "//cmd/kubeadm/app/constants:go_default_library",
         "//vendor/k8s.io/api/core/v1:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
     ],
