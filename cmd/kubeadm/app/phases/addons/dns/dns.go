@@ -122,7 +122,7 @@ func createKubeDNSAddon(deploymentBytes, serviceBytes []byte, client clientset.I
 	return nil
 }
 
-// getDNSIP fetches the kubernetes service's ClusterIP and appends a "0" to it in order to get the DNS IP
+// getDNSIP selects the ninth IP from from kubernetes service ClusterIP as dnsIP
 func getDNSIP(client clientset.Interface) (net.IP, error) {
 	k8ssvc, err := client.CoreV1().Services(metav1.NamespaceDefault).Get("kubernetes", metav1.GetOptions{})
 	if err != nil {
@@ -133,10 +133,12 @@ func getDNSIP(client clientset.Interface) (net.IP, error) {
 		return nil, fmt.Errorf("couldn't fetch a valid clusterIP from the kubernetes service")
 	}
 
-	// Build an IP by taking the kubernetes service's clusterIP and appending a "0" and checking that it's valid
-	dnsIP := net.ParseIP(fmt.Sprintf("%s0", k8ssvc.Spec.ClusterIP))
-	if dnsIP == nil {
-		return nil, fmt.Errorf("could not parse dns ip %q: %v", dnsIP, err)
+	// Build an IP by selecting the ninth IP from kubernetes service clusterIP as the DNS IP
+	svcIP := net.ParseIP(k8ssvc.Spec.ClusterIP)
+	if svcIP == nil {
+		return nil, fmt.Errorf("could not parse kubernetes service clutserIP to get the dnsIP %q: %v", svcIP, err)
 	}
+	dnsIP := svcIP.To4()
+	dnsIP[3] += 9
 	return dnsIP, nil
 }
