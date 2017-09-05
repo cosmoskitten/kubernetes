@@ -79,7 +79,7 @@ func NewCmdScale(f cmdutil.Factory, out io.Writer) *cobra.Command {
 	}
 	cmd.Flags().String("resource-version", "", i18n.T("Precondition for resource version. Requires that the current resource version match this value in order to scale."))
 	cmd.Flags().Int("current-replicas", -1, "Precondition for current size. Requires that the current size of the resource match this value in order to scale.")
-	cmd.Flags().Int("replicas", -1, "The new desired number of replicas. Required.")
+	cmdutil.AddReplicasFlag(cmd, -1)
 	cmd.MarkFlagRequired("replicas")
 	cmd.Flags().Duration("timeout", 0, "The length of time to wait before giving up on a scale operation, zero means don't wait. Any other values should contain a corresponding time unit (e.g. 1s, 2m, 3h).")
 	cmdutil.AddOutputFlagsForMutation(cmd)
