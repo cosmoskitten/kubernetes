@@ -489,6 +489,11 @@ run_pod_tests() {
   # Post-condition: configmap exists and has expected values
   kube::test::get_object_assert 'configmap/test-configmap --namespace=test-kubectl-describe-pod' "{{$id_field}}" 'test-configmap'
 
+  ### Create a statefulset
+  kubectl create statefulset test-sts --image=test-image --namespace=test-kubectl-describe-pod
+  # Post-condition: statefulset exists and has expected values
+  kube::test::get_object_assert 'statefulset/test-sts --namespace=test-kubectl-describe-pod' "{{$id_field}}" 'test-sts'
+
   ### Create a pod disruption budget with minAvailable
   # Command
   kubectl create pdb test-pdb-1 --selector=app=rails --min-available=2 --namespace=test-kubectl-describe-pod
@@ -526,6 +531,7 @@ run_pod_tests() {
   kubectl delete configmap test-configmap --namespace=test-kubectl-describe-pod
   kubectl delete pdb/test-pdb-1 pdb/test-pdb-2 pdb/test-pdb-3 pdb/test-pdb-4 --namespace=test-kubectl-describe-pod
   kubectl delete namespace test-kubectl-describe-pod
+  kubectl delete statefulset test-sts --namespace=test-kubectl-describe-pod
 
   ### Create two PODs
   # Pre-condition: no POD exists
@@ -597,7 +603,6 @@ run_pod_tests() {
   kubectl label pods valid-pod new-record-change=true "${kube_flags[@]}"
   # Post-condition: valid-pod's record annotation contains new change
   kube::test::get_object_assert 'pod valid-pod' "{{range$annotations_field}}{{.}}:{{end}}" ".*new-record-change=true.*"
-
 
   ### Delete POD by label
   # Pre-condition: valid-pod POD exists
