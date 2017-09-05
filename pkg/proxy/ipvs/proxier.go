@@ -49,6 +49,8 @@ import (
 	utilipvs "k8s.io/kubernetes/pkg/util/ipvs"
 	utilsysctl "k8s.io/kubernetes/pkg/util/sysctl"
 	utilexec "k8s.io/utils/exec"
+	"k8s.io/kubernetes/pkg/util/async"
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 const (
@@ -131,6 +133,7 @@ type Proxier struct {
 	iptablesData *bytes.Buffer
 	natChains    *bytes.Buffer
 	natRules     *bytes.Buffer
+	syncRunner      *async.BoundedFrequencyRunner // governs calls to syncProxyRules
 }
 
 // IPGetter helps get node network interface IP
@@ -250,7 +253,7 @@ func NewProxier(ipt utiliptables.Interface, ipvs utilipvs.Interface,
 		throttle = flowcontrol.NewTokenBucketRateLimiter(syncsPerSecond, 2)
 	}
 
-	return &Proxier{
+	proxier :=  &Proxier{
 		portsMap:         make(map[utilproxy.LocalPort]utilproxy.Closeable),
 		serviceMap:       make(proxyServiceMap),
 		serviceChanges:   newServiceChangeMap(),
@@ -276,7 +279,11 @@ func NewProxier(ipt utiliptables.Interface, ipvs utilipvs.Interface,
 		iptablesData:     bytes.NewBuffer(nil),
 		natChains:        bytes.NewBuffer(nil),
 		natRules:         bytes.NewBuffer(nil),
-	}, nil
+	}
+	burstSyncs := 2
+	glog.V(3).Infof("minSyncPeriod: %v, syncPeriod: %v, burstSyncs: %d", minSyncPeriod, syncPeriod, burstSyncs)
+	proxier.syncRunner = async.NewBoundedFrequencyRunner("sync-runner", proxier.syncProxyRules, minSyncPeriod, syncPeriod, burstSyncs)
+	return proxier, nil
 }
 
 type proxyServiceMap map[proxy.ServicePortName]*serviceInfo
@@ -439,7 +446,7 @@ func newServiceChangeMap() serviceChangeMap {
 	}
 }
 
-func (scm *serviceChangeMap) update(namespacedName *types.NamespacedName, previous, current *api.Service) {
+func (scm *serviceChangeMap) update(namespacedName *types.NamespacedName, previous, current *api.Service) bool {
 	scm.Lock()
 	defer scm.Unlock()
 
@@ -450,6 +457,10 @@ func (scm *serviceChangeMap) update(namespacedName *types.NamespacedName, previo
 		scm.items[*namespacedName] = change
 	}
 	change.current = current
+	if reflect.DeepEqual(change.previous, change.current) {
+		delete(scm.items, *namespacedName)
+	}
+	return len(scm.items) > 0
 }
 
 // internal struct for endpoints information
@@ -588,7 +599,7 @@ func newEndpointsChangeMap() endpointsChangeMap {
 	}
 }
 
-func (ecm *endpointsChangeMap) Update(namespacedName *types.NamespacedName, previous, current *api.Endpoints) {
+func (ecm *endpointsChangeMap) Update(namespacedName *types.NamespacedName, previous, current *api.Endpoints) bool {
 	ecm.Lock()
 	defer ecm.Unlock()
 
@@ -599,6 +610,10 @@ func (ecm *endpointsChangeMap) Update(namespacedName *types.NamespacedName, prev
 		ecm.items[*namespacedName] = change
 	}
 	change.current = current
+	if reflect.DeepEqual(change.previous, change.current) {
+		delete(ecm.items, *namespacedName)
+	}
+	return len(ecm.items) > 0
 }
 
 func (em proxyEndpointsMap) merge(other proxyEndpointsMap) {
@@ -728,46 +743,41 @@ func CleanupLeftovers(execer utilexec.Interface, ipvs utilipvs.Interface, ipt ut
 
 // Sync is called to immediately synchronize the proxier state to iptables
 func (proxier *Proxier) Sync() {
-	proxier.syncProxyRules(syncReasonForce)
+	proxier.syncRunner.Run()
 }
 
 // SyncLoop runs periodic work.  This is expected to run as a goroutine or as the main loop of the app.  It does not return.
 func (proxier *Proxier) SyncLoop() {
-	t := time.NewTicker(proxier.syncPeriod)
-	defer t.Stop()
 	// Update healthz timestamp at beginning in case Sync() never succeeds.
 	if proxier.healthzServer != nil {
 		proxier.healthzServer.UpdateTimestamp()
 	}
-	for {
-		<-t.C
-		glog.V(6).Infof("Periodic sync")
-		proxier.Sync()
-	}
+	proxier.syncRunner.Loop(wait.NeverStop)
 }
 
 // OnServiceAdd is called whenever creation of new service object is observed.
 func (proxier *Proxier) OnServiceAdd(service *api.Service) {
 	namespacedName := types.NamespacedName{Namespace: service.Namespace, Name: service.Name}
-	proxier.serviceChanges.update(&namespacedName, nil, service)
+	if proxier.serviceChanges.update(&namespacedName, nil, service) {
+		proxier.syncRunner.Run()
+	}
 
-	proxier.syncProxyRules(syncReasonServices)
 }
 
 // OnServiceUpdate is called whenever modification of an existing service object is observed.
 func (proxier *Proxier) OnServiceUpdate(oldService, service *api.Service) {
 	namespacedName := types.NamespacedName{Namespace: service.Namespace, Name: service.Name}
-	proxier.serviceChanges.update(&namespacedName, oldService, service)
-
-	proxier.syncProxyRules(syncReasonServices)
+	if proxier.serviceChanges.update(&namespacedName, oldService, service) {
+		proxier.syncRunner.Run()
+	}
 }
 
 // OnServiceDelete is called whenever deletion of an existing service object is observed.
 func (proxier *Proxier) OnServiceDelete(service *api.Service) {
 	namespacedName := types.NamespacedName{Namespace: service.Namespace, Name: service.Name}
-	proxier.serviceChanges.update(&namespacedName, service, nil)
-
-	proxier.syncProxyRules(syncReasonServices)
+	if proxier.serviceChanges.update(&namespacedName, service, nil) {
+		proxier.syncRunner.Run()
+	}
 }
 
 // OnServiceSynced is called once all the initial even handlers were called and the state is fully propagated to local cache.
@@ -776,31 +786,31 @@ func (proxier *Proxier) OnServiceSynced() {
 	proxier.servicesSynced = true
 	proxier.mu.Unlock()
 
-	proxier.syncProxyRules(syncReasonServices)
+	proxier.syncProxyRules()
 }
 
 // OnEndpointsAdd is called whenever creation of new endpoints object is observed.
 func (proxier *Proxier) OnEndpointsAdd(endpoints *api.Endpoints) {
 	namespacedName := types.NamespacedName{Namespace: endpoints.Namespace, Name: endpoints.Name}
-	proxier.endpointsChanges.Update(&namespacedName, nil, endpoints)
-
-	proxier.syncProxyRules(syncReasonEndpoints)
+	if proxier.endpointsChanges.Update(&namespacedName, nil, endpoints) {
+		proxier.syncRunner.Run()
+	}
 }
 
 // OnEndpointsUpdate is called whenever modification of an existing endpoints object is observed.
 func (proxier *Proxier) OnEndpointsUpdate(oldEndpoints, endpoints *api.Endpoints) {
 	namespacedName := types.NamespacedName{Namespace: endpoints.Namespace, Name: endpoints.Name}
-	proxier.endpointsChanges.Update(&namespacedName, oldEndpoints, endpoints)
-
-	proxier.syncProxyRules(syncReasonEndpoints)
+	if proxier.endpointsChanges.Update(&namespacedName, oldEndpoints, endpoints) {
+		proxier.syncRunner.Run()
+	}
 }
 
 // OnEndpointsDelete is called whenever deletion of an existing endpoints object is observed.
 func (proxier *Proxier) OnEndpointsDelete(endpoints *api.Endpoints) {
 	namespacedName := types.NamespacedName{Namespace: endpoints.Namespace, Name: endpoints.Name}
-	proxier.endpointsChanges.Update(&namespacedName, endpoints, nil)
-
-	proxier.syncProxyRules(syncReasonEndpoints)
+	if proxier.endpointsChanges.Update(&namespacedName, endpoints, nil) {
+		proxier.syncRunner.Run()
+	}
 }
 
 // OnEndpointsSynced is called once all the initial event handlers were called and the state is fully propagated to local cache.
@@ -809,18 +819,12 @@ func (proxier *Proxier) OnEndpointsSynced() {
 	proxier.endpointsSynced = true
 	proxier.mu.Unlock()
 
-	proxier.syncProxyRules(syncReasonEndpoints)
+	proxier.syncRunner.Run()
 }
-
-type syncReason string
-
-const syncReasonServices syncReason = "ServicesUpdate"
-const syncReasonEndpoints syncReason = "EndpointsUpdate"
-const syncReasonForce syncReason = "Force"
 
 // This is where all of the ipvs calls happen.
 // assumes proxier.mu is held
-func (proxier *Proxier) syncProxyRules(reason syncReason) {
+func (proxier *Proxier) syncProxyRules() {
 	proxier.mu.Lock()
 	defer proxier.mu.Unlock()
 
@@ -829,7 +833,7 @@ func (proxier *Proxier) syncProxyRules(reason syncReason) {
 	}
 	start := time.Now()
 	defer func() {
-		glog.V(4).Infof("syncProxyRules(%s) took %v", reason, time.Since(start))
+		glog.V(4).Infof("syncProxyRules took %v", time.Since(start))
 	}()
 	// don't sync rules till we've received services and endpoints
 	if !proxier.endpointsSynced || !proxier.servicesSynced {
@@ -843,19 +847,13 @@ func (proxier *Proxier) syncProxyRules(reason syncReason) {
 		proxier.serviceMap, &proxier.serviceChanges)
 	proxier.serviceChanges.Unlock()
 
-	// If this was called because of a services update, but nothing actionable has changed, skip it.
-	if reason == syncReasonServices && !serviceSyncRequired {
-		glog.V(3).Infof("Skipping ipvs sync because nothing changed")
-		return
-	}
-
 	proxier.endpointsChanges.Lock()
 	endpointsSyncRequired, hcEndpoints, staleEndpoints := updateEndpointsMap(
 		proxier.endpointsMap, &proxier.endpointsChanges, proxier.hostname)
 	proxier.endpointsChanges.Unlock()
 
 	// If this was called because of an endpoints update, but nothing actionable has changed, skip it.
-	if reason == syncReasonEndpoints && !endpointsSyncRequired {
+	if !serviceSyncRequired && !endpointsSyncRequired {
 		glog.V(3).Infof("Skipping ipvs sync because nothing changed")
 		return
 	}
@@ -1198,7 +1196,7 @@ func (proxier *Proxier) syncProxyRules(reason syncReason) {
 	proxier.cleanLegacyService(activeIPVSServices, currentIPVSServices)
 
 	// Update healthz timestamp if it is periodic sync.
-	if proxier.healthzServer != nil && reason == syncReasonForce {
+	if proxier.healthzServer != nil {
 		proxier.healthzServer.UpdateTimestamp()
 	}
 
