@@ -32,6 +32,7 @@ import (
 	kubeadmutil "k8s.io/kubernetes/cmd/kubeadm/app/util"
 	"k8s.io/kubernetes/cmd/kubeadm/app/util/apiclient"
 	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/registry/core/service/ipallocator"
 	"k8s.io/kubernetes/pkg/util/version"
 )
 
@@ -65,7 +66,7 @@ func EnsureDNSAddon(cfg *kubeadmapi.MasterConfiguration, client clientset.Interf
 		return fmt.Errorf("error when parsing kube-dns deployment template: %v", err)
 	}
 
-	dnsip, err := getDNSIP(client)
+	dnsip, err := getDNSIP(cfg)
 	if err != nil {
 		return err
 	}
@@ -127,21 +128,18 @@ func createKubeDNSAddon(deploymentBytes, serviceBytes []byte, client clientset.I
 	return nil
 }
 
-// getDNSIP fetches the kubernetes service's ClusterIP and appends a "0" to it in order to get the DNS IP
-func getDNSIP(client clientset.Interface) (net.IP, error) {
-	k8ssvc, err := client.CoreV1().Services(metav1.NamespaceDefault).Get("kubernetes", metav1.GetOptions{})
+// getDNSIP returns a dnsIP that is svcSubnet + 10th IP in the svcSubnet CIDR
+func getDNSIP(cfg *kubeadmapi.MasterConfiguration) (net.IP, error) {
+
+	_, svcSubnet, err := net.ParseCIDR(cfg.Networking.ServiceSubnet)
 	if err != nil {
-		return nil, fmt.Errorf("couldn't fetch information about the kubernetes service: %v", err)
+		return nil, fmt.Errorf("couldn't parse service subnet CIDR %q: %v", cfg.Networking.ServiceSubnet, err)
 	}
 
-	if len(k8ssvc.Spec.ClusterIP) == 0 {
-		return nil, fmt.Errorf("couldn't fetch a valid clusterIP from the kubernetes service")
+	dnsIP, err := ipallocator.GetIndexedIP(svcSubnet, 10)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get tenth IP address from service subnet CIDR %s: %v", svcSubnet.String(), err)
 	}
 
-	// Build an IP by taking the kubernetes service's clusterIP and appending a "0" and checking that it's valid
-	dnsIP := net.ParseIP(fmt.Sprintf("%s0", k8ssvc.Spec.ClusterIP))
-	if dnsIP == nil {
-		return nil, fmt.Errorf("could not parse dns ip %q: %v", dnsIP, err)
-	}
 	return dnsIP, nil
 }
