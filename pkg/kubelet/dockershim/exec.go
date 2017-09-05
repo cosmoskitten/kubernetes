@@ -69,6 +69,8 @@ func (*NsenterExecHandler) ExecInContainer(client libdocker.Interface, container
 		return fmt.Errorf("exec unavailable - unable to locate nsenter")
 	}
 
+	start := time.Now().Unix()
+
 	containerPid := container.State.Pid
 
 	// TODO what if the container doesn't have `env`???
@@ -128,6 +130,13 @@ func (*NsenterExecHandler) ExecInContainer(client libdocker.Interface, container
 	if exitErr, ok := cmdErr.(*exec.ExitError); ok {
 		return &utilexec.ExitErrorWrapper{ExitError: exitErr}
 	}
+
+	// since native methods of command do not provide timeout mechanisms
+	// it is considered safe to wait until command ends and have a judgement of timeout after that
+	if timeout >= 0 && time.Now().Unix()-start >= int64(timeout.Seconds()) {
+		return timeoutCodeExitError()
+	}
+
 	return cmdErr
 }
 
@@ -137,6 +146,8 @@ type NativeExecHandler struct{}
 func (*NativeExecHandler) ExecInContainer(client libdocker.Interface, container *dockertypes.ContainerJSON, cmd []string, stdin io.Reader, stdout, stderr io.WriteCloser, tty bool, resize <-chan remotecommand.TerminalSize, timeout time.Duration) error {
 	done := make(chan struct{})
 	defer close(done)
+
+	start := time.Now().Unix()
 
 	createOpts := dockertypes.ExecConfig{
 		Cmd:          cmd,
@@ -191,6 +202,12 @@ func (*NativeExecHandler) ExecInContainer(client libdocker.Interface, container 
 		if err2 != nil {
 			return err2
 		}
+
+		if timeout >= 0 && time.Now().Unix()-start >= int64(timeout.Seconds()) {
+			err = timeoutCodeExitError()
+			break
+		}
+
 		if !inspect.Running {
 			if inspect.ExitCode != 0 {
 				err = &dockerExitError{inspect}
@@ -208,4 +225,12 @@ func (*NativeExecHandler) ExecInContainer(client libdocker.Interface, container 
 	}
 
 	return err
+}
+
+// TODO combine timeout scene into subject flow of command execution
+func timeoutCodeExitError() utilexec.CodeExitError {
+	return utilexec.CodeExitError{
+		Err: fmt.Errorf("Exec command timeout"),
+		Code: 1,
+	}
 }
