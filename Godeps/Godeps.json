@@ -1682,6 +1682,10 @@
 			"Rev": "b4c2377fa77951a0e08163f52dc9b3e206355194"
 		},
 		{
+			"ImportPath": "github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/external",
+			"Rev": "2bf16b94fdd9b01557c4d076e567fe5cbbe5a961"
+		},
+		{
 			"ImportPath": "github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/layer3/floatingips",
 			"Rev": "b4c2377fa77951a0e08163f52dc9b3e206355194"
 		},
@@ -1728,6 +1732,10 @@
 		{
 			"ImportPath": "github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/rules",
 			"Rev": "b4c2377fa77951a0e08163f52dc9b3e206355194"
+		},
+		{
+			"ImportPath": "github.com/gophercloud/gophercloud/openstack/networking/v2/networks",
+			"Rev": "2bf16b94fdd9b01557c4d076e567fe5cbbe5a961"
 		},
 		{
 			"ImportPath": "github.com/gophercloud/gophercloud/openstack/networking/v2/ports",
