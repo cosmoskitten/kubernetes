@@ -130,6 +130,69 @@ func TestIndexToCIDRBlock(t *testing.T) {
 			CIDRBlock:      "2001:db8:85a3:3232::/63",
 			description:    "Index with IPv6",
 		},
+		{
+			clusterCIDRStr: "2001:0db8::/32",
+			subnetMaskSize: 48,
+			index:          0,
+			CIDRBlock:      "2001:db8::/48",
+			description:    "Index with IPv6",
+		},
+		{
+			clusterCIDRStr: "2001:0db8::/32",
+			subnetMaskSize: 48,
+			index:          15,
+			CIDRBlock:      "2001:db8:f::/48",
+			description:    "Index with IPv6",
+		},
+		{
+			clusterCIDRStr: "2001:0db8:85a3::8a2e:0370:7334/32",
+			subnetMaskSize: 48,
+			index:          6425,
+			CIDRBlock:      "2001:db8:1919::/48",
+			description:    "Index with IPv6",
+		},
+		{
+			clusterCIDRStr: "2001:0db8:1234:ff00::/56",
+			subnetMaskSize: 72,
+			index:          0,
+			CIDRBlock:      "2001:db8:1234:ff00::/72",
+			description:    "Index with IPv6",
+		},
+		{
+			clusterCIDRStr: "2001:0db8:1234:ff00::/56",
+			subnetMaskSize: 72,
+			index:          15,
+			CIDRBlock:      "2001:db8:1234:ff00:f00::/72",
+			description:    "Index with IPv6",
+		},
+		{
+			clusterCIDRStr: "2001:0db8:1234:ff00::0370:7334/56",
+			subnetMaskSize: 72,
+			index:          6425,
+			CIDRBlock:      "2001:db8:1234:ff19:1900::/72",
+			description:    "Index with IPv6",
+		},
+		{
+			clusterCIDRStr: "2001:0db8:1234:0:1234::/80",
+			subnetMaskSize: 96,
+			index:          0,
+			CIDRBlock:      "2001:db8:1234:0:1234::/96",
+			description:    "Index with IPv6",
+		},
+		{
+			clusterCIDRStr: "2001:0db8:1234:0:1234::/80",
+			subnetMaskSize: 96,
+			index:          15,
+			CIDRBlock:      "2001:db8:1234:0:1234:f::/96",
+			description:    "Index with IPv6",
+		},
+		{
+			clusterCIDRStr: "2001:0db8:1234:ff00::0370:7334/80",
+			subnetMaskSize: 96,
+			index:          6425,
+			CIDRBlock:      "2001:db8:1234:ff00:0:1919::/96",
+			description:    "Index with IPv6",
+		},
 	}
 	for _, tc := range cases {
 		_, clusterCIDR, _ := net.ParseCIDR(tc.clusterCIDRStr)
@@ -611,12 +674,6 @@ func TestCIDRSetv6(t *testing.T) {
 			subNetMaskSize: 49,
 			expectErr:      true,
 			description:    "Max cluster subnet size with IPv6",
-		},
-		{
-			clusterCIDRStr: "beef:1234::/60",
-			subNetMaskSize: 65,
-			expectErr:      true,
-			description:    "Max prefix length with IPv6",
 		},
 		{
 			clusterCIDRStr: "2001:beef:1234:369b::/60",
