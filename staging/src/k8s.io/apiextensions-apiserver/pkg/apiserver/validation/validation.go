@@ -27,6 +27,7 @@ import (
 // CustomResource is a JSON data structure.
 func ValidateCustomResource(customResource interface{}, validator *validate.SchemaValidator) error {
 	result := validator.Validate(customResource)
+	result.ApplyDefaults()
 	if result.AsError() != nil {
 		return result.AsError()
 	}
