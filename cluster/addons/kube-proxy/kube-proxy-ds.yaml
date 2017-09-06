@@ -63,6 +63,9 @@ spec:
         - mountPath: /run/xtables.lock
           name: xtables-lock
           readOnly: false
+        - mountPath: /lib/modules
+          name: lib-modules
+          readOnly: true
       volumes:
       - name: varlog
         hostPath:
@@ -76,4 +79,7 @@ spec:
       - name: run
         hostPath:
           path: /run
+      - name: lib-modules
+        hostPath:
+          path: /lib/modules
       serviceAccountName: kube-proxy
