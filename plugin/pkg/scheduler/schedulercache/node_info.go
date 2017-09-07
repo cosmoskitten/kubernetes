@@ -38,7 +38,7 @@ type NodeInfo struct {
 
 	pods             []*v1.Pod
 	podsWithAffinity []*v1.Pod
-	usedPorts        map[int]bool
+	usedPorts        map[string]bool
 
 	// Total requested resource of all pods on this node.
 	// It includes assumed pods which scheduler sends binding to apiserver but
@@ -184,7 +184,7 @@ func NewNodeInfo(pods ...*v1.Pod) *NodeInfo {
 		nonzeroRequest:      &Resource{},
 		allocatableResource: &Resource{},
 		generation:          0,
-		usedPorts:           make(map[int]bool),
+		usedPorts:           make(map[string]bool),
 	}
 	for _, pod := range pods {
 		ni.AddPod(pod)
@@ -208,7 +208,7 @@ func (n *NodeInfo) Pods() []*v1.Pod {
 	return n.pods
 }
 
-func (n *NodeInfo) UsedPorts() map[int]bool {
+func (n *NodeInfo) UsedPorts() map[string]bool {
 	if n == nil {
 		return nil
 	}
@@ -284,7 +284,7 @@ func (n *NodeInfo) Clone() *NodeInfo {
 		taintsErr:               n.taintsErr,
 		memoryPressureCondition: n.memoryPressureCondition,
 		diskPressureCondition:   n.diskPressureCondition,
-		usedPorts:               make(map[int]bool),
+		usedPorts:               make(map[string]bool),
 		generation:              n.generation,
 	}
 	if len(n.pods) > 0 {
@@ -435,7 +435,7 @@ func (n *NodeInfo) updateUsedPorts(pod *v1.Pod, used bool) {
 			// "0" is explicitly ignored in PodFitsHostPorts,
 			// which is the only function that uses this value.
 			if podPort.HostPort != 0 {
-				n.usedPorts[int(podPort.HostPort)] = used
+				n.usedPorts[fmt.Sprintf("%s/%s/%d", podPort.Protocol, podPort.HostIP, podPort.HostPort)] = used
 			}
 		}
 	}

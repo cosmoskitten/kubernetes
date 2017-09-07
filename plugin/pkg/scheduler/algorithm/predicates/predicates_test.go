@@ -19,6 +19,8 @@ package predicates
 import (
 	"fmt"
 	"reflect"
+	"strconv"
+	"strings"
 	"testing"
 
 	"k8s.io/api/core/v1"
@@ -571,10 +573,17 @@ func TestPodFitsHost(t *testing.T) {
 	}
 }
 
-func newPod(host string, hostPorts ...int) *v1.Pod {
+func newPod(host string, hostPortInfos ...string) *v1.Pod {
 	networkPorts := []v1.ContainerPort{}
-	for _, port := range hostPorts {
-		networkPorts = append(networkPorts, v1.ContainerPort{HostPort: int32(port)})
+	for _, portInfo := range hostPortInfos {
+		// assume portInfo is "protocol/hostip/hostport "
+		portInfoSlice := strings.Split(portInfo, "/")
+		hostPort, _ := strconv.Atoi(portInfoSlice[2])
+		networkPorts = append(networkPorts, v1.ContainerPort{
+			HostIP:   portInfoSlice[1],
+			HostPort: int32(hostPort),
+			Protocol: v1.Protocol(portInfoSlice[0]),
+		})
 	}
 	return &v1.Pod{
 		Spec: v1.PodSpec{
@@ -602,32 +611,53 @@ func TestPodFitsHostPorts(t *testing.T) {
 			test:     "nothing running",
 		},
 		{
-			pod: newPod("m1", 8080),
+			pod: newPod("m1", "UDP/127.0.0.1/8080 "),
 			nodeInfo: schedulercache.NewNodeInfo(
-				newPod("m1", 9090)),
+				newPod("m1", "UDP/127.0.0.1/9090")),
 			fits: true,
 			test: "other port",
 		},
 		{
-			pod: newPod("m1", 8080),
+			pod: newPod("m1", "UDP/127.0.0.1/8080"),
 			nodeInfo: schedulercache.NewNodeInfo(
-				newPod("m1", 8080)),
+				newPod("m1", "UDP/127.0.0.1/8080")),
 			fits: false,
-			test: "same port",
+			test: "same udp port",
 		},
 		{
-			pod: newPod("m1", 8000, 8080),
+			pod: newPod("m1", "TCP/127.0.0.1/8080"),
 			nodeInfo: schedulercache.NewNodeInfo(
-				newPod("m1", 8080)),
+				newPod("m1", "TCP/127.0.0.1/8080")),
 			fits: false,
-			test: "second port",
+			test: "same tcp port",
 		},
 		{
-			pod: newPod("m1", 8000, 8080),
+			pod: newPod("m1", "TCP/127.0.0.1/8080"),
 			nodeInfo: schedulercache.NewNodeInfo(
-				newPod("m1", 8001, 8080)),
+				newPod("m1", "TCP/127.0.0.2/8080")),
+			fits: true,
+			test: "different host ip",
+		},
+		{
+			pod: newPod("m1", "UDP/127.0.0.1/8080 "),
+			nodeInfo: schedulercache.NewNodeInfo(
+				newPod("m1", "TCP/127.0.0.1/8080")),
+			fits: true,
+			test: "different protocol",
+		},
+		{
+			pod: newPod("m1", "UDP/127.0.0.1/8000", "UDP/127.0.0.1/8080"),
+			nodeInfo: schedulercache.NewNodeInfo(
+				newPod("m1", "UDP/127.0.0.1/8080")),
 			fits: false,
-			test: "second port",
+			test: "second udp port conflict",
+		},
+		{
+			pod: newPod("m1", "TCP/127.0.0.1/8001", "UDP/127.0.0.1/8080"),
+			nodeInfo: schedulercache.NewNodeInfo(
+				newPod("m1", "TCP/127.0.0.1/8001", "UDP/127.0.0.1/8081")),
+			fits: false,
+			test: "first tcp port conflict",
 		},
 	}
 	expectedFailureReasons := []algorithm.PredicateFailureReason{ErrPodNotFitsHostPorts}
@@ -648,29 +678,28 @@ func TestPodFitsHostPorts(t *testing.T) {
 
 func TestGetUsedPorts(t *testing.T) {
 	tests := []struct {
-		pods []*v1.Pod
-
-		ports map[int]bool
+		pods  []*v1.Pod
+		ports map[string]bool
 	}{
 		{
 			[]*v1.Pod{
-				newPod("m1", 9090),
+				newPod("m1", "UDP/127.0.0.1/9090"),
 			},
-			map[int]bool{9090: true},
+			map[string]bool{"UDP/127.0.0.1/9090": true},
 		},
 		{
 			[]*v1.Pod{
-				newPod("m1", 9090),
-				newPod("m1", 9091),
+				newPod("m1", "UDP/127.0.0.1/9090"),
+				newPod("m1", "UDP/127.0.0.1/9091"),
 			},
-			map[int]bool{9090: true, 9091: true},
+			map[string]bool{"UDP/127.0.0.1/9090": true, "UDP/127.0.0.1/9091": true},
 		},
 		{
 			[]*v1.Pod{
-				newPod("m1", 9090),
-				newPod("m2", 9091),
+				newPod("m1", "TCP/127.0.0.1/9090"),
+				newPod("m2", "TCP/127.0.0.1/9091"),
 			},
-			map[int]bool{9090: true, 9091: true},
+			map[string]bool{"TCP/127.0.0.1/9090": true, "TCP/127.0.0.1/9091": true},
 		},
 	}
 
