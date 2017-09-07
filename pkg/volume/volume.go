@@ -132,6 +132,48 @@ type Unmounter interface {
 	TearDownAt(dir string) error
 }
 
+//
+type BlockVolumeMapper interface {
+	Volume
+	//
+	CanBlockMap() error
+	// SetUpDevice creates a symbolic link to the volume on a
+	// self-determined directory path. This may be called more than
+	// once, so implementations must be idempotent.
+	SetUpDevice(podUID types.UID) error
+	// SetUpDeviceAt a symbolic link to the volume on a specified
+	// directory path, which may or may not exist yet. This may be
+	// called more than once, so implementations must be idempotent.
+	SetUpDeviceAt(dir string, podUID types.UID) error
+	// GetDevicePath obtains a block device path on the node.
+	GetDevicePath() (string, error)
+	// GetGlobalMapPath generates a global map path to create
+	// a symbolic link to a block device.
+	GetGlobalMapPath(spec *Spec) (string, error)
+	// GetPodDeviceMapPath generates a pod volume device map
+	// path to create a symbolic link to a block device.
+	GetPodDeviceMapPath() string
+}
+
+//
+type BlockVolumeUnmapper interface {
+	Volume
+	// TearDownDevice removes a symbolic link to the volume under
+	// a self-determined directory and removes traces of the
+	// SetUpDevice procedure.
+	TearDownDevice() error
+	// TearDownDeviceAt removes a symbolic link to the volume under
+	// the specified directory and removes traces of the SetUpDevice
+	// procedure.
+	TearDownDeviceAt(dir string) error
+	// GetGlobalUnmapPath deletes a symbolic link to a block device
+	// under a global map path
+	GetGlobalUnmapPath(spec *Spec) (string, error)
+	// GetPodDeviceUnmapPath deletes a symbolic link to a block device
+	// under a pod volume device map path
+	GetPodDeviceUnmapPath() string
+}
+
 // Provisioner is an interface that creates templates for PersistentVolumes
 // and can create the volume as a new resource in the infrastructure provider.
 type Provisioner interface {

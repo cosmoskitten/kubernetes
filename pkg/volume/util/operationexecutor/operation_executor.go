@@ -105,6 +105,26 @@ type OperationExecutor interface {
 	// actual state of the world to reflect that.
 	UnmountDevice(deviceToDetach AttachedVolume, actualStateOfWorld ActualStateOfWorldMounterUpdater, mounter mount.Interface) error
 
+	// MapVolume is used when the volumeMode is 'Block'. This method creates a symbolic link to the block device on global map path.
+	// Specifically it will:
+	// * Wait for the device to finish attaching (for attachable volumes only).
+	// * Map volume to global map path using symbolic link (for attachable volumes only).
+	// * Update actual state of world to reflect volume is globally mounted (for
+	//   attachable volumes only).
+	// * Map the volume to the pod specific path using symbolic link.
+	// * Update actual state of world to reflect volume is mounted to the pod
+	//   path.
+	MapVolume(waitForAttachTimeout time.Duration, volumeToMount VolumeToMount, actualStateOfWorld ActualStateOfWorldMounterUpdater) error
+
+	// UnmapVolume unmaps symbolic link to the volume from both the pod specified in
+	// volumeToUnmount and global map path. And then, updates the actual state of the world to reflect that.
+	UnmapVolume(volumeToUnmount MountedVolume, actualStateOfWorld ActualStateOfWorldMounterUpdater) error
+
+	// UnmapDevice unmaps the volumes global map path from the device (for
+	// attachable volumes only, freeing it for detach. It then updates the
+	// actual state of the world to reflect that.
+	UnmapDevice(deviceToDetach AttachedVolume, actualStateOfWorld ActualStateOfWorldMounterUpdater, mounter mount.Interface) error
+
 	// VerifyControllerAttachedVolume checks if the specified volume is present
 	// in the specified nodes AttachedVolumes Status field. It uses kubeClient
 	// to fetch the node object.
@@ -139,7 +159,7 @@ func NewOperationExecutor(
 // state of the world cache after successful mount/unmount.
 type ActualStateOfWorldMounterUpdater interface {
 	// Marks the specified volume as mounted to the specified pod
-	MarkVolumeAsMounted(podName volumetypes.UniquePodName, podUID types.UID, volumeName v1.UniqueVolumeName, mounter volume.Mounter, outerVolumeSpecName string, volumeGidValue string) error
+	MarkVolumeAsMounted(podName volumetypes.UniquePodName, podUID types.UID, volumeName v1.UniqueVolumeName, mounter volume.Mounter, blockVolumeMapper volume.BlockVolumeMapper, outerVolumeSpecName string, volumeGidValue string) error
 
 	// Marks the specified volume as unmounted from the specified pod
 	MarkVolumeAsUnmounted(podName volumetypes.UniquePodName, volumeName v1.UniqueVolumeName) error
@@ -495,8 +515,15 @@ type MountedVolume struct {
 	// by kubelet to create container.VolumeMap.
 	Mounter volume.Mounter
 
+	//
+	BlockVolumeMapper volume.BlockVolumeMapper
+
 	// VolumeGidValue contains the value of the GID annotation, if present.
 	VolumeGidValue string
+
+	// VolumeSpec is a volume spec containing the specification for the volume
+	// that should be mounted.
+	VolumeSpec *volume.Spec
 }
 
 // GenerateMsgDetailed returns detailed msgs for mounted volumes
@@ -731,6 +758,62 @@ func (oe *operationExecutor) ExpandVolume(pvcWithResizeRequest *expandcache.PVCW
 	uniqueVolumeKey := v1.UniqueVolumeName(pvcWithResizeRequest.UniquePVCKey())
 	opCompleteFunc := util.OperationCompleteHook(pluginName, "expand_volume")
 	return oe.pendingOperations.Run(uniqueVolumeKey, "", expandFunc, opCompleteFunc)
+}
+
+func (oe *operationExecutor) MapVolume(
+	waitForAttachTimeout time.Duration,
+	volumeToMount VolumeToMount,
+	actualStateOfWorld ActualStateOfWorldMounterUpdater) error {
+	mapFunc, plugin, err := oe.operationGenerator.GenerateMapVolumeFunc(
+		waitForAttachTimeout, volumeToMount, actualStateOfWorld)
+	if err != nil {
+		return err
+	}
+
+	podName := nestedpendingoperations.EmptyUniquePodName
+	// TODO: remove this -- not necessary
+	if !volumeToMount.PluginIsAttachable {
+		// Non-attachable volume plugins can execute mount for multiple pods
+		// referencing the same volume in parallel
+		podName = volumehelper.GetUniquePodName(volumeToMount.Pod)
+	}
+
+	opCompleteFunc := util.OperationCompleteHook(plugin, "map_volume")
+	return oe.pendingOperations.Run(
+		volumeToMount.VolumeName, podName, mapFunc, opCompleteFunc)
+}
+
+func (oe *operationExecutor) UnmapVolume(
+	volumeToUnmount MountedVolume,
+	actualStateOfWorld ActualStateOfWorldMounterUpdater) error {
+	unmapFunc, plugin, err :=
+		oe.operationGenerator.GenerateUnmapVolumeFunc(volumeToUnmount, actualStateOfWorld)
+	if err != nil {
+		return err
+	}
+
+	// All volume plugins can execute mount for multiple pods referencing the
+	// same volume in parallel
+	podName := volumetypes.UniquePodName(volumeToUnmount.PodUID)
+
+	opCompleteFunc := util.OperationCompleteHook(plugin, "unmap_volume")
+	return oe.pendingOperations.Run(
+		volumeToUnmount.VolumeName, podName, unmapFunc, opCompleteFunc)
+}
+
+func (oe *operationExecutor) UnmapDevice(
+	deviceToDetach AttachedVolume,
+	actualStateOfWorld ActualStateOfWorldMounterUpdater,
+	mounter mount.Interface) error {
+	unmapDeviceFunc, plugin, err :=
+		oe.operationGenerator.GenerateUnmapDeviceFunc(deviceToDetach, actualStateOfWorld, mounter)
+	if err != nil {
+		return err
+	}
+
+	opCompleteFunc := util.OperationCompleteHook(plugin, "unmap_device")
+	return oe.pendingOperations.Run(
+		deviceToDetach.VolumeName, "" /* podName */, unmapDeviceFunc, opCompleteFunc)
 }
 
 func (oe *operationExecutor) VerifyControllerAttachedVolume(
