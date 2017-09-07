@@ -58,7 +58,7 @@ type ActualStateOfWorld interface {
 	// volume, reset the pod's remountRequired value.
 	// If a volume with the name volumeName does not exist in the list of
 	// attached volumes, an error is returned.
-	AddPodToVolume(podName volumetypes.UniquePodName, podUID types.UID, volumeName v1.UniqueVolumeName, mounter volume.Mounter, outerVolumeSpecName string, volumeGidValue string) error
+	AddPodToVolume(podName volumetypes.UniquePodName, podUID types.UID, volumeName v1.UniqueVolumeName, mounter volume.Mounter, blockVolumeMapper volume.BlockVolumeMapper, outerVolumeSpecName string, volumeGidValue string) error
 
 	// MarkRemountRequired marks each volume that is successfully attached and
 	// mounted for the specified pod as requiring remount (if the plugin for the
@@ -221,6 +221,9 @@ type attachedVolume struct {
 	// /var/lib/kubelet/pods/{podUID}/volumes/{escapeQualifiedPluginName}/{volumeSpecName}/
 	spec *volume.Spec
 
+	// Pod to mount the volume to.
+	pod *v1.Pod
+
 	// pluginName is the Unescaped Qualified name of the volume plugin used to
 	// attach and mount this volume. It is stored separately in case the full
 	// volume spec (everything except the name) can not be reconstructed for a
@@ -254,6 +257,9 @@ type mountedPod struct {
 	// mounter used to mount
 	mounter volume.Mounter
 
+	// mounter used to mount
+	blockVolumeMapper volume.BlockVolumeMapper
+
 	// outerVolumeSpecName is the volume.Spec.Name() of the volume as referenced
 	// directly in the pod. If the volume was referenced through a persistent
 	// volume claim, this contains the volume.Spec.Name() of the persistent
@@ -273,8 +279,8 @@ type mountedPod struct {
 }
 
 func (asw *actualStateOfWorld) MarkVolumeAsAttached(
-	volumeName v1.UniqueVolumeName, volumeSpec *volume.Spec, _ types.NodeName, devicePath string) error {
-	return asw.addVolume(volumeName, volumeSpec, devicePath)
+	volumeName v1.UniqueVolumeName, volumeSpec *volume.Spec, _ types.NodeName, devicePath string, pod *v1.Pod) error {
+	return asw.addVolume(volumeName, volumeSpec, devicePath, pod)
 }
 
 func (asw *actualStateOfWorld) MarkVolumeAsDetached(
@@ -287,6 +293,7 @@ func (asw *actualStateOfWorld) MarkVolumeAsMounted(
 	podUID types.UID,
 	volumeName v1.UniqueVolumeName,
 	mounter volume.Mounter,
+	blockVolumeMapper volume.BlockVolumeMapper,
 	outerVolumeSpecName string,
 	volumeGidValue string) error {
 	return asw.AddPodToVolume(
@@ -294,6 +301,7 @@ func (asw *actualStateOfWorld) MarkVolumeAsMounted(
 		podUID,
 		volumeName,
 		mounter,
+		blockVolumeMapper,
 		outerVolumeSpecName,
 		volumeGidValue)
 }
@@ -329,7 +337,7 @@ func (asw *actualStateOfWorld) MarkDeviceAsUnmounted(
 // volume plugin can support the given volumeSpec or more than one plugin can
 // support it, an error is returned.
 func (asw *actualStateOfWorld) addVolume(
-	volumeName v1.UniqueVolumeName, volumeSpec *volume.Spec, devicePath string) error {
+	volumeName v1.UniqueVolumeName, volumeSpec *volume.Spec, devicePath string, pod *v1.Pod) error {
 	asw.Lock()
 	defer asw.Unlock()
 
@@ -367,6 +375,7 @@ func (asw *actualStateOfWorld) addVolume(
 			pluginIsAttachable: pluginIsAttachable,
 			globallyMounted:    false,
 			devicePath:         devicePath,
+			pod:                pod,
 		}
 	} else {
 		// If volume object already exists, update the fields such as device path
@@ -385,6 +394,7 @@ func (asw *actualStateOfWorld) AddPodToVolume(
 	podUID types.UID,
 	volumeName v1.UniqueVolumeName,
 	mounter volume.Mounter,
+	blockVolumeMapper volume.BlockVolumeMapper,
 	outerVolumeSpecName string,
 	volumeGidValue string) error {
 	asw.Lock()
@@ -403,6 +413,7 @@ func (asw *actualStateOfWorld) AddPodToVolume(
 			podName:             podName,
 			podUID:              podUID,
 			mounter:             mounter,
+			blockVolumeMapper:   blockVolumeMapper,
 			outerVolumeSpecName: outerVolumeSpecName,
 			volumeGidValue:      volumeGidValue,
 		}
@@ -618,7 +629,8 @@ func (asw *actualStateOfWorld) newAttachedVolume(
 			VolumeSpec:         attachedVolume.spec,
 			NodeName:           asw.nodeName,
 			PluginIsAttachable: attachedVolume.pluginIsAttachable,
-			DevicePath:         attachedVolume.devicePath},
+			DevicePath:         attachedVolume.devicePath,
+			Pod:                attachedVolume.pod},
 		GloballyMounted: attachedVolume.globallyMounted}
 }
 
@@ -682,5 +694,7 @@ func getMountedVolume(
 			PluginName:          attachedVolume.pluginName,
 			PodUID:              mountedPod.podUID,
 			Mounter:             mountedPod.mounter,
-			VolumeGidValue:      mountedPod.volumeGidValue}}
+			BlockVolumeMapper:   mountedPod.blockVolumeMapper,
+			VolumeGidValue:      mountedPod.volumeGidValue,
+			VolumeSpec:          attachedVolume.spec}}
 }

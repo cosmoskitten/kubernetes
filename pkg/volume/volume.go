@@ -132,6 +132,32 @@ type Unmounter interface {
 	TearDownAt(dir string) error
 }
 
+//
+type BlockVolumeMapper interface {
+	Volume
+	//
+	CanBlockMap() error
+	//
+	SetUpDevice(podUID types.UID) error
+	//
+	SetUpDeviceAt(dir string, podUID types.UID) error
+	//
+	GetDevicePath() (string, error)
+	//
+	GetVolumeDeviceMapPath(spec *Spec) (string, error)
+}
+
+//
+type BlockVolumeUnmapper interface {
+	Volume
+	//
+	TearDownDevice() error
+	//
+	TearDownDeviceAt(dir string) error
+	//
+	GetVolumeDeviceUnmapPath(spec *Spec) (string, error)
+}
+
 // Provisioner is an interface that creates templates for PersistentVolumes
 // and can create the volume as a new resource in the infrastructure provider.
 type Provisioner interface {

@@ -21,7 +21,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
-
 	"strings"
 
 	"github.com/golang/glog"
@@ -30,6 +29,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/pkg/api"
@@ -269,4 +269,121 @@ func stringToSet(str, delimiter string) (sets.String, error) {
 		zonesSet.Insert(trimmedZone)
 	}
 	return zonesSet, nil
+}
+
+// MapDevice creates a symbolic link to block device under global map path
+func MapDevice(devicePath string, globalVDPDPath string, podUID types.UID) error {
+	// globalVDPDPath
+	// ex. /var/lib/kubelet/plugins/kubernetes.io/<plugin>/<volume>
+	if len(devicePath) == 0 {
+		return fmt.Errorf("Failed to map device to global mount path. devicePath is empty.")
+	}
+	if len(globalVDPDPath) == 0 {
+		return fmt.Errorf("Failed to map device to global mount path. globalVDPDPath is empty.")
+	}
+
+	glog.Errorf("#### DEBUG LOG ####: mapDevice devicePath: %s", devicePath)
+	glog.Errorf("#### DEBUG LOG ####: mapDevice globalVDPDPath; %s", globalVDPDPath)
+
+	_, err := os.Stat(globalVDPDPath)
+	if err != nil && !os.IsNotExist(err) {
+		glog.Errorf("cannot validate global mount path: %s", globalVDPDPath)
+		return err
+	}
+	if err = os.MkdirAll(globalVDPDPath, 0750); err != nil {
+		return fmt.Errorf("Failed to mkdir %s, error", globalVDPDPath)
+	}
+	if err := os.Symlink(devicePath, globalVDPDPath+"/"+string(podUID)); err != nil && !os.IsExist(err) {
+		return err
+	}
+	glog.Errorf("#### DEBUG LOG ####: mapDevice: no error")
+	return nil
+}
+
+// UnmapDevice removes a symbolic link to block device under global map path
+func UnmapDevice(globalVDPDPath string, podUID types.UID) error {
+	if len(globalVDPDPath) == 0 {
+		return fmt.Errorf("Failed to unmap device from global map path. globalVDPDPath is empty")
+	}
+	glog.Errorf("#### DEBUG LOG ####: unmapDevice globalVDPDPath; %s", globalVDPDPath)
+
+	fi, err := os.Lstat(globalVDPDPath + "/" + string(podUID))
+	if err != nil && os.IsNotExist(err) {
+		return newSymlinkNotContained(globalVDPDPath + "/" + string(podUID))
+	} else if err != nil {
+		return err
+	}
+	glog.Errorf("#### DEBUG LOG ####: unmapDevice find symlink")
+	if fi.Mode()&os.ModeSymlink != os.ModeSymlink {
+		return newSymlinkNotContained(globalVDPDPath + "/" + string(podUID))
+	}
+	err = os.Remove(globalVDPDPath + "/" + string(podUID))
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// RemoveGlobalMapPath removes a directory of global map path
+func RemoveGlobalMapPath(globalVDPDPath string) error {
+	if len(globalVDPDPath) == 0 {
+		return fmt.Errorf("Failed to remove global map path directory. globalVDPDPath is empty")
+	}
+	glog.Errorf("#### DEBUG LOG ####: RemoveGlobalMapPath globalVDPDPath; %s", globalVDPDPath)
+	err := os.RemoveAll(globalVDPDPath)
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	glog.Errorf("#### DEBUG LOG ####: RemoveGlobalMapPath succeed")
+	return nil
+}
+
+// GetDeviceSymlinkRefs searches symbolic links under global map path
+func GetDeviceSymlinkRefs(devPath string, globalVDPDPath string) ([]string, error) {
+	var refs []string
+	fis, err := ioutil.ReadDir(globalVDPDPath)
+	if err != nil {
+		return nil, fmt.Errorf("Directory cannot read %v", err)
+	}
+	for _, fi := range fis {
+		if fi.Mode()&os.ModeSymlink != os.ModeSymlink {
+			continue
+		}
+		filename := fi.Name()
+		path, err := os.Readlink(globalVDPDPath + "/" + filename)
+		if err != nil {
+			return nil, fmt.Errorf("Symbolic link cannot be retrieved %v", err)
+		}
+		if strings.Contains(path, devPath) {
+			refs = append(refs, globalVDPDPath+"/"+filename)
+		}
+	}
+	return refs, nil
+}
+
+// IsSymlinkNotContained returns true if the specified error is a
+// SymlinkNotContained.
+func IsSymlinkNotContained(err error) bool {
+	_, ok := err.(SymlinkNotContained)
+	return ok
+}
+
+// Compile-time check to ensure SymlinkNotContained implements the error interface
+var _ error = SymlinkNotContained{}
+
+// SymlinkNotContained is an error returned when symlink isn't found on the
+// specified path.
+type SymlinkNotContained struct {
+	path string
+}
+
+func (err SymlinkNotContained) Error() string {
+	return fmt.Sprintf(
+		"Specified path %q does not contain symlink", err.path)
+}
+
+func newSymlinkNotContained(path string) error {
+	return SymlinkNotContained{
+		path: path,
+	}
 }
