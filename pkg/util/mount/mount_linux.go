@@ -62,7 +62,11 @@ type Mounter struct {
 // New returns a mount.Interface for the current system.
 // It provides options to override the default mounter behavior.
 // mounterPath allows using an alternative to `/bin/mount` for mounting.
-func New(mounterPath string) Interface {
+func New(mounterPath string, containerized bool) Interface {
+	if containerized {
+		glog.V(2).Info("Running kubelet in containerized mode (experimental)")
+		return NewNsenterMounter()
+	}
 	return &Mounter{
 		mounterPath: mounterPath,
 		withSystemd: detectSystemd(),
