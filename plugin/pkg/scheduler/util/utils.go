@@ -17,16 +17,17 @@ limitations under the License.
 package util
 
 import (
+	"fmt"
 	"sort"
 
 	"k8s.io/api/core/v1"
 	"k8s.io/kubernetes/pkg/apis/scheduling"
 )
 
-// GetUsedPorts returns the used host ports of Pods: if 'port' was used, a 'port:true' pair
+// GetUsedPorts returns the used host ports of Pods: if 'port' was used, a 'port:true' pair, for example port is "hostIP port protocol"
 // will be in the result; but it does not resolve port conflict.
-func GetUsedPorts(pods ...*v1.Pod) map[int]bool {
-	ports := make(map[int]bool)
+func GetUsedPorts(pods ...*v1.Pod) map[string]bool {
+	ports := make(map[string]bool)
 	for _, pod := range pods {
 		for j := range pod.Spec.Containers {
 			container := &pod.Spec.Containers[j]
@@ -35,7 +36,7 @@ func GetUsedPorts(pods ...*v1.Pod) map[int]bool {
 				// "0" is explicitly ignored in PodFitsHostPorts,
 				// which is the only function that uses this value.
 				if podPort.HostPort != 0 {
-					ports[int(podPort.HostPort)] = true
+					ports[fmt.Sprintf("%s %d %s", podPort.HostIP, podPort.HostPort, podPort.Protocol)] = true
 				}
 			}
 		}
