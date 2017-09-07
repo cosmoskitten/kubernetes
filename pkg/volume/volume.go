@@ -132,6 +132,55 @@ type Unmounter interface {
 	TearDownAt(dir string) error
 }
 
+// BlockVolumeMapper interface provides methods to set up/map the volume.
+type BlockVolumeMapper interface {
+	Volume
+	// SetUpDevice prepares the volume to a self-determined directory path,
+	// which may or may not exist yet and returns combination of physical
+	// device path of a block volume and error.
+	// If the plugin is non-attachable, this method prepares the volume
+	// to be attached to a node. Also the non-attachable plugin needs to
+	// return proper physical device path.
+	// If the plugin is attachable, the volume has been attached already,
+	// just return empty string for device path.
+	// This may be called more than once, so implementations must be idempotent.
+	SetUpDevice() (string, error)
+	// SetUpDeviceAt prepares the volume on a specified directory path,
+	// which may or may not exist yet and returns combination of physical
+	// device path of a block volume and error.
+	// This may be called more than once, so implementations must be idempotent.
+	SetUpDeviceAt(dir string) (string, error)
+	// GetGlobalMapPath returns a global map path which contains
+	// a symbolic links associated to a block device.
+	// ex.
+	// plugins/kubernetes.io/{PluginName}/{DefaultKubeletVolumeDevicesDirName}/{volumeName}
+	GetGlobalMapPath(spec *Spec) (string, error)
+	// GetPodDeviceMapPath returns a pod device map path
+	// and name of a symbolic link associated to a block device.
+	// ex.
+	// pods/{podUid}}/{DefaultKubeletVolumeDevicesDirName}/{escapeQualifiedPluginName}/{volumeName}
+	GetPodDeviceMapPath() (string, string)
+}
+
+// BlockVolumeUnmapper interface provides methods to cleanup/unmap the volumes.
+type BlockVolumeUnmapper interface {
+	Volume
+	// TearDownDevice removes traces of the SetUpDevice procedure under
+	// a self-determined directory.
+	// If the plugin is non-attachable, this method detaches the volume
+	// from a node.
+	TearDownDevice() error
+	// TearDownDeviceAt removes traces of the SetUpDevice procedure under
+	// the specified directory.
+	TearDownDeviceAt(dir string) error
+	// GetGlobalUnmapPath returns a path to symbolic link of a
+	// block device under a global map path.
+	GetGlobalUnmapPath(spec *Spec) (string, error)
+	// GetPodDeviceUnmapPath returns a pod device map path
+	// and name of symbolic link associated to a block device.
+	GetPodDeviceUnmapPath() (string, string)
+}
+
 // Provisioner is an interface that creates templates for PersistentVolumes
 // and can create the volume as a new resource in the infrastructure provider.
 type Provisioner interface {
