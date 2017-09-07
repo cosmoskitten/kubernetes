@@ -21,6 +21,7 @@ go_library(
         "//pkg/api:go_default_library",
         "//pkg/api/testapi:go_default_library",
         "//pkg/apis/batch:go_default_library",
+        "//pkg/apis/extensions:go_default_library",
         "//pkg/apis/policy/v1alpha1:go_default_library",
         "//pkg/client/clientset_generated/internalclientset:go_default_library",
         "//pkg/controller:go_default_library",

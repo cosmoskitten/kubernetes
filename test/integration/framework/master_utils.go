@@ -62,6 +62,7 @@ import (
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/testapi"
 	"k8s.io/kubernetes/pkg/apis/batch"
+	apiextensions "k8s.io/kubernetes/pkg/apis/extensions"
 	policy "k8s.io/kubernetes/pkg/apis/policy/v1alpha1"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/controller"
@@ -447,6 +448,25 @@ func ScaleRC(name, ns string, replicas int32, clientset internalclientset.Interf
 		return nil, err
 	}
 	scaled, err := clientset.Core().ReplicationControllers(ns).Get(name, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return scaled, nil
+}
+
+// ScaleRS scales the given RS to the given replicas.
+func ScaleRS(name, ns string, replicas int32, clientset internalclientset.Interface) (*apiextensions.ReplicaSet, error) {
+	scaler, err := kubectl.ScalerFor(apiextensions.Kind("ReplicaSet"), clientset)
+	if err != nil {
+		return nil, err
+	}
+	retry := &kubectl.RetryParams{Interval: 50 * time.Millisecond, Timeout: DefaultTimeout}
+	waitForReplicas := &kubectl.RetryParams{Interval: 50 * time.Millisecond, Timeout: DefaultTimeout}
+	err = scaler.Scale(ns, name, uint(replicas), nil, retry, waitForReplicas)
+	if err != nil {
+		return nil, err
+	}
+	scaled, err := clientset.Extensions().ReplicaSets(ns).Get(name, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
