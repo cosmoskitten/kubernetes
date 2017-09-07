@@ -486,6 +486,7 @@ const (
 	PodDisruptionBudgetV1GeneratorName      = "poddisruptionbudget/v1beta1"
 	PodDisruptionBudgetV2GeneratorName      = "poddisruptionbudget/v1beta1/v2"
 	DaemonsetV1Beta1GeneratorName           = "extensions/v1beta1"
+	DaemonsetV1Beta2GeneratorName           = "apps/v1beta2"
 )
 
 // DefaultGenerators returns the set of default generators for use in Factory instances

@@ -19,6 +19,7 @@ package kubectl
 import (
 	"fmt"
 
+	appsv1beta2 "k8s.io/api/apps/v1beta2"
 	"k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -79,6 +80,34 @@ func (s *DaemonSetGeneratorV1Beta1) StructuredGenerate() (runtime.Object, error)
 			Labels: labels,
 		},
 		Spec: extensionsv1beta1.DaemonSetSpec{
+			Selector: &selector,
+			Template: v1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: labels,
+				},
+				Spec: podSpec,
+			},
+		},
+	}, err
+}
+
+// DaemonSetGeneratorV1Beta2 supports stable generation of a daemonset
+type DaemonSetGeneratorV1Beta2 struct {
+	BaseGenerator
+}
+
+// Ensure it supports the generator pattern that uses parameters specified during construction
+var _ StructuredGenerator = &DaemonSetGeneratorV1Beta2{}
+
+// StructuredGenerate outputs a daemonset object using the configured fields
+func (s *DaemonSetGeneratorV1Beta2) StructuredGenerate() (runtime.Object, error) {
+	podSpec, labels, selector, err := s.structuredGenerate()
+	return &appsv1beta2.DaemonSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   s.Name,
+			Labels: labels,
+		},
+		Spec: appsv1beta2.DaemonSetSpec{
 			Selector: &selector,
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
