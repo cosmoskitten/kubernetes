@@ -438,6 +438,13 @@ run_pod_tests() {
   kubectl create -f test/fixtures/doc-yaml/admin/limitrange/valid-pod.yaml "${kube_flags[@]}"
   # Post-condition: valid-pod POD is created
   kube::test::get_object_assert pods "{{range.items}}{{$id_field}}:{{end}}" 'valid-pod:'
+  # Command
+  output_message=$(kubectl get pods --field-selector metadata.name=valid-pod "${kube_flags[@]}")
+  kube::test::if_has_string "${output_message}" "valid-pod"
+  # Command
+  podIP=$(kubectl get "${kube_flags[@]}" pod valid-pod -o go-template='{{ .status.podIP }}')
+  output_message=$(kubectl get pods --field-selector status.podIP="${podIP}" "${kube_flags[@]}")
+  kube::test::if_has_string "${output_message}" "valid-pod"
 
   ### Delete PODs with no parameter mustn't kill everything
   # Pre-condition: valid-pod POD exists
@@ -2251,6 +2258,13 @@ run_configmap_tests() {
   # Post-condition: configmap exists and has expected values
   kube::test::get_object_assert 'configmap/test-configmap --namespace=test-configmaps' "{{$id_field}}" 'test-configmap'
   [[ "$(kubectl get configmap/test-configmap --namespace=test-configmaps -o yaml "${kube_flags[@]}" | grep 'key1: value1')" ]]
+  # Command
+  output_message=$(kubectl get configmap --field-selector metadata.name=test-configmap "${kube_flags[@]}")
+  kube::test::if_has_string "${output_message}" "test-configmap"
+  # Command
+  namespace=$(kubectl get "${kube_flags[@]}" configmap test-configmap -o go-template='{{ .metadata.namespace }}')
+  output_message=$(kubectl get configmap --field-selector metadata.namespace="${namespace}" "${kube_flags[@]}")
+  kube::test::if_has_string "${output_message}" "test-configmap"
   # Clean-up
   kubectl delete configmap test-configmap --namespace=test-configmaps
   kubectl delete namespace test-configmaps
