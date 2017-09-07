@@ -40,7 +40,7 @@ var (
 func NewCmdCreateDaemonset(f cmdutil.Factory, cmdOut io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "daemonset NAME --image=image [--dry-run]",
-		Aliases: []string{"daemonset"},
+		Aliases: []string{"ds"},
 		Short:   i18n.T("Create a daemonset with the specified name."),
 		Long:    daemonsetLong,
 		Example: daemonsetExample,
@@ -66,6 +66,13 @@ func CreateDaemonset(f cmdutil.Factory, cmdOut io.Writer, cmd *cobra.Command, ar
 	switch generatorName := cmdutil.GetFlagString(cmd, "generator"); generatorName {
 	case cmdutil.DaemonsetV1Beta1GeneratorName:
 		generator = &kubectl.DaemonSetGeneratorV1Beta1{
+			BaseGenerator: kubectl.BaseGenerator{
+				Name:   name,
+				Images: cmdutil.GetFlagStringSlice(cmd, "image"),
+			},
+		}
+	case cmdutil.DaemonsetV1Beta2GeneratorName:
+		generator = &kubectl.DaemonSetGeneratorV1Beta2{
 			BaseGenerator: kubectl.BaseGenerator{
 				Name:   name,
 				Images: cmdutil.GetFlagStringSlice(cmd, "image"),
