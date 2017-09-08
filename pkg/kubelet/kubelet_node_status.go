@@ -17,6 +17,7 @@ limitations under the License.
 package kubelet
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"net"
@@ -34,6 +35,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	"k8s.io/client-go/kubernetes/scheme"
 	k8s_api_v1 "k8s.io/kubernetes/pkg/api/v1"
 	v1helper "k8s.io/kubernetes/pkg/api/v1/helper"
 	"k8s.io/kubernetes/pkg/cloudprovider"
@@ -404,28 +406,38 @@ func (kl *Kubelet) tryUpdateNodeStatus(tryNumber int) error {
 	if tryNumber == 0 {
 		util.FromApiserverCache(&opts)
 	}
-	node, err := kl.kubeClient.Core().Nodes().Get(string(kl.nodeName), opts)
+
+	ctx, _ := context.WithTimeout(context.Background(), kl.nodeStatusUpdateFrequency)
+
+	originalNode := &v1.Node{}
+	err := kl.kubeClient.Core().RESTClient().Get().
+		Resource("nodes").Name(string(kl.nodeName)).
+		VersionedParams(&opts, scheme.ParameterCodec).
+		Throttle(nil).Context(ctx).
+		Do().Into(originalNode)
 	if err != nil {
 		return fmt.Errorf("error getting node %q: %v", kl.nodeName, err)
 	}
 
-	clonedNode, err := conversion.NewCloner().DeepCopy(node)
-	if err != nil {
-		return fmt.Errorf("error clone node %q: %v", kl.nodeName, err)
-	}
-
-	originalNode, ok := clonedNode.(*v1.Node)
-	if !ok || originalNode == nil {
-		return fmt.Errorf("failed to cast %q node object %#v to v1.Node", kl.nodeName, clonedNode)
-	}
+	node := originalNode.DeepCopy()
 
 	kl.updatePodCIDR(node.Spec.PodCIDR)
 
 	kl.setNodeStatus(node)
 	// Patch the current status on the API server
-	updatedNode, err := nodeutil.PatchNodeStatus(kl.kubeClient, types.NodeName(kl.nodeName), originalNode, node)
+	patchBytes, patchType, err := nodeutil.ComputePatch(kl.nodeName, originalNode, node)
 	if err != nil {
 		return err
+	}
+	ctx, _ = context.WithTimeout(context.Background(), kl.nodeStatusUpdateFrequency)
+	updatedNode := &v1.Node{}
+	err = kl.kubeClient.Core().RESTClient().Patch(patchType).
+		Resource("nodes").SubResource("status").Name(string(kl.nodeName)).
+		Body(patchBytes).
+		Throttle(nil).Context(ctx).
+		Do().Into(updatedNode)
+	if err != nil {
+		return fmt.Errorf("failed to patch status %q for node %q: %v", patchBytes, kl.nodeName, err)
 	}
 	// If update finishes successfully, mark the volumeInUse as reportedInUse to indicate
 	// those volumes are already updated in the node's status

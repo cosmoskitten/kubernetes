@@ -149,11 +149,10 @@ func SetNodeCondition(c clientset.Interface, node types.NodeName, condition v1.N
 	return err
 }
 
-// PatchNodeStatus patches node status.
-func PatchNodeStatus(c clientset.Interface, nodeName types.NodeName, oldNode *v1.Node, newNode *v1.Node) (*v1.Node, error) {
+func ComputePatch(nodeName types.NodeName, oldNode *v1.Node, newNode *v1.Node) ([]byte, types.PatchType, error) {
 	oldData, err := json.Marshal(oldNode)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal old node %#v for node %q: %v", oldNode, nodeName, err)
+		return nil, "", fmt.Errorf("failed to marshal old node %#v for node %q: %v", oldNode, nodeName, err)
 	}
 
 	// Reset spec to make sure only patch for Status or ObjectMeta is generated.
@@ -163,15 +162,24 @@ func PatchNodeStatus(c clientset.Interface, nodeName types.NodeName, oldNode *v1
 	newNode.Spec = oldNode.Spec
 	newData, err := json.Marshal(newNode)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal new node %#v for node %q: %v", newNode, nodeName, err)
+		return nil, "", fmt.Errorf("failed to marshal new node %#v for node %q: %v", newNode, nodeName, err)
 	}
 
 	patchBytes, err := strategicpatch.CreateTwoWayMergePatch(oldData, newData, v1.Node{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to create patch for node %q: %v", nodeName, err)
+		return nil, "", fmt.Errorf("failed to create patch for node %q: %v", nodeName, err)
 	}
 
-	updatedNode, err := c.Core().Nodes().Patch(string(nodeName), types.StrategicMergePatchType, patchBytes, "status")
+	return patchBytes, types.StrategicMergePatchType, nil
+}
+
+// PatchNodeStatus patches node status.
+func PatchNodeStatus(c clientset.Interface, nodeName types.NodeName, oldNode *v1.Node, newNode *v1.Node) (*v1.Node, error) {
+	patchBytes, patchType, err := ComputePatch(nodeName, oldNode, newNode)
+	if err != nil {
+		return nil, err
+	}
+	updatedNode, err := c.Core().Nodes().Patch(string(nodeName), patchType, patchBytes, "status")
 	if err != nil {
 		return nil, fmt.Errorf("failed to patch status %q for node %q: %v", patchBytes, nodeName, err)
 	}
