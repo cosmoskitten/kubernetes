@@ -59,6 +59,8 @@ const (
 	offsetFsTotalUsageBytes
 	offsetFsBaseUsageBytes
 	offsetFsInodeUsage
+
+	cbr0NetworkValue = 100
 )
 
 var (
@@ -435,10 +437,10 @@ func getTestContainerInfo(seed int, podName string, podNamespace string, contain
 				TxErrors: uint64(seed + offsetNetTxErrors),
 			}, {
 				Name:     "cbr0",
-				RxBytes:  100,
-				RxErrors: 100,
-				TxBytes:  100,
-				TxErrors: 100,
+				RxBytes:  cbr0NetworkValue,
+				RxErrors: cbr0NetworkValue,
+				TxBytes:  cbr0NetworkValue,
+				TxErrors: cbr0NetworkValue,
 			}},
 		},
 		CustomMetrics: generateCustomMetrics(spec.CustomMetrics),
@@ -525,10 +527,10 @@ func testTime(base time.Time, seed int) time.Time {
 func checkNetworkStats(t *testing.T, label string, seed int, stats *statsapi.NetworkStats) {
 	assert.NotNil(t, stats)
 	assert.EqualValues(t, testTime(timestamp, seed).Unix(), stats.Time.Time.Unix(), label+".Net.Time")
-	assert.EqualValues(t, seed+offsetNetRxBytes, *stats.RxBytes, label+".Net.RxBytes")
-	assert.EqualValues(t, seed+offsetNetRxErrors, *stats.RxErrors, label+".Net.RxErrors")
-	assert.EqualValues(t, seed+offsetNetTxBytes, *stats.TxBytes, label+".Net.TxBytes")
-	assert.EqualValues(t, seed+offsetNetTxErrors, *stats.TxErrors, label+".Net.TxErrors")
+	assert.EqualValues(t, seed+offsetNetRxBytes+cbr0NetworkValue, *stats.RxBytes, label+".Net.RxBytes")
+	assert.EqualValues(t, seed+offsetNetRxErrors+cbr0NetworkValue, *stats.RxErrors, label+".Net.RxErrors")
+	assert.EqualValues(t, seed+offsetNetTxBytes+cbr0NetworkValue, *stats.TxBytes, label+".Net.TxBytes")
+	assert.EqualValues(t, seed+offsetNetTxErrors+cbr0NetworkValue, *stats.TxErrors, label+".Net.TxErrors")
 }
 
 func checkCPUStats(t *testing.T, label string, seed int, stats *statsapi.CPUStats) {

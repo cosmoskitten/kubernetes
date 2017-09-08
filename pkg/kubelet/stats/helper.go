@@ -27,7 +27,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	statsapi "k8s.io/kubernetes/pkg/kubelet/apis/stats/v1alpha1"
 	"k8s.io/kubernetes/pkg/kubelet/cadvisor"
-	"k8s.io/kubernetes/pkg/kubelet/network"
 )
 
 // cadvisorInfoToContainerStats returns the statsapi.ContainerStats converted
@@ -127,19 +126,26 @@ func cadvisorInfoToNetworkStats(name string, info *cadvisorapiv2.ContainerInfo) 
 	if !found {
 		return nil
 	}
+
+	var rxBytes uint64
+	var rxErrors uint64
+	var txBytes uint64
+	var txErrors uint64
+
 	for _, inter := range cstat.Network.Interfaces {
-		if inter.Name == network.DefaultInterfaceName {
-			return &statsapi.NetworkStats{
-				Time:     metav1.NewTime(cstat.Timestamp),
-				RxBytes:  &inter.RxBytes,
-				RxErrors: &inter.RxErrors,
-				TxBytes:  &inter.TxBytes,
-				TxErrors: &inter.TxErrors,
-			}
-		}
+		rxBytes += inter.RxBytes
+		rxErrors += inter.RxErrors
+		txBytes += inter.TxBytes
+		txErrors += inter.TxErrors
 	}
-	glog.V(4).Infof("Missing default interface %q for %s", network.DefaultInterfaceName, name)
-	return nil
+
+	return &statsapi.NetworkStats{
+		Time:     metav1.NewTime(cstat.Timestamp),
+		RxBytes:  &rxBytes,
+		RxErrors: &rxErrors,
+		TxBytes:  &txBytes,
+		TxErrors: &txErrors,
+	}
 }
 
 // cadvisorInfoToUserDefinedMetrics returns the statsapi.UserDefinedMetric
