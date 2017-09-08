@@ -58,7 +58,9 @@ var Funcs = func(codecs runtimeserializer.CodecFactory) []interface{} {
 		func(psp *extensions.PodSecurityPolicySpec, c fuzz.Continue) {
 			c.FuzzNoCustom(psp) // fuzz self without calling this function again
 			runAsUserRules := []extensions.RunAsUserStrategy{extensions.RunAsUserStrategyMustRunAsNonRoot, extensions.RunAsUserStrategyMustRunAs, extensions.RunAsUserStrategyRunAsAny}
+			runAsGroupRules := []extensions.RunAsGroupStrategy{extensions.RunAsGroupStrategyMustRunAsNonRoot, extensions.RunAsGroupStrategyMustRunAs, extensions.RunAsGroupStrategyRunAsAny}
 			psp.RunAsUser.Rule = runAsUserRules[c.Rand.Intn(len(runAsUserRules))]
+			psp.RunAsGroup.Rule = runAsGroupRules[c.Rand.Intn(len(runAsGroupRules))]
 			seLinuxRules := []extensions.SELinuxStrategy{extensions.SELinuxStrategyRunAsAny, extensions.SELinuxStrategyMustRunAs}
 			psp.SELinux.Rule = seLinuxRules[c.Rand.Intn(len(seLinuxRules))]
 		},
