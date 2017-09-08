@@ -35,6 +35,7 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/util/retry"
 	api "k8s.io/kubernetes/pkg/api"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	apiextensions "k8s.io/kubernetes/pkg/apis/extensions"
@@ -563,20 +564,11 @@ func TestOverlappingRSs(t *testing.T) {
 	// Create 2 RS with identical selectors
 	labelMap := map[string]string{"foo": "bar"}
 	for i := 0; i < 2; i++ {
+		// One RS has 1 replica, and another has 2 replicas
 		rs := newRS(fmt.Sprintf("rs-%d", i+1), ns.Name, i+1)
 		rs.Spec.Selector.MatchLabels = labelMap
 		rs.Spec.Template.Labels = labelMap
-
-		// One RS has 1 replica, and another has 2 replicas
-		podCount := i + 1
-
-		var podList []*v1.Pod
-		for j := 0; j < podCount; j++ {
-			pod := newMatchingPod(fmt.Sprintf("pod-%d-%d", i+1, j+1), ns.Name)
-			pod.Labels = labelMap
-			podList = append(podList, pod)
-		}
-		createRSsPods(t, c, []*v1beta1.ReplicaSet{rs}, podList, ns.Name)
+		createRSsPods(t, c, []*v1beta1.ReplicaSet{rs}, []*v1.Pod{}, ns.Name)
 		waitRSStable(t, c, rs, ns.Name)
 	}
 
@@ -615,23 +607,13 @@ func TestPodOrphaningAndAdoptionWhenLabelsChange(t *testing.T) {
 	rs := newRS("rs", ns.Name, 1)
 	rs.Spec.Selector.MatchLabels = labelMap
 	rs.Spec.Template.Labels = labelMap
-	pod := newMatchingPod("pod", ns.Name)
-	pod.Labels = labelMap
-	createRSsPods(t, c, []*v1beta1.ReplicaSet{rs}, []*v1.Pod{pod}, ns.Name)
+	createRSsPods(t, c, []*v1beta1.ReplicaSet{rs}, []*v1.Pod{}, ns.Name)
 
 	stopCh := make(chan struct{})
 	informers.Start(stopCh)
 	go rm.Run(5, stopCh)
 	defer close(stopCh)
 	waitRSStable(t, c, rs, ns.Name)
-
-	rs, err := c.ExtensionsV1beta1().ReplicaSets(ns.Name).Get(rs.Name, metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("failed to get replicaset %s: %v", rs.Name, err)
-	}
-	if rs.Status.Replicas != 1 {
-		t.Fatalf("Unexpected .Status.Replicas: Expected 1, saw %d", rs.Status.Replicas)
-	}
 
 	// Orphaning: RS should remove OwnerReference from a pod when the pod's labels change to not match its labels
 	// Although we can access the pod directly, we should still access it via selector to ensure the selector is working
@@ -648,189 +630,78 @@ func TestPodOrphaningAndAdoptionWhenLabelsChange(t *testing.T) {
 		t.Fatalf("len(pods) = %v, want %v", len(pods.Items), 1)
 	}
 
-	pod = &pods.Items[0]
+	pod := &pods.Items[0]
 	newLabelMap := map[string]string{"new-foo": "new-bar"}
-	pod.Labels = newLabelMap
-	pod, err = c.Core().Pods(ns.Name).Update(pod)
-	if err != nil {
-		t.Fatalf("failed to update pod %s: %v", pod.Name, err)
-	}
-	rs, err = c.ExtensionsV1beta1().ReplicaSets(ns.Name).Update(rs)
-	if err != nil {
-		t.Fatalf("failed to update replicaset %s: %v", rs.Name, err)
-	}
-	waitRSStable(t, c, rs, ns.Name)
+	podClient := c.Core().Pods(ns.Name)
 
+	if err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		pod, err := podClient.Get(pod.Name, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		pod.Labels = newLabelMap
+		pod, err = c.Core().Pods(ns.Name).Update(pod)
+		if err != nil {
+			return fmt.Errorf("failed to update pod %s: %v", pod.Name, err)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := wait.PollImmediate(1*time.Second, 1*time.Minute, func() (bool, error) {
+		pod, err := podClient.Get(pod.Name, metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+		if metav1.GetControllerOf(pod) == nil {
+			return true, nil
+		}
+		return false, nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Adoption: RS should add ControllerRef to a pod when the pod's labels change to match its labels
+	if err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		pod, err := podClient.Get(pod.Name, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		// Revert to original labels so that the RS can adopt the pod again
+		pod.Labels = labelMap
+		pod, err = c.Core().Pods(ns.Name).Update(pod)
+		if err != nil {
+			return fmt.Errorf("failed to update pod %s: %v", pod.Name, err)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	if err = wait.PollImmediate(1*time.Second, 1*time.Minute, func() (bool, error) {
+		pod, err := podClient.Get(pod.Name, metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+		if metav1.GetControllerOf(pod) != nil {
+			return true, nil
+		}
+		return false, nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	// We have to get the RS again to fetch its newest UID
+	// the UID may change as time passes
 	rs, err = c.ExtensionsV1beta1().ReplicaSets(ns.Name).Get(rs.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("failed to get replicaset %s: %v", rs.Name, err)
 	}
-	// The RS should still have 1 replica (the RS should create another new replica)
-	if rs.Status.Replicas != 1 {
-		t.Fatalf("Unexpected .Status.Replicas: Expected 1, saw %d", rs.Status.Replicas)
-	}
-
-	pod, err = c.Core().Pods(ns.Name).Get(pod.Name, metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("failed to get pod %s: %v", pod.Name, err)
-	}
-	if !reflect.DeepEqual(pod.Labels, newLabelMap) {
-		t.Fatalf("failed to update labels for pod %s: Expected %v, saw %v", pod.Name, newLabelMap, pod.Labels)
-	}
-	if len(pod.OwnerReferences) != 0 {
-		t.Fatalf("failed to remove controllerReference for pod %s after changing its labels", pod.Name)
-	}
-
-	// Adoption: RS should add OwnerReference to a pod when the pod's labels change to match its labels
-	podSelector = labels.Set{"new-foo": "new-bar"}.AsSelector()
-	options = metav1.ListOptions{LabelSelector: podSelector.String()}
-	pods, err = c.Core().Pods(ns.Name).List(options)
-	if err != nil {
-		t.Fatalf("Failed obtaining a list of pods that match the pod labels %v: %v", newLabelMap, err)
-	}
-	if pods == nil {
-		t.Fatalf("Obtained a nil list of pods")
-	}
-	if len(pods.Items) != 1 {
-		t.Fatalf("len(pods) = %v, want %v", len(pods.Items), 1)
-	}
-
-	// Revert to original labels so that the RS can adopt the pod again
-	pod = &pods.Items[0]
-	pod.Labels = labelMap
-	pod, err = c.Core().Pods(ns.Name).Update(pod)
-	if err != nil {
-		t.Fatalf("failed to update pod %s: %v", pod.Name, err)
-	}
-
-	// Have to GET the RS again as the pod (and thus the RS) has been modified
-	rs, err = c.ExtensionsV1beta1().ReplicaSets(ns.Name).Get(rs.Name, metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("failed to get replicaset %s: %v", rs.Name, err)
-	}
-
-	rs, err = c.ExtensionsV1beta1().ReplicaSets(ns.Name).Update(rs)
-	if err != nil {
-		t.Fatalf("failed to update replicaset %s: %v", rs.Name, err)
-	}
-	waitRSStable(t, c, rs, ns.Name)
-
-	rs, err = c.ExtensionsV1beta1().ReplicaSets(ns.Name).Get(rs.Name, metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("failed to get replicaset %s: %v", rs.Name, err)
-	}
-	// The RS should still have 1 replica (original replica should replace the newly created replica)
-	if rs.Status.Replicas != 1 {
-		t.Fatalf("Unexpected .Status.Replicas: Expected 1, saw %d", rs.Status.Replicas)
-	}
-
-	pod, err = c.Core().Pods(ns.Name).Get(pod.Name, metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("failed to get pod %s: %v", pod.Name, err)
-	}
-	if !reflect.DeepEqual(pod.Labels, labelMap) {
-		t.Fatalf("failed to update labels for pod %s: Expected %v, saw %v", pod.Name, labelMap, pod.Labels)
-	}
-	// Perhaps a better way is to compare the OwnerReferences using reflect.DeepEqual (this comment will be removed afterwards)
-	if len(pod.OwnerReferences) != 1 {
-		t.Fatalf("failed to add controllerReference for pod %s after changing its labels", pod.Name)
-	}
-}
-
-func TestPodOrphaningAndAdoptionWhenSelectorChanges(t *testing.T) {
-	s, closeFn, rm, informers, c := rmSetup(t)
-	defer closeFn()
-	ns := framework.CreateTestingNamespace("test-pod-orphaning-and-adoption-when-selector-changes", s, t)
-	defer framework.DeleteTestingNamespace(ns, s, t)
-	labelMap := map[string]string{"foo": "bar"}
-	rs := newRS("rs", ns.Name, 1)
-	rs.Spec.Selector.MatchLabels = labelMap
-	rs.Spec.Template.Labels = labelMap
-	pod := newMatchingPod("pod", ns.Name)
-	pod.Labels = labelMap
-	createRSsPods(t, c, []*v1beta1.ReplicaSet{rs}, []*v1.Pod{pod}, ns.Name)
-
-	stopCh := make(chan struct{})
-	informers.Start(stopCh)
-	go rm.Run(5, stopCh)
-	defer close(stopCh)
-	waitRSStable(t, c, rs, ns.Name)
-
-	rs, err := c.ExtensionsV1beta1().ReplicaSets(ns.Name).Get(rs.Name, metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("failed to get replicaset %s: %v", rs.Name, err)
-	}
-	if rs.Status.Replicas != 1 {
-		t.Fatalf("Unexpected .Status.Replicas: Expected 1, saw %d", rs.Status.Replicas)
-	}
-
-	// Orphaning: RS should remove OwnerReference from a pod when the pod's selector changes to not match its selector
-	newLabelMap := map[string]string{"new-foo": "new-bar"}
-	rs.Spec.Selector.MatchLabels = newLabelMap
-	rs.Spec.Template.Labels = newLabelMap
-	rs, err = c.ExtensionsV1beta1().ReplicaSets(ns.Name).Update(rs)
-	if err != nil {
-		t.Fatalf("failed to update replicaset %s: %v", rs.Name, err)
-	}
-	waitRSStable(t, c, rs, ns.Name)
-
-	rs, err = c.ExtensionsV1beta1().ReplicaSets(ns.Name).Get(rs.Name, metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("failed to get replicaset %s: %v", rs.Name, err)
-	}
-	if !reflect.DeepEqual(rs.Spec.Selector.MatchLabels, newLabelMap) {
-		t.Fatalf("failed to update selector for RS %s: Expected %v, saw %v", rs.Name, newLabelMap, rs.Spec.Selector.MatchLabels)
-	}
-	// The RS should still have 1 replica (the RS should create another new replica)
-	if rs.Status.Replicas != 1 {
-		t.Fatalf("Unexpected .Status.Replicas: Expected 1, saw %d", rs.Status.Replicas)
-	}
-
-	pod, err = c.Core().Pods(ns.Name).Get(pod.Name, metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("failed to get pod %s: %v", pod.Name, err)
-	}
-	if len(pod.OwnerReferences) != 0 {
-		t.Fatalf("failed to remove controllerReference for pod %s after changing the selector of owning RS %s", pod.Name, rs.Name)
-	}
-
-	// Adoption: RS should add OwnerReference to a pod when the pod's selector changes to match its selector
-	// Revert to original selector so that the RS can adopt the pod again
-	rs.Spec.Selector.MatchLabels = labelMap
-	rs.Spec.Template.Labels = labelMap
-	rs, err = c.ExtensionsV1beta1().ReplicaSets(ns.Name).Update(rs)
-	if err != nil {
-		t.Fatalf("failed to update replicaset %s: %v", rs.Name, err)
-	}
-	waitRSStable(t, c, rs, ns.Name)
-
-	rs, err = c.ExtensionsV1beta1().ReplicaSets(ns.Name).Get(rs.Name, metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("failed to get replicaset %s: %v", rs.Name, err)
-	}
-	if !reflect.DeepEqual(rs.Spec.Selector.MatchLabels, labelMap) {
-		t.Fatalf("failed to update selector for RS %s: Expected %v, saw %v", rs.Name, labelMap, rs.Spec.Selector.MatchLabels)
-	}
-	// The RS should still have 1 replica (original replica should replace the newly created replica)
-	if rs.Status.Replicas != 1 {
-		t.Fatalf("Unexpected .Status.Replicas: Expected 1, saw %d", rs.Status.Replicas)
-	}
-
-	pod, err = c.Core().Pods(ns.Name).Get(pod.Name, metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("failed to get pod %s: %v", pod.Name, err)
-	}
-	pod, err = c.Core().Pods(ns.Name).Update(pod)
-	if err != nil {
-		t.Fatalf("failed to update pod %s: %v", pod.Name, err)
-	}
-	pod, err = c.Core().Pods(ns.Name).Get(pod.Name, metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("failed to get pod %s: %v", pod.Name, err)
-	}
-	// Perhaps a better way is to compare the OwnerReferences using reflect.DeepEqual (this comment will be removed afterwards)
-	if len(pod.OwnerReferences) != 1 {
-		t.Fatalf("failed to add controllerReference for pod %s after explicitly setting its OwnerReferences to RS %s", pod.Name, rs.Name)
+	controllerRef := metav1.GetControllerOf(pod)
+	if controllerRef.UID != rs.UID {
+		fmt.Println(controllerRef.UID)
+		t.Fatalf("RS owner of the pod %s has a different UID: Expected %v, got %v", pod.Name, rs.UID, controllerRef.UID)
 	}
 }
 
