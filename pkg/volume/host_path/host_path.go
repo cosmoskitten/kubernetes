@@ -25,6 +25,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
+	"k8s.io/kubernetes/pkg/util/mount"
 	"k8s.io/kubernetes/pkg/volume"
 	"k8s.io/kubernetes/pkg/volume/util/volumehelper"
 	"k8s.io/kubernetes/pkg/volume/validation"
@@ -109,6 +110,7 @@ func (plugin *hostPathPlugin) NewMounter(spec *volume.Spec, pod *v1.Pod, opts vo
 	return &hostPathMounter{
 		hostPath: &hostPath{path: path, pathType: hostPathVolumeSource.Type, containerized: opts.Containerized},
 		readOnly: readOnly,
+		mounter:  plugin.host.GetMounter(plugin.GetPluginName()),
 	}, nil
 }
 
@@ -189,6 +191,7 @@ func (hp *hostPath) GetPath() string {
 type hostPathMounter struct {
 	*hostPath
 	readOnly bool
+	mounter  mount.Interface
 }
 
 var _ volume.Mounter = &hostPathMounter{}
