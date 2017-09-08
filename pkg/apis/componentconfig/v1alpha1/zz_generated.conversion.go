@@ -107,6 +107,7 @@ func autoConvert_v1alpha1_KubeProxyConfiguration_To_componentconfig_KubeProxyCon
 		return err
 	}
 	out.ConfigSyncPeriod = in.ConfigSyncPeriod
+	out.ServiceAccountMasterURL = in.ServiceAccountMasterURL
 	return nil
 }
 
@@ -141,6 +142,7 @@ func autoConvert_componentconfig_KubeProxyConfiguration_To_v1alpha1_KubeProxyCon
 		return err
 	}
 	out.ConfigSyncPeriod = in.ConfigSyncPeriod
+	out.ServiceAccountMasterURL = in.ServiceAccountMasterURL
 	return nil
 }
 

@@ -62,7 +62,7 @@ func NewProxyServer(config *componentconfig.KubeProxyConfiguration, cleanupAndEx
 		return &ProxyServer{CleanupAndExit: cleanupAndExit}, nil
 	}
 
-	client, eventClient, err := createClients(config.ClientConnection, master)
+	client, eventClient, err := createClients(config, master)
 	if err != nil {
 		return nil, err
 	}
