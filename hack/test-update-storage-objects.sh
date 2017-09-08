@@ -110,6 +110,7 @@ echo "${ETCD_VERSION}/${STORAGE_BACKEND_ETCD2}" > "${ETCD_DIR}/version.txt"
 # source_file,resource,namespace,name,old_version,new_version
 tests=(
 examples/persistent-volume-provisioning/rbd/rbd-storage-class.yaml,storageclasses,,slow,v1beta1,v1
+hack/testdata/networkpolicy.yaml,networkpolicies,test,allow-from-red-to-blue,v1beta1,v1
 )
 
 KUBE_OLD_API_VERSION="storage.k8s.io/v1beta1,extensions/v1beta1"
