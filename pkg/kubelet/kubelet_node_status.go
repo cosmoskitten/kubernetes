@@ -17,9 +17,11 @@ limitations under the License.
 package kubelet
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"net"
+	"reflect"
 	goruntime "runtime"
 	"sort"
 	"strings"
@@ -34,6 +36,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/rest"
 	k8s_api_v1 "k8s.io/kubernetes/pkg/api/v1"
 	v1helper "k8s.io/kubernetes/pkg/api/v1/helper"
 	"k8s.io/kubernetes/pkg/cloudprovider"
@@ -139,7 +143,7 @@ func (kl *Kubelet) tryRegisterWithAPIServer(node *v1.Node) bool {
 		requiresUpdate := kl.reconcileCMADAnnotationWithExistingNode(node, existingNode)
 		requiresUpdate = kl.updateDefaultLabels(node, existingNode) || requiresUpdate
 		if requiresUpdate {
-			if _, err := nodeutil.PatchNodeStatus(kl.kubeClient, types.NodeName(kl.nodeName),
+			if _, err := nodeutil.PatchNodeStatus(kl.kubeClient.CoreV1(), types.NodeName(kl.nodeName),
 				originalNode, existingNode); err != nil {
 				glog.Errorf("Unable to reconcile node %q with API server: error updating node: %v", kl.nodeName, err)
 				return false
@@ -394,6 +398,29 @@ func (kl *Kubelet) updateNodeStatus() error {
 // tryUpdateNodeStatus tries to update node status to master. If ReconcileCBR0
 // is set, this function will also confirm that cbr0 is configured correctly.
 func (kl *Kubelet) tryUpdateNodeStatus(tryNumber int) error {
+	cancelFuncs := []context.CancelFunc{}
+	defer func() {
+		for _, cancelFunc := range cancelFuncs {
+			cancelFunc()
+		}
+	}()
+
+	// default to the direct v1 core client
+	heartbeatClient := kl.kubeClient.CoreV1()
+	// if possible, decorate requests to disable rate limiting and set a timeout
+	if restclient := heartbeatClient.RESTClient(); restclient != nil && !reflect.ValueOf(restclient).IsNil() {
+		heartbeatClient = v1core.New(&requestDecoratingRESTClient{
+			client: restclient,
+			decorator: func(req *rest.Request) *rest.Request {
+				ctx, cancelFunc := context.WithTimeout(context.Background(), kl.nodeStatusUpdateFrequency)
+				cancelFuncs = append(cancelFuncs, cancelFunc)
+				req.Throttle(nil)
+				req.Context(ctx)
+				return req
+			},
+		})
+	}
+
 	// In large clusters, GET and PUT operations on Node objects coming
 	// from here are the majority of load on apiserver and etcd.
 	// To reduce the load on etcd, we are serving GET operations from
@@ -404,7 +431,7 @@ func (kl *Kubelet) tryUpdateNodeStatus(tryNumber int) error {
 	if tryNumber == 0 {
 		util.FromApiserverCache(&opts)
 	}
-	node, err := kl.kubeClient.Core().Nodes().Get(string(kl.nodeName), opts)
+	node, err := heartbeatClient.Nodes().Get(string(kl.nodeName), opts)
 	if err != nil {
 		return fmt.Errorf("error getting node %q: %v", kl.nodeName, err)
 	}
@@ -423,7 +450,7 @@ func (kl *Kubelet) tryUpdateNodeStatus(tryNumber int) error {
 
 	kl.setNodeStatus(node)
 	// Patch the current status on the API server
-	updatedNode, err := nodeutil.PatchNodeStatus(kl.kubeClient, types.NodeName(kl.nodeName), originalNode, node)
+	updatedNode, err := nodeutil.PatchNodeStatus(heartbeatClient, types.NodeName(kl.nodeName), originalNode, node)
 	if err != nil {
 		return err
 	}

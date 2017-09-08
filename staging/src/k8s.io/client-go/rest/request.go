@@ -395,6 +395,12 @@ func (r *Request) Context(ctx context.Context) *Request {
 	return r
 }
 
+// Throttle sets a rate limiter for the request, overriding any current rate limiter.
+func (r *Request) Throttle(throttle flowcontrol.RateLimiter) *Request {
+	r.throttle = throttle
+	return r
+}
+
 // URL returns the current working URL.
 func (r *Request) URL() *url.URL {
 	p := r.pathPrefix
