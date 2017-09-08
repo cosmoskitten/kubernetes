@@ -49,6 +49,7 @@ declare -a resources=(
     "jobs"
     "horizontalpodautoscalers"
     "storageclasses"
+    "networkpolicies"
 )
 
 # Find all the namespaces.
