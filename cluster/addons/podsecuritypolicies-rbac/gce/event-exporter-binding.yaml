@@ -1,0 +1,18 @@
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: RoleBinding
+metadata:
+  labels:
+    addonmanager.kubernetes.io/mode: Reconcile
+    kubernetes.io/cluster-service: "true"
+  name: event-exporter-podsecuritypolicy
+  namespace: kube-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  # TODO: This only needs privileged to read /etc/ssl/certs,
+  #   but it should be able to just include these in the image.
+  name: podsecuritypolicy:privileged
+subjects:
+- kind: ServiceAccount
+  name: event-exporter-sa
+  namespace: kube-system
