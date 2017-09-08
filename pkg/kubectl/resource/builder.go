@@ -865,9 +865,6 @@ func (b *Builder) visitByPaths() *Result {
 	if b.labelSelector != nil {
 		visitors = NewFilteredVisitor(visitors, FilterByLabelSelector(b.labelSelector))
 	}
-	if b.fieldSelector != nil {
-		visitors = NewFilteredVisitor(visitors, FilterByFieldSelector(b.fieldSelector))
-	}
 	result.visitor = visitors
 	result.sources = b.paths
 	return result
