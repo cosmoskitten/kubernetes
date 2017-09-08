@@ -37,7 +37,7 @@ spec:
         command:
         - /bin/sh
         - -c
-        - kube-proxy {{kubeconfig}} {{cluster_cidr}} --resource-container="" --oom-score-adj=-998 {{params}} 1>>/var/log/kube-proxy.log 2>&1
+        - kube-proxy --service-account-master-url={{service_account_master_url}} {{cluster_cidr}} --resource-container="" --oom-score-adj=-998 {{params}} 1>>/var/log/kube-proxy.log 2>&1
         {{container_env}}
         {{kube_cache_mutation_detector_env_name}}
           {{kube_cache_mutation_detector_env_value}}
@@ -47,9 +47,6 @@ spec:
         - mountPath: /var/log
           name: varlog
           readOnly: false
-        - mountPath: /var/lib/kube-proxy/kubeconfig
-          name: kubeconfig
-          readOnly: false
         - mountPath: /run/xtables.lock
           name: xtables-lock
           readOnly: false
@@ -57,9 +54,6 @@ spec:
       - name: varlog
         hostPath:
           path: /var/log
-      - name: kubeconfig
-        hostPath:
-          path: /var/lib/kube-proxy/kubeconfig
       - name: xtables-lock
         hostPath:
           path: /run/xtables.lock
