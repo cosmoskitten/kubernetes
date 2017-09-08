@@ -32,15 +32,15 @@ const (
 )
 
 func TestNewManagerImpl(t *testing.T) {
-	_, err := NewManagerImpl("", func(n string, a, u, r []*pluginapi.Device) {})
+	_, err := NewManagerImpl("", func(n string, a, u, r []pluginapi.Device) {})
 	require.Error(t, err)
 
-	_, err = NewManagerImpl(socketName, func(n string, a, u, r []*pluginapi.Device) {})
+	_, err = NewManagerImpl(socketName, func(n string, a, u, r []pluginapi.Device) {})
 	require.NoError(t, err)
 }
 
 func TestNewManagerImplStart(t *testing.T) {
-	setup(t, []*pluginapi.Device{}, func(n string, a, u, r []*pluginapi.Device) {})
+	setup(t, []*pluginapi.Device{}, func(n string, a, u, r []pluginapi.Device) {})
 }
 
 // Tests that the device plugin manager correctly handles registration and re-registration by
@@ -54,7 +54,7 @@ func TestDevicePluginReRegistration(t *testing.T) {
 
 	callbackCount := 0
 	callbackChan := make(chan int)
-	callback := func(n string, a, u, r []*pluginapi.Device) {
+	callback := func(n string, a, u, r []pluginapi.Device) {
 		// Should be called twice, one for each plugin.
 		if callbackCount > 1 {
 			t.FailNow()

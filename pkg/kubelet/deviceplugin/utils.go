@@ -21,41 +21,13 @@ import (
 
 	"k8s.io/api/core/v1"
 	v1helper "k8s.io/kubernetes/pkg/api/v1/helper"
-	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha1"
 )
-
-func cloneDevice(d *pluginapi.Device) *pluginapi.Device {
-	return &pluginapi.Device{
-		ID:     d.ID,
-		Health: d.Health,
-	}
-
-}
-
-func copyDevices(devs map[string]*pluginapi.Device) []*pluginapi.Device {
-	var clones []*pluginapi.Device
-
-	for _, d := range devs {
-		clones = append(clones, cloneDevice(d))
-	}
-
-	return clones
-}
 
 // IsResourceNameValid returns an error if the resource is invalid or is not an
 // extended resource name.
 func IsResourceNameValid(resourceName string) error {
-	if resourceName == "" {
-		return fmt.Errorf(errEmptyResourceName)
-	}
-	if !IsDeviceName(v1.ResourceName(resourceName)) {
-		return fmt.Errorf(errInvalidResourceName)
+	if !v1helper.IsExtendedResourceName(v1.ResourceName(resourceName)) {
+		return fmt.Errorf(errInvalidResourceName, resourceName)
 	}
 	return nil
-}
-
-// IsDeviceName returns whether the ResourceName points to an extended resource
-// name exported by a device plugin.
-func IsDeviceName(k v1.ResourceName) bool {
-	return v1helper.IsExtendedResourceName(k)
 }
