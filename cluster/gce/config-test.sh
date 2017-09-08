@@ -370,7 +370,7 @@ ENABLE_PROMETHEUS_TO_SD="${ENABLE_PROMETHEUS_TO_SD:-true}"
 
 # TODO(#51292): Make kube-proxy Daemonset default and remove the configuration here.
 # Optional: Run kube-proxy as a DaemonSet if set to true, run as static pods otherwise.
-KUBE_PROXY_DAEMONSET="${KUBE_PROXY_DAEMONSET:-false}" # true, false
+KUBE_PROXY_DAEMONSET="${KUBE_PROXY_DAEMONSET:-true}" # true, false
 
 # Optional: enable pod priority
 ENABLE_POD_PRIORITY="${ENABLE_POD_PRIORITY:-}"
