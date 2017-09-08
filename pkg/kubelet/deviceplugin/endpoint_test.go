@@ -114,6 +114,23 @@ func TestListAndWatch(t *testing.T) {
 
 }
 
+func TestCloneDevice(t *testing.T) {
+	d := cloneDevice(&pluginapi.Device{ID: "ADeviceId", Health: pluginapi.Healthy})
+
+	require.Equal(t, d.ID, "ADeviceId")
+	require.Equal(t, d.Health, pluginapi.Healthy)
+}
+
+func TestGetDevices(t *testing.T) {
+	e := endpoint{
+		devices: map[string]*pluginapi.Device{
+			"ADeviceId": {ID: "ADeviceId", Health: pluginapi.Healthy},
+		},
+	}
+	devs := e.getDevices()
+	require.Len(t, devs, 1)
+}
+
 func esetup(t *testing.T, devs []*pluginapi.Device, socket, resourceName string, callback MonitorCallback) (*Stub, *endpoint) {
 	p := NewDevicePluginStub(devs, socket)
 

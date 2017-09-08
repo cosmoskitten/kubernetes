@@ -72,3 +72,8 @@ const (
 	// errListAndWatch is the error raised when ListAndWatch ended unsuccessfully
 	errListAndWatch = "listAndWatch ended unexpectedly for device plugin %s with error %v"
 )
+
+const (
+	// defaultCheckpoint is the file name of device plugin checkpoint
+	defaultCheckpoint = "kubelet_internal_checkpoint"
+)

@@ -20,25 +20,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-
-	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha1"
 )
-
-func TestCloneDevice(t *testing.T) {
-	d := cloneDevice(&pluginapi.Device{ID: "ADeviceId", Health: pluginapi.Healthy})
-
-	require.Equal(t, d.ID, "ADeviceId")
-	require.Equal(t, d.Health, pluginapi.Healthy)
-}
-
-func TestCopyDevices(t *testing.T) {
-	d := map[string]*pluginapi.Device{
-		"ADeviceId": {ID: "ADeviceId", Health: pluginapi.Healthy},
-	}
-
-	devs := copyDevices(d)
-	require.Len(t, devs, 1)
-}
 
 func TestIsResourceName(t *testing.T) {
 	require.NotNil(t, IsResourceNameValid(""))
