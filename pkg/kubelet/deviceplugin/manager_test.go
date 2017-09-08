@@ -34,10 +34,10 @@ func TestNewManagerImpl(t *testing.T) {
 	wd, _ := os.Getwd()
 	socket := path.Join(wd, msocketName)
 
-	_, err := NewManagerImpl("", func(n string, a, u, r []*pluginapi.Device) {})
+	_, err := NewManagerImpl("", func(n string, a, u, r []pluginapi.Device) {})
 	require.Error(t, err)
 
-	_, err = NewManagerImpl(socket, func(n string, a, u, r []*pluginapi.Device) {})
+	_, err = NewManagerImpl(socket, func(n string, a, u, r []pluginapi.Device) {})
 	require.NoError(t, err)
 }
 
@@ -45,7 +45,7 @@ func TestNewManagerImplStart(t *testing.T) {
 	wd, _ := os.Getwd()
 	socket := path.Join(wd, msocketName)
 
-	_, err := NewManagerImpl(socket, func(n string, a, u, r []*pluginapi.Device) {})
+	_, err := NewManagerImpl(socket, func(n string, a, u, r []pluginapi.Device) {})
 	require.NoError(t, err)
 }
 

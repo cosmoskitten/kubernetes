@@ -28,6 +28,7 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/sets"
+	v1helper "k8s.io/kubernetes/pkg/api/v1/helper"
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha1"
 	"k8s.io/kubernetes/pkg/kubelet/deviceplugin"
 )
@@ -86,7 +87,7 @@ type DevicePluginHandler interface {
 	// Start starts device plugin registration service.
 	Start() error
 	// Devices returns all of registered devices keyed by resourceName.
-	Devices() map[string][]*pluginapi.Device
+	Devices() map[string][]pluginapi.Device
 	// Allocate attempts to allocate all of required extended resources for
 	// the input container, issues an Allocate rpc request for each of such
 	// resources, and returns their AllocateResponses on success.
@@ -114,7 +115,7 @@ func NewDevicePluginHandlerImpl(updateCapacityFunc func(v1.ResourceList)) (*Devi
 		allocatedDevices: make(map[string]podDevices),
 	}
 
-	deviceManagerMonitorCallback := func(resourceName string, added, updated, deleted []*pluginapi.Device) {
+	deviceManagerMonitorCallback := func(resourceName string, added, updated, deleted []pluginapi.Device) {
 		var capacity = v1.ResourceList{}
 		kept := append(updated, added...)
 		if _, ok := handler.allDevices[resourceName]; !ok {
@@ -155,7 +156,7 @@ func (h *DevicePluginHandlerImpl) Start() error {
 	return h.devicePluginManager.Start()
 }
 
-func (h *DevicePluginHandlerImpl) Devices() map[string][]*pluginapi.Device {
+func (h *DevicePluginHandlerImpl) Devices() map[string][]pluginapi.Device {
 	return h.devicePluginManager.Devices()
 }
 
@@ -166,7 +167,7 @@ func (h *DevicePluginHandlerImpl) Allocate(pod *v1.Pod, container *v1.Container,
 		resource := string(k)
 		needed := int(v.Value())
 		glog.V(3).Infof("needs %d %s", needed, resource)
-		if !deviceplugin.IsDeviceName(k) || needed == 0 {
+		if !v1helper.IsExtendedResourceName(k) || needed == 0 {
 			continue
 		}
 		h.Lock()

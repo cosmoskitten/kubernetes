@@ -23,7 +23,7 @@ import (
 // MonitorCallback is the function called when a device's health state changes,
 // or new devices are reported, or old devices are deleted.
 // Updated contains the most recent state of the Device.
-type MonitorCallback func(resourceName string, added, updated, deleted []*pluginapi.Device)
+type MonitorCallback func(resourceName string, added, updated, deleted []pluginapi.Device)
 
 // Manager manages all the Device Plugins running on a node.
 type Manager interface {
@@ -33,7 +33,7 @@ type Manager interface {
 	// Devices is the map of devices that have registered themselves
 	// against the manager.
 	// The map key is the ResourceName of the device plugins.
-	Devices() map[string][]*pluginapi.Device
+	Devices() map[string][]pluginapi.Device
 
 	// Allocate takes resourceName and list of device Ids, and calls the
 	// gRPC Allocate on the device plugin matching the resourceName.
@@ -71,4 +71,9 @@ const (
 	errListenSocket = "failed to listen to socket while starting device plugin registry, with error"
 	// errListAndWatch is the error raised when ListAndWatch ended unsuccessfully
 	errListAndWatch = "listAndWatch ended unexpectedly for device plugin %s with error %v"
+)
+
+const (
+	// defaultCheckpoint is the file name of device plugin checkpoint
+	defaultCheckpoint = "kubelet_internal_checkpoint"
 )
