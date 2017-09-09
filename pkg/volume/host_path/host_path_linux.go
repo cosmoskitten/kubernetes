@@ -1,4 +1,4 @@
-// +build windows
+// +build linux
 
 /*
 Copyright 2017 The Kubernetes Authors.
@@ -19,22 +19,12 @@ limitations under the License.
 package host_path
 
 import (
-	"fmt"
 	"os"
-	"syscall"
 
 	"k8s.io/kubernetes/pkg/util/mount"
 )
 
-func (dftc *defaultFileTypeChecker) getFileType(_ string, info os.FileInfo) (mount.MountPathType, error) {
-	mode := info.Sys().(*syscall.Win32FileAttributeData).FileAttributes
-	switch mode & syscall.S_IFMT {
-	case syscall.S_IFSOCK:
-		return mount.MountPathSocket, nil
-	case syscall.S_IFBLK:
-		return mount.MountPathBlockDev, nil
-	case syscall.S_IFCHR:
-		return mount.MountPathCharDev, nil
-	}
-	return "", fmt.Errorf("only recognise socket, block device and character device")
+func (dftc *defaultFileTypeChecker) getFileType(pathname string, _ os.FileInfo) (mount.MountPathType, error) {
+	pathType, err := dftc.checker(pathname)
+	return mount.MountPathType(pathType), err
 }

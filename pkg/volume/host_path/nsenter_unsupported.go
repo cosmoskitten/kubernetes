@@ -23,7 +23,7 @@ type nsenterFileTypeChecker struct {
 	exists bool
 }
 
-func newNsenterFileTypeChecker(path string) (hostPathTypeChecker, error) {
+func newNsenterFileTypeChecker(path string, _ Factory) (hostPathTypeChecker, error) {
 	ftc := &nsenterFileTypeChecker{path: path}
 	ftc.Exists()
 	return ftc, nil

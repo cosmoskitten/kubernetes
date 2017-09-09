@@ -221,7 +221,7 @@ func (b *hostPathMounter) SetUp(fsGroup *int64) error {
 	if *b.pathType == mount.MountPathUnset {
 		return nil
 	}
-	return checkType(b.GetPath(), b.pathType, b.containerized)
+	return checkType(b.GetPath(), b.pathType, b.containerized, b.mounter.GetFileType)
 }
 
 // SetUpAt does not make sense for host paths - probably programmer error.
@@ -338,11 +338,16 @@ type hostPathTypeChecker interface {
 }
 
 type fileTypeChecker interface {
-	getFileType(fileInfo os.FileInfo) (mount.MountPathType, error)
+	getFileType(pathname string, fileInfo os.FileInfo) (mount.MountPathType, error)
 }
 
+// Factory is a function that returns an Interface to check for sockets/block/character devices
+type Factory func(pathname string) (mount.MountPathType, error)
+
 // this is implemented in per-OS files
-type defaultFileTypeChecker struct{}
+type defaultFileTypeChecker struct {
+	checker Factory
+}
 
 type osFileTypeChecker struct {
 	path    string
@@ -395,7 +400,7 @@ func (ftc *osFileTypeChecker) IsBlock() bool {
 		return false
 	}
 
-	blkDevType, err := ftc.checker.getFileType(ftc.info)
+	blkDevType, err := ftc.checker.getFileType(ftc.path, ftc.info)
 	if err != nil {
 		return false
 	}
@@ -407,7 +412,7 @@ func (ftc *osFileTypeChecker) IsChar() bool {
 		return false
 	}
 
-	charDevType, err := ftc.checker.getFileType(ftc.info)
+	charDevType, err := ftc.checker.getFileType(ftc.path, ftc.info)
 	if err != nil {
 		return false
 	}
@@ -419,7 +424,7 @@ func (ftc *osFileTypeChecker) IsSocket() bool {
 		return false
 	}
 
-	socketType, err := ftc.checker.getFileType(ftc.info)
+	socketType, err := ftc.checker.getFileType(ftc.path, ftc.info)
 	if err != nil {
 		return false
 	}
@@ -446,19 +451,19 @@ func newOSFileTypeChecker(path string, checker fileTypeChecker) (hostPathTypeChe
 }
 
 // checkType checks whether the given path is the exact pathType
-func checkType(path string, pathType *mount.MountPathType, containerized bool) error {
+func checkType(path string, pathType *mount.MountPathType, containerized bool, checker Factory) error {
 	var ftc hostPathTypeChecker
 	var err error
 	if containerized {
 		// For a containerized kubelet, use nsenter to run commands in
 		// the host's mount namespace.
 		// TODO(dixudx): setns into docker's mount namespace, and then run the exact same go code for checks/setup
-		ftc, err = newNsenterFileTypeChecker(path)
+		ftc, err = newNsenterFileTypeChecker(path, checker)
 		if err != nil {
 			return err
 		}
 	} else {
-		ftc, err = newOSFileTypeChecker(path, &defaultFileTypeChecker{})
+		ftc, err = newOSFileTypeChecker(path, &defaultFileTypeChecker{checker: checker})
 		if err != nil {
 			return err
 		}

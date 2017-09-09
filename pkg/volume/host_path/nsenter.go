@@ -19,19 +19,22 @@ limitations under the License.
 package host_path
 
 import (
+	"k8s.io/kubernetes/pkg/util/mount"
 	"k8s.io/kubernetes/pkg/util/nsenter"
 )
 
 type nsenterFileTypeChecker struct {
-	path   string
-	exists bool
-	ne     *nsenter.Nsenter
+	path    string
+	exists  bool
+	ne      *nsenter.Nsenter
+	checker Factory
 }
 
-func newNsenterFileTypeChecker(path string) (hostPathTypeChecker, error) {
+func newNsenterFileTypeChecker(path string, checker Factory) (hostPathTypeChecker, error) {
 	ftc := &nsenterFileTypeChecker{
-		path: path,
-		ne:   nsenter.NewNsenter(),
+		path:    path,
+		ne:      nsenter.NewNsenter(),
+		checker: checker,
 	}
 	ftc.Exists()
 	return ftc, nil
@@ -62,7 +65,16 @@ func (ftc *nsenterFileTypeChecker) MakeFile() error {
 }
 
 func (ftc *nsenterFileTypeChecker) IsDir() bool {
-	return ftc.checkMimetype("directory")
+	if !ftc.Exists() {
+		return false
+	}
+	args := append(ftc.ne.MakeBaseNsenterCmd("stat"),
+		[]string{"-L", `--printf "%F"`, ftc.path}...)
+	outputBytes, err := ftc.ne.Exec(args...).CombinedOutput()
+	if err != nil {
+		return false
+	}
+	return string(outputBytes) == "directory"
 }
 
 func (ftc *nsenterFileTypeChecker) MakeDir() error {
@@ -74,30 +86,25 @@ func (ftc *nsenterFileTypeChecker) MakeDir() error {
 }
 
 func (ftc *nsenterFileTypeChecker) IsBlock() bool {
-	return ftc.checkMimetype("block special file")
+	return ftc.checkMimetype(mount.MountPathBlockDev)
 }
 
 func (ftc *nsenterFileTypeChecker) IsChar() bool {
-	return ftc.checkMimetype("character special file")
+	return ftc.checkMimetype(mount.MountPathCharDev)
 }
 
 func (ftc *nsenterFileTypeChecker) IsSocket() bool {
-	return ftc.checkMimetype("socket")
+	return ftc.checkMimetype(mount.MountPathSocket)
 }
 
 func (ftc *nsenterFileTypeChecker) GetPath() string {
 	return ftc.path
 }
 
-func (ftc *nsenterFileTypeChecker) checkMimetype(checkedType string) bool {
-	if !ftc.Exists() {
-		return false
-	}
-	args := append(ftc.ne.MakeBaseNsenterCmd("stat"),
-		[]string{"-L", `--printf "%F"`, ftc.path}...)
-	outputBytes, err := ftc.ne.Exec(args...).CombinedOutput()
+func (ftc *nsenterFileTypeChecker) checkMimetype(checkedType mount.FileType) bool {
+	pathType, err := ftc.checker(ftc.path)
 	if err != nil {
 		return false
 	}
-	return string(outputBytes) == checkedType
+	return string(pathType) == string(checkedType)
 }
