@@ -1,4 +1,4 @@
-// +build linux darwin
+// +build !linux,!windows
 
 /*
 Copyright 2017 The Kubernetes Authors.
@@ -21,20 +21,10 @@ package host_path
 import (
 	"fmt"
 	"os"
-	"syscall"
 
 	"k8s.io/api/core/v1"
 )
 
-func (dftc *defaultFileTypeChecker) getFileType(info os.FileInfo) (v1.HostPathType, error) {
-	mode := info.Sys().(*syscall.Stat_t).Mode
-	switch mode & syscall.S_IFMT {
-	case syscall.S_IFSOCK:
-		return v1.HostPathSocket, nil
-	case syscall.S_IFBLK:
-		return v1.HostPathBlockDev, nil
-	case syscall.S_IFCHR:
-		return v1.HostPathCharDev, nil
-	}
-	return "", fmt.Errorf("only recognise socket, block device and character device")
+func (dftc *defaultFileTypeChecker) getFileType(_ string, _ os.FileInfo) (v1.HostPathType, error) {
+	return "", fmt.Errorf("unsupported to get file type on current OS")
 }

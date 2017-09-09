@@ -321,7 +321,7 @@ type fakeFileTypeChecker struct {
 	desiredType string
 }
 
-func (fftc *fakeFileTypeChecker) getFileType(_ os.FileInfo) (v1.HostPathType, error) {
+func (fftc *fakeFileTypeChecker) getFileType(_ string, _ os.FileInfo) (v1.HostPathType, error) {
 	return *newHostPathType(fftc.desiredType), nil
 }
 
