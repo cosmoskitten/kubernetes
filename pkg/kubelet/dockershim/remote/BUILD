@@ -10,7 +10,16 @@ go_library(
     srcs = [
         "docker_server.go",
         "docker_service.go",
-    ],
+        "docker_service_unsupported.go",
+    ] + select({
+        "@io_bazel_rules_go//go/platform:linux_amd64": [
+            "docker_service_linux.go",
+        ],
+        "@io_bazel_rules_go//go/platform:windows_amd64": [
+            "docker_service_windows.go",
+        ],
+        "//conditions:default": [],
+    }),
     deps = [
         "//pkg/kubelet/apis/cri:go_default_library",
         "//pkg/kubelet/apis/cri/v1alpha1/runtime:go_default_library",
