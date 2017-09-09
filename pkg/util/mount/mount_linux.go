@@ -284,7 +284,9 @@ func (mounter *Mounter) DeviceOpened(pathname string) (bool, error) {
 // PathIsDevice uses FileInfo returned from os.Stat to check if path refers
 // to a device.
 func (mounter *Mounter) PathIsDevice(pathname string) (bool, error) {
-	return pathIsDevice(pathname)
+	pathType, err := mounter.GetMountPathType(pathname)
+	isDevice := pathType == mountPathCharDev || pathType == mountPathBlockDev
+	return isDevice, err
 }
 
 func exclusiveOpenFailsOnDevice(pathname string) (bool, error) {
@@ -385,6 +387,30 @@ func (mounter *Mounter) MakeRShared(path string) error {
 	mountCmd := defaultMountCommand
 	mountArgs := []string{}
 	return doMakeRShared(path, procMountInfoPath, mountCmd, mountArgs)
+}
+
+func (mounter *Mounter) GetMountPathType(pathname string) (MountPathType, error) {
+	var pathType MountPathType
+	finfo, err := os.Stat(pathname)
+	if os.IsNotExist(err) {
+		return pathType, nil
+	}
+	// err in call to os.Stat
+	if err != nil {
+		return pathType, err
+	}
+
+	mode := finfo.Sys().(*syscall.Stat_t).Mode
+	switch mode & syscall.S_IFMT {
+	case syscall.S_IFSOCK:
+		return mountPathSocket, nil
+	case syscall.S_IFBLK:
+		return mountPathBlockDev, nil
+	case syscall.S_IFCHR:
+		return mountPathCharDev, nil
+	}
+
+	return pathType, fmt.Errorf("only recognise socket, block device and character device")
 }
 
 // formatAndMount uses unix utils to format and mount the given disk

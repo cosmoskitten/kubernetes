@@ -33,6 +33,14 @@ const (
 	MountsInGlobalPDPath = "mounts"
 )
 
+type MountPathType string
+
+const (
+	mountPathSocket   MountPathType = "Socket"
+	mountPathCharDev  MountPathType = "CharDevice"
+	mountPathBlockDev MountPathType = "BlockDevice"
+)
+
 type Interface interface {
 	// Mount mounts source to target as fstype with given options.
 	Mount(source string, target string, fstype string, options []string) error
@@ -70,6 +78,8 @@ type Interface interface {
 	// MakeRShared checks that given path is on a mount with 'rshared' mount
 	// propagation. If not, it bind-mounts the path as rshared.
 	MakeRShared(path string) error
+	// GetMountPathType checks for sockets/block/character devices
+	GetMountPathType(pathname string) (MountPathType, error)
 }
 
 // Exec executes command where mount utilities are. This can be either the host,

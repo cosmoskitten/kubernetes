@@ -203,7 +203,9 @@ func (n *NsenterMounter) DeviceOpened(pathname string) (bool, error) {
 // PathIsDevice uses FileInfo returned from os.Stat to check if path refers
 // to a device.
 func (n *NsenterMounter) PathIsDevice(pathname string) (bool, error) {
-	return pathIsDevice(pathname)
+	pathType, err := n.GetMountPathType(pathname)
+	isDevice := pathType == mountPathCharDev || pathType == mountPathBlockDev
+	return isDevice, err
 }
 
 //GetDeviceNameFromMount given a mount point, find the volume id from checking /proc/mounts
@@ -219,4 +221,25 @@ func (n *NsenterMounter) MakeRShared(path string) error {
 		n.ne.AbsHostPath("mount"),
 	}
 	return doMakeRShared(path, nsenter.HostProcMountinfoPath, nsenterCmd, nsenterArgs)
+}
+
+func (mounter *NsenterMounter) GetMountPathType(pathname string) (MountPathType, error) {
+	var pathType MountPathType
+	args := append(mounter.ne.MakeBaseNsenterCmd("stat"),
+		[]string{"-L", `--printf "%F"`, pathname}...)
+	outputBytes, err := mounter.ne.Exec(args...).CombinedOutput()
+	if err != nil {
+		return pathType, err
+	}
+
+	switch string(outputBytes) {
+	case "socket":
+		return mountPathSocket, nil
+	case "character special file":
+		return mountPathCharDev, nil
+	case "block special file":
+		return mountPathBlockDev, nil
+	}
+
+	return pathType, fmt.Errorf("only recognise socket, block device and character device")
 }

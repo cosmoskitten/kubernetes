@@ -79,6 +79,10 @@ func (mi *fakeMountInterface) MakeRShared(path string) error {
 	return nil
 }
 
+func (mi *fakeMountInterface) GetMountPathType(pathname string) (mount.MountPathType, error) {
+	return mount.MountPathType("fake"), nil
+}
+
 func fakeContainerMgrMountInt() mount.Interface {
 	return &fakeMountInterface{
 		[]mount.MountPoint{
