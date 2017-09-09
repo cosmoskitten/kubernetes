@@ -11,8 +11,17 @@ go_library(
         "doc.go",
         "remote_image.go",
         "remote_runtime.go",
+        "remote_runtime_unsupported.go",
         "utils.go",
-    ],
+    ] + select({
+        "@io_bazel_rules_go//go/platform:linux_amd64": [
+            "remote_runtime_linux.go",
+        ],
+        "@io_bazel_rules_go//go/platform:windows_amd64": [
+            "remote_runtime_windows.go",
+        ],
+        "//conditions:default": [],
+    }),
     deps = [
         "//pkg/kubelet/apis/cri:go_default_library",
         "//pkg/kubelet/apis/cri/v1alpha1/runtime:go_default_library",
