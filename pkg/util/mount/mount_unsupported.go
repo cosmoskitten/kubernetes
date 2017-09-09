@@ -78,3 +78,7 @@ func (mounter *SafeFormatAndMount) formatAndMount(source string, target string, 
 func (mounter *SafeFormatAndMount) diskLooksUnformatted(disk string) (bool, error) {
 	return true, nil
 }
+
+func (mounter *Mounter) GetMountPathType(pathname string) (MountPathType, error) {
+	return MountPathType("fake"), nil
+}
