@@ -125,7 +125,7 @@ func (f *FakeMounter) List() ([]MountPoint, error) {
 }
 
 func (f *FakeMounter) IsMountPointMatch(mp MountPoint, dir string) bool {
-	return (mp.Path == dir)
+	return mp.Path == dir
 }
 
 func (f *FakeMounter) IsNotMountPoint(dir string) (bool, error) {
@@ -174,4 +174,8 @@ func (f *FakeMounter) GetDeviceNameFromMount(mountPath, pluginDir string) (strin
 
 func (f *FakeMounter) MakeRShared(path string) error {
 	return nil
+}
+
+func (f *FakeMounter) GetFileType(pathname string) (MountPathType, error) {
+	return MountPathType("fake"), nil
 }

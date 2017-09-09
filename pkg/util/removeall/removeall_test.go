@@ -34,27 +34,39 @@ var _ mount.Interface = &fakeMounter{}
 func (mounter *fakeMounter) Mount(source string, target string, fstype string, options []string) error {
 	return errors.New("not implemented")
 }
+
 func (mounter *fakeMounter) Unmount(target string) error {
 	return errors.New("not implemented")
 }
+
 func (mounter *fakeMounter) List() ([]mount.MountPoint, error) {
 	return nil, errors.New("not implemented")
 }
+
 func (mounter fakeMounter) DeviceOpened(pathname string) (bool, error) {
 	return false, errors.New("not implemented")
 }
+
 func (mounter *fakeMounter) PathIsDevice(pathname string) (bool, error) {
 	return false, errors.New("not implemented")
 }
+
 func (mounter *fakeMounter) GetDeviceNameFromMount(mountPath, pluginDir string) (string, error) {
 	return "", errors.New("not implemented")
 }
+
 func (mounter *fakeMounter) IsMountPointMatch(mp mount.MountPoint, dir string) bool {
-	return (mp.Path == dir)
+	return mp.Path == dir
 }
+
 func (mounter *fakeMounter) IsNotMountPoint(dir string) (bool, error) {
 	return mount.IsNotMountPoint(mounter, dir)
 }
+
+func (mounter *fakeMounter) GetFileType(pathname string) (mount.MountPathType, error) {
+	return mount.MountPathType("fake"), errors.New("not implemented")
+}
+
 func (mounter *fakeMounter) IsLikelyNotMountPoint(file string) (bool, error) {
 	name := path.Base(file)
 	if strings.HasPrefix(name, "mount") {

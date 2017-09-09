@@ -93,6 +93,8 @@ type Interface interface {
 	// MakeRShared checks that given path is on a mount with 'rshared' mount
 	// propagation. If not, it bind-mounts the path as rshared.
 	MakeRShared(path string) error
+	// GetFileType checks for sockets/block/character devices
+	GetFileType(pathname string) (MountPathType, error)
 }
 
 // Exec executes command where mount utilities are. This can be either the host,

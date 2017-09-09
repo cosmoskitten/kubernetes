@@ -255,17 +255,29 @@ func (mounter *Mounter) DeviceOpened(pathname string) (bool, error) {
 // PathIsDevice uses FileInfo returned from os.Stat to check if path refers
 // to a device.
 func (mounter *Mounter) PathIsDevice(pathname string) (bool, error) {
-	return pathIsDevice(pathname)
+	pathType, err := mounter.GetFileType(pathname)
+	isDevice := pathType == MountPathCharDev || pathType == MountPathBlockDev
+	return isDevice, err
 }
 
 func exclusiveOpenFailsOnDevice(pathname string) (bool, error) {
-	isDevice, err := pathIsDevice(pathname)
+	var isDevice bool
+	finfo, err := os.Stat(pathname)
+	if os.IsNotExist(err) {
+		isDevice = false
+	}
+	// err in call to os.Stat
 	if err != nil {
 		return false, fmt.Errorf(
 			"PathIsDevice failed for path %q: %v",
 			pathname,
 			err)
 	}
+	// path refers to a device
+	if finfo.Mode()&os.ModeDevice != 0 {
+		isDevice = true
+	}
+
 	if !isDevice {
 		glog.Errorf("Path %q is not refering to a device.", pathname)
 		return false, nil
@@ -283,23 +295,6 @@ func exclusiveOpenFailsOnDevice(pathname string) (bool, error) {
 	}
 	// error during call to Open
 	return false, errno
-}
-
-func pathIsDevice(pathname string) (bool, error) {
-	finfo, err := os.Stat(pathname)
-	if os.IsNotExist(err) {
-		return false, nil
-	}
-	// err in call to os.Stat
-	if err != nil {
-		return false, err
-	}
-	// path refers to a device
-	if finfo.Mode()&os.ModeDevice != 0 {
-		return true, nil
-	}
-	// path does not refer to device
-	return false, nil
 }
 
 //GetDeviceNameFromMount: given a mount point, find the device name from its global mount point
@@ -356,6 +351,30 @@ func (mounter *Mounter) MakeRShared(path string) error {
 	mountCmd := defaultMountCommand
 	mountArgs := []string{}
 	return doMakeRShared(path, procMountInfoPath, mountCmd, mountArgs)
+}
+
+func (mounter *Mounter) GetFileType(pathname string) (MountPathType, error) {
+	var pathType MountPathType
+	finfo, err := os.Stat(pathname)
+	if os.IsNotExist(err) {
+		return pathType, nil
+	}
+	// err in call to os.Stat
+	if err != nil {
+		return pathType, err
+	}
+
+	mode := finfo.Sys().(*syscall.Stat_t).Mode
+	switch mode & syscall.S_IFMT {
+	case syscall.S_IFSOCK:
+		return MountPathSocket, nil
+	case syscall.S_IFBLK:
+		return MountPathBlockDev, nil
+	case syscall.S_IFCHR:
+		return MountPathCharDev, nil
+	}
+
+	return pathType, fmt.Errorf("only recognise socket, block device and character device")
 }
 
 // formatAndMount uses unix utils to format and mount the given disk
