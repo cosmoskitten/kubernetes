@@ -8,7 +8,10 @@ load(
 
 go_test(
     name = "go_default_test",
-    srcs = ["unstructured_test.go"],
+    srcs = [
+        "helpers_test.go",
+        "unstructured_list_test.go",
+    ],
     library = ":go_default_library",
     deps = ["//vendor/github.com/stretchr/testify/assert:go_default_library"],
 )
@@ -16,7 +19,9 @@ go_test(
 go_library(
     name = "go_default_library",
     srcs = [
+        "helpers.go",
         "unstructured.go",
+        "unstructured_list.go",
         "zz_generated.deepcopy.go",
     ],
     deps = [
