@@ -9,6 +9,7 @@ load(
 go_library(
     name = "go_default_library",
     srcs = [
+        "device-plugin.go",
         "equivalence_cache_predicates.go",
         "events.go",
         "framework.go",
