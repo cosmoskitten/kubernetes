@@ -17,6 +17,7 @@ go_library(
         "framework.go",
         "get-kubemark-resource-usage.go",
         "google_compute.go",
+        "gpu_util.go",
         "ingress_utils.go",
         "jobs_util.go",
         "kubelet_stats.go",
