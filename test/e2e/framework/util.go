@@ -65,6 +65,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/apimachinery/pkg/util/wait"
+	utilyaml "k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
@@ -187,6 +188,13 @@ const (
 	// images within this time we simply log their output and carry on
 	// with the tests.
 	ImagePrePullingTimeout = 5 * time.Minute
+
+	// CosOSImage is the string advertised by the OSImage field of a node running COS
+	CosOSImage = "Container-Optimized OS from Google"
+
+	// GPUResourceName is the extended name of the GPU resource since v1.8
+	// this uses the device plugin mechanism
+	NVIDIAGPUResourceName = "nvidia.com/gpu"
 )
 
 var (
@@ -3311,7 +3319,7 @@ func RunHostCmdOrDie(ns, name, cmd string) string {
 	return stdout
 }
 
-// RunHostCmdWithRetries calls RunHostCmd and retries all errors
+// RunHostCmdWithRetries calls RunHostCmd and retries errors it thinks may be transient
 // until it succeeds or the specified timeout expires.
 // This can be used with idempotent commands to deflake transient Node issues.
 func RunHostCmdWithRetries(ns, name, cmd string, interval, timeout time.Duration) (string, error) {
@@ -3323,6 +3331,9 @@ func RunHostCmdWithRetries(ns, name, cmd string, interval, timeout time.Duration
 		}
 		if elapsed := time.Since(start); elapsed > timeout {
 			return out, fmt.Errorf("RunHostCmd still failed after %v: %v", elapsed, err)
+		}
+		if !strings.Contains(err.Error(), "Error from server") {
+			return out, fmt.Errorf("Non-retryable RunHostCmd error: %v", err)
 		}
 		Logf("Waiting %v to retry failed RunHostCmd: %v", interval, err)
 		time.Sleep(interval)
@@ -5014,4 +5025,51 @@ func DumpDebugInfo(c clientset.Interface, ns string) {
 
 func IsRetryableAPIError(err error) bool {
 	return apierrs.IsTimeout(err) || apierrs.IsServerTimeout(err) || apierrs.IsTooManyRequests(err) || apierrs.IsInternalError(err)
+}
+
+// DsFromManifest reads a .json/yaml file and returns the daemonset in it.
+func DsFromManifest(url string) *extensions.DaemonSet {
+	var controller extensions.DaemonSet
+	Logf("Parsing ds from %v", url)
+
+	var response *http.Response
+	var err error
+
+	for i := 1; i <= 5; i++ {
+		response, err = http.Get(url)
+		if err == nil && response.StatusCode == 200 {
+			break
+		}
+		time.Sleep(time.Duration(i) * time.Second)
+	}
+
+	Expect(err).NotTo(HaveOccurred())
+	Expect(response.StatusCode).To(Equal(200))
+	defer response.Body.Close()
+
+	data, err := ioutil.ReadAll(response.Body)
+	Expect(err).NotTo(HaveOccurred())
+
+	json, err := utilyaml.ToJSON(data)
+	Expect(err).NotTo(HaveOccurred())
+
+	Expect(runtime.DecodeInto(api.Codecs.UniversalDecoder(), json, &controller)).NotTo(HaveOccurred())
+	return &controller
+}
+
+// NumberOfGPUs returs the number of GPUs advertised by a node
+// This is based on the Device Plugin system
+func NumberOfNVIDIAGPUs(node *v1.Node) int64 {
+	val, ok := node.Status.Capacity[NVIDIAGPUResourceName]
+
+	if !ok {
+		return 0
+	}
+
+	return val.Value()
+}
+
+// IsNodeRunningCOS returns true if the node OSImage is COS
+func IsNodeRunningCOS(node *v1.Node) bool {
+	return strings.Contains(node.Status.NodeInfo.OSImage, CosOSImage)
 }
