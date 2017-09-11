@@ -18,11 +18,15 @@ package e2e_node
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
 	"path"
+	"path/filepath"
 	"time"
 
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/uuid"
+	"k8s.io/kubernetes/pkg/credentialprovider"
 	"k8s.io/kubernetes/pkg/kubelet/images"
 	"k8s.io/kubernetes/test/e2e/framework"
 
@@ -256,11 +260,12 @@ while true; do sleep 1; done
 			// testing image pulling, these images don't need to be prepulled. The ImagePullPolicy
 			// is v1.PullAlways, so it won't be blocked by framework image white list check.
 			for _, testCase := range []struct {
-				description string
-				image       string
-				secret      bool
-				phase       v1.PodPhase
-				waiting     bool
+				description        string
+				image              string
+				secret             bool
+				credentialProvider bool
+				phase              v1.PodPhase
+				waiting            bool
 			}{
 				{
 					description: "should not be able to pull image from invalid registry",
@@ -299,6 +304,13 @@ while true; do sleep 1; done
 					phase:       v1.PodRunning,
 					waiting:     false,
 				},
+				{
+					description:        "should be able to pull from private registry with credential provider",
+					image:              "gcr.io/authenticated-image-pulling/alpine:3.1",
+					credentialProvider: true,
+					phase:              v1.PodRunning,
+					waiting:            false,
+				},
 			} {
 				testCase := testCase
 				It(testCase.description+" [Conformance]", func() {
@@ -322,6 +334,16 @@ while true; do sleep 1; done
 						Expect(err).NotTo(HaveOccurred())
 						defer f.ClientSet.Core().Secrets(f.Namespace.Name).Delete(secret.Name, nil)
 						container.ImagePullSecrets = []string{secret.Name}
+					}
+					if testCase.credentialProvider {
+						tmpdir, err := ioutil.TempDir("", "image-credential")
+						Expect(err).NotTo(HaveOccurred())
+						err = ioutil.WriteFile(filepath.Join(tmpdir, "config.json"), []byte(auth), 0644)
+						Expect(err).NotTo(HaveOccurred())
+						credentialprovider.SetPreferredDockercfgPath(tmpdir)
+						credentialprovider.ResetDefaultDockerProviderExpiration()
+						defer credentialprovider.SetPreferredDockercfgPath("")
+						defer os.RemoveAll(tmpdir)
 					}
 					// checkContainerStatus checks whether the container status matches expectation.
 					checkContainerStatus := func() error {
