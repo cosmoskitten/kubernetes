@@ -128,7 +128,7 @@ func (d *CachingDockerConfigProvider) resetExpiration() {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	d.expiration = time.Now().Add(-1 * time.Hour)
+	d.expiration = time.Time{}
 }
 
 // ResetDefaultDockerProviderExpiration resets .dockercfg provider's expiration.
