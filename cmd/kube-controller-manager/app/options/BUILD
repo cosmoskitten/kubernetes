@@ -12,6 +12,7 @@ go_library(
         "//pkg/apis/componentconfig:go_default_library",
         "//pkg/client/leaderelectionconfig:go_default_library",
         "//pkg/controller/garbagecollector:go_default_library",
+        "//pkg/controller/podautoscaler:go_default_library",
         "//pkg/features:go_default_library",
         "//pkg/master/ports:go_default_library",
         "//vendor/github.com/cloudflare/cfssl/helpers:go_default_library",
