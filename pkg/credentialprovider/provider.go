@@ -121,3 +121,24 @@ func (d *CachingDockerConfigProvider) Provide() DockerConfig {
 	d.expiration = time.Now().Add(d.Lifetime)
 	return d.cacheDockerConfig
 }
+
+// Reset expiration so that the provider will get configure from real provider instead of cache.
+// This is useful in node e2e testings.
+func (d *CachingDockerConfigProvider) resetExpiration() {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	d.expiration = time.Now().Add(-1 * time.Hour)
+}
+
+// ResetDefaultDockerProviderExpiration resets .dockercfg provider's expiration.
+func ResetDefaultDockerProviderExpiration() {
+	providersMutex.Lock()
+	defer providersMutex.Unlock()
+
+	if provider, ok := providers[".dockercfg"]; ok {
+		if p, ok := provider.(*CachingDockerConfigProvider); ok {
+			p.resetExpiration()
+		}
+	}
+}
