@@ -48,11 +48,12 @@ import (
 	"k8s.io/kubernetes/pkg/controller"
 )
 
-var (
-	// Usage shoud exceed the tolerance before we start downscale or upscale the pods.
-	// TODO: make it a flag or HPA spec element.
-	tolerance = 0.1
+const (
+	// DefaultTolerance used to calculating when to scale up/scale down.
+	DefaultTolerance = 0.1
+)
 
+var (
 	scaleUpLimitFactor  = 2.0
 	scaleUpLimitMinimum = 4.0
 )
