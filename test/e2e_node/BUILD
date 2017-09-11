@@ -115,6 +115,7 @@ go_test(
     deps = [
         "//pkg/api:go_default_library",
         "//pkg/api/v1/node:go_default_library",
+        "//pkg/credentialprovider:go_default_library",
         "//pkg/kubelet:go_default_library",
         "//pkg/kubelet/apis/kubeletconfig:go_default_library",
         "//pkg/kubelet/apis/stats/v1alpha1:go_default_library",
