@@ -773,10 +773,14 @@ function check-existing() {
 
 function create-network() {
   if ! gcloud compute networks --project "${NETWORK_PROJECT}" describe "${NETWORK}" &>/dev/null; then
-    echo "Creating new network: ${NETWORK}"
     # The network needs to be created synchronously or we have a race. The
     # firewalls can be added concurrent with instance creation.
-    gcloud compute networks create --project "${NETWORK_PROJECT}" "${NETWORK}" --mode=auto
+    local network_mode="auto"
+    if [[ "${CREATE_CUSTOM_NETWORK:-}" == "true" ]]; then
+      network_mode="custom"
+    fi
+    echo "Creating new ${network_mode} network: ${NETWORK}"
+    gcloud compute networks create --project "${NETWORK_PROJECT}" "${NETWORK}" --mode="${network_mode}"
   else
     PREEXISTING_NETWORK=true
     PREEXISTING_NETWORK_MODE="$(gcloud compute networks list ${NETWORK} --project ${NETWORK_PROJECT} --format='value(x_gcloud_mode)' || true)"
@@ -822,6 +826,13 @@ function expand-default-subnetwork() {
     --quiet
 }
 
+function assert-node-ip-range() {
+  if [[ -z ${NODE_IP_RANGE:-} ]]; then
+    echo "${color_red}NODE_IP_RANGE must be specified{color_norm}"
+    exit 1
+  fi
+}
+
 function create-subnetworks() {
   case ${ENABLE_IP_ALIASES} in
     true) echo "IP aliases are enabled. Creating subnetworks.";;
@@ -833,6 +844,9 @@ function create-subnetworks() {
         else
           echo "${color_yellow}Using pre-existing network ${NETWORK}, subnets won't be expanded to /19!${color_norm}"
         fi
+      elif [[ "${CREATE_CUSTOM_NETWORK:-}" == "true" ]]; then
+        assert-node-ip-range
+        gcloud compute networks subnets create "${NETWORK}" --project "${NETWORK_PROJECT}" --region "${REGION}" --network "${NETWORK}" --range "${NODE_IP_RANGE}"
       fi
       return;;
     *) echo "${color_red}Invalid argument to ENABLE_IP_ALIASES${color_norm}"
@@ -852,10 +866,7 @@ function create-subnetworks() {
       exit 1
     fi
 
-    if [[ -z ${NODE_IP_RANGE:-} ]]; then
-      echo "${color_red}NODE_IP_RANGE must be specified{color_norm}"
-      exit 1
-    fi
+    assert-node-ip-range
 
     echo "Creating subnet ${NETWORK}:${IP_ALIAS_SUBNETWORK}"
     gcloud beta compute networks subnets create \
@@ -935,7 +946,7 @@ function delete-network() {
 
 function delete-subnetworks() {
   if [[ ${ENABLE_IP_ALIASES:-} != "true" ]]; then
-    if [[ "${ENABLE_BIG_CLUSTER_SUBNETS}" = "true" ]]; then
+    if [[ "${ENABLE_BIG_CLUSTER_SUBNETS}" = "true" || "${CREATE_CUSTOM_NETWORK:-}" == "true" ]]; then
       # If running in custom mode network we need to delete subnets
       mode="$(gcloud compute networks list ${NETWORK} --project ${NETWORK_PROJECT} --format='value(x_gcloud_mode)' || true)"
       if [[ "${mode}" == "custom" ]]; then
