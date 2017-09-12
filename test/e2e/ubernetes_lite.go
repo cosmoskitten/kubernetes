@@ -22,6 +22,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	compute "google.golang.org/api/compute/v1"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -61,7 +62,85 @@ var _ = framework.KubeDescribe("Multi-AZ Clusters", func() {
 	It("should schedule pods in the same zones as statically provisioned PVs", func() {
 		PodsUseStaticPVsOrFail(f, (2*zoneCount)+1, image)
 	})
+
+	It("should only be allowed to provision PDs in zones where nodes exist", func() {
+		OnlyAllowNodeZones(f, zoneCount, image)
+	})
 })
+
+// OnlyAllowNodeZones tests that GetAllCurrentZones returns only zones with Nodes
+func OnlyAllowNodeZones(f *framework.Framework, zoneCount int, image string) {
+	gceCloud, err := framework.GetGCECloud()
+	Expect(err).NotTo(HaveOccurred())
+	gceCloud.SetClientSet(f.ClientSet)
+	Expect(err).NotTo(HaveOccurred())
+
+	// Get all the zones that the nodes are in
+	expectedZones, err := gceCloud.GetAllCurrentZones()
+	Expect(err).NotTo(HaveOccurred())
+	framework.Logf("Expected zones: %v\n", expectedZones)
+	// Get all the zones in this current region
+	region := gceCloud.Region()
+	allZonesInRegion, err := gceCloud.ListZonesInRegion(region)
+	Expect(err).NotTo(HaveOccurred())
+	var extraZone string
+	for _, zone := range allZonesInRegion {
+		if !expectedZones.Has(zone.Name) {
+			extraZone = zone.Name
+		}
+	}
+
+	// If no zones left to create an extra instance we screwed and we stop the test right here
+	Expect(extraZone).NotTo(Equal(""), fmt.Sprintf("No extra zones available in region %s", region))
+	framework.Logf("We are going to start a compute instance in unused zone: %v\n", extraZone)
+	// create a compute instance in an unused zone
+	project := framework.TestContext.CloudConfig.ProjectID
+	zone := extraZone
+	name := "compute-" + string(uuid.NewUUID())
+	imageURL := "https://www.googleapis.com/compute/v1/projects/debian-cloud/global/images/debian-7-wheezy-v20140606"
+
+	rb := &compute.Instance{
+		MachineType: "zones/" + zone + "/machineTypes/f1-micro",
+		Disks: []*compute.AttachedDisk{
+			{
+				AutoDelete: true,
+				Boot:       true,
+				Type:       "PERSISTENT",
+				InitializeParams: &compute.AttachedDiskInitializeParams{
+					DiskName:    "my-root-pd",
+					SourceImage: imageURL,
+				},
+			},
+		},
+		NetworkInterfaces: []*compute.NetworkInterface{
+			{
+				AccessConfigs: []*compute.AccessConfig{
+					{
+						Type: "ONE_TO_ONE_NAT",
+						Name: "External NAT",
+					},
+				},
+				Network: "/global/networks/default",
+			},
+		},
+		Name: name,
+	}
+	resp, err := gceCloud.InsertInstance(project, zone, rb)
+	Expect(err).NotTo(HaveOccurred())
+	framework.Logf("Compute creation response: %v\n", resp)
+	defer func() {
+		// Teardown of the compute instance
+		framework.Logf("Deleting compute resource: %v", name)
+		resp, err = gceCloud.DeleteInstance(project, zone, name)
+		framework.Logf("Compute deletion response: %v\n", resp)
+	}()
+	// GetAllZones functionality checking.
+	gotZones, err := gceCloud.GetAllCurrentZones()
+	Expect(err).NotTo(HaveOccurred())
+
+	Expect(gotZones.Equal(expectedZones)).To(BeTrue(), fmt.Sprintf("Expected zones: %v, Got Zones: %v", expectedZones, gotZones))
+
+}
 
 // Check that the pods comprising a service get spread evenly across available zones
 func SpreadServiceOrFail(f *framework.Framework, replicaCount int, image string) {

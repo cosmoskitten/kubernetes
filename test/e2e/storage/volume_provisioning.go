@@ -422,7 +422,7 @@ var _ = SIGDescribe("Dynamic Provisioning", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			// Get all k8s managed zones
-			managedZones, err = gceCloud.GetAllZones()
+			managedZones, err = gceCloud.GetAllManagedZones()
 			Expect(err).NotTo(HaveOccurred())
 
 			// Get a list of all zones in the project

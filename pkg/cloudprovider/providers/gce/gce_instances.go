@@ -19,6 +19,7 @@ package gce
 import (
 	"errors"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"strconv"
@@ -32,9 +33,11 @@ import (
 	compute "google.golang.org/api/compute/v1"
 
 	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
+	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/pkg/cloudprovider"
 	kubeletapis "k8s.io/kubernetes/pkg/kubelet/apis"
 )
@@ -250,48 +253,46 @@ func (gce *GCECloud) AddSSHKeyToAllInstances(user string, keyData []byte) error 
 	})
 }
 
-// GetAllZones returns all the zones in which nodes are running
-func (gce *GCECloud) GetAllZones() (sets.String, error) {
-	// Fast-path for non-multizone
-	if len(gce.managedZones) == 1 {
+// GetAllCurrentZones returns all the zones in which nodes are currently running
+func (gce *GCECloud) GetAllCurrentZones() (sets.String, error) {
+	zones := sets.NewString()
+	nodeList, err := gce.client.Core().Nodes().List(metav1.ListOptions{})
+	if err != nil {
+		log.Fatalf("Failed to list nodes: %v", err)
+		return nil, err
+	}
+
+	for _, node := range nodeList.Items {
+		labels := node.ObjectMeta.Labels
+		zone := labels[kubeletapis.LabelZoneFailureDomain]
+		zones.Insert(zone)
+	}
+	return zones, nil
+}
+
+// GetAllManagedZones gets all the zones managed by k8s
+func (gce *GCECloud) GetAllManagedZones() (sets.String, error) {
+	if gce.managedZones != nil {
 		return sets.NewString(gce.managedZones...), nil
 	}
+	return nil, fmt.Errorf("Could not get k8s managed zones, it was nil")
 
-	// TODO: Caching, but this is currently only called when we are creating a volume,
-	// which is a relatively infrequent operation, and this is only # zones API calls
-	zones := sets.NewString()
+}
 
-	// TODO: Parallelize, although O(zones) so not too bad (N <= 3 typically)
-	for _, zone := range gce.managedZones {
-		mc := newInstancesMetricContext("list", zone)
-		// We only retrieve one page in each zone - we only care about existence
-		listCall := gce.service.Instances.List(gce.projectID, zone)
+// SetClientSet sets the ClientSet on the GCECloud object for e2e tests
+func (gce *GCECloud) SetClientSet(c clientset.Interface) {
+	gce.client = c
+	return
+}
 
-		// No filter: We assume that a zone is either used or unused
-		// We could only consider running nodes (like we do in List above),
-		// but probably if instances are starting we still want to consider them.
-		// I think we should wait until we have a reason to make the
-		// call one way or the other; we generally can't guarantee correct
-		// volume spreading if the set of zones is changing
-		// (and volume spreading is currently only a heuristic).
-		// Long term we want to replace GetAllZones (which primarily supports volume
-		// spreading) with a scheduler policy that is able to see the global state of
-		// volumes and the health of zones.
+// InsertInstance creates a new instance on GCP
+func (gce *GCECloud) InsertInstance(project string, zone string, rb *compute.Instance) (*compute.Operation, error) {
+	return gce.service.Instances.Insert(project, zone, rb).Do()
+}
 
-		// Just a minimal set of fields - we only care about existence
-		listCall = listCall.Fields("items(name)")
-		res, err := listCall.Do()
-		if err != nil {
-			return nil, mc.Observe(err)
-		}
-		mc.Observe(nil)
-
-		if len(res.Items) != 0 {
-			zones.Insert(zone)
-		}
-	}
-
-	return zones, nil
+// DeleteInstance deletes an instance by name on GCP
+func (gce *GCECloud) DeleteInstance(project, zone, instance string) (*compute.Operation, error) {
+	return gce.service.Instances.Delete(project, zone, instance).Do()
 }
 
 // Implementation of Instances.CurrentNodeName
