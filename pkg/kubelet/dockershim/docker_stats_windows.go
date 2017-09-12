@@ -1,3 +1,5 @@
+// +build windows
+
 /*
 Copyright 2017 The Kubernetes Authors.
 
@@ -19,7 +21,6 @@ package dockershim
 import (
 	dockertypes "github.com/docker/docker/api/types"
 	runtimeapi "k8s.io/kubernetes/pkg/kubelet/apis/cri/v1alpha1/runtime"
-	"runtime"
 	"time"
 )
 
@@ -97,11 +98,11 @@ func (ds *dockerService) createContainerStats(containerID string) (*runtimeapi.C
 		},
 		Cpu: &runtimeapi.CpuUsage{
 			Timestamp:            time.Now().UnixNano(),
-			UsageCoreNanoSeconds: &runtimeapi.UInt64Value{Value: ds.getCpu(&dockerStats)},
+			UsageCoreNanoSeconds: &runtimeapi.UInt64Value{Value: ds.getCPU(&dockerStats)},
 		},
 		Memory: &runtimeapi.MemoryUsage{
 			Timestamp:       time.Now().UnixNano(),
-			WorkingSetBytes: &runtimeapi.UInt64Value{Value: ds.getMemory(&dockerStats)},
+			WorkingSetBytes: &runtimeapi.UInt64Value{Value: dockerStats.MemoryStats.PrivateWorkingSet},
 		},
 		WritableLayer: &runtimeapi.FilesystemUsage{
 			Timestamp: time.Now().UnixNano(),
@@ -112,17 +113,8 @@ func (ds *dockerService) createContainerStats(containerID string) (*runtimeapi.C
 	return containerStats, nil
 }
 
-func (ds *dockerService) getMemory(dockerStats *dockertypes.Stats) uint64 {
-	if runtime.GOOS == "windows" {
-		return dockerStats.MemoryStats.PrivateWorkingSet
-	}
-	return dockerStats.MemoryStats.Usage
-}
-func (ds *dockerService) getCpu(dockerStats *dockertypes.Stats) uint64 {
-	if runtime.GOOS == "windows" {
-		// have to multiply cpu usage by 100 since docker stats units is in 100's of nano seconds for Windows
-		// see https://github.com/moby/moby/blob/master/api/types/stats.go#L22
-		return dockerStats.CPUStats.CPUUsage.TotalUsage * 100
-	}
-	return dockerStats.CPUStats.CPUUsage.TotalUsage
+func (ds *dockerService) getCPU(dockerStats *dockertypes.Stats) uint64 {
+	// have to multiply cpu usage by 100 since docker stats units is in 100's of nano seconds for Windows
+	// see https://github.com/moby/moby/blob/master/api/types/stats.go#L22
+	return dockerStats.CPUStats.CPUUsage.TotalUsage * 100
 }

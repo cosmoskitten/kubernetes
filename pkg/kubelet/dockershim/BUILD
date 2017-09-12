@@ -18,7 +18,7 @@ go_library(
         "docker_legacy.go",
         "docker_sandbox.go",
         "docker_service.go",
-        "docker_stats.go",
+        "docker_stats_unsupported.go",
         "docker_streaming.go",
         "exec.go",
         "helpers.go",
@@ -28,9 +28,11 @@ go_library(
         "selinux_util.go",
     ] + select({
         "@io_bazel_rules_go//go/platform:linux_amd64": [
+            "docker_stats_linux.go",
             "helpers_linux.go",
         ],
         "@io_bazel_rules_go//go/platform:windows_amd64": [
+            "docker_stats_windows.go",
             "helpers_windows.go",
         ],
         "//conditions:default": [],
