@@ -425,7 +425,12 @@ func CreateControllerContext(s *options.CMServer, rootClientBuilder, clientBuild
 		return ControllerContext{}, err
 	}
 
-	cloud, err := cloudprovider.InitCloudProvider(s.CloudProvider, s.CloudConfigFile)
+	var cloud cloudprovider.Interface
+	if cloudprovider.IsExternal(s.CloudProvider) && s.ExternalPlugin != "" {
+		cloud, err = cloudprovider.InitCloudProvider(s.ExternalPlugin, s.CloudConfigFile)
+	} else {
+		cloud, err = cloudprovider.InitCloudProvider(s.CloudProvider, s.CloudConfigFile)
+	}
 	if err != nil {
 		return ControllerContext{}, fmt.Errorf("cloud provider could not be initialized: %v", err)
 	}

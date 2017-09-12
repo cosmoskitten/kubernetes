@@ -131,6 +131,7 @@ func (s *CMServer) AddFlags(fs *pflag.FlagSet, allControllers []string, disabled
 	fs.BoolVar(&s.UseServiceAccountCredentials, "use-service-account-credentials", s.UseServiceAccountCredentials, "If true, use individual service account credentials for each controller.")
 	fs.StringVar(&s.CloudProvider, "cloud-provider", s.CloudProvider, "The provider for cloud services.  Empty string for no provider.")
 	fs.StringVar(&s.CloudConfigFile, "cloud-config", s.CloudConfigFile, "The path to the cloud provider configuration file.  Empty string for no configuration file.")
+	fs.StringVar(&s.ExternalPlugin, "external-plugin", s.ExternalPlugin, "The plugin to use when cloud provider external. Can be empty, should only be set when cloud-provider is external.")
 	fs.BoolVar(&s.AllowUntaggedCloud, "allow-untagged-cloud", false, "Allow the cluster to run without the cluster-id on cloud instances.  This is a legacy mode of operation and a cluster-id will be required in the future.")
 	fs.MarkDeprecated("allow-untagged-cloud", "This flag is deprecated and will be removed in a future release.  A cluster-id will be required on cloud instances")
 	fs.Int32Var(&s.ConcurrentEndpointSyncs, "concurrent-endpoint-syncs", s.ConcurrentEndpointSyncs, "The number of endpoint syncing operations that will be done concurrently. Larger number = faster endpoint updating, but more CPU (and network) load")
