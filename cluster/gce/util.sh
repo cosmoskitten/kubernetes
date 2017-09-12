@@ -773,10 +773,23 @@ function check-existing() {
 
 function create-network() {
   if ! gcloud compute networks --project "${NETWORK_PROJECT}" describe "${NETWORK}" &>/dev/null; then
-    echo "Creating new network: ${NETWORK}"
     # The network needs to be created synchronously or we have a race. The
     # firewalls can be added concurrent with instance creation.
-    gcloud compute networks create --project "${NETWORK_PROJECT}" "${NETWORK}" --mode=auto
+    if [[ "${CREATE_CUSTOM_NETWORK:-}" == "true" ]]; then
+      echo "Creating new custom network: ${NETWORK}"
+      gcloud compute networks create --project "${NETWORK_PROJECT}" "${NETWORK}" --mode=custom
+      # Subnets will be created by create-subnetworks() if IP aliases is enabled.
+      if [[ "${ENABLE_IP_ALIASES:-}" != "true" ]]; then
+        if [[ -z "${NODE_IP_RANGE:-}" ]]; then
+          echo "${color_red}NODE_IP_RANGE must be specified{color_norm}"
+          exit 1
+        fi
+        gcloud compute networks subnets create "${NETWORK}" --project "${NETWORK_PROJECT}" --region "${REGION}" --network "${NETWORK}" --range "${NODE_IP_RANGE}"
+      fi
+    else
+      echo "Creating new auto network: ${NETWORK}"
+      gcloud compute networks create --project "${NETWORK_PROJECT}" "${NETWORK}" --mode=auto
+    fi
   else
     PREEXISTING_NETWORK=true
     PREEXISTING_NETWORK_MODE="$(gcloud compute networks list ${NETWORK} --project ${NETWORK_PROJECT} --format='value(x_gcloud_mode)' || true)"
@@ -935,7 +948,7 @@ function delete-network() {
 
 function delete-subnetworks() {
   if [[ ${ENABLE_IP_ALIASES:-} != "true" ]]; then
-    if [[ "${ENABLE_BIG_CLUSTER_SUBNETS}" = "true" ]]; then
+    if [[ "${ENABLE_BIG_CLUSTER_SUBNETS}" = "true" || "${CREATE_CUSTOM_NETWORK:-}" == "true" ]]; then
       # If running in custom mode network we need to delete subnets
       mode="$(gcloud compute networks list ${NETWORK} --project ${NETWORK_PROJECT} --format='value(x_gcloud_mode)' || true)"
       if [[ "${mode}" == "custom" ]]; then
