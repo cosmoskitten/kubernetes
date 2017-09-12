@@ -101,10 +101,17 @@ func setupProviderConfig() error {
 			return fmt.Errorf("Error building GCE/GKE provider: %v", err)
 		}
 
+		cs, err := framework.LoadClientset()
+		if err != nil {
+			glog.Fatal("Error loading client: ", err)
+		}
+		gceCloud.SetClientSet(cs)
+
 		cloudConfig.Provider = gceCloud
 
+		// Arbitrarily pick one of the zones we have nodes in
 		if cloudConfig.Zone == "" && framework.TestContext.CloudConfig.MultiZone {
-			zones, err := gceCloud.GetAllZones()
+			zones, err := gceCloud.GetAllCurrentZones()
 			if err != nil {
 				return err
 			}
