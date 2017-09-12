@@ -126,6 +126,7 @@ func (d *kubeDockerClient) InspectContainer(id string) (*dockertypes.ContainerJS
 func (d *kubeDockerClient) InspectContainerWithSize(id string) (*dockertypes.ContainerJSON, error) {
 	ctx, cancel := d.getTimeoutContext()
 	defer cancel()
+	// Inspects the container including the fields SizeRw and SizeRootFs.
 	containerJSON, _, err := d.client.ContainerInspectWithRaw(ctx, id, true)
 	if ctxErr := contextError(ctx); ctxErr != nil {
 		return nil, ctxErr

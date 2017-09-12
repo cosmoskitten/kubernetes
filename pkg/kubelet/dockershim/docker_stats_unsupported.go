@@ -1,7 +1,7 @@
 // +build !linux,!windows
 
 /*
-Copyright 2016 The Kubernetes Authors.
+Copyright 2017 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,20 +16,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package remote
+package dockershim
 
 import (
 	"fmt"
-	"github.com/golang/glog"
 	runtimeapi "k8s.io/kubernetes/pkg/kubelet/apis/cri/v1alpha1/runtime"
 )
 
-// ContainerStats requests the stats for a given container and returns them.
-func (r *RemoteRuntimeService) ContainerStats(req *runtimeapi.ContainerStatsRequest) (*runtimeapi.ContainerStatsResponse, error) {
+// ContainerStats returns stats for a container stats request based on container id.
+func (ds *dockerService) ContainerStats(containerStatsRequest *runtimeapi.ContainerStatsRequest) (*runtimeapi.ContainerStatsResponse, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
-// ListContainerStats requests the stats for all containers based on the filter in req and returns them.
-func (r *RemoteRuntimeService) ListContainerStats(req *runtimeapi.ListContainerStatsRequest) (*runtimeapi.ListContainerStatsResponse, error) {
+// ListContainerStats returns stats for a list container stats request based on a filter.
+func (ds *dockerService) ListContainerStats(containerStatsRequest *runtimeapi.ListContainerStatsRequest) (*runtimeapi.ListContainerStatsResponse, error) {
 	return nil, fmt.Errorf("not implemented")
 }
