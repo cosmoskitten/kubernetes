@@ -35,12 +35,18 @@ const (
 	ProfileRuntimeDefault = "runtime/default"
 	// The prefix for specifying profiles loaded on the node.
 	ProfileNamePrefix = "localhost/"
+
+	// Unconfined profile
+	ProfileNameUnconfined = "unconfined"
 )
 
 // Checks whether app armor is required for pod to be run.
 func isRequired(pod *v1.Pod) bool {
-	for key := range pod.Annotations {
+	for key, value := range pod.Annotations {
 		if strings.HasPrefix(key, ContainerAnnotationKeyPrefix) {
+			if value == ProfileNameUnconfined {
+				return false
+			}
 			return true
 		}
 	}

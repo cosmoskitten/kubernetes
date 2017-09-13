@@ -52,7 +52,7 @@ func LoadAppArmorProfiles(f *framework.Framework) {
 // CreateAppArmorTestPod creates a pod that tests apparmor profile enforcement. The pod exits with
 // an error code if the profile is incorrectly enforced. If runOnce is true the pod will exit after
 // a single test, otherwise it will repeat the test every 1 second until failure.
-func CreateAppArmorTestPod(f *framework.Framework, runOnce bool) *api.Pod {
+func CreateAppArmorTestPod(f *framework.Framework, unconfined bool, runOnce bool) *api.Pod {
 	profile := "localhost/" + appArmorProfilePrefix + f.Namespace.Name
 	testCmd := fmt.Sprintf(`
 if touch %[1]s; then
@@ -66,6 +66,16 @@ elif ! grep "%[3]s" /proc/self/attr/current; then
   echo "found: $(cat /proc/self/attr/current)"
   exit 3
 fi`, appArmorDeniedPath, appArmorAllowedPath, appArmorProfilePrefix+f.Namespace.Name)
+
+	if unconfined {
+		profile = apparmor.ProfileNameUnconfined
+		checkCmd := "error=`cat /proc/sysrq-trigger 2>&1`"
+		testCmd = fmt.Sprintf(`
+echo "check if access to the file is authorized within the unconfined container"
+%s
+echo $error | grep "Input/output error"
+echo "Profile unconfined is successfully enforced"`, checkCmd)
+	}
 
 	if !runOnce {
 		testCmd = fmt.Sprintf(`while true; do
