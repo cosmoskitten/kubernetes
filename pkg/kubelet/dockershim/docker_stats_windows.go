@@ -106,7 +106,6 @@ func (ds *dockerService) createContainerStats(containerID string) (*runtimeapi.C
 		},
 		WritableLayer: &runtimeapi.FilesystemUsage{
 			Timestamp: time.Now().UnixNano(),
-			StorageId: &runtimeapi.StorageIdentifier{Uuid: containerJSON.Driver},
 			UsedBytes: &runtimeapi.UInt64Value{Value: uint64(*containerJSON.SizeRw)},
 		},
 	}
