@@ -19,11 +19,13 @@ package e2e
 import (
 	"fmt"
 	"math"
+	"strconv"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	compute "google.golang.org/api/compute/v1"
 	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -89,13 +91,14 @@ func OnlyAllowNodeZones(f *framework.Framework, zoneCount int, image string) {
 		}
 	}
 
-	// If no zones left to create an extra instance we screwed and we stop the test right here
+	// If no zones left to create an extra instance we stop the test right here
 	Expect(extraZone).NotTo(Equal(""), fmt.Sprintf("No extra zones available in region %s", region))
 	By(fmt.Sprintf("starting a compute instance in unused zone: %v\n", extraZone))
 	// create a compute instance in an unused zone
 	project := framework.TestContext.CloudConfig.ProjectID
 	zone := extraZone
-	name := "compute-" + string(uuid.NewUUID())
+	myuuid := string(uuid.NewUUID())
+	name := "compute-" + myuuid
 	imageURL := "https://www.googleapis.com/compute/v1/projects/debian-cloud/global/images/debian-7-wheezy-v20140606"
 
 	rb := &compute.Instance{
@@ -106,7 +109,7 @@ func OnlyAllowNodeZones(f *framework.Framework, zoneCount int, image string) {
 				Boot:       true,
 				Type:       "PERSISTENT",
 				InitializeParams: &compute.AttachedDiskInitializeParams{
-					DiskName:    "my-root-pd",
+					DiskName:    "my-root-pd-" + myuuid,
 					SourceImage: imageURL,
 				},
 			},
@@ -134,11 +137,53 @@ func OnlyAllowNodeZones(f *framework.Framework, zoneCount int, image string) {
 		framework.Logf("Compute deletion response: %v\n", resp)
 	}()
 	// GetAllZones functionality checking.
+	By("Checking that GetAllCurrentZones returns the same amount of zones as before the compute is created")
 	gotZones, err := gceCloud.GetAllCurrentZones()
 	Expect(err).NotTo(HaveOccurred())
 
 	Expect(gotZones.Equal(expectedZones)).To(BeTrue(), fmt.Sprintf("Expected zones: %v, Got Zones: %v", expectedZones, gotZones))
 
+	By("Creating zoneCount+1 PVCs and making sure PDs are only provisioned in zones with nodes")
+	// Create some (zoneCount+1) PVCs with names of form "pvc-x" where x is 1...zoneCount+1
+	// This will exploit ChooseZoneForVolume in pkg/volume/util.go to provision them in all the zones it "sees"
+	var pvcList []*v1.PersistentVolumeClaim
+	c := f.ClientSet
+	ns := f.Namespace.Name
+	for index := 1; index <= zoneCount+1; index++ {
+		pvc := newNamedDefaultClaim(ns, index)
+		pvc, err = framework.CreatePVC(c, ns, pvc)
+		Expect(err).NotTo(HaveOccurred())
+		pvcList = append(pvcList, pvc)
+		// Defer the cleanup
+		defer func() {
+			framework.Logf("deleting claim %q/%q", pvc.Namespace, pvc.Name)
+			err = c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Delete(pvc.Name, nil)
+			if err != nil {
+				framework.Failf("Error deleting claim %q. Error: %v", pvc.Name, err)
+			}
+		}()
+	}
+	// Wait for all claims bound
+	for _, claim := range pvcList {
+		err = framework.WaitForPersistentVolumeClaimPhase(v1.ClaimBound, c, claim.Namespace, claim.Name, framework.Poll, framework.ClaimProvisionTimeout)
+		Expect(err).NotTo(HaveOccurred())
+	}
+
+	pvZones := sets.NewString()
+	By("Checking that PDs have been provisioned in only the expected zones")
+	// Check all PVCs and make sure they have provisioned disks in the zones we care about
+	for _, claim := range pvcList {
+		// Get a new copy of the claim to have all fields populated
+		claim, err = c.CoreV1().PersistentVolumeClaims(claim.Namespace).Get(claim.Name, metav1.GetOptions{})
+		Expect(err).NotTo(HaveOccurred())
+		// Get the related PV
+		pv, err := c.CoreV1().PersistentVolumes().Get(claim.Spec.VolumeName, metav1.GetOptions{})
+		Expect(err).NotTo(HaveOccurred())
+		pvZone, ok := pv.ObjectMeta.Labels[kubeletapis.LabelZoneFailureDomain]
+		Expect(ok).To(BeTrue(), "PV has no LabelZone to be found")
+		pvZones.Insert(pvZone)
+	}
+	Expect(pvZones.Equal(expectedZones)).To(BeTrue(), fmt.Sprintf("Expected provisioned PD zones: %v, Got Zones: %v", expectedZones, gotZones))
 }
 
 // Check that the pods comprising a service get spread evenly across available zones
@@ -397,4 +442,25 @@ func PodsUseStaticPVsOrFail(f *framework.Framework, podCount int, image string) 
 		err = framework.WaitForPodRunningInNamespace(c, config.pod)
 		Expect(err).NotTo(HaveOccurred())
 	}
+}
+
+func newNamedDefaultClaim(ns string, index int) *v1.PersistentVolumeClaim {
+	claim := v1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pvc-" + strconv.Itoa(index),
+			Namespace: ns,
+		},
+		Spec: v1.PersistentVolumeClaimSpec{
+			AccessModes: []v1.PersistentVolumeAccessMode{
+				v1.ReadWriteOnce,
+			},
+			Resources: v1.ResourceRequirements{
+				Requests: v1.ResourceList{
+					v1.ResourceName(v1.ResourceStorage): resource.MustParse("1Gi"),
+				},
+			},
+		},
+	}
+
+	return &claim
 }
