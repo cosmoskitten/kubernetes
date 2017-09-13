@@ -39,8 +39,11 @@ const (
 
 // Checks whether app armor is required for pod to be run.
 func isRequired(pod *v1.Pod) bool {
-	for key := range pod.Annotations {
+	for key, value := range pod.Annotations {
 		if strings.HasPrefix(key, ContainerAnnotationKeyPrefix) {
+			if value == "unconfined" {
+				return false
+			}
 			return true
 		}
 	}

@@ -2766,8 +2766,10 @@ func ValidateAppArmorPodAnnotations(annotations map[string]string, spec *api.Pod
 			allErrs = append(allErrs, field.Invalid(fldPath.Key(k), containerName, "container not found"))
 		}
 
-		if err := apparmor.ValidateProfileFormat(p); err != nil {
-			allErrs = append(allErrs, field.Invalid(fldPath.Key(k), p, err.Error()))
+		if p != "unconfined" {
+			if err := apparmor.ValidateProfileFormat(p); err != nil {
+				allErrs = append(allErrs, field.Invalid(fldPath.Key(k), p, err.Error()))
+			}
 		}
 	}
 
