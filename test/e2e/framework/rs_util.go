@@ -20,8 +20,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	. "github.com/onsi/ginkgo"
 
+	"k8s.io/api/core/v1"
 	extensions "k8s.io/api/extensions/v1beta1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,6 +31,7 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	deploymentutil "k8s.io/kubernetes/pkg/controller/deployment/util"
+	labelsutil "k8s.io/kubernetes/pkg/util/labels"
 	testutils "k8s.io/kubernetes/test/utils"
 )
 
@@ -45,7 +48,7 @@ func UpdateReplicaSetWithRetries(c clientset.Interface, namespace, name string, 
 		// Apply the update, then attempt to push it to the apiserver.
 		applyUpdate(rs)
 		if rs, err = c.Extensions().ReplicaSets(namespace).Update(rs); err == nil {
-			Logf("Updating replica set %q", name)
+			Logf("Updating replicaset %q", name)
 			return true, nil
 		}
 		updateErr = err
@@ -117,7 +120,7 @@ func waitForReplicaSetPodsGone(c clientset.Interface, rs *extensions.ReplicaSet)
 	})
 }
 
-// WaitForReadyReplicaSet waits until the replica set has all of its replicas ready.
+// WaitForReadyReplicaSet waits until the replicaset has all of its replicas ready.
 func WaitForReadyReplicaSet(c clientset.Interface, ns, name string) error {
 	err := wait.Poll(Poll, pollShortTimeout, func() (bool, error) {
 		rs, err := c.Extensions().ReplicaSets(ns).Get(name, metav1.GetOptions{})
@@ -127,7 +130,7 @@ func WaitForReadyReplicaSet(c clientset.Interface, ns, name string) error {
 		return *(rs.Spec.Replicas) == rs.Status.Replicas && *(rs.Spec.Replicas) == rs.Status.ReadyReplicas, nil
 	})
 	if err == wait.ErrWaitTimeout {
-		err = fmt.Errorf("replica set %q never became ready", name)
+		err = fmt.Errorf("replicaset %q never became ready", name)
 	}
 	return err
 }
@@ -137,4 +140,112 @@ func RunReplicaSet(config testutils.ReplicaSetConfig) error {
 	config.NodeDumpFunc = DumpNodeDebugInfo
 	config.ContainerDumpFunc = LogFailedContainers
 	return testutils.RunReplicaSet(config)
+}
+
+func NewReplicaSet(name, namespace string, replicas int32, podLabels map[string]string, imageName, image string) *extensions.ReplicaSet {
+	return &extensions.ReplicaSet{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "ReplicaSet",
+			APIVersion: "extensions/v1beta1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      name,
+		},
+		Spec: extensions.ReplicaSetSpec{
+			Selector: &metav1.LabelSelector{
+				MatchLabels: podLabels,
+			},
+			Replicas: &replicas,
+			Template: v1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: podLabels,
+				},
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Name:  imageName,
+							Image: image,
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func LogReplicaSet(rs *extensions.ReplicaSet) {
+	if rs != nil {
+		Logf(spew.Sprintf("Replicaset %q:\n%+v", rs.Name, *rs))
+	} else {
+		Logf("Replicaset is nil.")
+	}
+}
+
+// WaitForReplicaSetRevisionAndImage waits for the RS's revision and container image to match the given revision and image.
+// Note that RS revision should be updated shortly, so we only wait for 1 minute here to fail early.
+func WaitForReplicaSetRevisionAndImage(c clientset.Interface, ns, replicaSetName string, revision, image string, pollInterval, pollTimeout time.Duration) error {
+	var rs *extensions.ReplicaSet
+	var reason string
+	err := wait.Poll(pollInterval, pollTimeout, func() (bool, error) {
+		var err error
+		rs, err = c.Extensions().ReplicaSets(ns).Get(replicaSetName, metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+		if rs == nil {
+			reason = fmt.Sprintf("Replicaset %q is yet to be created", rs.Name)
+			Logf(reason)
+			return false, nil
+		}
+		if !labelsutil.SelectorHasLabel(rs.Spec.Selector, extensions.DefaultDeploymentUniqueLabelKey) {
+			reason = fmt.Sprintf("Replicaset %q doesn't have DefaultDeploymentUniqueLabelKey", rs.Name)
+			Logf(reason)
+			return false, nil
+		}
+		// Check revision of the replicaset
+		if rs.Annotations == nil || rs.Annotations[deploymentutil.RevisionAnnotation] != revision {
+			reason = fmt.Sprintf("Replicaset %q doesn't have the required revision set", rs.Name)
+			Logf(reason)
+			return false, nil
+		}
+		if !containsImage(rs.Spec.Template.Spec.Containers, image) {
+			reason = fmt.Sprintf("Replicaset %q doesn't have the required image %s.", rs.Name, image)
+			Logf(reason)
+			return false, nil
+		}
+		return true, nil
+	})
+	if err == wait.ErrWaitTimeout {
+		LogReplicaSet(rs)
+		err = fmt.Errorf(reason)
+	}
+	if rs == nil {
+		return fmt.Errorf("failed to create new replicaset")
+	}
+	if err != nil {
+		return fmt.Errorf("error waiting for replicaset %q (got %s / %s) revision and image to match expectation (expected %s / %s): %v", rs.Name, rs.Annotations[deploymentutil.RevisionAnnotation], rs.Spec.Template.Spec.Containers[0].Image, revision, image, err)
+	}
+	return nil
+}
+
+// WaitForObservedReplicaSet polls for replicaset to be updated so that replicaset.Status.ObservedGeneration >= desiredGeneration.
+// Return error if polling times out.
+func WaitForObservedReplicaSet(c clientset.Interface, ns, replicaSetName string, desiredGeneration int64, interval, timeout time.Duration) error {
+	return wait.PollImmediate(interval, timeout, func() (bool, error) {
+		rs, err := c.Extensions().ReplicaSets(ns).Get(replicaSetName, metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+		return rs.Status.ObservedGeneration >= desiredGeneration, nil
+	})
+}
+
+func containsImage(containers []v1.Container, imageName string) bool {
+	for _, container := range containers {
+		if container.Image == imageName {
+			return true
+		}
+	}
+	return false
 }
