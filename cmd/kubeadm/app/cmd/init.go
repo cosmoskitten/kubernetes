@@ -401,14 +401,20 @@ func (i *Init) Run(out io.Writer) error {
 		return err
 	}
 
-	if err := dnsaddonphase.EnsureDNSAddon(i.cfg, client); err != nil {
-		return err
-	}
-
 	if err := proxyaddonphase.EnsureProxyAddon(i.cfg, client); err != nil {
 		return err
 	}
 
+	// Make the service discovery coreDNS if feature gate is enabled
+	if features.Enabled(i.cfg.FeatureGates, features.CoreDNS) {
+		if err := dnsaddonphase.EnsureCoreDNSAddon(i.cfg, client); err != nil {
+			return err
+		}
+	} else {
+		if err := dnsaddonphase.EnsureDNSAddon(i.cfg, client); err != nil {
+			return err
+		}
+	}
 	// PHASE 7: Make the control plane self-hosted if feature gate is enabled
 	if features.Enabled(i.cfg.FeatureGates, features.SelfHosting) {
 		// Temporary control plane is up, now we create our self hosted control

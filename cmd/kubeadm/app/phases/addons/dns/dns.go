@@ -23,6 +23,7 @@ import (
 
 	"k8s.io/api/core/v1"
 	extensions "k8s.io/api/extensions/v1beta1"
+	"k8s.io/api/rbac/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kuberuntime "k8s.io/apimachinery/pkg/runtime"
@@ -122,6 +123,139 @@ func createKubeDNSAddon(deploymentBytes, serviceBytes []byte, client clientset.I
 
 		if _, err := client.CoreV1().Services(metav1.NamespaceSystem).Update(kubednsService); err != nil {
 			return fmt.Errorf("unable to create/update the kube-dns service: %v", err)
+		}
+	}
+	return nil
+}
+
+func EnsureCoreDNSAddon(cfg *kubeadmapi.MasterConfiguration, client clientset.Interface) error {
+	k8sVersion, err := version.ParseSemantic(cfg.KubernetesVersion)
+	if err != nil {
+		return fmt.Errorf("couldn't parse kubernetes version %q: %v", cfg.KubernetesVersion, err)
+	}
+	// Get the YAML manifest conditionally based on the k8s version
+	dnsDeploymentBytes := GetcoreDNSManifest(k8sVersion)
+	coreDNSDeploymentBytes, err := kubeadmutil.ParseTemplate(dnsDeploymentBytes, struct{ MasterTaintKey, Version string }{
+		MasterTaintKey: kubeadmconstants.LabelNodeRoleMaster,
+		Version:        GetcoreDNSVersion(k8sVersion),
+	})
+	if err != nil {
+		return fmt.Errorf("error when parsing coreDNS deployment template: %v", err)
+	}
+
+	// Get the config file for CoreDNS
+	coreDNSConfigMapBytes, err := kubeadmutil.ParseTemplate(CoreDNSConfigMap, struct{ DNSDomain, Servicecidr string }{
+		Servicecidr: cfg.Networking.ServiceSubnet,
+		DNSDomain:   cfg.Networking.DNSDomain,
+	})
+	if err != nil {
+		return fmt.Errorf("error when parsing coreDNS configMap template: %v", err)
+	}
+
+	// Get the ClusterRole file for CoreDNS
+	coreDNSClusterRoleBytes, err := kubeadmutil.ParseTemplate(CoreDNSClusterRole, "")
+	if err != nil {
+		return fmt.Errorf("error when parsing coreDNS ClusterRole template: %v", err)
+	}
+
+	// Get the ClusterRoleBinding file for CoreDNS
+	coreDNSClusterRoleBindingBytes, err := kubeadmutil.ParseTemplate(CoreDNSClusterRoleBinding, "")
+	if err != nil {
+		return fmt.Errorf("error when parsing coreDNS ClusterRole template: %v", err)
+	}
+
+	coreDNSServiceAccountBytes, err := kubeadmutil.ParseTemplate(CoreDNSServiceAccount, "")
+	if err != nil {
+		return fmt.Errorf("error when parsing coreDNS ServiceAccount template: %v", err)
+	}
+
+	dnsip, err := getDNSIP(client)
+	if err != nil {
+		return err
+	}
+
+	coreDNSServiceBytes, err := kubeadmutil.ParseTemplate(coreDNSService, struct{ DNSIP string }{
+		DNSIP: dnsip.String(),
+	})
+
+	if err != nil {
+		return fmt.Errorf("error when parsing coreDNS service template: %v", err)
+	}
+
+	if err := createcoreDNSAddon(coreDNSDeploymentBytes, coreDNSServiceBytes, coreDNSConfigMapBytes, coreDNSClusterRoleBytes, coreDNSClusterRoleBindingBytes, coreDNSServiceAccountBytes, client); err != nil {
+		return err
+	}
+	fmt.Println("[addons] Applied essential addon: coreDNS")
+	return nil
+}
+
+func createcoreDNSAddon(deploymentBytes, serviceBytes, configBytes, clusterroleBytes, clusterrolebindingBytes, serviceAccountBytes []byte, client clientset.Interface) error {
+	coreDNSConfigMap := &v1.ConfigMap{}
+	if err := kuberuntime.DecodeInto(api.Codecs.UniversalDecoder(), configBytes, coreDNSConfigMap); err != nil {
+		return fmt.Errorf("unable to decode coreDNS configmap %v", err)
+	}
+
+	// Create the ConfigMap for coreDNS or update it in case it already exists
+	if err := apiclient.CreateOrUpdateConfigMap(client, coreDNSConfigMap); err != nil {
+		return err
+	}
+
+	coreDNSClusterRoles := &v1beta1.ClusterRole{}
+	if err := kuberuntime.DecodeInto(api.Codecs.UniversalDecoder(), clusterroleBytes, coreDNSClusterRoles); err != nil {
+		return fmt.Errorf("unable to decode coreDNS clusterroles %v", err)
+	}
+
+	// Create the Clusterroles for coreDNS or update it in case it already exists
+	if err := apiclient.CreateOrUpdateClusterRole(client, coreDNSClusterRoles); err != nil {
+		return err
+	}
+
+	CoreDNSClusterRolesBinding := &v1beta1.ClusterRoleBinding{}
+	if err := kuberuntime.DecodeInto(api.Codecs.UniversalDecoder(), clusterrolebindingBytes, CoreDNSClusterRolesBinding); err != nil {
+		return fmt.Errorf("unable to decode coreDNS clusterrolebindings %v", err)
+	}
+
+	// Create the Clusterrolebindings for coreDNS or update it in case it already exists
+	if err := apiclient.CreateOrUpdateClusterRoleBinding(client, CoreDNSClusterRolesBinding); err != nil {
+		return err
+	}
+
+	coreDNSServiceAccount := &v1.ServiceAccount{}
+	if err := kuberuntime.DecodeInto(api.Codecs.UniversalDecoder(), serviceAccountBytes, coreDNSServiceAccount); err != nil {
+		return fmt.Errorf("unable to decode coreDNS configmap %v", err)
+	}
+
+	// Create the ConfigMap for coreDNS or update it in case it already exists
+	if err := apiclient.CreateOrUpdateServiceAccount(client, coreDNSServiceAccount); err != nil {
+		return err
+	}
+
+	coreDNSDeployment := &extensions.Deployment{}
+	if err := kuberuntime.DecodeInto(api.Codecs.UniversalDecoder(), deploymentBytes, coreDNSDeployment); err != nil {
+		return fmt.Errorf("unable to decode coreDNS deployment %v", err)
+	}
+
+	// Create the Deployment for coreDNS or update it in case it already exists
+	if err := apiclient.CreateOrUpdateDeployment(client, coreDNSDeployment); err != nil {
+		return err
+	}
+
+	coreDNSService := &v1.Service{}
+	if err := kuberuntime.DecodeInto(api.Codecs.UniversalDecoder(), serviceBytes, coreDNSService); err != nil {
+		return fmt.Errorf("unable to decode coreDNS service %v", err)
+	}
+
+	// Can't use a generic apiclient helper func here as we have to tolerate more than AlreadyExists.
+	if _, err := client.CoreV1().Services(metav1.NamespaceSystem).Create(coreDNSService); err != nil {
+		// Ignore if the Service is invalid with this error message:
+		// 	Service "coreDNS" is invalid: spec.clusterIP: Invalid value: "10.96.0.10": provided IP is already allocated
+
+		if !apierrors.IsAlreadyExists(err) && !apierrors.IsInvalid(err) {
+			return fmt.Errorf("unable to create a new coreDNS service: %v", err)
+		}
+
+		if _, err := client.CoreV1().Services(metav1.NamespaceSystem).Update(coreDNSService); err != nil {
+			return fmt.Errorf("unable to create/update the coreDNS service: %v", err)
 		}
 	}
 	return nil
