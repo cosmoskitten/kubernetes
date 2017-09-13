@@ -11,6 +11,7 @@ go_library(
         "daemonsets.go",
         "deployments.go",
         "job.go",
+        "replicasets.go",
         "statefulset.go",
     ],
     deps = [
