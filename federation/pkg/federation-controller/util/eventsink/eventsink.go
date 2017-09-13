@@ -55,6 +55,7 @@ func init() {
 
 	if err := scheme.AddConversionFuncs(
 		metav1.Convert_unversioned_Time_To_unversioned_Time,
+		metav1.Convert_unversioned_MicroTime_To_unversioned_MicroTime,
 	); err != nil {
 		panic(err)
 	}

@@ -25,14 +25,14 @@ const (
 	PodStatusField         = "status.phase"
 	SecretTypeField        = "type"
 
-	EventReasonField                  = "reason"
-	EventSourceField                  = "source"
+	EventReasonField                  = "action"
+	EventSourceField                  = "reportingComponent"
 	EventTypeField                    = "type"
 	EventInvolvedKindField            = "involvedObject.kind"
 	EventInvolvedNamespaceField       = "involvedObject.namespace"
 	EventInvolvedNameField            = "involvedObject.name"
 	EventInvolvedUIDField             = "involvedObject.uid"
 	EventInvolvedAPIVersionField      = "involvedObject.apiVersion"
-	EventInvolvedResourceVersionField = "involvedObject.resourceVersion"
+	EventInvolvedResourceVersionField = "involvdObject.resourceVersion"
 	EventInvolvedFieldPathField       = "involvedObject.fieldPath"
 )
