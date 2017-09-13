@@ -382,11 +382,6 @@ func (i *Init) Run(out io.Writer) error {
 		return err
 	}
 
-	// Create/update RBAC rules that makes the nodes to rotate certificates and get their CSRs approved automatically
-	if err := nodebootstraptokenphase.AutoApproveNodeCertificateRotation(client, k8sVersion); err != nil {
-		return err
-	}
-
 	// Create the cluster-info ConfigMap with the associated RBAC rules
 	if err := clusterinfophase.CreateBootstrapConfigMapIfNotExists(client, adminKubeConfigPath); err != nil {
 		return err
@@ -397,7 +392,7 @@ func (i *Init) Run(out io.Writer) error {
 
 	// PHASE 6: Install and deploy all addons, and configure things as necessary
 
-	if err := dnsaddonphase.EnsureDNSAddon(i.cfg, client); err != nil {
+	if err := apiconfigphase.CreateRBACRules(client, k8sVersion); err != nil {
 		return err
 	}
 
@@ -405,6 +400,16 @@ func (i *Init) Run(out io.Writer) error {
 		return err
 	}
 
+	// Make the service discovery coreDNS if feature gate is enabled
+	if features.Enabled(i.cfg.FeatureGates, features.CoreDNS) {
+		if err := dnsaddonphase.EnsureCoreDNSAddon(i.cfg, client); err != nil {
+			return err
+		}
+	} else {
+		if err := dnsaddonphase.EnsureDNSAddon(i.cfg, client); err != nil {
+			return err
+		}
+	}
 	// PHASE 7: Make the control plane self-hosted if feature gate is enabled
 	if features.Enabled(i.cfg.FeatureGates, features.SelfHosting) {
 		// Temporary control plane is up, now we create our self hosted control
