@@ -1173,33 +1173,4 @@ func (nc *Controller) maybeDeleteTerminatingPod(obj interface{}) {
 	if pod.DeletionTimestamp == nil {
 		return
 	}
-
-	node, err := nc.nodeLister.Get(pod.Spec.NodeName)
-	// if there is no such node, do nothing and let the podGC clean it up.
-	if apierrors.IsNotFound(err) {
-		return
-	}
-	if err != nil {
-		// this can only happen if the Store.KeyFunc has a problem creating
-		// a key for the pod. If it happens once, it will happen again so
-		// don't bother requeuing the pod.
-		utilruntime.HandleError(err)
-		return
-	}
-
-	// delete terminating pods that have been scheduled on
-	// nodes that do not support graceful termination
-	// TODO(mikedanese): this can be removed when we no longer
-	// guarantee backwards compatibility of master API to kubelets with
-	// versions less than 1.1.0
-	v, err := utilversion.ParseSemantic(node.Status.NodeInfo.KubeletVersion)
-	if err != nil {
-		glog.V(0).Infof("Couldn't parse version %q of node: %v", node.Status.NodeInfo.KubeletVersion, err)
-		utilruntime.HandleError(nc.forcefullyDeletePod(pod))
-		return
-	}
-	if v.LessThan(gracefulDeletionVersion) {
-		utilruntime.HandleError(nc.forcefullyDeletePod(pod))
-		return
-	}
 }
