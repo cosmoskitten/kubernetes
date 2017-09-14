@@ -143,7 +143,7 @@ func EnsureCoreDNSAddon(cfg *kubeadmapi.MasterConfiguration, client clientset.In
 		Version:        GetCoreDNSVersion(k8sVersion),
 	})
 	if err != nil {
-		return fmt.Errorf("error when parsing coreDNS deployment template: %v", err)
+		return fmt.Errorf("error when parsing CoreDNS deployment template: %v", err)
 	}
 
 	// Get the config file for CoreDNS
@@ -152,7 +152,7 @@ func EnsureCoreDNSAddon(cfg *kubeadmapi.MasterConfiguration, client clientset.In
 		DNSDomain:   cfg.Networking.DNSDomain,
 	})
 	if err != nil {
-		return fmt.Errorf("error when parsing coreDNS configMap template: %v", err)
+		return fmt.Errorf("error when parsing CoreDNS configMap template: %v", err)
 	}
 
 	// Get the ClusterRole file for CoreDNS
@@ -177,7 +177,7 @@ func EnsureCoreDNSAddon(cfg *kubeadmapi.MasterConfiguration, client clientset.In
 		return err
 	}
 
-	coreDNSServiceBytes, err := kubeadmutil.ParseTemplate(coreDNSService, struct{ DNSIP string }{
+	coreDNSServiceBytes, err := kubeadmutil.ParseTemplate(CoreDNSService, struct{ DNSIP string }{
 		DNSIP: dnsip.String(),
 	})
 
@@ -254,11 +254,11 @@ func createCoreDNSAddon(deploymentBytes, serviceBytes, configBytes, clusterroleB
 		// 	Service "CoreDNS" is invalid: spec.clusterIP: Invalid value: "10.96.0.10": provided IP is already allocated
 
 		if !apierrors.IsAlreadyExists(err) && !apierrors.IsInvalid(err) {
-			return fmt.Errorf("unable to create a new coreDNS service: %v", err)
+			return fmt.Errorf("unable to create a new CoreDNS service: %v", err)
 		}
 
 		if _, err := client.CoreV1().Services(metav1.NamespaceSystem).Update(coreDNSService); err != nil {
-			return fmt.Errorf("unable to create/update the coreDNS service: %v", err)
+			return fmt.Errorf("unable to create/update the CoreDNS service: %v", err)
 		}
 	}
 	return nil

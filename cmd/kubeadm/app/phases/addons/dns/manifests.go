@@ -213,8 +213,8 @@ spec:
     k8s-app: kube-dns
 `
 
-	// coreDNSDeployment is the coreDNS Deployment manifest
-	coreDNSDeployment = `
+	// CoreDNSDeployment is the CoreDNS Deployment manifest
+	CoreDNSDeployment = `
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
@@ -284,8 +284,8 @@ spec:
               path: Corefile
 `
 
-	// coreDNSService is the coreDNS Service manifest
-	coreDNSService = `
+	// CoreDNSService is the CoreDNS Service manifest
+	CoreDNSService = `
 apiVersion: v1
 kind: Service
 metadata:
@@ -311,7 +311,7 @@ spec:
     protocol: TCP
 `
 
-	//ConfigMap is the coreDNS ConfigMap manifest
+	//ConfigMap is the CoreDNS ConfigMap manifest
 	CoreDNSConfigMap = `
 apiVersion: v1
 kind: ConfigMap
@@ -329,7 +329,7 @@ data:
         cache 30
     }
 `
-	// coreDNSClusterRole is the coreDNS ClusterRole manifest
+	// CoreDNSClusterRole is the CoreDNS ClusterRole manifest
 	CoreDNSClusterRole = `
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRole
@@ -349,7 +349,7 @@ rules:
   - list
   - watch
 `
-	// coreDNSClusterRoleBinding is the coreDNS Clusterrolebinding manifest
+	// CoreDNSClusterRoleBinding is the CoreDNS Clusterrolebinding manifest
 	CoreDNSClusterRoleBinding = `
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRoleBinding
@@ -368,7 +368,7 @@ subjects:
   name: coredns
   namespace: kube-system
 `
-	// coreDNSServiceAccount is the coreDNS ServiceAccount manifest
+	// CoreDNSServiceAccount is the CoreDNS ServiceAccount manifest
 	CoreDNSServiceAccount = `
 apiVersion: v1
 kind: ServiceAccount
