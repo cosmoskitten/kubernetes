@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/kubernetes/pkg/api"
 )
 
 // ProxyProvider is the interface provided by proxier implementations.
@@ -41,4 +42,23 @@ type ServicePortName struct {
 
 func (spn ServicePortName) String() string {
 	return fmt.Sprintf("%s:%s", spn.NamespacedName.String(), spn.Port)
+}
+
+type ServiceInfo interface {
+	ClusterIP() string
+	Port() int
+	Protocol() api.Protocol
+	HealthCheckNodePort() int
+}
+
+type EndpointsInfo interface {
+	Endpoint() string
+	IsLocal() bool
+	IPPart() string
+	Equal(EndpointsInfo) bool
+}
+
+type EndpointServicePair struct {
+	Endpoint        string
+	ServicePortName ServicePortName
 }
