@@ -405,7 +405,7 @@ func (i *Init) Run(out io.Writer) error {
 		return err
 	}
 
-	// Make the service discovery coreDNS if feature gate is enabled
+	// Make the service discovery CoreDNS if feature gate is enabled
 	if features.Enabled(i.cfg.FeatureGates, features.CoreDNS) {
 		if err := dnsaddonphase.EnsureCoreDNSAddon(i.cfg, client); err != nil {
 			return err
