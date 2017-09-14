@@ -265,6 +265,7 @@ func createCoreDNSAddon(deploymentBytes, serviceBytes, configBytes, clusterroleB
 }
 
 //convSubnet fetches the servicecidr and modifies the mask to the nearest class
+//CoreDNS requires CIDR notations for reverse zones as classful.
 func convSubnet(cidr string) (servicecidr string) {
 	var newMask int
 	mask := strings.Split(cidr, "/")
@@ -275,7 +276,10 @@ func convSubnet(cidr string) (servicecidr string) {
 	} else {
 		newMask = 8
 	}
-	servicecidr = mask[0] + "/" + strconv.Itoa(newMask)
+	cidr = mask[0] + "/" + strconv.Itoa(newMask)
+	_, ipv4Net, _ := net.ParseCIDR(cidr)
+	servicecidr = ipv4Net.String()
+
 	return servicecidr
 }
 
