@@ -27,7 +27,7 @@ import (
 
 const (
 	// CoreDNS is alpha in v1.9
-	CoreDNS utilfeature.Feature = "coreDNS"
+	CoreDNS utilfeature.Feature = "CoreDNS"
 
 	// SelfHosting is beta in v1.8
 	SelfHosting utilfeature.Feature = "SelfHosting"
@@ -67,7 +67,7 @@ func Keys(featureList FeatureList) []string {
 // InitFeatureGates are the default feature gates for the init command
 var InitFeatureGates = FeatureList{
 	CoreDNS:             {Default: false, PreRelease: utilfeature.Alpha},
-	SelfHosting:         {Default: false, PreRelease: utilfeature.Beta},
+	SelfHosting:         {Default: false, PreRelease: utilfeature.Alpha},
 	StoreCertsInSecrets: {Default: false, PreRelease: utilfeature.Alpha},
 }
 
