@@ -56,7 +56,7 @@ func TestTolerationToleratesTaint(t *testing.T) {
 			expectTolerated: true,
 		},
 		{
-			description: "toleration and taint have the same effect, toleration has empty key and operator is Exists, means match all taints, expect tolerated",
+			description: "toleration and taint have the same effect, toleration has empty key and operator is Exists, means match all taints that have the same effect with given toleration.Effect, expect tolerated",
 			toleration: Toleration{
 				Key:      "",
 				Operator: TolerationOpExists,
@@ -119,7 +119,7 @@ func TestTolerationToleratesTaint(t *testing.T) {
 			toleration: Toleration{
 				Key:      "",
 				Operator: TolerationOpExists,
-				Effect:"",
+				Effect:   "",
 			},
 			taint: Taint{
 				Key:    "foo",
