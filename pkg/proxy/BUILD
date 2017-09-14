@@ -11,7 +11,11 @@ go_library(
         "doc.go",
         "types.go",
     ],
-    deps = ["//vendor/k8s.io/apimachinery/pkg/types:go_default_library"],
+    deps = [
+        "//pkg/api:go_default_library",
+        "//pkg/util/iptables:go_default_library",
+        "//vendor/k8s.io/apimachinery/pkg/types:go_default_library",
+    ],
 )
 
 filegroup(
