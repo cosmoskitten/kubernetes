@@ -108,7 +108,7 @@ func TestCompileManifests(t *testing.T) {
 			expected: true,
 		},
 		{
-			manifest: coreDNSDeployment,
+			manifest: CoreDNSDeployment,
 			data: struct{ MasterTaintKey, Version string }{
 				MasterTaintKey: "foo",
 				Version:        "foo",
@@ -116,7 +116,7 @@ func TestCompileManifests(t *testing.T) {
 			expected: true,
 		},
 		{
-			manifest: coreDNSService,
+			manifest: CoreDNSService,
 			data: struct{ DNSIP string }{
 				DNSIP: "foo",
 			},
