@@ -41,7 +41,7 @@ func GetKubeDNSManifest(kubeVersion *version.Version) string {
 }
 
 // GetcoreDNSVersion returns the right coreDNS version for a specific k8s version
-func GetcoreDNSVersion(kubeVersion *version.Version) string {
+func GetCoreDNSVersion(kubeVersion *version.Version) string {
 	// v1.7.0+ uses coreDNS-011, just return that here
 	// In the future when the coreDNS version is bumped at HEAD; add conditional logic to return the right manifest
 	// Also, the version might be bumped for different k8s releases on the same branch
@@ -49,7 +49,7 @@ func GetcoreDNSVersion(kubeVersion *version.Version) string {
 }
 
 // GetcoreDNSManifest returns the right coreDNS YAML manifest for a specific k8s version
-func GetcoreDNSManifest(kubeVersion *version.Version) string {
+func GetCoreDNSManifest(kubeVersion *version.Version) string {
 	// v1.7.0+ has only one known YAML manifest spec, just return that here
 	// In the future when the coreDNS version is bumped at HEAD; add conditional logic to return the right manifest
 	return coreDNSDeployment

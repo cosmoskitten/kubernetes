@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"net"
 	"runtime"
+	"strconv"
+	"strings"
 
 	"k8s.io/api/core/v1"
 	extensions "k8s.io/api/extensions/v1beta1"
@@ -134,10 +136,10 @@ func EnsureCoreDNSAddon(cfg *kubeadmapi.MasterConfiguration, client clientset.In
 		return fmt.Errorf("couldn't parse kubernetes version %q: %v", cfg.KubernetesVersion, err)
 	}
 	// Get the YAML manifest conditionally based on the k8s version
-	dnsDeploymentBytes := GetcoreDNSManifest(k8sVersion)
+	dnsDeploymentBytes := GetCoreDNSManifest(k8sVersion)
 	coreDNSDeploymentBytes, err := kubeadmutil.ParseTemplate(dnsDeploymentBytes, struct{ MasterTaintKey, Version string }{
 		MasterTaintKey: kubeadmconstants.LabelNodeRoleMaster,
-		Version:        GetcoreDNSVersion(k8sVersion),
+		Version:        GetCoreDNSVersion(k8sVersion),
 	})
 	if err != nil {
 		return fmt.Errorf("error when parsing coreDNS deployment template: %v", err)
@@ -145,7 +147,7 @@ func EnsureCoreDNSAddon(cfg *kubeadmapi.MasterConfiguration, client clientset.In
 
 	// Get the config file for CoreDNS
 	coreDNSConfigMapBytes, err := kubeadmutil.ParseTemplate(CoreDNSConfigMap, struct{ DNSDomain, Servicecidr string }{
-		Servicecidr: cfg.Networking.ServiceSubnet,
+		Servicecidr: convSubnet(cfg.Networking.ServiceSubnet),
 		DNSDomain:   cfg.Networking.DNSDomain,
 	})
 	if err != nil {
@@ -182,14 +184,14 @@ func EnsureCoreDNSAddon(cfg *kubeadmapi.MasterConfiguration, client clientset.In
 		return fmt.Errorf("error when parsing coreDNS service template: %v", err)
 	}
 
-	if err := createcoreDNSAddon(coreDNSDeploymentBytes, coreDNSServiceBytes, coreDNSConfigMapBytes, coreDNSClusterRoleBytes, coreDNSClusterRoleBindingBytes, coreDNSServiceAccountBytes, client); err != nil {
+	if err := createCoreDNSAddon(coreDNSDeploymentBytes, coreDNSServiceBytes, coreDNSConfigMapBytes, coreDNSClusterRoleBytes, coreDNSClusterRoleBindingBytes, coreDNSServiceAccountBytes, client); err != nil {
 		return err
 	}
 	fmt.Println("[addons] Applied essential addon: coreDNS")
 	return nil
 }
 
-func createcoreDNSAddon(deploymentBytes, serviceBytes, configBytes, clusterroleBytes, clusterrolebindingBytes, serviceAccountBytes []byte, client clientset.Interface) error {
+func createCoreDNSAddon(deploymentBytes, serviceBytes, configBytes, clusterroleBytes, clusterrolebindingBytes, serviceAccountBytes []byte, client clientset.Interface) error {
 	coreDNSConfigMap := &v1.ConfigMap{}
 	if err := kuberuntime.DecodeInto(api.Codecs.UniversalDecoder(), configBytes, coreDNSConfigMap); err != nil {
 		return fmt.Errorf("unable to decode coreDNS configmap %v", err)
@@ -210,13 +212,13 @@ func createcoreDNSAddon(deploymentBytes, serviceBytes, configBytes, clusterroleB
 		return err
 	}
 
-	CoreDNSClusterRolesBinding := &v1beta1.ClusterRoleBinding{}
-	if err := kuberuntime.DecodeInto(api.Codecs.UniversalDecoder(), clusterrolebindingBytes, CoreDNSClusterRolesBinding); err != nil {
+	coreDNSClusterRolesBinding := &v1beta1.ClusterRoleBinding{}
+	if err := kuberuntime.DecodeInto(api.Codecs.UniversalDecoder(), clusterrolebindingBytes, coreDNSClusterRolesBinding); err != nil {
 		return fmt.Errorf("unable to decode coreDNS clusterrolebindings %v", err)
 	}
 
 	// Create the Clusterrolebindings for coreDNS or update it in case it already exists
-	if err := apiclient.CreateOrUpdateClusterRoleBinding(client, CoreDNSClusterRolesBinding); err != nil {
+	if err := apiclient.CreateOrUpdateClusterRoleBinding(client, coreDNSClusterRolesBinding); err != nil {
 		return err
 	}
 
@@ -259,6 +261,21 @@ func createcoreDNSAddon(deploymentBytes, serviceBytes, configBytes, clusterroleB
 		}
 	}
 	return nil
+}
+
+//convSubnet fetches the servicecidr and modifies the mask to the nearest class
+func convSubnet(cidr string) (servicecidr string) {
+	var newMask int
+	mask := strings.Split(cidr, "/")
+	i, _ := strconv.Atoi(mask[1])
+
+	if i > 8 {
+		newMask = i - (i % 8)
+	} else {
+		newMask = 8
+	}
+	servicecidr = mask[0] + "/" + strconv.Itoa(newMask)
+	return servicecidr
 }
 
 // getDNSIP fetches the kubernetes service's ClusterIP and appends a "0" to it in order to get the DNS IP
