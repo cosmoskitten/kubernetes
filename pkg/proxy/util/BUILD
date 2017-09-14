@@ -4,15 +4,21 @@ go_library(
     name = "go_default_library",
     srcs = [
         "conntrack.go",
+        "endpoints.go",
         "port.go",
+        "service.go",
         "utils.go",
     ],
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/api:go_default_library",
         "//pkg/api/helper:go_default_library",
+        "//pkg/features:go_default_library",
+        "//pkg/proxy:go_default_library",
         "//vendor/github.com/golang/glog:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/types:go_default_library",
+        "//vendor/k8s.io/apimachinery/pkg/util/sets:go_default_library",
+        "//vendor/k8s.io/apiserver/pkg/util/feature:go_default_library",
         "//vendor/k8s.io/utils/exec:go_default_library",
     ],
 )
