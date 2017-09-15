@@ -32,6 +32,7 @@ import (
 	"github.com/golang/glog"
 	"golang.org/x/net/context"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/conversion"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -299,6 +300,22 @@ func (s *store) GuaranteedUpdate(
 
 		ret, ttl, err := s.updateState(origState, tryUpdate)
 		if err != nil {
+			// It's possible we were working with stale data
+			if mustCheckData && apierrors.IsConflict(err) {
+				// Actually fetch
+				getResp, err := s.client.KV.Get(ctx, key, s.getOps...)
+				if err != nil {
+					return err
+				}
+				origState, err = s.getState(getResp, key, v, ignoreNotFound)
+				if err != nil {
+					return err
+				}
+				mustCheckData = false
+				// Retry
+				continue
+			}
+
 			return err
 		}
 
