@@ -34,13 +34,8 @@ func NewNsenter() *Nsenter {
 	return &Nsenter{}
 }
 
-// Exec executes nsenter commands in HostProcMountNsPath mount namespace
+// Exec executes nsenter commands in hostProcMountNsPath mount namespace
 func (ne *Nsenter) Exec(args ...string) exec.Cmd {
-	return nil
-}
-
-// MakeBaseNsenterCmd returns base command when running in HostProcMountNsPath mount namespace
-func (ne *Nsenter) MakeBaseNsenterCmd(cmd string) []string {
 	return nil
 }
 

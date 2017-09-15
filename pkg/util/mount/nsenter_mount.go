@@ -28,6 +28,13 @@ import (
 	"k8s.io/kubernetes/pkg/util/nsenter"
 )
 
+const (
+	// hostProcMountsPath is the default mount path for rootfs
+	hostProcMountsPath = "/rootfs/proc/1/mounts"
+	// hostProcMountinfoPath is the default mount info path for rootfs
+	hostProcMountinfoPath = "/rootfs/proc/1/mountinfo"
+)
+
 // Currently, all docker containers receive their own mount namespaces.
 // NsenterMounter works by executing nsenter to run commands in
 // the host's mount namespace.
@@ -62,8 +69,8 @@ func (n *NsenterMounter) Mount(source string, target string, fstype string, opti
 // requested mount.
 func (n *NsenterMounter) doNsenterMount(source, target, fstype string, options []string) error {
 	glog.V(5).Infof("nsenter mount %s %s %s %v", source, target, fstype, options)
-	args := n.makeNsenterArgs(source, target, fstype, options)
-	outputBytes, err := n.ne.Exec(args...).CombinedOutput()
+	cmd, args := n.makeNsenterArgs(source, target, fstype, options)
+	outputBytes, err := n.ne.Exec(cmd, args).CombinedOutput()
 	if len(outputBytes) != 0 {
 		glog.V(5).Infof("Output of mounting %s to %s: %v", source, target, string(outputBytes))
 	}
@@ -72,7 +79,7 @@ func (n *NsenterMounter) doNsenterMount(source, target, fstype string, options [
 
 // makeNsenterArgs makes a list of argument to nsenter in order to do the
 // requested mount.
-func (n *NsenterMounter) makeNsenterArgs(source, target, fstype string, options []string) []string {
+func (n *NsenterMounter) makeNsenterArgs(source, target, fstype string, options []string) (string, []string) {
 	mountCmd := n.ne.AbsHostPath("mount")
 	mountArgs := makeMountArgs(source, target, fstype, options)
 
@@ -106,17 +113,17 @@ func (n *NsenterMounter) makeNsenterArgs(source, target, fstype string, options 
 		// No code here, mountCmd and mountArgs use /bin/mount
 	}
 
-	return append([]string{mountCmd}, mountArgs...)
+	return mountCmd, mountArgs
 }
 
 // Unmount runs umount(8) in the host's mount namespace.
 func (n *NsenterMounter) Unmount(target string) error {
-	args := append(n.ne.MakeBaseNsenterCmd("umount"), target)
+	args := []string{target}
 	// No need to execute systemd-run here, it's enough that unmount is executed
 	// in the host's mount namespace. It will finish appropriate fuse daemon(s)
 	// running in any scope.
 	glog.V(5).Infof("nsenter unmount args: %v", args)
-	outputBytes, err := n.ne.Exec(args...).CombinedOutput()
+	outputBytes, err := n.ne.Exec("umount", args).CombinedOutput()
 	if len(outputBytes) != 0 {
 		glog.V(5).Infof("Output of unmounting %s: %v", target, string(outputBytes))
 	}
@@ -125,7 +132,7 @@ func (n *NsenterMounter) Unmount(target string) error {
 
 // List returns a list of all mounted filesystems in the host's mount namespace.
 func (*NsenterMounter) List() ([]MountPoint, error) {
-	return listProcMounts(nsenter.HostProcMountsPath)
+	return listProcMounts(hostProcMountsPath)
 }
 
 func (m *NsenterMounter) IsNotMountPoint(dir string) (bool, error) {
@@ -154,10 +161,9 @@ func (n *NsenterMounter) IsLikelyNotMountPoint(file string) (bool, error) {
 	// the first of multiple possible mountpoints using --first-only.
 	// Also add fstype output to make sure that the output of target file will give the full path
 	// TODO: Need more refactoring for this function. Track the solution with issue #26996
-	args := append(n.ne.MakeBaseNsenterCmd("findmnt"),
-		[]string{"-o", "target,fstype", "--noheadings", "--first-only", "--target", file}...)
+	args := []string{"-o", "target,fstype", "--noheadings", "--first-only", "--target", file}
 	glog.V(5).Infof("nsenter findmnt args: %v", args)
-	out, err := n.ne.Exec(args...).CombinedOutput()
+	out, err := n.ne.Exec("findmnt", args).CombinedOutput()
 	if err != nil {
 		glog.V(2).Infof("Failed findmnt command for path %s: %v", file, err)
 		// Different operating systems behave differently for paths which are not mount points.
@@ -214,20 +220,12 @@ func (n *NsenterMounter) GetDeviceNameFromMount(mountPath, pluginDir string) (st
 }
 
 func (n *NsenterMounter) MakeRShared(path string) error {
-	nsenterCmd := nsenter.NsenterPath
-	nsenterArgs := []string{
-		"--mount=" + nsenter.HostProcMountNsPath,
-		"--",
-		n.ne.AbsHostPath("mount"),
-	}
-	return doMakeRShared(path, nsenter.HostProcMountinfoPath, nsenterCmd, nsenterArgs)
+	return doMakeRShared(path, hostProcMountinfoPath)
 }
 
 func (mounter *NsenterMounter) GetFileType(pathname string) (FileType, error) {
 	var pathType FileType
-	args := append(mounter.ne.MakeBaseNsenterCmd("stat"),
-		[]string{"-L", `--printf "%F"`, pathname}...)
-	outputBytes, err := mounter.ne.Exec(args...).CombinedOutput()
+	outputBytes, err := mounter.ne.Exec("stat", []string{"-L", `--printf "%F"`, pathname}).CombinedOutput()
 	if err != nil {
 		return pathType, err
 	}
@@ -249,24 +247,21 @@ func (mounter *NsenterMounter) GetFileType(pathname string) (FileType, error) {
 }
 
 func (mounter *NsenterMounter) MakeDir(pathname string) error {
-	args := append(mounter.ne.MakeBaseNsenterCmd("mkdir"), []string{"-p", pathname}...)
-	if _, err := mounter.ne.Exec(args...).CombinedOutput(); err != nil {
+	if _, err := mounter.ne.Exec("mkdir", []string{"-p", pathname}).CombinedOutput(); err != nil {
 		return err
 	}
 	return nil
 }
 
 func (mounter *NsenterMounter) MakeFile(pathname string) error {
-	args := append(mounter.ne.MakeBaseNsenterCmd("touch"), pathname)
-	if _, err := mounter.ne.Exec(args...).CombinedOutput(); err != nil {
+	if _, err := mounter.ne.Exec("touch", []string{pathname}).CombinedOutput(); err != nil {
 		return err
 	}
 	return nil
 }
 
 func (mounter *NsenterMounter) ExistsPath(pathname string) bool {
-	args := append(mounter.ne.MakeBaseNsenterCmd("ls"), pathname)
-	_, err := mounter.ne.Exec(args...).CombinedOutput()
+	_, err := mounter.ne.Exec("ls", []string{pathname}).CombinedOutput()
 	if err == nil {
 		return true
 	}

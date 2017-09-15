@@ -30,14 +30,10 @@ import (
 
 const (
 	hostRootFsPath = "/rootfs"
-	// HostProcMountsPath is the default mount path for rootfs
-	HostProcMountsPath = "/rootfs/proc/1/mounts"
-	// HostProcMountinfoPath is the default mount info path for rootfs
-	HostProcMountinfoPath = "/rootfs/proc/1/mountinfo"
-	// HostProcMountNsPath is the default mount namespace for rootfs
-	HostProcMountNsPath = "/rootfs/proc/1/ns/mnt"
-	// NsenterPath is the default nsenter command
-	NsenterPath = "nsenter"
+	// hostProcMountNsPath is the default mount namespace for rootfs
+	hostProcMountNsPath = "/rootfs/proc/1/ns/mnt"
+	// nsenterPath is the default nsenter command
+	nsenterPath = "nsenter"
 )
 
 // Nsenter is part of experimental support for running the kubelet
@@ -103,24 +99,13 @@ func NewNsenter() *Nsenter {
 	return ne
 }
 
-// Exec executes nsenter commands in HostProcMountNsPath mount namespace
-func (ne *Nsenter) Exec(args ...string) exec.Cmd {
-	glog.V(5).Infof("Running nsenter command: %v %v", NsenterPath, args)
-	fullArgs := append(ne.baseNsenterArgs(), args...)
+// Exec executes nsenter commands in hostProcMountNsPath mount namespace
+func (ne *Nsenter) Exec(cmd string, args []string) exec.Cmd {
+	glog.V(5).Infof("Running nsenter command: %v %v", nsenterPath, args)
+	fullArgs := append([]string{fmt.Sprintf("--mount=%s", hostProcMountNsPath), "--"},
+		append([]string{ne.AbsHostPath(cmd)}, args...)...)
 	exec := exec.New()
-	return exec.Command(NsenterPath, fullArgs...)
-}
-
-func (ne *Nsenter) baseNsenterArgs() []string {
-	return []string{
-		fmt.Sprintf("--mount=%s", HostProcMountNsPath),
-		"--",
-	}
-}
-
-// MakeBaseNsenterCmd returns base command when running in HostProcMountNsPath mount namespace
-func (ne *Nsenter) MakeBaseNsenterCmd(cmd string) []string {
-	return append(ne.baseNsenterArgs(), ne.AbsHostPath(cmd))
+	return exec.Command(nsenterPath, fullArgs...)
 }
 
 // AbsHostPath returns the absolute runnable path for a specified command
