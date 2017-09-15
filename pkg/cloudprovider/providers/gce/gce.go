@@ -19,6 +19,7 @@ package gce
 import (
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -31,6 +32,7 @@ import (
 	"cloud.google.com/go/compute/metadata"
 
 	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/server/options/encryptionconfig"
@@ -42,6 +44,7 @@ import (
 	"k8s.io/client-go/util/flowcontrol"
 	"k8s.io/kubernetes/pkg/cloudprovider"
 	"k8s.io/kubernetes/pkg/controller"
+	kubeletapis "k8s.io/kubernetes/pkg/kubelet/apis"
 
 	"github.com/golang/glog"
 	"golang.org/x/oauth2"
@@ -100,19 +103,22 @@ type GCECloud struct {
 	// for the cloudprovider to start watching the configmap.
 	ClusterID ClusterID
 
-	service                  *compute.Service
-	serviceBeta              *computebeta.Service
-	serviceAlpha             *computealpha.Service
-	containerService         *container.Service
-	cloudkmsService          *cloudkms.Service
-	client                   clientset.Interface
-	clientBuilder            controller.ControllerClientBuilder
-	eventBroadcaster         record.EventBroadcaster
-	eventRecorder            record.EventRecorder
-	projectID                string
-	region                   string
-	localZone                string   // The zone in which we are running
-	managedZones             []string // List of zones we are spanning (for multi-AZ clusters, primarily when running on master)
+	service          *compute.Service
+	serviceBeta      *computebeta.Service
+	serviceAlpha     *computealpha.Service
+	containerService *container.Service
+	cloudkmsService  *cloudkms.Service
+	client           clientset.Interface
+	clientBuilder    controller.ControllerClientBuilder
+	eventBroadcaster record.EventBroadcaster
+	eventRecorder    record.EventRecorder
+	projectID        string
+	region           string
+	localZone        string // The zone in which we are running
+	// managedZones will be set to the 1 zone if running a single zone cluster
+	// it will be set to ALL zones in region for any multi-zone cluster
+	// Use GetAllCurrentZones to get only zones that contain nodes
+	managedZones             []string
 	networkURL               string
 	subnetworkURL            string
 	secondaryRangeName       string
@@ -185,6 +191,9 @@ type ServiceManager interface {
 
 	// Waits until GCE reports the given operation in the given region is done.
 	WaitForRegionalOp(op gceObject, mc *metricContext) error
+
+	// GetAllCurrentZones returns all the zones in which nodes are currently running
+	GetAllCurrentZones(client clientset.Interface) (sets.String, error)
 }
 
 type GCEServiceManager struct {
@@ -1001,6 +1010,32 @@ func (manager *GCEServiceManager) DeleteRegionalDisk(
 	}
 
 	return nil, fmt.Errorf("DeleteRegionalDisk is a regional PD feature and is only available via the GCE Alpha API. Enable \"GCEDiskAlphaAPI\" in the list of \"alpha-features\" in \"gce.conf\" to use the feature.")
+}
+
+// GetAllCurrentZones returns all the zones in which nodes are currently running
+// TODO: Caching, but this is currently only called when we are creating a volume,
+// which is a relatively infrequent operation, and this is only 1 API call.
+// Ideally we want to make this watch-based
+func (manager *GCEServiceManager) GetAllCurrentZones(client clientset.Interface) (sets.String, error) {
+	zones := sets.NewString()
+	if client == nil {
+		return nil, fmt.Errorf("Client not set on GCECloud object")
+	}
+	nodeList, err := client.Core().Nodes().List(metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	for _, node := range nodeList.Items {
+		labels := node.ObjectMeta.Labels
+		zone, ok := labels[kubeletapis.LabelZoneFailureDomain]
+		if ok {
+			zones.Insert(zone)
+		} else {
+			log.Printf("Could not find zone for node %v", node.ObjectMeta.Name)
+		}
+	}
+	return zones, nil
 }
 
 func (manager *GCEServiceManager) WaitForZoneOp(

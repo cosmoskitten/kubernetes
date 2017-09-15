@@ -19,7 +19,6 @@ package gce
 import (
 	"errors"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"strconv"
@@ -33,7 +32,6 @@ import (
 	compute "google.golang.org/api/compute/v1"
 
 	"k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -258,26 +256,7 @@ func (gce *GCECloud) AddSSHKeyToAllInstances(user string, keyData []byte) error 
 // which is a relatively infrequent operation, and this is only 1 API call.
 // Ideally we want to make this watch-based
 func (gce *GCECloud) GetAllCurrentZones() (sets.String, error) {
-	zones := sets.NewString()
-	client := gce.client
-	if client == nil {
-		return nil, fmt.Errorf("Client not set on GCECloud object")
-	}
-	nodeList, err := client.Core().Nodes().List(metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	for _, node := range nodeList.Items {
-		labels := node.ObjectMeta.Labels
-		zone, ok := labels[kubeletapis.LabelZoneFailureDomain]
-		if ok {
-			zones.Insert(zone)
-		} else {
-			log.Printf("Could not find zone for node %v", node.ObjectMeta.Name)
-		}
-	}
-	return zones, nil
+	return gce.manager.GetAllCurrentZones(gce.client)
 }
 
 // SetClientSet sets the ClientSet on the GCECloud object for e2e tests
