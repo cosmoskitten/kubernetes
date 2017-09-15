@@ -357,7 +357,7 @@ func (mounter *Mounter) GetFileType(pathname string) (FileType, error) {
 	var pathType FileType
 	finfo, err := os.Stat(pathname)
 	if os.IsNotExist(err) {
-		return pathType, nil
+		return pathType, fmt.Errorf("path %q does not exist", pathname)
 	}
 	// err in call to os.Stat
 	if err != nil {
@@ -372,9 +372,13 @@ func (mounter *Mounter) GetFileType(pathname string) (FileType, error) {
 		return FilePathBlockDev, nil
 	case syscall.S_IFCHR:
 		return FilePathCharDev, nil
+	case syscall.S_IFDIR:
+		return FilePathDirectory, nil
+	case syscall.S_IFREG:
+		return FilePathFile, nil
 	}
 
-	return pathType, fmt.Errorf("only recognise socket, block device and character device")
+	return pathType, fmt.Errorf("only recognise file, directory, socket, block device and character device")
 }
 
 func (mounter *Mounter) MakeDir(pathname string) error {

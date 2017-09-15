@@ -108,7 +108,7 @@ func (plugin *hostPathPlugin) NewMounter(spec *volume.Spec, pod *v1.Pod, opts vo
 
 	path := hostPathVolumeSource.Path
 	return &hostPathMounter{
-		hostPath: &hostPath{path: path, pathType: hostPathVolumeSource.Type, containerized: opts.Containerized},
+		hostPath: &hostPath{path: path, pathType: hostPathVolumeSource.Type},
 		readOnly: readOnly,
 		mounter:  plugin.host.GetMounter(plugin.GetPluginName()),
 	}, nil
@@ -178,9 +178,8 @@ func newProvisioner(options volume.VolumeOptions, host volume.VolumeHost, plugin
 // HostPath volumes represent a bare host file or directory mount.
 // The direct at the specified path will be directly exposed to the container.
 type hostPath struct {
-	path          string
-	pathType      *mount.FileType
-	containerized bool
+	path     string
+	pathType *mount.FileType
 	volume.MetricsNil
 }
 
@@ -221,7 +220,7 @@ func (b *hostPathMounter) SetUp(fsGroup *int64) error {
 	if *b.pathType == mount.FilePathUnset {
 		return nil
 	}
-	return checkType(b.GetPath(), b.pathType, b.containerized, b.mounter.GetFileType)
+	return checkType(b.GetPath(), b.pathType, b.mounter)
 }
 
 // SetUpAt does not make sense for host paths - probably programmer error.
@@ -337,138 +336,80 @@ type hostPathTypeChecker interface {
 	GetPath() string
 }
 
-type fileTypeChecker interface {
-	getFileType(pathname string, fileInfo os.FileInfo) (mount.FileType, error)
-}
-
 // Factory is a function that returns an Interface to check for sockets/block/character devices
 type Factory func(pathname string) (mount.FileType, error)
 
-// this is implemented in per-OS files
-type defaultFileTypeChecker struct {
-	checker Factory
-}
-
-type osFileTypeChecker struct {
+type fileTypeChecker struct {
 	path    string
 	exists  bool
-	info    os.FileInfo
-	checker fileTypeChecker
+	mounter mount.Interface
 }
 
-func (ftc *osFileTypeChecker) Exists() bool {
-	return ftc.exists
+func (ftc *fileTypeChecker) Exists() bool {
+	return ftc.mounter.ExistsPath(ftc.path)
 }
 
-func (ftc *osFileTypeChecker) IsFile() bool {
+func (ftc *fileTypeChecker) IsFile() bool {
 	if !ftc.Exists() {
 		return false
 	}
-	return !ftc.info.IsDir()
+	return !ftc.IsDir()
 }
 
-func (ftc *osFileTypeChecker) MakeFile() error {
-	f, err := os.OpenFile(ftc.path, os.O_CREATE, os.FileMode(0644))
-	defer f.Close()
+func (ftc *fileTypeChecker) MakeFile() error {
+	return ftc.mounter.MakeFile(ftc.path)
+}
+
+func (ftc *fileTypeChecker) IsDir() bool {
+	if !ftc.Exists() {
+		return false
+	}
+	pathType, err := ftc.mounter.GetFileType(ftc.path)
 	if err != nil {
-		if !os.IsExist(err) {
-			return err
-		}
-	}
-	return nil
-}
-
-func (ftc *osFileTypeChecker) IsDir() bool {
-	if !ftc.Exists() {
 		return false
 	}
-	return ftc.info.IsDir()
+	return pathType == mount.FilePathDirectory
 }
 
-func (ftc *osFileTypeChecker) MakeDir() error {
-	err := os.MkdirAll(ftc.path, os.FileMode(0755))
-	if err != nil {
-		if !os.IsExist(err) {
-			return err
-		}
-	}
-	return nil
+func (ftc *fileTypeChecker) MakeDir() error {
+	return ftc.mounter.MakeDir(ftc.path)
 }
 
-func (ftc *osFileTypeChecker) IsBlock() bool {
-	if !ftc.Exists() {
-		return false
-	}
-
-	blkDevType, err := ftc.checker.getFileType(ftc.path, ftc.info)
+func (ftc *fileTypeChecker) IsBlock() bool {
+	blkDevType, err := ftc.mounter.GetFileType(ftc.path)
 	if err != nil {
 		return false
 	}
 	return blkDevType == mount.FilePathBlockDev
 }
 
-func (ftc *osFileTypeChecker) IsChar() bool {
-	if !ftc.Exists() {
-		return false
-	}
-
-	charDevType, err := ftc.checker.getFileType(ftc.path, ftc.info)
+func (ftc *fileTypeChecker) IsChar() bool {
+	charDevType, err := ftc.mounter.GetFileType(ftc.path)
 	if err != nil {
 		return false
 	}
 	return charDevType == mount.FilePathCharDev
 }
 
-func (ftc *osFileTypeChecker) IsSocket() bool {
-	if !ftc.Exists() {
-		return false
-	}
-
-	socketType, err := ftc.checker.getFileType(ftc.path, ftc.info)
+func (ftc *fileTypeChecker) IsSocket() bool {
+	socketType, err := ftc.mounter.GetFileType(ftc.path)
 	if err != nil {
 		return false
 	}
 	return socketType == mount.FilePathSocket
 }
 
-func (ftc *osFileTypeChecker) GetPath() string {
+func (ftc *fileTypeChecker) GetPath() string {
 	return ftc.path
 }
 
-func newOSFileTypeChecker(path string, checker fileTypeChecker) (hostPathTypeChecker, error) {
-	ftc := osFileTypeChecker{path: path, checker: checker}
-	info, err := os.Stat(path)
-	if err != nil {
-		ftc.exists = false
-		if !os.IsNotExist(err) {
-			return nil, err
-		}
-	} else {
-		ftc.info = info
-		ftc.exists = true
-	}
-	return &ftc, nil
+func newFileTypeChecker(path string, mounter mount.Interface) hostPathTypeChecker {
+	return &fileTypeChecker{path: path, mounter: mounter}
 }
 
 // checkType checks whether the given path is the exact pathType
-func checkType(path string, pathType *mount.FileType, containerized bool, checker Factory) error {
-	var ftc hostPathTypeChecker
-	var err error
-	if containerized {
-		// For a containerized kubelet, use nsenter to run commands in
-		// the host's mount namespace.
-		// TODO(dixudx): setns into docker's mount namespace, and then run the exact same go code for checks/setup
-		ftc, err = newNsenterFileTypeChecker(path, checker)
-		if err != nil {
-			return err
-		}
-	} else {
-		ftc, err = newOSFileTypeChecker(path, &defaultFileTypeChecker{checker: checker})
-		if err != nil {
-			return err
-		}
-	}
-	return checkTypeInternal(ftc, pathType)
+func checkType(path string, pathType *mount.FileType, mounter mount.Interface) error {
+	return checkTypeInternal(newFileTypeChecker(path, mounter), pathType)
 }
 
 func checkTypeInternal(ftc hostPathTypeChecker, pathType *mount.FileType) error {

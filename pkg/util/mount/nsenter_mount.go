@@ -239,9 +239,13 @@ func (mounter *NsenterMounter) GetFileType(pathname string) (FileType, error) {
 		return FilePathCharDev, nil
 	case "block special file":
 		return FilePathBlockDev, nil
+	case "directory":
+		return FilePathDirectory, nil
+	case "regular file":
+		return FilePathFile, nil
 	}
 
-	return pathType, fmt.Errorf("only recognise socket, block device and character device")
+	return pathType, fmt.Errorf("only recognise file, directory, socket, block device and character device")
 }
 
 func (mounter *NsenterMounter) MakeDir(pathname string) error {
