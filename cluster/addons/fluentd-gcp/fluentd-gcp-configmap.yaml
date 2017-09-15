@@ -364,6 +364,8 @@ data:
     <match kubernetes.**>
       @type google_cloud
 
+      # Try to detect JSON formatted log entries.
+      detect_json true
       # Collect metrics in Prometheus registry about plugin activity.
       enable_monitoring true
       monitoring_type prometheus
@@ -394,6 +396,7 @@ data:
     <match **>
       @type google_cloud
 
+      detect_json true
       enable_monitoring true
       monitoring_type prometheus
       detect_subservice false
@@ -408,7 +411,7 @@ data:
       num_threads 2
     </match>
 metadata:
-  name: fluentd-gcp-config-v1.2.0
+  name: fluentd-gcp-config-v1.2.2
   namespace: kube-system
   labels:
     addonmanager.kubernetes.io/mode: Reconcile
