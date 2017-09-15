@@ -79,10 +79,12 @@ func OnlyAllowNodeZones(f *framework.Framework, zoneCount int, image string) {
 	expectedZones, err := gceCloud.GetAllCurrentZones()
 	Expect(err).NotTo(HaveOccurred())
 	framework.Logf("Expected zones: %v\n", expectedZones)
+
 	// Get all the zones in this current region
 	region := gceCloud.Region()
 	allZonesInRegion, err := gceCloud.ListZonesInRegion(region)
 	Expect(err).NotTo(HaveOccurred())
+
 	var extraZone string
 	for _, zone := range allZonesInRegion {
 		if !expectedZones.Has(zone.Name) {
@@ -90,11 +92,9 @@ func OnlyAllowNodeZones(f *framework.Framework, zoneCount int, image string) {
 			break
 		}
 	}
-
-	// If no zones left to create an extra instance we stop the test right here
 	Expect(extraZone).NotTo(Equal(""), fmt.Sprintf("No extra zones available in region %s", region))
+
 	By(fmt.Sprintf("starting a compute instance in unused zone: %v\n", extraZone))
-	// create a compute instance in an unused zone
 	project := framework.TestContext.CloudConfig.ProjectID
 	zone := extraZone
 	myuuid := string(uuid.NewUUID())
@@ -127,15 +127,18 @@ func OnlyAllowNodeZones(f *framework.Framework, zoneCount int, image string) {
 		},
 		Name: name,
 	}
+
 	resp, err := gceCloud.InsertInstance(project, zone, rb)
 	Expect(err).NotTo(HaveOccurred())
 	framework.Logf("Compute creation response: %v\n", resp)
+
 	defer func() {
 		// Teardown of the compute instance
 		framework.Logf("Deleting compute resource: %v", name)
 		resp, err = gceCloud.DeleteInstance(project, zone, name)
 		framework.Logf("Compute deletion response: %v\n", resp)
 	}()
+
 	// GetAllZones functionality checking.
 	By("Checking that GetAllCurrentZones returns the same amount of zones as before the compute is created")
 	gotZones, err := gceCloud.GetAllCurrentZones()
@@ -149,11 +152,13 @@ func OnlyAllowNodeZones(f *framework.Framework, zoneCount int, image string) {
 	var pvcList []*v1.PersistentVolumeClaim
 	c := f.ClientSet
 	ns := f.Namespace.Name
+
 	for index := 1; index <= zoneCount+1; index++ {
 		pvc := newNamedDefaultClaim(ns, index)
 		pvc, err = framework.CreatePVC(c, ns, pvc)
 		Expect(err).NotTo(HaveOccurred())
 		pvcList = append(pvcList, pvc)
+
 		// Defer the cleanup
 		defer func() {
 			framework.Logf("deleting claim %q/%q", pvc.Namespace, pvc.Name)
@@ -163,6 +168,7 @@ func OnlyAllowNodeZones(f *framework.Framework, zoneCount int, image string) {
 			}
 		}()
 	}
+
 	// Wait for all claims bound
 	for _, claim := range pvcList {
 		err = framework.WaitForPersistentVolumeClaimPhase(v1.ClaimBound, c, claim.Namespace, claim.Name, framework.Poll, framework.ClaimProvisionTimeout)
@@ -171,18 +177,20 @@ func OnlyAllowNodeZones(f *framework.Framework, zoneCount int, image string) {
 
 	pvZones := sets.NewString()
 	By("Checking that PDs have been provisioned in only the expected zones")
-	// Check all PVCs and make sure they have provisioned disks in the zones we care about
 	for _, claim := range pvcList {
 		// Get a new copy of the claim to have all fields populated
 		claim, err = c.CoreV1().PersistentVolumeClaims(claim.Namespace).Get(claim.Name, metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred())
+
 		// Get the related PV
 		pv, err := c.CoreV1().PersistentVolumes().Get(claim.Spec.VolumeName, metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred())
+
 		pvZone, ok := pv.ObjectMeta.Labels[kubeletapis.LabelZoneFailureDomain]
 		Expect(ok).To(BeTrue(), "PV has no LabelZone to be found")
 		pvZones.Insert(pvZone)
 	}
+
 	Expect(pvZones.Equal(expectedZones)).To(BeTrue(), fmt.Sprintf("Expected provisioned PD zones: %v, Got Zones: %v", expectedZones, gotZones))
 }
 

@@ -421,8 +421,8 @@ var _ = SIGDescribe("Dynamic Provisioning", func() {
 			gceCloud, err := framework.GetGCECloud()
 			Expect(err).NotTo(HaveOccurred())
 
-			// Get all k8s managed zones
-			managedZones, err = gceCloud.GetAllManagedZones()
+			// Get all k8s managed zones (in this case it is just the single zone)
+			managedZones, err = gceCloud.GetAllCurrentZones()
 			Expect(err).NotTo(HaveOccurred())
 
 			// Get a list of all zones in the project

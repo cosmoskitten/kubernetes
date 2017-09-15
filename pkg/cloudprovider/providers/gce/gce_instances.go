@@ -254,6 +254,9 @@ func (gce *GCECloud) AddSSHKeyToAllInstances(user string, keyData []byte) error 
 }
 
 // GetAllCurrentZones returns all the zones in which nodes are currently running
+// TODO: Caching, but this is currently only called when we are creating a volume,
+// which is a relatively infrequent operation, and this is only 1 API call.
+// Ideally we want to make this watch-based
 func (gce *GCECloud) GetAllCurrentZones() (sets.String, error) {
 	zones := sets.NewString()
 	client := gce.client
@@ -262,7 +265,6 @@ func (gce *GCECloud) GetAllCurrentZones() (sets.String, error) {
 	}
 	nodeList, err := client.Core().Nodes().List(metav1.ListOptions{})
 	if err != nil {
-		log.Fatalf("Failed to list nodes: %v", err)
 		return nil, err
 	}
 
@@ -272,19 +274,10 @@ func (gce *GCECloud) GetAllCurrentZones() (sets.String, error) {
 		if ok {
 			zones.Insert(zone)
 		} else {
-			return nil, fmt.Errorf("Could not find zone for node %v", node.ObjectMeta.Name)
+			log.Printf("Could not find zone for node %v", node.ObjectMeta.Name)
 		}
 	}
 	return zones, nil
-}
-
-// GetAllManagedZones gets all the zones managed by k8s
-func (gce *GCECloud) GetAllManagedZones() (sets.String, error) {
-	if gce.managedZones != nil {
-		return sets.NewString(gce.managedZones...), nil
-	}
-	return nil, fmt.Errorf("Could not get k8s managed zones, it was nil")
-
 }
 
 // SetClientSet sets the ClientSet on the GCECloud object for e2e tests
