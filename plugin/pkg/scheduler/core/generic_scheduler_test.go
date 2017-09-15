@@ -414,7 +414,7 @@ func TestHumanReadableFitError(t *testing.T) {
 		},
 	}
 	if strings.Contains(err.Error(), NoNodeAvailableMsg) {
-		if strings.Contains(err.Error(), "NodeUnderDiskPressure (2)") && strings.Contains(err.Error(), "NodeUnderMemoryPressure (1)") {
+		if strings.Contains(err.Error(), "NodeNotUnderDiskPressure (2)") && strings.Contains(err.Error(), "NodeNotUnderMemoryPressure (1)") {
 			return
 		}
 	}
