@@ -31,7 +31,13 @@ import (
 
 // NewKubeletServerCertificateManager creates a certificate manager for the kubelet when retrieving a server certificate
 // or returns an error.
-func NewKubeletServerCertificateManager(kubeClient clientset.Interface, kubeCfg *kubeletconfig.KubeletConfiguration, nodeName types.NodeName, ips []net.IP, hostnames []string, certDirectory string) (Manager, error) {
+func NewKubeletServerCertificateManager(
+	kubeClient clientset.Interface,
+	kubeCfg *kubeletconfig.KubeletConfiguration,
+	nodeName types.NodeName,
+	ips []net.IP,
+	hostnames []string,
+	certDirectory string) (Manager, error) {
 	var certSigningRequestClient clientcertificates.CertificateSigningRequestInterface
 	if kubeClient != nil && kubeClient.Certificates() != nil {
 		certSigningRequestClient = kubeClient.Certificates().CertificateSigningRequests()
@@ -81,7 +87,13 @@ func NewKubeletServerCertificateManager(kubeClient clientset.Interface, kubeCfg 
 // client that can be used to sign new certificates (or rotate). It answers with
 // whatever certificate it is initialized with. If a CSR client is set later, it
 // may begin rotating/renewing the client cert
-func NewKubeletClientCertificateManager(certDirectory string, nodeName types.NodeName, certData []byte, keyData []byte, certFile string, keyFile string) (Manager, error) {
+func NewKubeletClientCertificateManager(
+	certDirectory string,
+	nodeName types.NodeName,
+	certData []byte,
+	keyData []byte,
+	certFile string,
+	keyFile string) (Manager, error) {
 	certificateStore, err := NewFileStore(
 		"kubelet-client",
 		certDirectory,

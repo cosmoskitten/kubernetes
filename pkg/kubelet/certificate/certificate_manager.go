@@ -38,10 +38,6 @@ import (
 	"k8s.io/client-go/util/cert"
 )
 
-const (
-	syncPeriod = 1 * time.Hour
-)
-
 // Manager maintains and updates the certificates in use by this certificate
 // manager. In the background it communicates with the API server to get new
 // certificates for certificates about to expire.
@@ -170,7 +166,8 @@ func (m *manager) Current() *tls.Certificate {
 // CertificateSigningRequestClient that has already been set. This method is to
 // support the one specific scenario where the CertificateSigningRequestClient
 // uses the CertificateManager.
-func (m *manager) SetCertificateSigningRequestClient(certSigningRequestClient certificatesclient.CertificateSigningRequestInterface) error {
+func (m *manager) SetCertificateSigningRequestClient(
+	certSigningRequestClient certificatesclient.CertificateSigningRequestInterface) error {
 	if m.certSigningRequestClient == nil {
 		m.certSigningRequestClient = certSigningRequestClient
 		return nil
@@ -357,7 +354,10 @@ func (m *manager) generateCSR() (csrPEM []byte, keyPEM []byte, err error) {
 // NOTE This is a copy of a function with the same name in
 // k8s.io/kubernetes/pkg/kubelet/util/csr/csr.go, changing only the package that
 // CertificateSigningRequestInterface and KeyUsage are imported from.
-func requestCertificate(client certificatesclient.CertificateSigningRequestInterface, csrData []byte, usages []certificates.KeyUsage) (certData []byte, err error) {
+func requestCertificate(
+	client certificatesclient.CertificateSigningRequestInterface,
+	csrData []byte,
+	usages []certificates.KeyUsage) (certData []byte, err error) {
 	glog.Infof("Requesting new certificate.")
 	req, err := client.Create(&certificates.CertificateSigningRequest{
 		// Username, UID, Groups will be injected by API server.
