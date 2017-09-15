@@ -27,6 +27,7 @@ import (
 	kubeadmapi "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm"
 	kubeadmconstants "k8s.io/kubernetes/cmd/kubeadm/app/constants"
 	staticpodutil "k8s.io/kubernetes/cmd/kubeadm/app/util/staticpod"
+	"k8s.io/kubernetes/pkg/util/mount"
 )
 
 const (
@@ -44,8 +45,8 @@ var caCertsPkiVolumePath = "/etc/pki"
 
 // getHostPathVolumesForTheControlPlane gets the required hostPath volumes and mounts for the control plane
 func getHostPathVolumesForTheControlPlane(cfg *kubeadmapi.MasterConfiguration) controlPlaneHostPathMounts {
-	hostPathDirectoryOrCreate := v1.HostPathDirectoryOrCreate
-	hostPathFileOrCreate := v1.HostPathFileOrCreate
+	hostPathDirectoryOrCreate := mount.MountPathDirectoryOrCreate
+	hostPathFileOrCreate := mount.MountPathFileOrCreate
 	mounts := newControlPlaneHostPathMounts()
 
 	// HostPath volumes for the API Server
@@ -102,7 +103,7 @@ func newControlPlaneHostPathMounts() controlPlaneHostPathMounts {
 	}
 }
 
-func (c *controlPlaneHostPathMounts) NewHostPathMount(component, mountName, hostPath, containerPath string, readOnly bool, hostPathType *v1.HostPathType) {
+func (c *controlPlaneHostPathMounts) NewHostPathMount(component, mountName, hostPath, containerPath string, readOnly bool, hostPathType *mount.MountPathType) {
 	c.volumes[component] = append(c.volumes[component], staticpodutil.NewVolume(mountName, hostPath, hostPathType))
 	c.volumeMounts[component] = append(c.volumeMounts[component], staticpodutil.NewVolumeMount(mountName, containerPath, readOnly))
 }
@@ -150,7 +151,7 @@ func getEtcdCertVolumes(etcdCfg kubeadmapi.Etcd) ([]v1.Volume, []v1.VolumeMount)
 
 	volumes := []v1.Volume{}
 	volumeMounts := []v1.VolumeMount{}
-	pathType := v1.HostPathDirectoryOrCreate
+	pathType := mount.MountPathDirectoryOrCreate
 	for i, certDir := range certDirs.List() {
 		name := fmt.Sprintf("etcd-certs-%d", i)
 		volumes = append(volumes, staticpodutil.NewVolume(name, certDir, &pathType))

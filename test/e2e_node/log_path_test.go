@@ -21,6 +21,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kubernetes/pkg/kubelet"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
+	"k8s.io/kubernetes/pkg/util/mount"
 	"k8s.io/kubernetes/test/e2e/framework"
 
 	. "github.com/onsi/ginkgo"
@@ -74,8 +75,8 @@ var _ = framework.KubeDescribe("ContainerLogPath", func() {
 
 				expectedlogFile := logDir + "/" + logPodName + "_" + ns + "_" + logContName + "-" + logConID.ID + ".log"
 
-				hostPathType := new(v1.HostPathType)
-				*hostPathType = v1.HostPathType(string(v1.HostPathFileOrCreate))
+				hostPathType := new(mount.MountPathType)
+				*hostPathType = mount.MountPathType(string(mount.MountPathFileOrCreate))
 
 				checkPod := &v1.Pod{
 					ObjectMeta: metav1.ObjectMeta{

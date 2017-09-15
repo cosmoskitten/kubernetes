@@ -26,10 +26,11 @@ import (
 	"k8s.io/api/core/v1"
 	kubeadmapi "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm"
 	kubeadmconstants "k8s.io/kubernetes/cmd/kubeadm/app/constants"
+	"k8s.io/kubernetes/pkg/util/mount"
 )
 
 func TestGetEtcdCertVolumes(t *testing.T) {
-	hostPathDirectoryOrCreate := v1.HostPathDirectoryOrCreate
+	hostPathDirectoryOrCreate := mount.MountPathDirectoryOrCreate
 	var tests = []struct {
 		ca, cert, key string
 		vol           []v1.Volume
@@ -247,8 +248,8 @@ func TestGetEtcdCertVolumes(t *testing.T) {
 }
 
 func TestGetHostPathVolumesForTheControlPlane(t *testing.T) {
-	hostPathDirectoryOrCreate := v1.HostPathDirectoryOrCreate
-	hostPathFileOrCreate := v1.HostPathFileOrCreate
+	hostPathDirectoryOrCreate := mount.MountPathDirectoryOrCreate
+	hostPathFileOrCreate := mount.MountPathFileOrCreate
 	var tests = []struct {
 		cfg      *kubeadmapi.MasterConfiguration
 		vol      map[string][]v1.Volume

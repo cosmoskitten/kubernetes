@@ -23,18 +23,18 @@ import (
 	"os"
 	"syscall"
 
-	"k8s.io/api/core/v1"
+	"k8s.io/kubernetes/pkg/util/mount"
 )
 
-func (dftc *defaultFileTypeChecker) getFileType(info os.FileInfo) (v1.HostPathType, error) {
+func (dftc *defaultFileTypeChecker) getFileType(info os.FileInfo) (mount.MountPathType, error) {
 	mode := info.Sys().(*syscall.Stat_t).Mode
 	switch mode & syscall.S_IFMT {
 	case syscall.S_IFSOCK:
-		return v1.HostPathSocket, nil
+		return mount.MountPathSocket, nil
 	case syscall.S_IFBLK:
-		return v1.HostPathBlockDev, nil
+		return mount.MountPathBlockDev, nil
 	case syscall.S_IFCHR:
-		return v1.HostPathCharDev, nil
+		return mount.MountPathCharDev, nil
 	}
 	return "", fmt.Errorf("only recognise socket, block device and character device")
 }

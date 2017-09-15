@@ -23,6 +23,7 @@ import (
 
 	"k8s.io/api/core/v1"
 	kubeadmconstants "k8s.io/kubernetes/cmd/kubeadm/app/constants"
+	"k8s.io/kubernetes/pkg/util/mount"
 )
 
 func TestMutatePodSpec(t *testing.T) {
@@ -186,7 +187,7 @@ func TestSetRightDNSPolicyOnPodSpec(t *testing.T) {
 }
 
 func TestSetSelfHostedVolumesForAPIServer(t *testing.T) {
-	hostPathDirectoryOrCreate := v1.HostPathDirectoryOrCreate
+	hostPathDirectoryOrCreate := mount.MountPathDirectoryOrCreate
 	var tests = []struct {
 		podSpec  *v1.PodSpec
 		expected v1.PodSpec
@@ -280,8 +281,8 @@ func TestSetSelfHostedVolumesForAPIServer(t *testing.T) {
 }
 
 func TestSetSelfHostedVolumesForControllerManager(t *testing.T) {
-	hostPathFileOrCreate := v1.HostPathFileOrCreate
-	hostPathDirectoryOrCreate := v1.HostPathDirectoryOrCreate
+	hostPathFileOrCreate := mount.MountPathFileOrCreate
+	hostPathDirectoryOrCreate := mount.MountPathDirectoryOrCreate
 	var tests = []struct {
 		podSpec  *v1.PodSpec
 		expected v1.PodSpec
@@ -398,7 +399,7 @@ func TestSetSelfHostedVolumesForControllerManager(t *testing.T) {
 }
 
 func TestSetSelfHostedVolumesForScheduler(t *testing.T) {
-	hostPathFileOrCreate := v1.HostPathFileOrCreate
+	hostPathFileOrCreate := mount.MountPathFileOrCreate
 	var tests = []struct {
 		podSpec  *v1.PodSpec
 		expected v1.PodSpec

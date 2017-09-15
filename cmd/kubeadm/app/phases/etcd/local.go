@@ -25,6 +25,7 @@ import (
 	"k8s.io/kubernetes/cmd/kubeadm/app/images"
 	kubeadmutil "k8s.io/kubernetes/cmd/kubeadm/app/util"
 	staticpodutil "k8s.io/kubernetes/cmd/kubeadm/app/util/staticpod"
+	"k8s.io/kubernetes/pkg/util/mount"
 )
 
 const (
@@ -49,7 +50,7 @@ func CreateLocalEtcdStaticPodManifestFile(manifestDir string, cfg *kubeadmapi.Ma
 // GetEtcdPodSpec returns the etcd static Pod actualized to the context of the current MasterConfiguration
 // NB. GetEtcdPodSpec methods holds the information about how kubeadm creates etcd static pod mainfests.
 func GetEtcdPodSpec(cfg *kubeadmapi.MasterConfiguration) v1.Pod {
-	pathType := v1.HostPathDirectoryOrCreate
+	pathType := mount.MountPathDirectoryOrCreate
 	return staticpodutil.ComponentPod(v1.Container{
 		Name:    kubeadmconstants.Etcd,
 		Command: getEtcdCommand(cfg),

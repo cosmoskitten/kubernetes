@@ -20,6 +20,7 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/kubernetes/pkg/util/mount"
 	"k8s.io/kubernetes/pkg/util/parsers"
 	utilpointer "k8s.io/kubernetes/pkg/util/pointer"
 )
@@ -384,7 +385,7 @@ func SetDefaults_ScaleIOVolumeSource(obj *v1.ScaleIOVolumeSource) {
 }
 
 func SetDefaults_HostPathVolumeSource(obj *v1.HostPathVolumeSource) {
-	typeVol := v1.HostPathUnset
+	typeVol := mount.MountPathUnset
 	if obj.Type == nil {
 		obj.Type = &typeVol
 	}

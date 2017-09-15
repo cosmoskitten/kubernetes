@@ -34,6 +34,7 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	coreclientset "k8s.io/client-go/kubernetes/typed/core/v1"
 	nodeutil "k8s.io/kubernetes/pkg/api/v1/node"
+	"k8s.io/kubernetes/pkg/util/mount"
 	"k8s.io/kubernetes/test/e2e/framework"
 
 	. "github.com/onsi/ginkgo"
@@ -161,8 +162,8 @@ var _ = framework.KubeDescribe("NodeProblemDetector", func() {
 			})
 			Expect(err).NotTo(HaveOccurred())
 			By("Create the node problem detector")
-			hostPathType := new(v1.HostPathType)
-			*hostPathType = v1.HostPathType(string(v1.HostPathFileOrCreate))
+			hostPathType := new(mount.MountPathType)
+			*hostPathType = mount.MountPathType(string(mount.MountPathFileOrCreate))
 			f.PodClient().CreateSync(&v1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: name,

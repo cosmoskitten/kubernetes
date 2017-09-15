@@ -30,6 +30,7 @@ import (
 	runtimeserializer "k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/util/mount"
 )
 
 // Funcs returns the fuzzer functions for the core api group.
@@ -357,8 +358,8 @@ var Funcs = func(codecs runtimeserializer.CodecFactory) []interface{} {
 		},
 		func(obj *api.HostPathVolumeSource, c fuzz.Continue) {
 			c.FuzzNoCustom(obj)
-			types := []api.HostPathType{api.HostPathUnset, api.HostPathDirectoryOrCreate, api.HostPathDirectory,
-				api.HostPathFileOrCreate, api.HostPathFile, api.HostPathSocket, api.HostPathCharDev, api.HostPathBlockDev}
+			types := []mount.MountPathType{mount.MountPathUnset, mount.MountPathDirectoryOrCreate, mount.MountPathDirectory,
+				mount.MountPathFileOrCreate, mount.MountPathFile, mount.MountPathSocket, mount.MountPathCharDev, mount.MountPathBlockDev}
 			typeVol := types[c.Rand.Intn(len(types))]
 			if obj.Type == nil {
 				obj.Type = &typeVol

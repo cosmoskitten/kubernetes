@@ -24,6 +24,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	utilmount "k8s.io/kubernetes/pkg/util/mount"
 	"k8s.io/kubernetes/test/e2e/framework"
 	imageutils "k8s.io/kubernetes/test/utils/image"
 )
@@ -132,8 +133,8 @@ func (config *KubeletManagedHostConfig) getEtcHostsContent(podName, containerNam
 }
 
 func (config *KubeletManagedHostConfig) createPodSpec(podName string) *v1.Pod {
-	hostPathType := new(v1.HostPathType)
-	*hostPathType = v1.HostPathType(string(v1.HostPathFileOrCreate))
+	hostPathType := new(utilmount.MountPathType)
+	*hostPathType = utilmount.MountPathType(string(utilmount.MountPathFileOrCreate))
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: podName,

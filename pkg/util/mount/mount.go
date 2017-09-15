@@ -33,6 +33,29 @@ const (
 	MountsInGlobalPDPath = "mounts"
 )
 
+type MountPathType string
+
+const (
+	// For backwards compatible, leave it empty if unset
+	MountPathUnset MountPathType = ""
+	// If nothing exists at the given path, an empty directory will be created there
+	// as needed with file mode 0755, having the same group and ownership with Kubelet.
+	MountPathDirectoryOrCreate MountPathType = "DirectoryOrCreate"
+	// A directory must exist at the given path
+	MountPathDirectory MountPathType = "Directory"
+	// If nothing exists at the given path, an empty file will be created there
+	// as needed with file mode 0644, having the same group and ownership with Kubelet.
+	MountPathFileOrCreate MountPathType = "FileOrCreate"
+	// A file must exist at the given path
+	MountPathFile MountPathType = "File"
+	// A UNIX socket must exist at the given path
+	MountPathSocket MountPathType = "Socket"
+	// A character device must exist at the given path
+	MountPathCharDev MountPathType = "CharDevice"
+	// A block device must exist at the given path
+	MountPathBlockDev MountPathType = "BlockDevice"
+)
+
 type Interface interface {
 	// Mount mounts source to target as fstype with given options.
 	Mount(source string, target string, fstype string, options []string) error

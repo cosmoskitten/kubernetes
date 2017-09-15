@@ -28,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/kubernetes/pkg/api"
 	k8s_api_v1 "k8s.io/kubernetes/pkg/api/v1"
+	"k8s.io/kubernetes/pkg/util/mount"
 )
 
 func roundTrip(t *testing.T, obj runtime.Object) runtime.Object {
@@ -1326,7 +1327,7 @@ func TestSetDefaultHostPathVolumeSource(t *testing.T) {
 	output := roundTrip(t, runtime.Object(pod))
 	pod2 := output.(*v1.Pod)
 	defaultType := pod2.Spec.Volumes[0].VolumeSource.HostPath.Type
-	expectedType := v1.HostPathUnset
+	expectedType := mount.MountPathUnset
 
 	if defaultType == nil || *defaultType != expectedType {
 		t.Errorf("Expected v1.HostPathVolumeSource default type %v, got %v", expectedType, defaultType)
