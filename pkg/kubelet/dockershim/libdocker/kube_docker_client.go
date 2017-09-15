@@ -123,6 +123,7 @@ func (d *kubeDockerClient) InspectContainer(id string) (*dockertypes.ContainerJS
 	return &containerJSON, nil
 }
 
+// InspectContainerWithSize is currently only used for Windows container stats
 func (d *kubeDockerClient) InspectContainerWithSize(id string) (*dockertypes.ContainerJSON, error) {
 	ctx, cancel := d.getTimeoutContext()
 	defer cancel()
@@ -536,12 +537,12 @@ func (d *kubeDockerClient) ResizeContainerTTY(id string, height, width uint) err
 	})
 }
 
+// GetContainerStats is currently only used for Windows container stats
 func (d *kubeDockerClient) GetContainerStats(id string) (*dockertypes.StatsJSON, error) {
 	ctx, cancel := d.getCancelableContext()
 	defer cancel()
 
 	response, err := d.client.ContainerStats(ctx, id, false)
-
 	if err != nil {
 		return nil, err
 	}
@@ -549,7 +550,6 @@ func (d *kubeDockerClient) GetContainerStats(id string) (*dockertypes.StatsJSON,
 	dec := json.NewDecoder(response.Body)
 	var stats dockertypes.StatsJSON
 	err = dec.Decode(&stats)
-
 	if err != nil {
 		return nil, err
 	}

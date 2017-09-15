@@ -876,5 +876,5 @@ func (f *FakeDockerClient) GetContainerStats(id string) (*dockertypes.StatsJSON,
 	f.Lock()
 	defer f.Unlock()
 	f.appendCalled(calledDetail{name: "getContainerStats"})
-	return nil, nil
+	return nil, fmt.Errorf("not implemented")
 }

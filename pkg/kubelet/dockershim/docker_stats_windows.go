@@ -19,19 +19,17 @@ limitations under the License.
 package dockershim
 
 import (
-	dockertypes "github.com/docker/docker/api/types"
-	runtimeapi "k8s.io/kubernetes/pkg/kubelet/apis/cri/v1alpha1/runtime"
 	"time"
+
+	runtimeapi "k8s.io/kubernetes/pkg/kubelet/apis/cri/v1alpha1/runtime"
 )
 
 // ContainerStats returns stats for a container stats request based on container id.
 func (ds *dockerService) ContainerStats(containerStatsRequest *runtimeapi.ContainerStatsRequest) (*runtimeapi.ContainerStatsResponse, error) {
-	containerStats, err := ds.createContainerStats(containerStatsRequest.ContainerId)
-
+	containerStats, err := ds.getContainerStats(containerStatsRequest.ContainerId)
 	if err != nil {
 		return nil, err
 	}
-
 	return &runtimeapi.ContainerStatsResponse{
 		Stats: containerStats,
 	}, nil
@@ -48,15 +46,13 @@ func (ds *dockerService) ListContainerStats(containerStatsRequest *runtimeapi.Li
 	}
 
 	containers, err := ds.ListContainers(filter)
-
 	if err != nil {
 		return nil, err
 	}
 
 	var stats []*runtimeapi.ContainerStats
 	for _, container := range containers {
-		containerStats, err := ds.createContainerStats(container.Id)
-
+		containerStats, err := ds.getContainerStats(container.Id)
 		if err != nil {
 			return nil, err
 		}
@@ -69,26 +65,24 @@ func (ds *dockerService) ListContainerStats(containerStatsRequest *runtimeapi.Li
 	}, nil
 }
 
-func (ds *dockerService) createContainerStats(containerID string) (*runtimeapi.ContainerStats, error) {
+func (ds *dockerService) getContainerStats(containerID string) (*runtimeapi.ContainerStats, error) {
 	statsJSON, err := ds.client.GetContainerStats(containerID)
-
 	if err != nil {
 		return nil, err
 	}
 
 	containerJSON, err := ds.client.InspectContainerWithSize(containerID)
-
 	if err != nil {
 		return nil, err
 	}
 
 	status, err := ds.ContainerStatus(containerID)
-
 	if err != nil {
 		return nil, err
 	}
 
 	dockerStats := statsJSON.Stats
+	timeStamp := time.Now().UnixNano()
 	containerStats := &runtimeapi.ContainerStats{
 		Attributes: &runtimeapi.ContainerAttributes{
 			Id:          containerID,
@@ -97,23 +91,19 @@ func (ds *dockerService) createContainerStats(containerID string) (*runtimeapi.C
 			Annotations: status.Annotations,
 		},
 		Cpu: &runtimeapi.CpuUsage{
-			Timestamp:            time.Now().UnixNano(),
-			UsageCoreNanoSeconds: &runtimeapi.UInt64Value{Value: ds.getCPU(&dockerStats)},
+			Timestamp: timeStamp,
+			// have to multiply cpu usage by 100 since docker stats units is in 100's of nano seconds for Windows
+			// see https://github.com/moby/moby/blob/v1.13.1/api/types/stats.go#L22
+			UsageCoreNanoSeconds: &runtimeapi.UInt64Value{Value: dockerStats.CPUStats.CPUUsage.TotalUsage * 100},
 		},
 		Memory: &runtimeapi.MemoryUsage{
-			Timestamp:       time.Now().UnixNano(),
+			Timestamp:       timeStamp,
 			WorkingSetBytes: &runtimeapi.UInt64Value{Value: dockerStats.MemoryStats.PrivateWorkingSet},
 		},
 		WritableLayer: &runtimeapi.FilesystemUsage{
-			Timestamp: time.Now().UnixNano(),
+			Timestamp: timeStamp,
 			UsedBytes: &runtimeapi.UInt64Value{Value: uint64(*containerJSON.SizeRw)},
 		},
 	}
 	return containerStats, nil
-}
-
-func (ds *dockerService) getCPU(dockerStats *dockertypes.Stats) uint64 {
-	// have to multiply cpu usage by 100 since docker stats units is in 100's of nano seconds for Windows
-	// see https://github.com/moby/moby/blob/master/api/types/stats.go#L22
-	return dockerStats.CPUStats.CPUUsage.TotalUsage * 100
 }
