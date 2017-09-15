@@ -86,15 +86,15 @@ func (ftc *nsenterFileTypeChecker) MakeDir() error {
 }
 
 func (ftc *nsenterFileTypeChecker) IsBlock() bool {
-	return ftc.checkMimetype(mount.MountPathBlockDev)
+	return ftc.checkMimetype(mount.FilePathBlockDev)
 }
 
 func (ftc *nsenterFileTypeChecker) IsChar() bool {
-	return ftc.checkMimetype(mount.MountPathCharDev)
+	return ftc.checkMimetype(mount.FilePathCharDev)
 }
 
 func (ftc *nsenterFileTypeChecker) IsSocket() bool {
-	return ftc.checkMimetype(mount.MountPathSocket)
+	return ftc.checkMimetype(mount.FilePathSocket)
 }
 
 func (ftc *nsenterFileTypeChecker) GetPath() string {

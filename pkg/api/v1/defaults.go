@@ -385,7 +385,7 @@ func SetDefaults_ScaleIOVolumeSource(obj *v1.ScaleIOVolumeSource) {
 }
 
 func SetDefaults_HostPathVolumeSource(obj *v1.HostPathVolumeSource) {
-	typeVol := mount.MountPathUnset
+	typeVol := mount.FilePathUnset
 	if obj.Type == nil {
 		obj.Type = &typeVol
 	}

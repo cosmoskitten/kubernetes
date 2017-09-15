@@ -1327,7 +1327,7 @@ func TestSetDefaultHostPathVolumeSource(t *testing.T) {
 	output := roundTrip(t, runtime.Object(pod))
 	pod2 := output.(*v1.Pod)
 	defaultType := pod2.Spec.Volumes[0].VolumeSource.HostPath.Type
-	expectedType := mount.MountPathUnset
+	expectedType := mount.FilePathUnset
 
 	if defaultType == nil || *defaultType != expectedType {
 		t.Errorf("Expected v1.HostPathVolumeSource default type %v, got %v", expectedType, defaultType)

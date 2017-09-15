@@ -50,7 +50,7 @@ func CreateLocalEtcdStaticPodManifestFile(manifestDir string, cfg *kubeadmapi.Ma
 // GetEtcdPodSpec returns the etcd static Pod actualized to the context of the current MasterConfiguration
 // NB. GetEtcdPodSpec methods holds the information about how kubeadm creates etcd static pod mainfests.
 func GetEtcdPodSpec(cfg *kubeadmapi.MasterConfiguration) v1.Pod {
-	pathType := mount.MountPathDirectoryOrCreate
+	pathType := mount.FilePathDirectoryOrCreate
 	return staticpodutil.ComponentPod(v1.Container{
 		Name:    kubeadmconstants.Etcd,
 		Command: getEtcdCommand(cfg),

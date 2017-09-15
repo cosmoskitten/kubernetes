@@ -83,7 +83,7 @@ func ComponentProbe(port int, path string, scheme v1.URIScheme) *v1.Probe {
 }
 
 // NewVolume creates a v1.Volume with a hostPath mount to the specified location
-func NewVolume(name, path string, pathType *mount.MountPathType) v1.Volume {
+func NewVolume(name, path string, pathType *mount.FileType) v1.Volume {
 	return v1.Volume{
 		Name: name,
 		VolumeSource: v1.VolumeSource{

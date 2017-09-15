@@ -75,8 +75,8 @@ var _ = framework.KubeDescribe("ContainerLogPath", func() {
 
 				expectedlogFile := logDir + "/" + logPodName + "_" + ns + "_" + logContName + "-" + logConID.ID + ".log"
 
-				hostPathType := new(mount.MountPathType)
-				*hostPathType = mount.MountPathType(string(mount.MountPathFileOrCreate))
+				hostPathType := new(mount.FileType)
+				*hostPathType = mount.FileType(string(mount.FilePathFileOrCreate))
 
 				checkPod := &v1.Pod{
 					ObjectMeta: metav1.ObjectMeta{

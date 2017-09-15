@@ -631,7 +631,7 @@ type HostPathVolumeSource struct {
 	// If the path is a symlink, it will follow the link to the real path.
 	Path string
 	// Defaults to ""
-	Type *mount.MountPathType
+	Type *mount.FileType
 }
 
 // Represents an empty directory for a pod.

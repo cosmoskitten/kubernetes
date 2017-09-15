@@ -47,9 +47,9 @@ func newStorage(t *testing.T) (*REST, *StatusREST, *etcdtesting.EtcdTestServer) 
 	return persistentVolumeStorage, statusStorage, server
 }
 
-func newHostPathType(pathType string) *mount.MountPathType {
-	hostPathType := new(mount.MountPathType)
-	*hostPathType = mount.MountPathType(pathType)
+func newHostPathType(pathType string) *mount.FileType {
+	hostPathType := new(mount.FileType)
+	*hostPathType = mount.FileType(pathType)
 	return hostPathType
 }
 
@@ -64,7 +64,7 @@ func validNewPersistentVolume(name string) *api.PersistentVolume {
 			},
 			AccessModes: []api.PersistentVolumeAccessMode{api.ReadWriteOnce},
 			PersistentVolumeSource: api.PersistentVolumeSource{
-				HostPath: &api.HostPathVolumeSource{Path: "/foo", Type: newHostPathType(string(mount.MountPathDirectoryOrCreate))},
+				HostPath: &api.HostPathVolumeSource{Path: "/foo", Type: newHostPathType(string(mount.FilePathDirectoryOrCreate))},
 			},
 			PersistentVolumeReclaimPolicy: api.PersistentVolumeReclaimRetain,
 		},

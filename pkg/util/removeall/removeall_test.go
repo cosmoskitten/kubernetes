@@ -63,8 +63,8 @@ func (mounter *fakeMounter) IsNotMountPoint(dir string) (bool, error) {
 	return mount.IsNotMountPoint(mounter, dir)
 }
 
-func (mounter *fakeMounter) GetFileType(pathname string) (mount.MountPathType, error) {
-	return mount.MountPathType("fake"), errors.New("not implemented")
+func (mounter *fakeMounter) GetFileType(pathname string) (mount.FileType, error) {
+	return mount.FileType("fake"), errors.New("not implemented")
 }
 
 func (mounter *fakeMounter) IsLikelyNotMountPoint(file string) (bool, error) {

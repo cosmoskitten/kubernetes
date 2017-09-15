@@ -124,12 +124,12 @@ func TestComponentPod(t *testing.T) {
 }
 
 func TestNewVolume(t *testing.T) {
-	hostPathDirectoryOrCreate := mount.MountPathDirectoryOrCreate
+	hostPathDirectoryOrCreate := mount.FilePathDirectoryOrCreate
 	var tests = []struct {
 		name     string
 		path     string
 		expected v1.Volume
-		pathType *mount.MountPathType
+		pathType *mount.FileType
 	}{
 		{
 			name: "foo",

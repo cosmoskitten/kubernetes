@@ -45,8 +45,8 @@ var caCertsPkiVolumePath = "/etc/pki"
 
 // getHostPathVolumesForTheControlPlane gets the required hostPath volumes and mounts for the control plane
 func getHostPathVolumesForTheControlPlane(cfg *kubeadmapi.MasterConfiguration) controlPlaneHostPathMounts {
-	hostPathDirectoryOrCreate := mount.MountPathDirectoryOrCreate
-	hostPathFileOrCreate := mount.MountPathFileOrCreate
+	hostPathDirectoryOrCreate := mount.FilePathDirectoryOrCreate
+	hostPathFileOrCreate := mount.FilePathFileOrCreate
 	mounts := newControlPlaneHostPathMounts()
 
 	// HostPath volumes for the API Server
@@ -103,7 +103,7 @@ func newControlPlaneHostPathMounts() controlPlaneHostPathMounts {
 	}
 }
 
-func (c *controlPlaneHostPathMounts) NewHostPathMount(component, mountName, hostPath, containerPath string, readOnly bool, hostPathType *mount.MountPathType) {
+func (c *controlPlaneHostPathMounts) NewHostPathMount(component, mountName, hostPath, containerPath string, readOnly bool, hostPathType *mount.FileType) {
 	c.volumes[component] = append(c.volumes[component], staticpodutil.NewVolume(mountName, hostPath, hostPathType))
 	c.volumeMounts[component] = append(c.volumeMounts[component], staticpodutil.NewVolumeMount(mountName, containerPath, readOnly))
 }
@@ -151,7 +151,7 @@ func getEtcdCertVolumes(etcdCfg kubeadmapi.Etcd) ([]v1.Volume, []v1.VolumeMount)
 
 	volumes := []v1.Volume{}
 	volumeMounts := []v1.VolumeMount{}
-	pathType := mount.MountPathDirectoryOrCreate
+	pathType := mount.FilePathDirectoryOrCreate
 	for i, certDir := range certDirs.List() {
 		name := fmt.Sprintf("etcd-certs-%d", i)
 		volumes = append(volumes, staticpodutil.NewVolume(name, certDir, &pathType))

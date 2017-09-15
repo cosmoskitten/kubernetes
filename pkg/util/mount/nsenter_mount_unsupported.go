@@ -66,6 +66,6 @@ func (*NsenterMounter) MakeRShared(path string) error {
 	return nil
 }
 
-func (*NsenterMounter) GetFileType(_ string) (MountPathType, error) {
-	return MountPathType("fake"), nil
+func (*NsenterMounter) GetFileType(_ string) (FileType, error) {
+	return FileType("fake"), nil
 }

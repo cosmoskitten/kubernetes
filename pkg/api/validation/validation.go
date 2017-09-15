@@ -982,16 +982,16 @@ func validateProjectedVolumeSource(projection *api.ProjectedVolumeSource, fldPat
 }
 
 var supportedHostPathTypes = sets.NewString(
-	string(mount.MountPathUnset),
-	string(mount.MountPathDirectoryOrCreate),
-	string(mount.MountPathDirectory),
-	string(mount.MountPathFileOrCreate),
-	string(mount.MountPathFile),
-	string(mount.MountPathSocket),
-	string(mount.MountPathCharDev),
-	string(mount.MountPathBlockDev))
+	string(mount.FilePathUnset),
+	string(mount.FilePathDirectoryOrCreate),
+	string(mount.FilePathDirectory),
+	string(mount.FilePathFileOrCreate),
+	string(mount.FilePathFile),
+	string(mount.FilePathSocket),
+	string(mount.FilePathCharDev),
+	string(mount.FilePathBlockDev))
 
-func validateHostPathType(hostPathType *mount.MountPathType, fldPath *field.Path) field.ErrorList {
+func validateHostPathType(hostPathType *mount.FileType, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	if !supportedHostPathTypes.Has(string(*hostPathType)) {

@@ -204,7 +204,7 @@ func (n *NsenterMounter) DeviceOpened(pathname string) (bool, error) {
 // to a device.
 func (n *NsenterMounter) PathIsDevice(pathname string) (bool, error) {
 	pathType, err := n.GetFileType(pathname)
-	isDevice := pathType == MountPathCharDev || pathType == MountPathBlockDev
+	isDevice := pathType == FilePathCharDev || pathType == FilePathBlockDev
 	return isDevice, err
 }
 
@@ -223,8 +223,8 @@ func (n *NsenterMounter) MakeRShared(path string) error {
 	return doMakeRShared(path, nsenter.HostProcMountinfoPath, nsenterCmd, nsenterArgs)
 }
 
-func (mounter *NsenterMounter) GetFileType(pathname string) (MountPathType, error) {
-	var pathType MountPathType
+func (mounter *NsenterMounter) GetFileType(pathname string) (FileType, error) {
+	var pathType FileType
 	args := append(mounter.ne.MakeBaseNsenterCmd("stat"),
 		[]string{"-L", `--printf "%F"`, pathname}...)
 	outputBytes, err := mounter.ne.Exec(args...).CombinedOutput()
@@ -234,11 +234,11 @@ func (mounter *NsenterMounter) GetFileType(pathname string) (MountPathType, erro
 
 	switch string(outputBytes) {
 	case "socket":
-		return MountPathSocket, nil
+		return FilePathSocket, nil
 	case "character special file":
-		return MountPathCharDev, nil
+		return FilePathCharDev, nil
 	case "block special file":
-		return MountPathBlockDev, nil
+		return FilePathBlockDev, nil
 	}
 
 	return pathType, fmt.Errorf("only recognise socket, block device and character device")

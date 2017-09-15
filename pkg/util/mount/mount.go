@@ -33,27 +33,27 @@ const (
 	MountsInGlobalPDPath = "mounts"
 )
 
-type MountPathType string
+type FileType string
 
 const (
 	// For backwards compatible, leave it empty if unset
-	MountPathUnset MountPathType = ""
+	FilePathUnset FileType = ""
 	// If nothing exists at the given path, an empty directory will be created there
 	// as needed with file mode 0755, having the same group and ownership with Kubelet.
-	MountPathDirectoryOrCreate MountPathType = "DirectoryOrCreate"
+	FilePathDirectoryOrCreate FileType = "DirectoryOrCreate"
 	// A directory must exist at the given path
-	MountPathDirectory MountPathType = "Directory"
+	FilePathDirectory FileType = "Directory"
 	// If nothing exists at the given path, an empty file will be created there
 	// as needed with file mode 0644, having the same group and ownership with Kubelet.
-	MountPathFileOrCreate MountPathType = "FileOrCreate"
+	FilePathFileOrCreate FileType = "FileOrCreate"
 	// A file must exist at the given path
-	MountPathFile MountPathType = "File"
+	FilePathFile FileType = "File"
 	// A UNIX socket must exist at the given path
-	MountPathSocket MountPathType = "Socket"
+	FilePathSocket FileType = "Socket"
 	// A character device must exist at the given path
-	MountPathCharDev MountPathType = "CharDevice"
+	FilePathCharDev FileType = "CharDevice"
 	// A block device must exist at the given path
-	MountPathBlockDev MountPathType = "BlockDevice"
+	FilePathBlockDev FileType = "BlockDevice"
 )
 
 type Interface interface {
@@ -94,7 +94,7 @@ type Interface interface {
 	// propagation. If not, it bind-mounts the path as rshared.
 	MakeRShared(path string) error
 	// GetFileType checks for sockets/block/character devices
-	GetFileType(pathname string) (MountPathType, error)
+	GetFileType(pathname string) (FileType, error)
 }
 
 // Exec executes command where mount utilities are. This can be either the host,

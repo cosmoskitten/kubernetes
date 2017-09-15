@@ -30,7 +30,7 @@ import (
 )
 
 func TestGetEtcdCertVolumes(t *testing.T) {
-	hostPathDirectoryOrCreate := mount.MountPathDirectoryOrCreate
+	hostPathDirectoryOrCreate := mount.FilePathDirectoryOrCreate
 	var tests = []struct {
 		ca, cert, key string
 		vol           []v1.Volume
@@ -248,8 +248,8 @@ func TestGetEtcdCertVolumes(t *testing.T) {
 }
 
 func TestGetHostPathVolumesForTheControlPlane(t *testing.T) {
-	hostPathDirectoryOrCreate := mount.MountPathDirectoryOrCreate
-	hostPathFileOrCreate := mount.MountPathFileOrCreate
+	hostPathDirectoryOrCreate := mount.FilePathDirectoryOrCreate
+	hostPathFileOrCreate := mount.FilePathFileOrCreate
 	var tests = []struct {
 		cfg      *kubeadmapi.MasterConfiguration
 		vol      map[string][]v1.Volume

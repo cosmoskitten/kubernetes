@@ -358,8 +358,8 @@ var Funcs = func(codecs runtimeserializer.CodecFactory) []interface{} {
 		},
 		func(obj *api.HostPathVolumeSource, c fuzz.Continue) {
 			c.FuzzNoCustom(obj)
-			types := []mount.MountPathType{mount.MountPathUnset, mount.MountPathDirectoryOrCreate, mount.MountPathDirectory,
-				mount.MountPathFileOrCreate, mount.MountPathFile, mount.MountPathSocket, mount.MountPathCharDev, mount.MountPathBlockDev}
+			types := []mount.FileType{mount.FilePathUnset, mount.FilePathDirectoryOrCreate, mount.FilePathDirectory,
+				mount.FilePathFileOrCreate, mount.FilePathFile, mount.FilePathSocket, mount.FilePathCharDev, mount.FilePathBlockDev}
 			typeVol := types[c.Rand.Intn(len(types))]
 			if obj.Type == nil {
 				obj.Type = &typeVol

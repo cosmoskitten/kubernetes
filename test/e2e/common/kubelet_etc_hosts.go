@@ -133,8 +133,8 @@ func (config *KubeletManagedHostConfig) getEtcHostsContent(podName, containerNam
 }
 
 func (config *KubeletManagedHostConfig) createPodSpec(podName string) *v1.Pod {
-	hostPathType := new(utilmount.MountPathType)
-	*hostPathType = utilmount.MountPathType(string(utilmount.MountPathFileOrCreate))
+	hostPathType := new(utilmount.FileType)
+	*hostPathType = utilmount.FileType(string(utilmount.FilePathFileOrCreate))
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: podName,

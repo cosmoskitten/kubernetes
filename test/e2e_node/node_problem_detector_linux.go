@@ -162,8 +162,8 @@ var _ = framework.KubeDescribe("NodeProblemDetector", func() {
 			})
 			Expect(err).NotTo(HaveOccurred())
 			By("Create the node problem detector")
-			hostPathType := new(mount.MountPathType)
-			*hostPathType = mount.MountPathType(string(mount.MountPathFileOrCreate))
+			hostPathType := new(mount.FileType)
+			*hostPathType = mount.FileType(string(mount.FilePathFileOrCreate))
 			f.PodClient().CreateSync(&v1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: name,

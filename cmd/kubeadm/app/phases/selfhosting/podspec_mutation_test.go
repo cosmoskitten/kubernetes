@@ -187,7 +187,7 @@ func TestSetRightDNSPolicyOnPodSpec(t *testing.T) {
 }
 
 func TestSetSelfHostedVolumesForAPIServer(t *testing.T) {
-	hostPathDirectoryOrCreate := mount.MountPathDirectoryOrCreate
+	hostPathDirectoryOrCreate := mount.FilePathDirectoryOrCreate
 	var tests = []struct {
 		podSpec  *v1.PodSpec
 		expected v1.PodSpec
@@ -281,8 +281,8 @@ func TestSetSelfHostedVolumesForAPIServer(t *testing.T) {
 }
 
 func TestSetSelfHostedVolumesForControllerManager(t *testing.T) {
-	hostPathFileOrCreate := mount.MountPathFileOrCreate
-	hostPathDirectoryOrCreate := mount.MountPathDirectoryOrCreate
+	hostPathFileOrCreate := mount.FilePathFileOrCreate
+	hostPathDirectoryOrCreate := mount.FilePathDirectoryOrCreate
 	var tests = []struct {
 		podSpec  *v1.PodSpec
 		expected v1.PodSpec
@@ -399,7 +399,7 @@ func TestSetSelfHostedVolumesForControllerManager(t *testing.T) {
 }
 
 func TestSetSelfHostedVolumesForScheduler(t *testing.T) {
-	hostPathFileOrCreate := mount.MountPathFileOrCreate
+	hostPathFileOrCreate := mount.FilePathFileOrCreate
 	var tests = []struct {
 		podSpec  *v1.PodSpec
 		expected v1.PodSpec

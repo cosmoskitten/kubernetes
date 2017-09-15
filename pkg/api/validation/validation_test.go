@@ -44,9 +44,9 @@ const (
 	envVarNameErrMsg        = "a valid environment variable name must consist of"
 )
 
-func newHostPathType(pathType string) *mount.MountPathType {
-	hostPathType := new(mount.MountPathType)
-	*hostPathType = mount.MountPathType(pathType)
+func newHostPathType(pathType string) *mount.FileType {
+	hostPathType := new(mount.FileType)
+	*hostPathType = mount.FileType(pathType)
 	return hostPathType
 }
 
@@ -95,7 +95,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 				PersistentVolumeSource: api.PersistentVolumeSource{
 					HostPath: &api.HostPathVolumeSource{
 						Path: "/foo",
-						Type: newHostPathType(string(mount.MountPathDirectory)),
+						Type: newHostPathType(string(mount.FilePathDirectory)),
 					},
 				},
 				StorageClassName: "valid",
@@ -111,7 +111,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 				PersistentVolumeSource: api.PersistentVolumeSource{
 					HostPath: &api.HostPathVolumeSource{
 						Path: "/foo",
-						Type: newHostPathType(string(mount.MountPathDirectory)),
+						Type: newHostPathType(string(mount.FilePathDirectory)),
 					},
 				},
 				PersistentVolumeReclaimPolicy: api.PersistentVolumeReclaimRetain,
@@ -127,7 +127,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 				PersistentVolumeSource: api.PersistentVolumeSource{
 					HostPath: &api.HostPathVolumeSource{
 						Path: "/foo",
-						Type: newHostPathType(string(mount.MountPathDirectory)),
+						Type: newHostPathType(string(mount.FilePathDirectory)),
 					},
 				},
 			}),
@@ -142,7 +142,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 				PersistentVolumeSource: api.PersistentVolumeSource{
 					HostPath: &api.HostPathVolumeSource{
 						Path: "/foo",
-						Type: newHostPathType(string(mount.MountPathDirectory)),
+						Type: newHostPathType(string(mount.FilePathDirectory)),
 					},
 				},
 				PersistentVolumeReclaimPolicy: "fakeReclaimPolicy",
@@ -158,7 +158,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 				PersistentVolumeSource: api.PersistentVolumeSource{
 					HostPath: &api.HostPathVolumeSource{
 						Path: "/foo",
-						Type: newHostPathType(string(mount.MountPathDirectory)),
+						Type: newHostPathType(string(mount.FilePathDirectory)),
 					},
 				},
 			}),
@@ -173,7 +173,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 				PersistentVolumeSource: api.PersistentVolumeSource{
 					HostPath: &api.HostPathVolumeSource{
 						Path: "/foo",
-						Type: newHostPathType(string(mount.MountPathDirectory)),
+						Type: newHostPathType(string(mount.FilePathDirectory)),
 					},
 				},
 			}),
@@ -200,7 +200,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 				PersistentVolumeSource: api.PersistentVolumeSource{
 					HostPath: &api.HostPathVolumeSource{
 						Path: "/foo",
-						Type: newHostPathType(string(mount.MountPathDirectory)),
+						Type: newHostPathType(string(mount.FilePathDirectory)),
 					},
 				},
 			}),
@@ -214,7 +214,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 				PersistentVolumeSource: api.PersistentVolumeSource{
 					HostPath: &api.HostPathVolumeSource{
 						Path: "/foo",
-						Type: newHostPathType(string(mount.MountPathDirectory)),
+						Type: newHostPathType(string(mount.FilePathDirectory)),
 					},
 					GCEPersistentDisk: &api.GCEPersistentDiskVolumeSource{PDName: "foo", FSType: "ext4"},
 				},
@@ -230,7 +230,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 				PersistentVolumeSource: api.PersistentVolumeSource{
 					HostPath: &api.HostPathVolumeSource{
 						Path: "/",
-						Type: newHostPathType(string(mount.MountPathDirectory)),
+						Type: newHostPathType(string(mount.FilePathDirectory)),
 					},
 				},
 				PersistentVolumeReclaimPolicy: api.PersistentVolumeReclaimRecycle,
@@ -246,7 +246,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 				PersistentVolumeSource: api.PersistentVolumeSource{
 					HostPath: &api.HostPathVolumeSource{
 						Path: "/a/..",
-						Type: newHostPathType(string(mount.MountPathDirectory)),
+						Type: newHostPathType(string(mount.FilePathDirectory)),
 					},
 				},
 				PersistentVolumeReclaimPolicy: api.PersistentVolumeReclaimRecycle,
@@ -262,7 +262,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 				PersistentVolumeSource: api.PersistentVolumeSource{
 					HostPath: &api.HostPathVolumeSource{
 						Path: "/foo",
-						Type: newHostPathType(string(mount.MountPathDirectory)),
+						Type: newHostPathType(string(mount.FilePathDirectory)),
 					},
 				},
 				StorageClassName: "-invalid-",
@@ -314,7 +314,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 				PersistentVolumeSource: api.PersistentVolumeSource{
 					HostPath: &api.HostPathVolumeSource{
 						Path: "/foo/..",
-						Type: newHostPathType(string(mount.MountPathDirectory)),
+						Type: newHostPathType(string(mount.FilePathDirectory)),
 					},
 				},
 				StorageClassName: "backstep-hostpath",
@@ -1258,7 +1258,7 @@ func TestValidateVolumes(t *testing.T) {
 					EmptyDir: &api.EmptyDirVolumeSource{},
 					HostPath: &api.HostPathVolumeSource{
 						Path: "/mnt/path",
-						Type: newHostPathType(string(mount.MountPathDirectory)),
+						Type: newHostPathType(string(mount.FilePathDirectory)),
 					},
 				},
 			},
@@ -1274,7 +1274,7 @@ func TestValidateVolumes(t *testing.T) {
 				VolumeSource: api.VolumeSource{
 					HostPath: &api.HostPathVolumeSource{
 						Path: "/mnt/path",
-						Type: newHostPathType(string(mount.MountPathDirectory)),
+						Type: newHostPathType(string(mount.FilePathDirectory)),
 					},
 				},
 			},
@@ -1287,7 +1287,7 @@ func TestValidateVolumes(t *testing.T) {
 				VolumeSource: api.VolumeSource{
 					HostPath: &api.HostPathVolumeSource{
 						Path: "/mnt/path",
-						Type: newHostPathType(string(mount.MountPathSocket)),
+						Type: newHostPathType(string(mount.FilePathSocket)),
 					},
 				},
 			},
@@ -1314,7 +1314,7 @@ func TestValidateVolumes(t *testing.T) {
 				VolumeSource: api.VolumeSource{
 					HostPath: &api.HostPathVolumeSource{
 						Path: "/mnt/path/..",
-						Type: newHostPathType(string(mount.MountPathDirectory)),
+						Type: newHostPathType(string(mount.FilePathDirectory)),
 					},
 				},
 			},

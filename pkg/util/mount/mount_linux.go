@@ -256,7 +256,7 @@ func (mounter *Mounter) DeviceOpened(pathname string) (bool, error) {
 // to a device.
 func (mounter *Mounter) PathIsDevice(pathname string) (bool, error) {
 	pathType, err := mounter.GetFileType(pathname)
-	isDevice := pathType == MountPathCharDev || pathType == MountPathBlockDev
+	isDevice := pathType == FilePathCharDev || pathType == FilePathBlockDev
 	return isDevice, err
 }
 
@@ -353,8 +353,8 @@ func (mounter *Mounter) MakeRShared(path string) error {
 	return doMakeRShared(path, procMountInfoPath, mountCmd, mountArgs)
 }
 
-func (mounter *Mounter) GetFileType(pathname string) (MountPathType, error) {
-	var pathType MountPathType
+func (mounter *Mounter) GetFileType(pathname string) (FileType, error) {
+	var pathType FileType
 	finfo, err := os.Stat(pathname)
 	if os.IsNotExist(err) {
 		return pathType, nil
@@ -367,11 +367,11 @@ func (mounter *Mounter) GetFileType(pathname string) (MountPathType, error) {
 	mode := finfo.Sys().(*syscall.Stat_t).Mode
 	switch mode & syscall.S_IFMT {
 	case syscall.S_IFSOCK:
-		return MountPathSocket, nil
+		return FilePathSocket, nil
 	case syscall.S_IFBLK:
-		return MountPathBlockDev, nil
+		return FilePathBlockDev, nil
 	case syscall.S_IFCHR:
-		return MountPathCharDev, nil
+		return FilePathCharDev, nil
 	}
 
 	return pathType, fmt.Errorf("only recognise socket, block device and character device")

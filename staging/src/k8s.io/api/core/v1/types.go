@@ -732,7 +732,7 @@ type HostPathVolumeSource struct {
 	// Defaults to ""
 	// More info: https://kubernetes.io/docs/concepts/storage/volumes#hostpath
 	// +optional
-	Type *mount.MountPathType `json:"type,omitempty" protobuf:"bytes,2,opt,name=type"`
+	Type *mount.FileType `json:"type,omitempty" protobuf:"bytes,2,opt,name=type"`
 }
 
 // Represents an empty directory for a pod.

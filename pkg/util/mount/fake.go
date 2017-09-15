@@ -176,6 +176,6 @@ func (f *FakeMounter) MakeRShared(path string) error {
 	return nil
 }
 
-func (f *FakeMounter) GetFileType(pathname string) (MountPathType, error) {
-	return MountPathType("fake"), nil
+func (f *FakeMounter) GetFileType(pathname string) (FileType, error) {
+	return FileType("fake"), nil
 }

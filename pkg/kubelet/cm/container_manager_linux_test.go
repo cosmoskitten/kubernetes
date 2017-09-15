@@ -79,8 +79,8 @@ func (mi *fakeMountInterface) MakeRShared(path string) error {
 	return nil
 }
 
-func (mi *fakeMountInterface) GetFileType(pathname string) (mount.MountPathType, error) {
-	return mount.MountPathType("fake"), nil
+func (mi *fakeMountInterface) GetFileType(pathname string) (mount.FileType, error) {
+	return mount.FileType("fake"), nil
 }
 
 func fakeContainerMgrMountInt() mount.Interface {
