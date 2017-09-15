@@ -93,11 +93,14 @@ type ServiceController struct {
 	nodeListerSynced    cache.InformerSynced
 	// services that need to be synced
 	workingQueue workqueue.DelayingInterface
+
+	// To allow injection of syncService for testing.
+	syncHandler func(key string) error
 }
 
 // New returns a new service controller to keep cloud provider service resources
 // (like load balancers) in sync with the registry.
-func New(
+func NewServiceController(
 	cloud cloudprovider.Interface,
 	kubeClient clientset.Interface,
 	serviceInformer coreinformers.ServiceInformer,
@@ -141,6 +144,7 @@ func New(
 	)
 	s.serviceLister = serviceInformer.Lister()
 	s.serviceListerSynced = serviceInformer.Informer().HasSynced
+	s.syncHandler = s.syncService
 
 	if err := s.init(); err != nil {
 		return nil, err
@@ -190,18 +194,20 @@ func (s *ServiceController) Run(stopCh <-chan struct{}, workers int) {
 // worker runs a worker thread that just dequeues items, processes them, and marks them done.
 // It enforces that the syncHandler is never invoked concurrently with the same key.
 func (s *ServiceController) worker() {
+	nextIterm := func() {
+		key, quit := s.workingQueue.Get()
+		if quit {
+			return
+		}
+		defer s.workingQueue.Done(key)
+		err := s.syncHandler(key.(string))
+		if err != nil {
+			glog.Errorf("Error syncing service: %v", err)
+		}
+	}
+
 	for {
-		func() {
-			key, quit := s.workingQueue.Get()
-			if quit {
-				return
-			}
-			defer s.workingQueue.Done(key)
-			err := s.syncService(key.(string))
-			if err != nil {
-				glog.Errorf("Error syncing service: %v", err)
-			}
-		}()
+		nextIterm()
 	}
 }
 

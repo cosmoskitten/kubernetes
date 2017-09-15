@@ -96,6 +96,8 @@ type HorizontalController struct {
 
 	// Controllers that need to be synced
 	queue workqueue.RateLimitingInterface
+	// To allow injection of reconcileKey for testing.
+	syncHandler func(key string) error
 }
 
 func NewHorizontalController(
@@ -114,7 +116,7 @@ func NewHorizontalController(
 	broadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: evtNamespacer.Events("")})
 	recorder := broadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "horizontal-pod-autoscaler"})
 
-	hpaController := &HorizontalController{
+	hpa := &HorizontalController{
 		replicaCalc:              replicaCalc,
 		eventRecorder:            recorder,
 		scaleNamespacer:          scaleNamespacer,
@@ -126,16 +128,16 @@ func NewHorizontalController(
 
 	hpaInformer.Informer().AddEventHandlerWithResyncPeriod(
 		cache.ResourceEventHandlerFuncs{
-			AddFunc:    hpaController.enqueueHPA,
-			UpdateFunc: hpaController.updateHPA,
-			DeleteFunc: hpaController.deleteHPA,
+			AddFunc:    hpa.enqueueHPA,
+			UpdateFunc: hpa.updateHPA,
+			DeleteFunc: hpa.deleteHPA,
 		},
 		resyncPeriod,
 	)
-	hpaController.hpaLister = hpaInformer.Lister()
-	hpaController.hpaListerSynced = hpaInformer.Informer().HasSynced
-
-	return hpaController
+	hpa.hpaLister = hpaInformer.Lister()
+	hpa.hpaListerSynced = hpaInformer.Informer().HasSynced
+	hpa.syncHandler = hpa.reconcileKey
+	return hpa
 }
 
 func (a *HorizontalController) Run(stopCh <-chan struct{}) {
@@ -186,7 +188,6 @@ func (a *HorizontalController) deleteHPA(obj interface{}) {
 func (a *HorizontalController) worker() {
 	for a.processNextWorkItem() {
 	}
-	glog.Infof("horizontal pod autoscaler controller worker shutting down")
 }
 
 func (a *HorizontalController) processNextWorkItem() bool {

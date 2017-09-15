@@ -172,7 +172,7 @@ func TestSyncEndpointsItemsPreserveNoSelector(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns},
 		Spec:       v1.ServiceSpec{Ports: []v1.ServicePort{{Port: 80}}},
 	})
-	endpoints.syncService(ns + "/foo")
+	endpoints.syncHandler(ns + "/foo")
 	endpointsHandler.ValidateRequestCount(t, 0)
 }
 
@@ -196,7 +196,7 @@ func TestSyncEndpointsExistingNilSubsets(t *testing.T) {
 			Ports:    []v1.ServicePort{{Port: 80}},
 		},
 	})
-	endpoints.syncService(ns + "/foo")
+	endpoints.syncHandler(ns + "/foo")
 	endpointsHandler.ValidateRequestCount(t, 0)
 }
 
@@ -220,7 +220,7 @@ func TestSyncEndpointsExistingEmptySubsets(t *testing.T) {
 			Ports:    []v1.ServicePort{{Port: 80}},
 		},
 	})
-	endpoints.syncService(ns + "/foo")
+	endpoints.syncHandler(ns + "/foo")
 	endpointsHandler.ValidateRequestCount(t, 0)
 }
 
@@ -236,7 +236,7 @@ func TestSyncEndpointsNewNoSubsets(t *testing.T) {
 			Ports:    []v1.ServicePort{{Port: 80}},
 		},
 	})
-	endpoints.syncService(ns + "/foo")
+	endpoints.syncHandler(ns + "/foo")
 	endpointsHandler.ValidateRequestCount(t, 1)
 }
 
@@ -290,7 +290,7 @@ func TestSyncEndpointsProtocolTCP(t *testing.T) {
 			Ports:    []v1.ServicePort{{Port: 80, TargetPort: intstr.FromInt(8080), Protocol: "TCP"}},
 		},
 	})
-	endpoints.syncService(ns + "/foo")
+	endpoints.syncHandler(ns + "/foo")
 
 	endpointsHandler.ValidateRequestCount(t, 1)
 	data := runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{
@@ -331,7 +331,7 @@ func TestSyncEndpointsProtocolUDP(t *testing.T) {
 			Ports:    []v1.ServicePort{{Port: 80, TargetPort: intstr.FromInt(8080), Protocol: "UDP"}},
 		},
 	})
-	endpoints.syncService(ns + "/foo")
+	endpoints.syncHandler(ns + "/foo")
 
 	endpointsHandler.ValidateRequestCount(t, 1)
 	data := runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{
@@ -369,7 +369,7 @@ func TestSyncEndpointsItemsEmptySelectorSelectsAll(t *testing.T) {
 			Ports:    []v1.ServicePort{{Port: 80, Protocol: "TCP", TargetPort: intstr.FromInt(8080)}},
 		},
 	})
-	endpoints.syncService(ns + "/foo")
+	endpoints.syncHandler(ns + "/foo")
 
 	data := runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
@@ -406,7 +406,7 @@ func TestSyncEndpointsItemsEmptySelectorSelectsAllNotReady(t *testing.T) {
 			Ports:    []v1.ServicePort{{Port: 80, Protocol: "TCP", TargetPort: intstr.FromInt(8080)}},
 		},
 	})
-	endpoints.syncService(ns + "/foo")
+	endpoints.syncHandler(ns + "/foo")
 
 	data := runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
@@ -443,7 +443,7 @@ func TestSyncEndpointsItemsEmptySelectorSelectsAllMixed(t *testing.T) {
 			Ports:    []v1.ServicePort{{Port: 80, Protocol: "TCP", TargetPort: intstr.FromInt(8080)}},
 		},
 	})
-	endpoints.syncService(ns + "/foo")
+	endpoints.syncHandler(ns + "/foo")
 
 	data := runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
@@ -484,7 +484,7 @@ func TestSyncEndpointsItemsPreexisting(t *testing.T) {
 			Ports:    []v1.ServicePort{{Port: 80, Protocol: "TCP", TargetPort: intstr.FromInt(8080)}},
 		},
 	})
-	endpoints.syncService(ns + "/foo")
+	endpoints.syncHandler(ns + "/foo")
 
 	data := runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
@@ -524,7 +524,7 @@ func TestSyncEndpointsItemsPreexistingIdentical(t *testing.T) {
 			Ports:    []v1.ServicePort{{Port: 80, Protocol: "TCP", TargetPort: intstr.FromInt(8080)}},
 		},
 	})
-	endpoints.syncService(ns + "/foo")
+	endpoints.syncHandler(ns + "/foo")
 	endpointsHandler.ValidateRequestCount(t, 0)
 }
 
@@ -545,7 +545,7 @@ func TestSyncEndpointsItems(t *testing.T) {
 			},
 		},
 	})
-	endpoints.syncService("other/foo")
+	endpoints.syncHandler("other/foo")
 
 	expectedSubsets := []v1.EndpointSubset{{
 		Addresses: []v1.EndpointAddress{
@@ -590,7 +590,7 @@ func TestSyncEndpointsItemsWithLabels(t *testing.T) {
 			},
 		},
 	})
-	endpoints.syncService(ns + "/foo")
+	endpoints.syncHandler(ns + "/foo")
 
 	expectedSubsets := []v1.EndpointSubset{{
 		Addresses: []v1.EndpointAddress{
@@ -647,7 +647,7 @@ func TestSyncEndpointsItemsPreexistingLabelsChange(t *testing.T) {
 			Ports:    []v1.ServicePort{{Port: 80, Protocol: "TCP", TargetPort: intstr.FromInt(8080)}},
 		},
 	})
-	endpoints.syncService(ns + "/foo")
+	endpoints.syncHandler(ns + "/foo")
 
 	data := runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
@@ -743,7 +743,7 @@ func TestSyncEndpointsHeadlessService(t *testing.T) {
 			Ports:     []v1.ServicePort{},
 		},
 	})
-	endpoints.syncService(ns + "/foo")
+	endpoints.syncHandler(ns + "/foo")
 	data := runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
@@ -783,7 +783,7 @@ func TestSyncEndpointsItemsExcludeNotReadyPodsWithRestartPolicyNeverAndPhaseFail
 			Ports:    []v1.ServicePort{{Port: 80, Protocol: "TCP", TargetPort: intstr.FromInt(8080)}},
 		},
 	})
-	endpoints.syncService(ns + "/foo")
+	endpoints.syncHandler(ns + "/foo")
 	data := runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
@@ -819,7 +819,7 @@ func TestSyncEndpointsItemsExcludeNotReadyPodsWithRestartPolicyNeverAndPhaseSucc
 			Ports:    []v1.ServicePort{{Port: 80, Protocol: "TCP", TargetPort: intstr.FromInt(8080)}},
 		},
 	})
-	endpoints.syncService(ns + "/foo")
+	endpoints.syncHandler(ns + "/foo")
 	data := runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
@@ -855,7 +855,7 @@ func TestSyncEndpointsItemsExcludeNotReadyPodsWithRestartPolicyOnFailureAndPhase
 			Ports:    []v1.ServicePort{{Port: 80, Protocol: "TCP", TargetPort: intstr.FromInt(8080)}},
 		},
 	})
-	endpoints.syncService(ns + "/foo")
+	endpoints.syncHandler(ns + "/foo")
 	data := runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
