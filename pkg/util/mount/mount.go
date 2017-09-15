@@ -95,6 +95,12 @@ type Interface interface {
 	MakeRShared(path string) error
 	// GetFileType checks for sockets/block/character devices
 	GetFileType(pathname string) (FileType, error)
+	// MakeFile creates an empty file
+	MakeFile(pathname string) error
+	// MakeDir creates a new directory
+	MakeDir(pathname string) error
+	// ExistsPath checks whether the path exists
+	ExistsPath(pathname string) bool
 }
 
 // Exec executes command where mount utilities are. This can be either the host,

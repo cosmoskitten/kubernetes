@@ -377,6 +377,35 @@ func (mounter *Mounter) GetFileType(pathname string) (FileType, error) {
 	return pathType, fmt.Errorf("only recognise socket, block device and character device")
 }
 
+func (mounter *Mounter) MakeDir(pathname string) error {
+	err := os.MkdirAll(pathname, os.FileMode(0755))
+	if err != nil {
+		if !os.IsExist(err) {
+			return err
+		}
+	}
+	return nil
+}
+
+func (mounter *Mounter) MakeFile(pathname string) error {
+	f, err := os.OpenFile(pathname, os.O_CREATE, os.FileMode(0644))
+	defer f.Close()
+	if err != nil {
+		if !os.IsExist(err) {
+			return err
+		}
+	}
+	return nil
+}
+
+func (mounter *Mounter) ExistsPath(pathname string) bool {
+	_, err := os.Stat(pathname)
+	if err != nil {
+		return false
+	}
+	return true
+}
+
 // formatAndMount uses unix utils to format and mount the given disk
 func (mounter *SafeFormatAndMount) formatAndMount(source string, target string, fstype string, options []string) error {
 	options = append(options, "defaults")

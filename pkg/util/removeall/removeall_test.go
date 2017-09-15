@@ -67,6 +67,18 @@ func (mounter *fakeMounter) GetFileType(pathname string) (mount.FileType, error)
 	return mount.FileType("fake"), errors.New("not implemented")
 }
 
+func (mounter *fakeMounter) MakeDir(pathname string) error {
+	return nil
+}
+
+func (mounter *fakeMounter) MakeFile(pathname string) error {
+	return nil
+}
+
+func (mounter *fakeMounter) ExistsPath(pathname string) bool {
+	return true
+}
+
 func (mounter *fakeMounter) IsLikelyNotMountPoint(file string) (bool, error) {
 	name := path.Base(file)
 	if strings.HasPrefix(name, "mount") {

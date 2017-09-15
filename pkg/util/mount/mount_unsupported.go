@@ -82,3 +82,15 @@ func (mounter *SafeFormatAndMount) diskLooksUnformatted(disk string) (bool, erro
 func (mounter *Mounter) GetFileType(pathname string) (FileType, error) {
 	return FileType("fake"), nil
 }
+
+func (mounter *Mounter) MakeDir(pathname string) error {
+	return nil
+}
+
+func (mounter *Mounter) MakeFile(pathname string) error {
+	return nil
+}
+
+func (mounter *Mounter) ExistsPath(pathname string) bool {
+	return true
+}

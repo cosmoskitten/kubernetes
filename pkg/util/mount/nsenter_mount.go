@@ -243,3 +243,28 @@ func (mounter *NsenterMounter) GetFileType(pathname string) (FileType, error) {
 
 	return pathType, fmt.Errorf("only recognise socket, block device and character device")
 }
+
+func (mounter *NsenterMounter) MakeDir(pathname string) error {
+	args := append(mounter.ne.MakeBaseNsenterCmd("mkdir"), []string{"-p", pathname}...)
+	if _, err := mounter.ne.Exec(args...).CombinedOutput(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (mounter *NsenterMounter) MakeFile(pathname string) error {
+	args := append(mounter.ne.MakeBaseNsenterCmd("touch"), pathname)
+	if _, err := mounter.ne.Exec(args...).CombinedOutput(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (mounter *NsenterMounter) ExistsPath(pathname string) bool {
+	args := append(mounter.ne.MakeBaseNsenterCmd("ls"), pathname)
+	_, err := mounter.ne.Exec(args...).CombinedOutput()
+	if err == nil {
+		return true
+	}
+	return false
+}

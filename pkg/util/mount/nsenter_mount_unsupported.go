@@ -69,3 +69,15 @@ func (*NsenterMounter) MakeRShared(path string) error {
 func (*NsenterMounter) GetFileType(_ string) (FileType, error) {
 	return FileType("fake"), nil
 }
+
+func (*NsenterMounter) MakeDir(pathname string) error {
+	return nil
+}
+
+func (*NsenterMounter) MakeFile(pathname string) error {
+	return nil
+}
+
+func (*NsenterMounter) ExistsPath(pathname string) bool {
+	return true
+}
