@@ -55,6 +55,7 @@ go_library(
     ] + select({
         "@io_bazel_rules_go//go/platform:linux_amd64": [
             "//pkg/api/v1/node:go_default_library",
+            "//pkg/util/mount:go_default_library",
             "//pkg/util/procfs:go_default_library",
             "//test/e2e/perftype:go_default_library",
             "//test/e2e_node/perftype:go_default_library",
@@ -129,6 +130,7 @@ go_test(
         "//pkg/kubelet/metrics:go_default_library",
         "//pkg/kubelet/types:go_default_library",
         "//pkg/security/apparmor:go_default_library",
+        "//pkg/util/mount:go_default_library",
         "//test/e2e/common:go_default_library",
         "//test/e2e/framework:go_default_library",
         "//test/e2e_node/services:go_default_library",

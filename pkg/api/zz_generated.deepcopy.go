@@ -26,6 +26,7 @@ import (
 	conversion "k8s.io/apimachinery/pkg/conversion"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	types "k8s.io/apimachinery/pkg/types"
+	mount "k8s.io/kubernetes/pkg/util/mount"
 	reflect "reflect"
 )
 
@@ -2423,7 +2424,7 @@ func (in *HostPathVolumeSource) DeepCopyInto(out *HostPathVolumeSource) {
 		if *in == nil {
 			*out = nil
 		} else {
-			*out = new(HostPathType)
+			*out = new(mount.FileType)
 			**out = **in
 		}
 	}
