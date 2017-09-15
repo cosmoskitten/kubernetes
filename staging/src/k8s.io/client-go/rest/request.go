@@ -823,6 +823,21 @@ func (r *Request) transformResponse(resp *http.Response, req *http.Request) Resu
 	}
 }
 
+// truncateBody decides if the body should be truncated, based on the glog Verbosity.
+func truncateBody(body string) string {
+	switch {
+	case bool(glog.V(9)):
+		if len(body) > 10240 {
+			return body[:10240]
+		}
+	case bool(glog.V(8)):
+		if len(body) > 1024 {
+			return body[:1024]
+		}
+	}
+	return body
+}
+
 // glogBody logs a body output that could be either JSON or protobuf. It explicitly guards against
 // allocating a new string for the body output unless necessary. Uses a simple heuristic to determine
 // whether the body is printable.
@@ -831,9 +846,9 @@ func glogBody(prefix string, body []byte) {
 		if bytes.IndexFunc(body, func(r rune) bool {
 			return r < 0x0a
 		}) != -1 {
-			glog.Infof("%s:\n%s", prefix, hex.Dump(body))
+			glog.Infof("%s:\n%s", prefix, truncateBody(hex.Dump(body)))
 		} else {
-			glog.Infof("%s: %s", prefix, string(body))
+			glog.Infof("%s: %s", prefix, truncateBody(string(body)))
 		}
 	}
 }
