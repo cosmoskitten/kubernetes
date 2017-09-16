@@ -52,9 +52,10 @@ import (
 )
 
 const (
-	ApplyAnnotationsFlag     = "save-config"
-	DefaultErrorExitCode     = 1
-	IncludeUninitializedFlag = "include-uninitialized"
+	ApplyAnnotationsFlag        = "save-config"
+	DefaultErrorExitCode        = 1
+	ApplyUnchangedErrorExitCode = 2
+	IncludeUninitializedFlag    = "include-uninitialized"
 )
 
 type debugError interface {
@@ -111,6 +112,19 @@ func fatal(msg string, code int) {
 // status code 1.
 var ErrExit = fmt.Errorf("exit")
 
+// OperationFailedUnchangedExit may be passed to CheckError to instruct it to operation succeed but unchanged
+var OperationFailedUnchangedExit = fmt.Errorf("apply failed unchanged")
+
+// FailedWithUnchanged first check the `exit-failure-unchanged` flag if command set to true
+// and then if the command operation applied without any changes or use dry-run mode
+// we will return OperationFailedUnchangedExit error, otherwise return nil
+func FailedWithUnchanged(flag, unchanged, dryRun bool) error {
+	if flag && (unchanged || dryRun) {
+		return OperationFailedUnchangedExit
+	}
+	return nil
+}
+
 // CheckErr prints a user friendly error to STDERR and exits with a non-zero
 // exit code. Unrecognized errors will be printed with an "error: " prefix.
 //
@@ -140,6 +154,8 @@ func checkErr(err error, handleErr func(string, int)) {
 	switch {
 	case err == ErrExit:
 		handleErr("", DefaultErrorExitCode)
+	case err == OperationFailedUnchangedExit:
+		handleErr("", ApplyUnchangedErrorExitCode)
 	case kerrors.IsInvalid(err):
 		details := err.(*kerrors.StatusError).Status().Details
 		s := fmt.Sprintf("The %s %q is invalid", details.Kind, details.Name)
