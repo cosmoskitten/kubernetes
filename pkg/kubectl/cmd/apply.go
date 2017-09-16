@@ -48,15 +48,16 @@ import (
 )
 
 type ApplyOptions struct {
-	FilenameOptions resource.FilenameOptions
-	Selector        string
-	Force           bool
-	Prune           bool
-	Cascade         bool
-	GracePeriod     int
-	PruneResources  []pruneResource
-	Timeout         time.Duration
-	cmdBaseName     string
+	FilenameOptions      resource.FilenameOptions
+	Selector             string
+	Force                bool
+	Prune                bool
+	Cascade              bool
+	GracePeriod          int
+	PruneResources       []pruneResource
+	Timeout              time.Duration
+	cmdBaseName          string
+	IgnoreChangedFailure bool
 }
 
 const (
@@ -75,6 +76,9 @@ var (
 		To use 'apply', always create the resource initially with either 'apply' or 'create --save-config'.
 
 		JSON and YAML formats are accepted.
+
+		Apply exits 0 on no differences, 1 on differences found, and > 1 on error by default.
+		But you could set '--ignore-changed-failure=true' to return 0 on differences found.
 
 		Alpha Disclaimer: the --prune functionality is not yet complete. Do not use unless you are aware of what the current state is. See https://issues.k8s.io/34274.`))
 
@@ -110,7 +114,7 @@ func NewCmdApply(baseName string, f cmdutil.Factory, out, errOut io.Writer) *cob
 		Run: func(cmd *cobra.Command, args []string) {
 			cmdutil.CheckErr(validateArgs(cmd, args))
 			cmdutil.CheckErr(validatePruneAll(options.Prune, cmdutil.GetFlagBool(cmd, "all"), options.Selector))
-			cmdutil.CheckErr(RunApply(f, cmd, out, errOut, &options))
+			cmdutil.DelartiveCheckErr(RunApply(f, cmd, out, errOut, &options))
 		},
 	}
 
@@ -127,6 +131,7 @@ func NewCmdApply(baseName string, f cmdutil.Factory, out, errOut io.Writer) *cob
 	cmd.Flags().StringVarP(&options.Selector, "selector", "l", "", "Selector (label query) to filter on, supports '=', '==', and '!='.(e.g. -l key1=value1,key2=value2)")
 	cmd.Flags().Bool("all", false, "Select all resources in the namespace of the specified resource types.")
 	cmd.Flags().StringArray("prune-whitelist", []string{}, "Overwrite the default whitelist with <group/version/kind> for --prune")
+	cmd.Flags().BoolVar(&options.IgnoreChangedFailure, "ignore-changed-failure", false, "if no set to true the exit code will be 0 on differences found")
 	cmdutil.AddDryRunFlag(cmd)
 	cmdutil.AddPrinterFlags(cmd)
 	cmdutil.AddRecordFlag(cmd)
@@ -323,11 +328,12 @@ func RunApply(f cmdutil.Factory, cmd *cobra.Command, out, errOut io.Writer, opti
 				timeout:       options.Timeout,
 				gracePeriod:   options.GracePeriod,
 			}
-
 			patchBytes, patchedObject, err := patcher.patch(info.Object, modified, info.Source, info.Namespace, info.Name)
 			if err != nil {
 				return cmdutil.AddSourceToErr(fmt.Sprintf("applying patch:\n%s\nto:\n%v\nfor:", patchBytes, info), info.Source, err)
 			}
+
+			cmdutil.CheckConfigurationChanged(info.Object, patchedObject)
 
 			info.Refresh(patchedObject, true)
 
@@ -353,7 +359,7 @@ func RunApply(f cmdutil.Factory, cmd *cobra.Command, out, errOut io.Writer, opti
 	}
 
 	if !options.Prune {
-		return nil
+		return cmdutil.ReturnConfigurationChanged(options.IgnoreChangedFailure)
 	}
 
 	selector, err := labels.Parse(options.Selector)
@@ -393,7 +399,7 @@ func RunApply(f cmdutil.Factory, cmd *cobra.Command, out, errOut io.Writer, opti
 		}
 	}
 
-	return nil
+	return cmdutil.ReturnConfigurationChanged(options.IgnoreChangedFailure)
 }
 
 type pruneResource struct {

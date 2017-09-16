@@ -892,7 +892,7 @@ __EOF__
   ! [[ "$(kubectl get pods test-pod -o yaml "${kube_flags[@]}" | grep kubectl.kubernetes.io/last-applied-configuration)" ]]
   ## 3. kubectl apply does set the annotation
   # Command: apply the pod "test-pod"
-  kubectl apply -f hack/testdata/pod-apply.yaml "${kube_flags[@]}"
+  ! kubectl apply -f hack/testdata/pod-apply.yaml "${kube_flags[@]}"
   # Post-Condition: pod "test-pod" is applied
   kube::test::get_object_assert 'pods test-pod' "{{${labels_field}.name}}" 'test-pod-applied'
   # Post-Condition: pod "test-pod" has configuration annotation
@@ -927,7 +927,7 @@ run_kubectl_apply_tests() {
   # Pre-Condition: no POD exists
   kube::test::get_object_assert pods "{{range.items}}{{$id_field}}:{{end}}" ''
   # Command: apply a pod "test-pod" (doesn't exist) should create this pod
-  kubectl apply -f hack/testdata/pod.yaml "${kube_flags[@]}"
+  ! kubectl apply -f hack/testdata/pod.yaml "${kube_flags[@]}"
   # Post-Condition: pod "test-pod" is created
   kube::test::get_object_assert 'pods test-pod' "{{${labels_field}.name}}" 'test-pod-label'
   # Post-Condition: pod "test-pod" has configuration annotation
@@ -940,7 +940,7 @@ run_kubectl_apply_tests() {
   # Pre-Condition: no deployment exists
   kube::test::get_object_assert deployments "{{range.items}}{{$id_field}}:{{end}}" ''
   # Command: apply a deployment "test-deployment-retainkeys" (doesn't exist) should create this deployment
-  kubectl apply -f hack/testdata/retainKeys/deployment/deployment-before.yaml "${kube_flags[@]}"
+  ! kubectl apply -f hack/testdata/retainKeys/deployment/deployment-before.yaml "${kube_flags[@]}"
   # Post-Condition: deployment "test-deployment-retainkeys" created
   kube::test::get_object_assert deployments "{{range.items}}{{$id_field}}{{end}}" 'test-deployment-retainkeys'
   # Post-Condition: deployment "test-deployment-retainkeys" has defaulted fields
@@ -964,7 +964,7 @@ run_kubectl_apply_tests() {
   # Pre-Condition: no POD exists
   kube::test::get_object_assert pods "{{range.items}}{{$id_field}}:{{end}}" ''
   # apply
-  kubectl apply -l unique-label=bingbang -f hack/testdata/filter "${kube_flags[@]}"
+  ! kubectl apply -l unique-label=bingbang -f hack/testdata/filter "${kube_flags[@]}"
   # check right pod exists
   kube::test::get_object_assert 'pods selector-test-pod' "{{${labels_field}.name}}" 'selector-test-pod'
   # check wrong pod doesn't exist
@@ -979,7 +979,7 @@ run_kubectl_apply_tests() {
   kube::test::get_object_assert pods "{{range.items}}{{$id_field}}:{{end}}" ''
 
   # apply a
-  kubectl apply --prune -l prune-group=true -f hack/testdata/prune/a.yaml "${kube_flags[@]}"
+  ! kubectl apply --prune -l prune-group=true -f hack/testdata/prune/a.yaml "${kube_flags[@]}"
   # check right pod exists
   kube::test::get_object_assert 'pods a' "{{${id_field}}}" 'a'
   # check wrong pod doesn't exist
@@ -987,7 +987,7 @@ run_kubectl_apply_tests() {
   kube::test::if_has_string "${output_message}" 'pods "b" not found'
 
   # apply b
-  kubectl apply --prune -l prune-group=true -f hack/testdata/prune/b.yaml "${kube_flags[@]}"
+  ! kubectl apply --prune -l prune-group=true -f hack/testdata/prune/b.yaml "${kube_flags[@]}"
   # check right pod exists
   kube::test::get_object_assert 'pods b' "{{${id_field}}}" 'b'
   # check wrong pod doesn't exist
@@ -1002,7 +1002,7 @@ run_kubectl_apply_tests() {
   kube::test::get_object_assert pods "{{range.items}}{{$id_field}}:{{end}}" ''
 
   # apply a
-  kubectl apply -l prune-group=true -f hack/testdata/prune/a.yaml "${kube_flags[@]}"
+  ! kubectl apply -l prune-group=true -f hack/testdata/prune/a.yaml "${kube_flags[@]}"
   # check right pod exists
   kube::test::get_object_assert 'pods a' "{{${id_field}}}" 'a'
   # check wrong pod doesn't exist
@@ -1010,7 +1010,7 @@ run_kubectl_apply_tests() {
   kube::test::if_has_string "${output_message}" 'pods "b" not found'
 
   # apply b
-  kubectl apply -l prune-group=true -f hack/testdata/prune/b.yaml "${kube_flags[@]}"
+  ! kubectl apply -l prune-group=true -f hack/testdata/prune/b.yaml "${kube_flags[@]}"
   # check both pods exist
   kube::test::get_object_assert 'pods a' "{{${id_field}}}" 'a'
   kube::test::get_object_assert 'pods b' "{{${id_field}}}" 'b'
@@ -1024,15 +1024,15 @@ run_kubectl_apply_tests() {
   kube::test::if_has_string "${output_message}" \
     'all resources selected for prune without explicitly passing --all'
   # should apply everything
-  kubectl apply --all --prune -f hack/testdata/prune
+  ! kubectl apply --all --prune -f hack/testdata/prune
   kube::test::get_object_assert 'pods a' "{{${id_field}}}" 'a'
   kube::test::get_object_assert 'pods b' "{{${id_field}}}" 'b'
   kubectl delete pod/a pod/b
 
   ## kubectl apply --prune should fallback to delete for non reapable types
-  kubectl apply --all --prune -f hack/testdata/prune-reap/a.yml 2>&1 "${kube_flags[@]}"
+  ! kubectl apply --all --prune -f hack/testdata/prune-reap/a.yml 2>&1 "${kube_flags[@]}"
   kube::test::get_object_assert 'pvc a-pvc' "{{${id_field}}}" 'a-pvc'
-  kubectl apply --all --prune -f hack/testdata/prune-reap/b.yml 2>&1 "${kube_flags[@]}"
+  ! kubectl apply --all --prune -f hack/testdata/prune-reap/b.yml 2>&1 "${kube_flags[@]}"
   kube::test::get_object_assert 'pvc b-pvc' "{{${id_field}}}" 'b-pvc'
   kube::test::get_object_assert pods "{{range.items}}{{$id_field}}:{{end}}" ''
   kubectl delete pvc b-pvc 2>&1 "${kube_flags[@]}"
@@ -1041,19 +1041,43 @@ run_kubectl_apply_tests() {
   # Pre-Condition: no POD exists
   kube::test::get_object_assert pods "{{range.items}}{{$id_field}}:{{end}}" ''
   # apply pod a
-  kubectl apply --prune -l prune-group=true -f hack/testdata/prune/a.yaml "${kube_flags[@]}"
+  ! kubectl apply --prune -l prune-group=true -f hack/testdata/prune/a.yaml "${kube_flags[@]}"
   # check right pod exists
   kube::test::get_object_assert 'pods a' "{{${id_field}}}" 'a'
   # apply svc and don't prune pod a by overwriting whitelist
-  kubectl apply --prune -l prune-group=true -f hack/testdata/prune/svc.yaml --prune-whitelist core/v1/Service 2>&1 "${kube_flags[@]}"
+  ! kubectl apply --prune -l prune-group=true -f hack/testdata/prune/svc.yaml --prune-whitelist core/v1/Service 2>&1 "${kube_flags[@]}"
   kube::test::get_object_assert 'service prune-svc' "{{${id_field}}}" 'prune-svc'
   kube::test::get_object_assert 'pods a' "{{${id_field}}}" 'a'
   # apply svc and prune pod a with default whitelist
-  kubectl apply --prune -l prune-group=true -f hack/testdata/prune/svc.yaml 2>&1 "${kube_flags[@]}"
+  ! kubectl apply --prune -l prune-group=true -f hack/testdata/prune/svc.yaml 2>&1 "${kube_flags[@]}"
   kube::test::get_object_assert 'service prune-svc' "{{${id_field}}}" 'prune-svc'
   kube::test::get_object_assert pods "{{range.items}}{{$id_field}}:{{end}}" ''
   # cleanup
   kubectl delete svc prune-svc 2>&1 "${kube_flags[@]}"
+
+  ## kubectl apply --exit-failure-unchanged=true
+  # Pre-Condition: no POD exists
+  kube::test::get_object_assert pods "{{range.items}}{{$id_field}}:{{end}}" ''
+  # Command: apply a pod "test-pod" (doesn't exist) should create this pod
+  ! kubectl apply -f hack/testdata/pod.yaml "${kube_flags[@]}"
+  # Post-Condition: pod "test-pod" is created
+  kube::test::get_object_assert 'pods test-pod' "{{${labels_field}.name}}" 'test-pod-label'
+
+  ## kubectl apply --ignore-changed-failure=true
+  # Pre-Condition: no POD exists
+  kube::test::get_object_assert pods "{{range.items}}{{$id_field}}:{{end}}" ''
+  # Command: apply a pod "test-pod" (doesn't exist) should create this pod
+  # and --ignore-changed-failure=true should return exit code 0
+  kubectl apply --ignore-changed-failure=true -f hack/testdata/pod.yaml "${kube_flags[@]}"
+  # Post-Condition: pod "test-pod" is created
+  kube::test::get_object_assert 'pods test-pod' "{{${labels_field}.name}}" 'test-pod-label'
+
+  # apply again with --ignore-changed-failure=true
+  kubectl apply --exit-failure-unchanged=true -f hack/testdata/pod.yaml "${kube_flags[@]}"
+  # apply again with --prune --ignore-changed-failure=true
+  kubectl apply --all --prune -f hack/testdata/pod.yaml "${kube_flags[@]}"
+  # Clean up
+  kubectl delete pods test-pod "${kube_flags[@]}"
 
   set +o nounset
   set +o errexit
@@ -1095,7 +1119,7 @@ run_kubectl_apply_deployments_tests() {
   kube::test::get_object_assert replicasets "{{range.items}}{{$id_field}}:{{end}}" ''
   kube::test::get_object_assert pods "{{range.items}}{{$id_field}}:{{end}}" ''
   # apply base deployment
-  kubectl apply -f hack/testdata/null-propagation/deployment-l1.yaml "${kube_flags[@]}"
+  ! kubectl apply -f hack/testdata/null-propagation/deployment-l1.yaml "${kube_flags[@]}"
   # check right deployment exists
   kube::test::get_object_assert 'deployments my-depl' "{{${id_field}}}" 'my-depl'
   # check right labels exists
@@ -1104,7 +1128,7 @@ run_kubectl_apply_deployments_tests() {
   kube::test::get_object_assert 'deployments my-depl' "{{.metadata.labels.l1}}" 'l1'
 
   # apply new deployment with new template labels
-  kubectl apply -f hack/testdata/null-propagation/deployment-l2.yaml "${kube_flags[@]}"
+  ! kubectl apply -f hack/testdata/null-propagation/deployment-l2.yaml "${kube_flags[@]}"
   # check right labels exists
   kube::test::get_object_assert 'deployments my-depl' "{{.spec.template.metadata.labels.l1}}" '<no value>'
   kube::test::get_object_assert 'deployments my-depl' "{{.spec.selector.matchLabels.l1}}" '<no value>'
@@ -1779,13 +1803,13 @@ run_non_native_resource_tests() {
   kube::test::get_object_assert bars "{{range.items}}{{$id_field}}:{{end}}" ''
 
   # apply --prune on foo.yaml that has foo/test
-  kubectl apply --prune -l pruneGroup=true -f hack/testdata/TPR/foo.yaml "${kube_flags[@]}" --prune-whitelist=company.com/v1/Foo --prune-whitelist=company.com/v1/Bar
+  ! kubectl apply --prune -l pruneGroup=true -f hack/testdata/TPR/foo.yaml "${kube_flags[@]}" --prune-whitelist=company.com/v1/Foo --prune-whitelist=company.com/v1/Bar
   # check right tprs exist
   kube::test::get_object_assert foos "{{range.items}}{{$id_field}}:{{end}}" 'test:'
   kube::test::get_object_assert bars "{{range.items}}{{$id_field}}:{{end}}" ''
 
   # apply --prune on bar.yaml that has bar/test
-  kubectl apply --prune -l pruneGroup=true -f hack/testdata/TPR/bar.yaml "${kube_flags[@]}" --prune-whitelist=company.com/v1/Foo --prune-whitelist=company.com/v1/Bar
+  ! kubectl apply --prune -l pruneGroup=true -f hack/testdata/TPR/bar.yaml "${kube_flags[@]}" --prune-whitelist=company.com/v1/Foo --prune-whitelist=company.com/v1/Bar
   # check right tprs exist
   kube::test::get_object_assert foos "{{range.items}}{{$id_field}}:{{end}}" ''
   kube::test::get_object_assert bars "{{range.items}}{{$id_field}}:{{end}}" 'test:'
@@ -2789,7 +2813,7 @@ run_deployment_tests() {
   kubectl rollout undo deployment nginx --to-revision=1 "${kube_flags[@]}"
   kube::test::get_object_assert deployment "{{range.items}}{{$image_field0}}:{{end}}" "${IMAGE_DEPLOYMENT_R1}:"
   # Update the deployment (revision 2)
-  kubectl apply -f hack/testdata/deployment-revision2.yaml "${kube_flags[@]}"
+  ! kubectl apply -f hack/testdata/deployment-revision2.yaml "${kube_flags[@]}"
   kube::test::get_object_assert deployment.extensions "{{range.items}}{{$image_field0}}:{{end}}" "${IMAGE_DEPLOYMENT_R2}:"
   # Rollback to revision 1 with dry-run - should be no-op
   kubectl rollout undo deployment nginx --dry-run=true "${kube_flags[@]}" | grep "test-cmd"
@@ -3058,7 +3082,7 @@ run_daemonset_tests() {
   # Pre-condition: no DaemonSet exists
   kube::test::get_object_assert daemonsets "{{range.items}}{{$id_field}}:{{end}}" ''
   # Command
-  kubectl apply -f hack/testdata/rollingupdate-daemonset.yaml "${kube_flags[@]}"
+  ! kubectl apply -f hack/testdata/rollingupdate-daemonset.yaml "${kube_flags[@]}"
   # Template Generation should be 1
   kube::test::get_object_assert 'daemonsets bind' "{{${template_generation_field}}}" '1'
   kubectl apply -f hack/testdata/rollingupdate-daemonset.yaml "${kube_flags[@]}"
@@ -3083,14 +3107,14 @@ run_daemonset_history_tests() {
   kube::test::get_object_assert daemonsets "{{range.items}}{{$id_field}}:{{end}}" ''
   # Command
   # Create a DaemonSet (revision 1)
-  kubectl apply -f hack/testdata/rollingupdate-daemonset.yaml --record "${kube_flags[@]}"
+  ! kubectl apply -f hack/testdata/rollingupdate-daemonset.yaml --record "${kube_flags[@]}"
   kube::test::wait_object_assert controllerrevisions "{{range.items}}{{$annotations_field}}:{{end}}" ".*rollingupdate-daemonset.yaml --record.*"
   # Rollback to revision 1 - should be no-op
   kubectl rollout undo daemonset --to-revision=1 "${kube_flags[@]}"
   kube::test::get_object_assert daemonset "{{range.items}}{{$image_field0}}:{{end}}" "${IMAGE_PAUSE_V2}:"
   kube::test::get_object_assert daemonset "{{range.items}}{{$container_len}}{{end}}" "1"
   # Update the DaemonSet (revision 2)
-  kubectl apply -f hack/testdata/rollingupdate-daemonset-rv2.yaml --record "${kube_flags[@]}"
+  ! kubectl apply -f hack/testdata/rollingupdate-daemonset-rv2.yaml --record "${kube_flags[@]}"
   kube::test::wait_object_assert daemonset "{{range.items}}{{$image_field0}}:{{end}}" "${IMAGE_DAEMONSET_R2}:"
   kube::test::wait_object_assert daemonset "{{range.items}}{{$image_field1}}:{{end}}" "${IMAGE_DAEMONSET_R2_2}:"
   kube::test::get_object_assert daemonset "{{range.items}}{{$container_len}}{{end}}" "2"
@@ -3133,14 +3157,14 @@ run_statefulset_history_tests() {
   kube::test::get_object_assert statefulset "{{range.items}}{{$id_field}}:{{end}}" ''
   # Command
   # Create a StatefulSet (revision 1)
-  kubectl apply -f hack/testdata/rollingupdate-statefulset.yaml --record "${kube_flags[@]}"
+  ! kubectl apply -f hack/testdata/rollingupdate-statefulset.yaml --record "${kube_flags[@]}"
   kube::test::wait_object_assert controllerrevisions "{{range.items}}{{$annotations_field}}:{{end}}" ".*rollingupdate-statefulset.yaml --record.*"
   # Rollback to revision 1 - should be no-op
   kubectl rollout undo statefulset --to-revision=1 "${kube_flags[@]}"
   kube::test::get_object_assert statefulset "{{range.items}}{{$image_field0}}:{{end}}" "${IMAGE_STATEFULSET_R1}:"
   kube::test::get_object_assert statefulset "{{range.items}}{{$container_len}}{{end}}" "1"
   # Update the statefulset (revision 2)
-  kubectl apply -f hack/testdata/rollingupdate-statefulset-rv2.yaml --record "${kube_flags[@]}"
+  ! kubectl apply -f hack/testdata/rollingupdate-statefulset-rv2.yaml --record "${kube_flags[@]}"
   kube::test::wait_object_assert statefulset "{{range.items}}{{$image_field0}}:{{end}}" "${IMAGE_STATEFULSET_R2}:"
   kube::test::wait_object_assert statefulset "{{range.items}}{{$image_field1}}:{{end}}" "${IMAGE_PAUSE_V2}:"
   kube::test::get_object_assert statefulset "{{range.items}}{{$container_len}}{{end}}" "2"
@@ -4289,6 +4313,7 @@ run_impersonation_tests() {
   set +o nounset
   set +o errexit
 }
+
 # Runs all kubectl tests.
 # Requires an env var SUPPORTED_RESOURCES which is a comma separated list of
 # resources for which tests should be run.
@@ -5020,7 +5045,7 @@ run_initializer_tests() {
   # Pre-Condition: no POD exists
   kube::test::get_object_assert pods "{{range.items}}{{$id_field}}:{{end}}" ''
   # apply pod a
-  kubectl apply --prune --request-timeout=20 --include-uninitialized=false --all -f hack/testdata/prune/a.yaml "${kube_flags[@]}" 2>&1
+  ! kubectl apply --prune --request-timeout=20 --include-uninitialized=false --all -f hack/testdata/prune/a.yaml "${kube_flags[@]}" 2>&1
   # check right pod exists
   kube::test::get_object_assert pods/a "{{${id_field}}}" 'a'
   # Post-condition: Other uninitialized resources should not be pruned
@@ -5029,7 +5054,7 @@ run_initializer_tests() {
   # cleanup
   kubectl delete pod a
   # apply pod a and prune uninitialized deployments web
-  kubectl apply --prune --request-timeout=20 --all -f hack/testdata/prune/a.yaml "${kube_flags[@]}" 2>&1
+  ! kubectl apply --prune --request-timeout=20 --all -f hack/testdata/prune/a.yaml "${kube_flags[@]}" 2>&1
   # check right pod exists
   kube::test::get_object_assert pods/a "{{${id_field}}}" 'a'
   # Post-condition: Other uninitialized resources should not be pruned
@@ -5038,7 +5063,7 @@ run_initializer_tests() {
   # cleanup
   kubectl delete pod a
   # apply pod a and prune uninitialized deployments web
-  kubectl apply --prune --request-timeout=20 --include-uninitialized --all -f hack/testdata/prune/a.yaml "${kube_flags[@]}" 2>&1
+  ! kubectl apply --prune --request-timeout=20 --include-uninitialized --all -f hack/testdata/prune/a.yaml "${kube_flags[@]}" 2>&1
   # check right pod exists
   kube::test::get_object_assert pods/a "{{${id_field}}}" 'a'
   # Post-condition: Other uninitialized resources should not be pruned
