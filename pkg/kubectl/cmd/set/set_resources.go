@@ -250,7 +250,7 @@ func (o *ResourcesOptions) Run() error {
 		//record this change (for rollout history)
 		if o.Record || cmdutil.ContainsChangeCause(info) {
 			if err := cmdutil.RecordChangeCause(obj, o.ChangeCause); err == nil {
-				if obj, err = resource.NewHelper(info.Client, info.Mapping).Replace(info.Namespace, info.Name, false, obj); err != nil {
+				if obj, _, err = resource.NewHelper(info.Client, info.Mapping).Replace(info.Namespace, info.Name, false, obj); err != nil {
 					allErrs = append(allErrs, fmt.Errorf("changes to %s/%s can't be recorded: %v\n", info.Mapping.Resource, info.Name, err))
 				}
 			}
