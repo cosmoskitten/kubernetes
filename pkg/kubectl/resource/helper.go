@@ -150,34 +150,34 @@ func (m *Helper) Patch(namespace, name string, pt types.PatchType, data []byte) 
 		Get()
 }
 
-func (m *Helper) Replace(namespace, name string, overwrite bool, obj runtime.Object) (runtime.Object, error) {
+func (m *Helper) Replace(namespace, name string, overwrite bool, obj runtime.Object) (runtime.Object, runtime.Object, error) {
 	c := m.RESTClient
-
+	serverObj, err := c.Get().NamespaceIfScoped(namespace, m.NamespaceScoped).Resource(m.Resource).Name(name).Do().Get()
 	// Attempt to version the object based on client logic.
 	version, err := m.Versioner.ResourceVersion(obj)
 	if err != nil {
 		// We don't know how to version this object, so send it to the server as is
-		return m.replaceResource(c, m.Resource, namespace, name, obj)
+		return m.replaceResource(c, m.Resource, namespace, name, obj, serverObj)
 	}
 	if version == "" && overwrite {
 		// Retrieve the current version of the object to overwrite the server object
-		serverObj, err := c.Get().NamespaceIfScoped(namespace, m.NamespaceScoped).Resource(m.Resource).Name(name).Do().Get()
 		if err != nil {
 			// The object does not exist, but we want it to be created
-			return m.replaceResource(c, m.Resource, namespace, name, obj)
+			return m.replaceResource(c, m.Resource, namespace, name, obj, serverObj)
 		}
 		serverVersion, err := m.Versioner.ResourceVersion(serverObj)
 		if err != nil {
-			return nil, err
+			return nil, serverObj, err
 		}
 		if err := m.Versioner.SetResourceVersion(obj, serverVersion); err != nil {
-			return nil, err
+			return nil, serverObj, err
 		}
 	}
 
-	return m.replaceResource(c, m.Resource, namespace, name, obj)
+	return m.replaceResource(c, m.Resource, namespace, name, obj, serverObj)
 }
 
-func (m *Helper) replaceResource(c RESTClient, resource, namespace, name string, obj runtime.Object) (runtime.Object, error) {
-	return c.Put().NamespaceIfScoped(namespace, m.NamespaceScoped).Resource(resource).Name(name).Body(obj).Do().Get()
+func (m *Helper) replaceResource(c RESTClient, resource, namespace, name string, obj, serverObj runtime.Object) (runtime.Object, runtime.Object, error) {
+	obj, err := c.Put().NamespaceIfScoped(namespace, m.NamespaceScoped).Resource(resource).Name(name).Body(obj).Do().Get()
+	return obj, serverObj, err
 }
