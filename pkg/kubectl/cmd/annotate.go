@@ -271,7 +271,7 @@ func (o AnnotateOptions) RunAnnotate(f cmdutil.Factory, cmd *cobra.Command) erro
 			if createdPatch {
 				outputObj, err = helper.Patch(namespace, name, types.MergePatchType, patchBytes)
 			} else {
-				outputObj, err = helper.Replace(namespace, name, false, obj)
+				outputObj, _, err = helper.Replace(namespace, name, false, obj)
 			}
 			if err != nil {
 				return err

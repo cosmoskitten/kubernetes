@@ -24,6 +24,7 @@ import (
 	"io/ioutil"
 	"net/url"
 	"os"
+	"reflect"
 	"strings"
 	"time"
 
@@ -52,9 +53,10 @@ import (
 )
 
 const (
-	ApplyAnnotationsFlag     = "save-config"
-	DefaultErrorExitCode     = 1
-	IncludeUninitializedFlag = "include-uninitialized"
+	ApplyAnnotationsFlag        = "save-config"
+	DefaultErrorExitCode        = 1
+	ApplyUnchangedErrorExitCode = 2
+	IncludeUninitializedFlag    = "include-uninitialized"
 )
 
 type debugError interface {
@@ -111,6 +113,37 @@ func fatal(msg string, code int) {
 // status code 1.
 var ErrExit = fmt.Errorf("exit")
 
+// OperationFailedUnchangedExit may be passed to CheckError to instruct it to operation succeed but unchanged
+var OperationFailedUnchangedExit = fmt.Errorf("unchanged error")
+
+var unchanged = true
+
+// IdempotentOperationObjectCheck used for check if two objects equal
+func IdempotentOperationObjectCheck(flag bool, objA, objB runtime.Object) {
+	if flag && reflect.DeepEqual(objA, objB) {
+		unchanged = false
+	}
+}
+
+// IdempotentOperationErrorReturn first check the `--error-unchanged` flag if command set to true
+// and then if the command operation applied without any changes or use dry-run mode
+// we will return OperationFailedUnchangedExit error, otherwise return nil
+func IdempotentOperationErrorReturn(flag, dryRun bool) error {
+	if flag && (unchanged || dryRun) {
+		return OperationFailedUnchangedExit
+	}
+	return nil
+}
+
+// NoneIdempotentOperationErrorReturn first check the `--ignore-unchanged` flag if command set to true,
+// and then if error is resource already exist ignore this error return nil
+func NoneIdempotentOperationErrorReturn(flag bool, err error) error {
+	if flag && (strings.Contains(err.Error(), "already exist") || strings.Contains(err.Error(), "already has")) {
+		return nil
+	}
+	return err
+}
+
 // CheckErr prints a user friendly error to STDERR and exits with a non-zero
 // exit code. Unrecognized errors will be printed with an "error: " prefix.
 //
@@ -140,6 +173,8 @@ func checkErr(err error, handleErr func(string, int)) {
 	switch {
 	case err == ErrExit:
 		handleErr("", DefaultErrorExitCode)
+	case err == OperationFailedUnchangedExit:
+		handleErr("", ApplyUnchangedErrorExitCode)
 	case kerrors.IsInvalid(err):
 		details := err.(*kerrors.StatusError).Status().Details
 		s := fmt.Sprintf("The %s %q is invalid", details.Kind, details.Name)
@@ -521,7 +556,7 @@ func UpdateObject(info *resource.Info, codec runtime.Codec, updateFn func(runtim
 		return nil, err
 	}
 
-	if _, err := helper.Replace(info.Namespace, info.Name, true, info.Object); err != nil {
+	if _, _, err := helper.Replace(info.Namespace, info.Name, true, info.Object); err != nil {
 		return nil, err
 	}
 

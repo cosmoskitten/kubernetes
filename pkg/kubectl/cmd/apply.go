@@ -57,6 +57,7 @@ type ApplyOptions struct {
 	PruneResources  []pruneResource
 	Timeout         time.Duration
 	cmdBaseName     string
+	ErrorUnchanged  bool
 }
 
 const (
@@ -127,6 +128,7 @@ func NewCmdApply(baseName string, f cmdutil.Factory, out, errOut io.Writer) *cob
 	cmd.Flags().StringVarP(&options.Selector, "selector", "l", "", "Selector (label query) to filter on, supports '=', '==', and '!='.(e.g. -l key1=value1,key2=value2)")
 	cmd.Flags().Bool("all", false, "Select all resources in the namespace of the specified resource types.")
 	cmd.Flags().StringArray("prune-whitelist", []string{}, "Overwrite the default whitelist with <group/version/kind> for --prune")
+	cmd.Flags().BoolVar(&options.ErrorUnchanged, "error-unchanged", false, "if set to true the exit code will be 3 on no differences found")
 	cmdutil.AddDryRunFlag(cmd)
 	cmdutil.AddPrinterFlags(cmd)
 	cmdutil.AddRecordFlag(cmd)
@@ -328,11 +330,12 @@ func RunApply(f cmdutil.Factory, cmd *cobra.Command, out, errOut io.Writer, opti
 				timeout:       options.Timeout,
 				gracePeriod:   options.GracePeriod,
 			}
-
 			patchBytes, patchedObject, err := patcher.patch(info.Object, modified, info.Source, info.Namespace, info.Name)
 			if err != nil {
 				return cmdutil.AddSourceToErr(fmt.Sprintf("applying patch:\n%s\nto:\n%v\nfor:", patchBytes, info), info.Source, err)
 			}
+
+			cmdutil.IdempotentOperationObjectCheck(options.ErrorUnchanged, info.Object, patchedObject)
 
 			info.Refresh(patchedObject, true)
 
@@ -358,7 +361,7 @@ func RunApply(f cmdutil.Factory, cmd *cobra.Command, out, errOut io.Writer, opti
 	}
 
 	if !options.Prune {
-		return nil
+		return cmdutil.IdempotentOperationExitCodeReturn(options.ErrorUnchanged, dryRun)
 	}
 
 	selector, err := labels.Parse(options.Selector)
@@ -398,7 +401,7 @@ func RunApply(f cmdutil.Factory, cmd *cobra.Command, out, errOut io.Writer, opti
 		}
 	}
 
-	return nil
+	return cmdutil.IdempotentOperationExitCodeReturn(options.ErrorUnchanged, unchangedApply, dryRun)
 }
 
 type pruneResource struct {

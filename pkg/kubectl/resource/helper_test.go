@@ -494,7 +494,7 @@ func TestHelperReplace(t *testing.T) {
 			Versioner:       testapi.Default.MetadataAccessor(),
 			NamespaceScoped: test.NamespaceScoped,
 		}
-		_, err := modifier.Replace(test.Namespace, "foo", test.Overwrite, test.Object)
+		_, _, err := modifier.Replace(test.Namespace, "foo", test.Overwrite, test.Object)
 		if (err != nil) != test.Err {
 			t.Errorf("%d: unexpected error: %t %v", i, test.Err, err)
 		}
