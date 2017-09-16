@@ -39,12 +39,12 @@ import (
 type SelectorOptions struct {
 	fileOptions resource.FilenameOptions
 
-	local       bool
-	dryrun      bool
-	all         bool
-	record      bool
-	changeCause string
-	output      string
+	local          bool
+	dryrun         bool
+	all            bool
+	record         bool
+	errorUnchanged bool
+	changeCause    string
 
 	resources []string
 	selector  *metav1.LabelSelector
@@ -93,6 +93,7 @@ func NewCmdSelector(f cmdutil.Factory, out io.Writer) *cobra.Command {
 	cmd.Flags().Bool("all", false, "Select all resources, including uninitialized ones, in the namespace of the specified resource types")
 	cmd.Flags().Bool("local", false, "If true, set selector will NOT contact api-server but run locally.")
 	cmd.Flags().String("resource-version", "", "If non-empty, the selectors update will only succeed if this is the current resource-version for the object. Only valid when specifying a single resource.")
+	cmd.Flags().BoolVar(&options.errorUnchanged, "error-unchanged", false, "if set to true the exit code will be 3 on no differences found")
 	usage := "the resource to update the selectors"
 	cmdutil.AddFilenameOptionFlags(cmd, &options.fileOptions, usage)
 	cmdutil.AddDryRunFlag(cmd)
@@ -198,10 +199,9 @@ func (o *SelectorOptions) RunSelector() error {
 		if err != nil {
 			return err
 		}
-
 		if o.record || cmdutil.ContainsChangeCause(info) {
 			if err := cmdutil.RecordChangeCause(patched, o.changeCause); err == nil {
-				if patched, err = resource.NewHelper(info.Client, info.Mapping).Replace(info.Namespace, info.Name, false, patched); err != nil {
+				if patched, _, err = resource.NewHelper(info.Client, info.Mapping).Replace(info.Namespace, info.Name, false, patched); err != nil {
 					return fmt.Errorf("changes to %s/%s can't be recorded: %v\n", info.Mapping.Resource, info.Name, err)
 				}
 			}

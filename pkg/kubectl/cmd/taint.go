@@ -265,7 +265,7 @@ func (o TaintOptions) RunTaint() error {
 		if createdPatch {
 			outputObj, err = helper.Patch(namespace, name, types.StrategicMergePatchType, patchBytes)
 		} else {
-			outputObj, err = helper.Replace(namespace, name, false, obj)
+			outputObj, _, err = helper.Replace(namespace, name, false, obj)
 		}
 		if err != nil {
 			return err
