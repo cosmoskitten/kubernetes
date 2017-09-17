@@ -17,9 +17,7 @@ limitations under the License.
 package deviceplugin
 
 import (
-	"sync/atomic"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -54,47 +52,38 @@ func TestDevicePluginReRegistration(t *testing.T) {
 		{ID: "Dev2", Health: pluginapi.Healthy},
 	}
 
-	callbackCount := 0
-	callbackChan := make(chan int)
-	var stopping int32
-	stopping = 0
-	callback := func(n string, a, u, r []*pluginapi.Device) {
-		// Should be called twice, one for each plugin registration, till we are stopping.
-		if callbackCount > 1 && atomic.LoadInt32(&stopping) <= 0 {
-			t.FailNow()
-		}
-		callbackCount++
-		callbackChan <- callbackCount
-	}
-	m, p1 := setup(t, devs, callback)
-	p1.Register(socketName, testResourceName)
-	// Wait for the first callback to be issued.
-	<-callbackChan
-	// Wait till the endpoint is added to the manager.
-	for i := 0; i < 20; i++ {
-		if len(m.Devices()) > 0 {
-			break
-		}
-		time.Sleep(1)
-	}
-	devices := m.Devices()
-	require.Equal(t, 2, len(devices[testResourceName]), "Devices are not updated.")
+	outChan := make(chan interface{})
+	continueChan := make(chan bool)
 
+	m, err := NewManagerImpl(socketName, func(n string, a, u, r []*pluginapi.Device) {})
+	m.endpointStore = newInstrumentedEndpointStoreStub(outChan, continueChan)
+	p1 := NewDevicePluginStub(devs, pluginSocketName)
 	p2 := NewDevicePluginStub(devs, pluginSocketName+".new")
-	err := p2.Start()
+
 	require.NoError(t, err)
+	require.NoError(t, m.Start())
+	require.NoError(t, p1.Start())
+
+	p1.Register(socketName, testResourceName)
+
+	endpoints := (<-outChan).(replaceMessage)
+	require.Equal(t, 2, len(endpoints.New.getDevices()), "Devices were not available before updating store")
+	continueChan <- true
+
+	require.NoError(t, p2.Start())
 	p2.Register(socketName, testResourceName)
-	// Wait for the second callback to be issued.
-	<-callbackChan
 
-	devices2 := m.Devices()
-	require.Equal(t, 2, len(devices2[testResourceName]), "Devices shouldn't change.")
-	// Wait long enough to catch unexpected callbacks.
-	time.Sleep(5 * time.Second)
+	endpoints = (<-outChan).(replaceMessage)
+	require.Equal(t, 2, len(endpoints.New.getDevices()), "Devices were not available before updating store")
+	continueChan <- true
 
-	atomic.StoreInt32(&stopping, 1)
-	cleanup(t, m, p1)
+	p1.Stop()
 	p2.Stop()
+
+	m.Stop()
+
+	close(outChan)
+	close(continueChan)
 }
 
 func setup(t *testing.T, devs []*pluginapi.Device, callback MonitorCallback) (Manager, *Stub) {

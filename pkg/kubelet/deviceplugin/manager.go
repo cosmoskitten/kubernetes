@@ -21,7 +21,6 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"sync"
 
 	"github.com/golang/glog"
 	"golang.org/x/net/context"
@@ -35,8 +34,7 @@ type ManagerImpl struct {
 	socketname string
 	socketdir  string
 
-	endpoints map[string]*endpoint // Key is ResourceName
-	mutex     sync.Mutex
+	endpointStore store
 
 	callback MonitorCallback
 
@@ -55,11 +53,12 @@ func NewManagerImpl(socketPath string, f MonitorCallback) (*ManagerImpl, error) 
 
 	dir, file := filepath.Split(socketPath)
 	return &ManagerImpl{
-		endpoints: make(map[string]*endpoint),
-
 		socketname: file,
 		socketdir:  dir,
-		callback:   f,
+
+		endpointStore: newEndpointStore(),
+
+		callback: f,
 	}, nil
 }
 
@@ -134,16 +133,7 @@ func (m *ManagerImpl) Start() error {
 // Devices is the map of devices that are known by the Device
 // Plugin manager with the kind of the devices as key
 func (m *ManagerImpl) Devices() map[string][]*pluginapi.Device {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
-
-	devs := make(map[string][]*pluginapi.Device)
-	for k, e := range m.endpoints {
-		glog.V(3).Infof("Endpoint: %+v: %+v", k, e)
-		devs[k] = e.getDevices()
-	}
-
-	return devs
+	return m.endpointStore.Devices()
 }
 
 // Allocate is the call that you can use to allocate a set of devices
@@ -154,11 +144,9 @@ func (m *ManagerImpl) Allocate(resourceName string, devs []string) (*pluginapi.A
 		return nil, nil
 	}
 
-	glog.V(3).Infof("Recieved allocation request for devices %v for device plugin %s",
-		devs, resourceName)
-	m.mutex.Lock()
-	e, ok := m.endpoints[resourceName]
-	m.mutex.Unlock()
+	glog.V(3).Infof("Recieved allocation request for devices %v for device plugin %s", devs, resourceName)
+
+	e, ok := m.endpointStore.Get(resourceName)
 	if !ok {
 		return nil, fmt.Errorf("Unknown Device Plugin %s", resourceName)
 	}
@@ -189,13 +177,9 @@ func (m *ManagerImpl) Register(ctx context.Context,
 
 // Stop is the function that can stop the gRPC server.
 func (m *ManagerImpl) Stop() error {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
-	for _, e := range m.endpoints {
-		e.stop()
-	}
-
+	m.endpointStore.StopEndpoints()
 	m.server.Stop()
+
 	return nil
 }
 
@@ -214,26 +198,18 @@ func (m *ManagerImpl) addEndpoint(r *pluginapi.RegisterRequest) {
 
 	// Associates the newly created endpoint with the corresponding resource name.
 	// Stops existing endpoint if there is any.
-	m.mutex.Lock()
-	old, ok := m.endpoints[r.ResourceName]
-	m.endpoints[r.ResourceName] = e
-	m.mutex.Unlock()
+	m.endpointStore.Replace(r.ResourceName, e)
 	glog.V(2).Infof("Registered endpoint %v", e)
-	if ok && old != nil {
-		old.stop()
-	}
 
 	go func() {
 		e.listAndWatch(stream)
 
-		m.mutex.Lock()
-		if old, ok := m.endpoints[r.ResourceName]; ok && old == e {
-			glog.V(2).Infof("Delete resource for endpoint %v", e)
-			delete(m.endpoints, r.ResourceName)
+		if old, ok := m.endpointStore.Get(r.ResourceName); ok && old == e {
+			glog.V(2).Infof("Deleting resource for endpoint %v", e)
+			m.endpointStore.Delete(r.ResourceName)
 			// Issues callback to delete all of devices.
 			e.callback(e.resourceName, []*pluginapi.Device{}, []*pluginapi.Device{}, e.getDevices())
 		}
 		glog.V(2).Infof("Unregistered endpoint %v", e)
-		m.mutex.Unlock()
 	}()
 }

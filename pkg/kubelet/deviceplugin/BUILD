@@ -11,6 +11,8 @@ go_library(
     srcs = [
         "device_plugin_stub.go",
         "endpoint.go",
+        "endpoint_store.go",
+        "endpoint_store_stub.go",
         "manager.go",
         "types.go",
         "utils.go",
