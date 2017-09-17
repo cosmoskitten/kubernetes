@@ -138,7 +138,7 @@ if [ $remote = true ] ; then
     --delete-instances="$delete_instances" --test_args="$test_args" --instance-metadata="$metadata" \
     --image-config-file="$image_config_file" --system-spec-name="$system_spec_name" \
     2>&1 | tee -i "${artifacts}/build-log.txt"
-  exit $?
+  exit "${PIPESTATUS[0]}"
 
 else
   # Refresh sudo credentials for local run
@@ -171,5 +171,5 @@ else
     --image-service-endpoint=${image_service_endpoint} \
     --alsologtostderr --v 4 --report-dir=${artifacts} --node-name $(hostname) \
     $test_args" --build-dependencies=true 2>&1 | tee -i "${artifacts}/build-log.txt"
-  exit $?
+  exit "${PIPESTATUS[0]}"
 fi
