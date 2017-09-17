@@ -177,7 +177,7 @@ func TestProxyServerWithCleanupAndExit(t *testing.T) {
 	// Each bind address below is a separate test case
 	bindAddresses := []string{
 		"0.0.0.0",
-		"2001:db8::1",
+		"::",
 	}
 	for _, addr := range bindAddresses {
 		options, err := NewOptions()
@@ -300,21 +300,50 @@ udpTimeoutMilliseconds: 123ms
 `
 
 	testCases := []struct {
-		name               string
 		bindAddress        string
 		clusterCIDR        string
 		healthzBindAddress string
 		metricsBindAddress string
 	}{
 		{
-			name:               "IPv4 config",
+			bindAddress:        "0.0.0.0",
+			clusterCIDR:        "1.2.3.0/24",
+			healthzBindAddress: "1.2.3.4:12345",
+			metricsBindAddress: "2.3.4.5:23456",
+		},
+		{
 			bindAddress:        "9.8.7.6",
 			clusterCIDR:        "1.2.3.0/24",
 			healthzBindAddress: "1.2.3.4:12345",
 			metricsBindAddress: "2.3.4.5:23456",
 		},
 		{
-			name:               "IPv6 config",
+			// Test for 'bindAddress: "::"' (IPv6 all-zeros) in kube-proxy
+			// config file. The user will need to put quotes around '::' as
+			// required by the yaml config parser.
+			bindAddress:        "\"::\"",
+			clusterCIDR:        "fd00:1::0/64",
+			healthzBindAddress: "[fd00:1::5]:12345",
+			metricsBindAddress: "[fd00:2::5]:23456",
+		},
+		{
+			// Test for 'bindAddress: "[::]"' (IPv6 all-zeros in brackets)
+			// in kube-proxy config file. The user will need to use
+			// surrounding quotes here as well.
+			bindAddress:        "\"[::]\"",
+			clusterCIDR:        "fd00:1::0/64",
+			healthzBindAddress: "[fd00:1::5]:12345",
+			metricsBindAddress: "[fd00:2::5]:23456",
+		},
+		{
+			// Test for 'bindAddress: ::0' (another form of IPv6 all-zeros).
+			// The yaml parser does not require quotes around '::0'.
+			bindAddress:        "::0",
+			clusterCIDR:        "fd00:1::0/64",
+			healthzBindAddress: "[fd00:1::5]:12345",
+			metricsBindAddress: "[fd00:2::5]:23456",
+		},
+		{
 			bindAddress:        "2001:db8::1",
 			clusterCIDR:        "fd00:1::0/64",
 			healthzBindAddress: "[fd00:1::5]:12345",
@@ -323,8 +352,14 @@ udpTimeoutMilliseconds: 123ms
 	}
 
 	for _, tc := range testCases {
+		testName := fmt.Sprintf("'bindAddress: %s' in kube-proxy yaml config file", tc.bindAddress)
+		expBindAddr := tc.bindAddress
+		if tc.bindAddress[0] == '"' {
+			// Surrounding double quotes will get stripped by the yaml parser.
+			expBindAddr = expBindAddr[1 : len(tc.bindAddress)-1]
+		}
 		expected := &componentconfig.KubeProxyConfiguration{
-			BindAddress: tc.bindAddress,
+			BindAddress: expBindAddr,
 			ClientConnection: componentconfig.ClientConnectionConfiguration{
 				AcceptContentTypes: "abc",
 				Burst:              100,
@@ -364,15 +399,15 @@ udpTimeoutMilliseconds: 123ms
 		}
 
 		options, err := NewOptions()
-		assert.NoError(t, err, "unexpected error for %s: %v", tc.name, err)
+		assert.NoError(t, err, "unexpected error for %s: %v", testName, err)
 
 		yaml := fmt.Sprintf(
 			yamlTemplate, tc.bindAddress, tc.clusterCIDR,
 			tc.healthzBindAddress, tc.metricsBindAddress)
 		config, err := options.loadConfig([]byte(yaml))
-		assert.NoError(t, err, "unexpected error for %s: %v", tc.name, err)
+		assert.NoError(t, err, "unexpected error for %s: %v", testName, err)
 		if !reflect.DeepEqual(expected, config) {
-			t.Fatalf("unexpected config for %s test, diff = %s", tc.name, diff.ObjectDiff(config, expected))
+			t.Fatalf("unexpected config for %s, diff = %s", testName, diff.ObjectDiff(config, expected))
 		}
 	}
 }
@@ -393,6 +428,11 @@ func TestLoadConfigFailures(t *testing.T) {
 			name:   "Bad config type test",
 			config: "kind: KubeSchedulerConfiguration",
 			expErr: "unexpected config type",
+		},
+		{
+			name:   "Missing quotes around :: bindAddress",
+			config: "bindAddress: ::",
+			expErr: "mapping values are not allowed in this context",
 		},
 	}
 	version := "apiVersion: componentconfig/v1alpha1"
