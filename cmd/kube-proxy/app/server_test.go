@@ -177,7 +177,7 @@ func TestProxyServerWithCleanupAndExit(t *testing.T) {
 	// Each bind address below is a separate test case
 	bindAddresses := []string{
 		"0.0.0.0",
-		"2001:db8::1",
+		"::",
 	}
 	for _, addr := range bindAddresses {
 		options, err := NewOptions()
@@ -307,14 +307,28 @@ udpTimeoutMilliseconds: 123ms
 		metricsBindAddress string
 	}{
 		{
-			name:               "IPv4 config",
+			name:               "IPv4 config, bind address 0.0.0.0",
+			bindAddress:        "0.0.0.0",
+			clusterCIDR:        "1.2.3.0/24",
+			healthzBindAddress: "1.2.3.4:12345",
+			metricsBindAddress: "2.3.4.5:23456",
+		},
+		{
+			name:               "IPv4 config, non-zeros bind address",
 			bindAddress:        "9.8.7.6",
 			clusterCIDR:        "1.2.3.0/24",
 			healthzBindAddress: "1.2.3.4:12345",
 			metricsBindAddress: "2.3.4.5:23456",
 		},
 		{
-			name:               "IPv6 config",
+			name:               "IPv6 config, bind address with quotes: \"::\"",
+			bindAddress:        "\"::\"", // Need double quotes if bind address begins with ':'
+			clusterCIDR:        "fd00:1::0/64",
+			healthzBindAddress: "[fd00:1::5]:12345",
+			metricsBindAddress: "[fd00:2::5]:23456",
+		},
+		{
+			name:               "IPv6 config, non-zeros bind address",
 			bindAddress:        "2001:db8::1",
 			clusterCIDR:        "fd00:1::0/64",
 			healthzBindAddress: "[fd00:1::5]:12345",
@@ -323,8 +337,13 @@ udpTimeoutMilliseconds: 123ms
 	}
 
 	for _, tc := range testCases {
+		expBindAddr := tc.bindAddress
+		if tc.bindAddress[0] == '"' {
+			// Surrounding double quotes will get stripped
+			expBindAddr = expBindAddr[1 : len(tc.bindAddress)-1]
+		}
 		expected := &componentconfig.KubeProxyConfiguration{
-			BindAddress: tc.bindAddress,
+			BindAddress: expBindAddr,
 			ClientConnection: componentconfig.ClientConnectionConfiguration{
 				AcceptContentTypes: "abc",
 				Burst:              100,
