@@ -166,7 +166,7 @@ func rmSimpleSetup(t *testing.T) (*httptest.Server, framework.CloseFunc, clients
 // running the RS controller to prevent the rc manager from creating new pods
 // rather than adopting the existing ones.
 func waitToObservePods(t *testing.T, podInformer cache.SharedIndexInformer, podNum int) {
-	if err := wait.Poll(10*time.Second, 60*time.Second, func() (bool, error) {
+	if err := wait.Poll(100*time.Millisecond, 60*time.Second, func() (bool, error) {
 		objects := podInformer.GetIndexer().List()
 		if len(objects) == podNum {
 			return true, nil
@@ -254,7 +254,7 @@ func TestAdoption(t *testing.T) {
 		informers.Start(stopCh)
 		waitToObservePods(t, podInformer, 1)
 		go rm.Run(5, stopCh)
-		if err := wait.Poll(10*time.Second, 60*time.Second, func() (bool, error) {
+		if err := wait.Poll(100*time.Millisecond, 60*time.Second, func() (bool, error) {
 			updatedPod, err := podClient.Get(pod.Name, metav1.GetOptions{})
 			if err != nil {
 				return false, err
@@ -289,7 +289,7 @@ func createRSsPods(t *testing.T, clientSet clientset.Interface, rss []*v1beta1.R
 
 func waitRSStable(t *testing.T, clientSet clientset.Interface, rs *v1beta1.ReplicaSet, ns string) {
 	rsClient := clientSet.Extensions().ReplicaSets(ns)
-	if err := wait.Poll(10*time.Second, 60*time.Second, func() (bool, error) {
+	if err := wait.Poll(100*time.Millisecond, 60*time.Second, func() (bool, error) {
 		updatedRS, err := rsClient.Get(rs.Name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
@@ -336,7 +336,7 @@ func TestUpdateSelectorToAdopt(t *testing.T) {
 	}
 	t.Logf("patched rs = %#v", rs)
 	// wait for the rs select both pods and delete one of them
-	if err := wait.Poll(10*time.Second, 60*time.Second, func() (bool, error) {
+	if err := wait.Poll(100*time.Millisecond, 60*time.Second, func() (bool, error) {
 		return verifyRemainingObjects(t, clientSet, ns.Name, 1, 1)
 	}); err != nil {
 		t.Fatal(err)
@@ -376,7 +376,7 @@ func TestUpdateSelectorToRemoveControllerRef(t *testing.T) {
 	}
 	t.Logf("patched rs = %#v", rs)
 	// wait for the rs to create one more pod
-	if err := wait.Poll(10*time.Second, 60*time.Second, func() (bool, error) {
+	if err := wait.Poll(100*time.Millisecond, 60*time.Second, func() (bool, error) {
 		return verifyRemainingObjects(t, clientSet, ns.Name, 1, 3)
 	}); err != nil {
 		t.Fatal(err)
@@ -420,7 +420,7 @@ func TestUpdateLabelToRemoveControllerRef(t *testing.T) {
 	}
 	t.Logf("patched pod2 = %#v", pod2)
 	// wait for the rs to create one more pod
-	if err := wait.Poll(10*time.Second, 60*time.Second, func() (bool, error) {
+	if err := wait.Poll(100*time.Millisecond, 60*time.Second, func() (bool, error) {
 		return verifyRemainingObjects(t, clientSet, ns.Name, 1, 3)
 	}); err != nil {
 		t.Fatal(err)
@@ -468,7 +468,7 @@ func TestUpdateLabelToBeAdopted(t *testing.T) {
 	}
 	t.Logf("patched pod2 = %#v", pod2)
 	// wait for the rs to select both pods and delete one of them
-	if err := wait.Poll(10*time.Second, 60*time.Second, func() (bool, error) {
+	if err := wait.Poll(100*time.Millisecond, 60*time.Second, func() (bool, error) {
 		return verifyRemainingObjects(t, clientSet, ns.Name, 1, 1)
 	}); err != nil {
 		t.Fatal(err)
