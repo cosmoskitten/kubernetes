@@ -1495,7 +1495,6 @@ func TestPrintHumanReadableWithNamespace(t *testing.T) {
 			buffer := &bytes.Buffer{}
 			err := printer.PrintObj(test.obj, buffer)
 			if err == nil {
-				fmt.Println(test.obj)
 				t.Errorf("%d:Expected error when printing un-namespaced type", i)
 			}
 		}
