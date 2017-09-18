@@ -224,6 +224,12 @@ func (o *ImageOptions) Run() error {
 			}
 			return nil
 		})
+		if !transformed {
+			if _, err := fmt.Fprintln(o.Out, "no resources changed"); err != nil {
+				return nil, nil
+			}
+			return nil, err
+		}
 		if transformed && err == nil {
 			// TODO: switch UpdatePodSpecForObject to work on v1.PodSpec, use info.VersionedObject, and avoid conversion completely
 			versionedEncoder := api.Codecs.EncoderForVersion(o.Encoder, info.Mapping.GroupVersionKind.GroupVersion())
@@ -241,6 +247,9 @@ func (o *ImageOptions) Run() error {
 
 		// no changes
 		if string(patch.Patch) == "{}" || len(patch.Patch) == 0 {
+			if _, err := fmt.Fprintf(o.Out, "%s %q was not changed\n", info.Mapping.Resource, info.Name); err != nil {
+				return err
+			}
 			continue
 		}
 

@@ -218,6 +218,12 @@ func (o *SubjectOptions) Run(f cmdutil.Factory, fn updateSubjects) error {
 		}
 
 		transformed, err := updateSubjectForObject(info.Object, subjects, fn)
+		if !transformed {
+			if _, err := fmt.Fprintln(o.Out, "no resources changed"); err != nil {
+				return nil, nil
+			}
+			return nil, err
+		}
 		if transformed && err == nil {
 			// TODO: switch UpdatePodSpecForObject to work on v1.PodSpec, use info.VersionedObject, and avoid conversion completely
 			versionedEncoder := api.Codecs.EncoderForVersion(o.Encoder, info.Mapping.GroupVersionKind.GroupVersion())
@@ -230,7 +236,9 @@ func (o *SubjectOptions) Run(f cmdutil.Factory, fn updateSubjects) error {
 	for _, patch := range patches {
 		info := patch.Info
 		if patch.Err != nil {
-			allErrs = append(allErrs, fmt.Errorf("error: %s/%s %v\n", info.Mapping.Resource, info.Name, patch.Err))
+			if _, err := fmt.Fprintf(o.Out, "%s %q was not changed\n", info.Mapping.Resource, info.Name); err != nil {
+				return err
+			}
 			continue
 		}
 
