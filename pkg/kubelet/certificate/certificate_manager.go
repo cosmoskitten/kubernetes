@@ -55,6 +55,8 @@ type Manager interface {
 	// certificate manager, as well as the associated certificate and key data
 	// in PEM format.
 	Current() *tls.Certificate
+	// RotateCh returns the certificate rotate channel.
+	RotateCh() <-chan bool
 }
 
 // Config is the set of configuration parameters available for a new Manager.
@@ -96,6 +98,10 @@ type Config struct {
 	// initialized using a generic, multi-use cert/key pair which will be
 	// quickly replaced with a unique cert/key pair.
 	BootstrapKeyPEM []byte
+	// RotateCh is the channel used by kubelet client certificate manager. When
+	// client certificate rotates, notify the client transport to close all
+	// connections and reconnect with new ones.
+	RotateCh chan bool
 }
 
 // Store is responsible for getting and updating the current certificate.
@@ -128,6 +134,7 @@ type manager struct {
 	cert                     *tls.Certificate
 	rotationDeadline         time.Time
 	forceRotation            bool
+	rotateCh                 chan bool
 }
 
 // NewManager returns a new certificate manager. A certificate manager is
@@ -149,6 +156,7 @@ func NewManager(config *Config) (Manager, error) {
 		certStore:                config.CertificateStore,
 		cert:                     cert,
 		forceRotation:            forceRotation,
+		rotateCh:                 config.RotateCh,
 	}
 
 	return &m, nil
@@ -218,6 +226,11 @@ func (m *manager) Start() {
 			wait.PollInfinite(128*time.Second, m.rotateCerts)
 		}
 	}, 0)
+}
+
+// RotateCh returns manager's rotateCh.
+func (m *manager) RotateCh() <-chan bool {
+	return m.rotateCh
 }
 
 func getCurrentCertificateOrBootstrap(
@@ -292,6 +305,10 @@ func (m *manager) rotateCerts() (bool, error) {
 	}
 
 	m.updateCached(cert)
+	// Only kubelet client certificate rotation needs notification.
+	if m.rotateCh != nil {
+		m.rotateCh <- true
+	}
 	m.setRotationDeadline()
 	m.forceRotation = false
 	return true, nil

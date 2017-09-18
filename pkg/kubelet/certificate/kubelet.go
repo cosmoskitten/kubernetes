@@ -116,6 +116,7 @@ func NewKubeletClientCertificateManager(certDirectory string, nodeName types.Nod
 		CertificateStore:        certificateStore,
 		BootstrapCertificatePEM: certData,
 		BootstrapKeyPEM:         keyData,
+		RotateCh:                make(chan bool),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize client certificate manager: %v", err)
