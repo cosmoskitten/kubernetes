@@ -204,6 +204,12 @@ func (o *SubjectOptions) Run(f cmdutil.Factory, fn updateSubjects) error {
 		}
 
 		transformed, err := updateSubjectForObject(info.Object, subjects, fn)
+		if !transformed {
+			if _, err := fmt.Fprintln(o.Out, "no resources changed"); err != nil {
+				return nil, nil
+			}
+			return nil, err
+		}
 		if transformed && err == nil {
 			return runtime.Encode(o.Encoder, info.Object)
 		}
@@ -214,7 +220,9 @@ func (o *SubjectOptions) Run(f cmdutil.Factory, fn updateSubjects) error {
 	for _, patch := range patches {
 		info := patch.Info
 		if patch.Err != nil {
-			allErrs = append(allErrs, fmt.Errorf("error: %s/%s %v\n", info.Mapping.Resource, info.Name, patch.Err))
+			if _, err := fmt.Fprintf(o.Out, "%s %q was not changed\n", info.Mapping.Resource, info.Name); err != nil {
+				return err
+			}
 			continue
 		}
 
