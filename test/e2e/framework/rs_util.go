@@ -31,7 +31,6 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	deploymentutil "k8s.io/kubernetes/pkg/controller/deployment/util"
-	labelsutil "k8s.io/kubernetes/pkg/util/labels"
 	testutils "k8s.io/kubernetes/test/utils"
 )
 
@@ -182,9 +181,8 @@ func LogReplicaSet(rs *extensions.ReplicaSet) {
 	}
 }
 
-// WaitForReplicaSetRevisionAndImage waits for the RS's revision and container image to match the given revision and image.
-// Note that RS revision should be updated shortly, so we only wait for 1 minute here to fail early.
-func WaitForReplicaSetRevisionAndImage(c clientset.Interface, ns, replicaSetName string, revision, image string, pollInterval, pollTimeout time.Duration) error {
+// WaitForReplicaSetImage waits for the RS's container image to match the given image.
+func WaitForReplicaSetImage(c clientset.Interface, ns, replicaSetName string, image string, pollInterval, pollTimeout time.Duration) error {
 	var rs *extensions.ReplicaSet
 	var reason string
 	err := wait.Poll(pollInterval, pollTimeout, func() (bool, error) {
@@ -195,17 +193,6 @@ func WaitForReplicaSetRevisionAndImage(c clientset.Interface, ns, replicaSetName
 		}
 		if rs == nil {
 			reason = fmt.Sprintf("Replicaset %q is yet to be created", rs.Name)
-			Logf(reason)
-			return false, nil
-		}
-		if !labelsutil.SelectorHasLabel(rs.Spec.Selector, extensions.DefaultDeploymentUniqueLabelKey) {
-			reason = fmt.Sprintf("Replicaset %q doesn't have DefaultDeploymentUniqueLabelKey", rs.Name)
-			Logf(reason)
-			return false, nil
-		}
-		// Check revision of the replicaset
-		if rs.Annotations == nil || rs.Annotations[deploymentutil.RevisionAnnotation] != revision {
-			reason = fmt.Sprintf("Replicaset %q doesn't have the required revision set", rs.Name)
 			Logf(reason)
 			return false, nil
 		}
@@ -224,7 +211,7 @@ func WaitForReplicaSetRevisionAndImage(c clientset.Interface, ns, replicaSetName
 		return fmt.Errorf("failed to create new replicaset")
 	}
 	if err != nil {
-		return fmt.Errorf("error waiting for replicaset %q (got %s / %s) revision and image to match expectation (expected %s / %s): %v", rs.Name, rs.Annotations[deploymentutil.RevisionAnnotation], rs.Spec.Template.Spec.Containers[0].Image, revision, image, err)
+		return fmt.Errorf("error waiting for replicaset %q (got %s) image to match expectation (expected %s): %v", rs.Name, rs.Spec.Template.Spec.Containers[0].Image, image, err)
 	}
 	return nil
 }
