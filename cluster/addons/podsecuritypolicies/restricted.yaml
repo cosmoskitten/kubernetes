@@ -8,9 +8,13 @@ metadata:
     # To use custom seccomp or apparmor profiles, make a copy of this policy and
     # add the custom profiles here.
     seccomp.security.alpha.kubernetes.io/allowedProfileNames: 'docker/default'
+    apparmor.security.beta.kubernetes.io/allowedProfileNames: 'runtime/default'
+    # WARNING: PodSecurityPolicy ordering is not (yet) well defined, so if
+    # multiple policies match, default application is unpredictable. To avoid
+    # potential problems, either ensure that defaults are consistent across
+    # policies or that only a single policy can match a given Pod.
     seccomp.security.alpha.kubernetes.io/defaultProfileName:  'docker/default'
     apparmor.security.beta.kubernetes.io/defaultProfileName:  'runtime/default'
-    apparmor.security.beta.kubernetes.io/allowedProfileNames: 'runtime/default'
   labels:
     kubernetes.io/cluster-service: 'true'
     addonmanager.kubernetes.io/mode: Reconcile
