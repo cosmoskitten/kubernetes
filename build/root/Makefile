@@ -366,17 +366,25 @@ endif
 
 define RELEASE_HELP_INFO
 # Build a release
+# Use the 'release-in-a-container' target to build the release when already in
+# a container vs. creating a new container to build in using the 'release'
+# target.  Useful for running in GCB.
 #
 # Example:
 #   make release
+#   make release-in-a-container
 endef
-.PHONY: release
+.PHONY: release release-in-a-container
 ifeq ($(PRINT_HELP),y)
 release:
+	@echo "$$RELEASE_HELP_INFO"
+release-in-a-container:
 	@echo "$$RELEASE_HELP_INFO"
 else
 release:
 	build/release.sh
+release-in-a-container:
+	build/release-in-a-container.sh
 endif
 
 define RELEASE_SKIP_TESTS_HELP_INFO
@@ -401,19 +409,42 @@ release-skip-tests quick-release:
 	build/release.sh
 endif
 
+define PACKAGE_HELP_INFO
+# Package tarballs
+# Use the 'package-tarballs' target to run the final packaging steps of
+# a release.
+#
+# Example:
+#   make package-tarballs
+endef
+.PHONY: package package-tarballs
+ifeq ($(PRINT_HELP),y)
+package package-tarballs:
+	@echo "$$PACKAGE_HELP_INFO"
+else
+package package-tarballs:
+	build/package-tarballs.sh
+endif
+
 define CROSS_HELP_INFO
 # Cross-compile for all platforms
+# Use the 'cross-in-a-container' target to cross build when already in
+# a container vs. creating a new container to build from (build-image)
+# Useful for running in GCB.
 #
 # Example:
 #   make cross
+#   make cross-in-a-container
 endef
-.PHONY: cross
+.PHONY: cross cross-in-a-container
 ifeq ($(PRINT_HELP),y)
 cross:
 	@echo "$$CROSS_HELP_INFO"
 else
 cross:
 	hack/make-rules/cross.sh
+cross-in-a-container:
+	build/cross-in-a-container.sh
 endif
 
 define CMD_HELP_INFO
