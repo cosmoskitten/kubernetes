@@ -370,13 +370,15 @@ define RELEASE_HELP_INFO
 # Example:
 #   make release
 endef
-.PHONY: release
+.PHONY: release release-in-a-container
 ifeq ($(PRINT_HELP),y)
 release:
 	@echo "$$RELEASE_HELP_INFO"
 else
 release:
 	build/release.sh
+release-in-a-container:
+	build/release-in-a-container.sh
 endif
 
 define RELEASE_SKIP_TESTS_HELP_INFO
