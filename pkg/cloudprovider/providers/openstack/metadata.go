@@ -32,17 +32,27 @@ import (
 	"k8s.io/utils/exec"
 )
 
-// metadataUrl is URL to OpenStack metadata server. It's hardcoded IPv4
-// link-local address as documented in "OpenStack Cloud Administrator Guide",
-// chapter Compute - Networking with nova-network.
-// https://docs.openstack.org/admin-guide/compute-networking-nova.html#metadata-service
-const metadataUrl = "http://169.254.169.254/openstack/2012-08-10/meta_data.json"
+const (
+	// metadataUrl is URL to OpenStack metadata server. It's hardcoded IPv4
+	// link-local address as documented in "OpenStack Cloud Administrator Guide",
+	// chapter Compute - Networking with nova-network.
+	// https://docs.openstack.org/admin-guide/compute-networking-nova.html#metadata-service
+	metadataUrl = "http://169.254.169.254/openstack/2012-08-10/meta_data.json"
 
-// Config drive is defined as an iso9660 or vfat (deprecated) drive
-// with the "config-2" label.
-// http://docs.openstack.org/user-guide/cli-config-drive.html
-const configDriveLabel = "config-2"
-const configDrivePath = "openstack/2012-08-10/meta_data.json"
+	// metadataID is used as an identifier on the metadata search order configuration.
+	metadataID = "metadataservice"
+)
+
+const (
+	// Config drive is defined as an iso9660 or vfat (deprecated) drive
+	// with the "config-2" label.
+	// http://docs.openstack.org/user-guide/cli-config-drive.html
+	configDriveLabel = "config-2"
+	configDrivePath  = "openstack/2012-08-10/meta_data.json"
+
+	// configDriveID is used as an identifier on the metadata search order configuration.
+	configDriveID = "configdrive"
+)
 
 var ErrBadMetadata = errors.New("Invalid OpenStack metadata, got empty uuid")
 
@@ -141,12 +151,24 @@ func getMetadataFromMetadataService() (*Metadata, error) {
 // Metadata is fixed for the current host, so cache the value process-wide
 var metadataCache *Metadata
 
-func getMetadata() (*Metadata, error) {
+func getMetadata(order []string) (*Metadata, error) {
 	if metadataCache == nil {
-		md, err := getMetadataFromConfigDrive()
-		if err != nil {
-			md, err = getMetadataFromMetadataService()
+		var md *Metadata
+		var err error
+
+		for _, id := range order {
+			switch id {
+			case configDriveID:
+				md, err = getMetadataFromConfigDrive()
+			case metadataID:
+				md, err = getMetadataFromMetadataService()
+			}
+
+			if err == nil {
+				break
+			}
 		}
+
 		if err != nil {
 			return nil, err
 		}
