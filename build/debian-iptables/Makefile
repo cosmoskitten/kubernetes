@@ -34,7 +34,7 @@ ifeq ($(ARCH),s390x)
 	QEMUARCH=s390x
 endif
 
-BASEIMAGE=gcr.io/google-containers/debian-base-$(ARCH):0.2
+BASEIMAGE=gcr.io/google-containers/debian-base-$(ARCH):0.3
 
 build:
 	cp ./* $(TEMP_DIR)

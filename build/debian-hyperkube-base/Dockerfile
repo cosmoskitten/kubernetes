@@ -26,6 +26,7 @@ RUN echo CACHEBUST>/dev/null && clean-install \
     ethtool \
     ca-certificates \
     conntrack \
+    kmod \
     util-linux \
     socat \
     git \
