@@ -1065,7 +1065,7 @@ run_kubectl_apply_tests() {
   output_message=$(echo $?)
   kube::test::if_has_string "${output_message}" '2'
   # apply again with --prune --exit-failure-unchanged=true
-  kubectl apply --prune --exit-failure-unchanged=true -f hack/testdata/pod.yaml "${kube_flags[@]}"
+  kubectl apply --all --prune --exit-failure-unchanged=true -f hack/testdata/pod.yaml "${kube_flags[@]}"
   # check the exit code
   output_message=$(echo $?)
   kube::test::if_has_string "${output_message}" '2'
