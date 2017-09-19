@@ -1,0 +1,7 @@
+apiVersion: example.controller.code-generator.k8s.io/v1alpha1
+kind: NGINX
+metadata:
+  name: example-nginx
+spec:
+  deploymentName: example-nginx
+  replicas: 1
