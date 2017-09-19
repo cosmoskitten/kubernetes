@@ -1051,6 +1051,27 @@ run_kubectl_apply_tests() {
   # cleanup
   kubectl delete svc prune-svc 2>&1 "${kube_flags[@]}"
 
+  ## kubectl apply --exit-failure-unchanged=true
+  # Pre-Condition: no POD exists
+  kube::test::get_object_assert pods "{{range.items}}{{$id_field}}:{{end}}" ''
+  # Command: apply a pod "test-pod" (doesn't exist) should create this pod
+  kubectl apply -f hack/testdata/pod.yaml "${kube_flags[@]}"
+  # Post-Condition: pod "test-pod" is created
+  kube::test::get_object_assert 'pods test-pod' "{{${labels_field}.name}}" 'test-pod-label'
+
+  # apply again with --exit-failure-unchanged=true
+  kubectl apply --exit-failure-unchanged=true -f hack/testdata/pod.yaml "${kube_flags[@]}"
+  # check the exit code
+  output_message=$(echo $?)
+  kube::test::if_has_string "${output_message}" '2'
+  # apply again with --prune --exit-failure-unchanged=true
+  kubectl apply --prune --exit-failure-unchanged=true -f hack/testdata/pod.yaml "${kube_flags[@]}"
+  # check the exit code
+  output_message=$(echo $?)
+  kube::test::if_has_string "${output_message}" '2'
+  # Clean up
+  kubectl delete pods test-pod "${kube_flags[@]}"
+
   set +o nounset
   set +o errexit
 }
