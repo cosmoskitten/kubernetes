@@ -76,14 +76,14 @@ func (v *SchemaValidation) validateList(object interface{}) []error {
 }
 
 func (v *SchemaValidation) validateResource(obj interface{}, gvk schema.GroupVersionKind) []error {
-	if !api.Registry.IsEnabledVersion(gvk.GroupVersion()) {
-		// if we don't have this in our scheme, just skip
-		// validation because its an object we don't recognize
-		return nil
-	}
-
 	resource := v.resources.LookupResource(gvk)
 	if resource == nil {
+		if !api.Registry.IsEnabledVersion(gvk.GroupVersion()) {
+			// if we don't have this in our scheme, just skip
+			// validation because its an object we don't recognize
+			return nil
+		}
+
 		return []error{fmt.Errorf("unknown object type %#v", gvk)}
 	}
 
