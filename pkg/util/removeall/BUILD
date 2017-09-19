@@ -12,6 +12,7 @@ go_test(
     library = ":go_default_library",
     deps = [
         "//pkg/util/mount:go_default_library",
+        "//vendor/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
         "//vendor/k8s.io/client-go/util/testing:go_default_library",
     ],
 )

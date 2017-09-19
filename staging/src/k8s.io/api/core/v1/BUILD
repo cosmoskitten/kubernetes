@@ -32,7 +32,6 @@ go_library(
         "zz_generated.deepcopy.go",
     ],
     deps = [
-        "//pkg/util/mount:go_default_library",
         "//vendor/github.com/gogo/protobuf/proto:go_default_library",
         "//vendor/github.com/gogo/protobuf/sortkeys:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/api/resource:go_default_library",
