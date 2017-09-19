@@ -1,0 +1,16 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: mungebot
+spec:
+  replicas: 2
+  template:
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.7.9
+        env:
+        - name: toDrop
+          $patch: delete
+      - name: busybox
+        image: busybox
