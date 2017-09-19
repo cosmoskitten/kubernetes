@@ -24,6 +24,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/golang/glog"
 )
 
@@ -34,27 +36,6 @@ const (
 )
 
 type FileType string
-
-const (
-	// For backwards compatible, leave it empty if unset
-	FilePathUnset FileType = ""
-	// If nothing exists at the given path, an empty directory will be created there
-	// as needed with file mode 0755, having the same group and ownership with Kubelet.
-	FilePathDirectoryOrCreate FileType = "DirectoryOrCreate"
-	// A directory must exist at the given path
-	FilePathDirectory FileType = "Directory"
-	// If nothing exists at the given path, an empty file will be created there
-	// as needed with file mode 0644, having the same group and ownership with Kubelet.
-	FilePathFileOrCreate FileType = "FileOrCreate"
-	// A file must exist at the given path
-	FilePathFile FileType = "File"
-	// A UNIX socket must exist at the given path
-	FilePathSocket FileType = "Socket"
-	// A character device must exist at the given path
-	FilePathCharDev FileType = "CharDevice"
-	// A block device must exist at the given path
-	FilePathBlockDev FileType = "BlockDevice"
-)
 
 type Interface interface {
 	// Mount mounts source to target as fstype with given options.
@@ -94,7 +75,7 @@ type Interface interface {
 	// propagation. If not, it bind-mounts the path as rshared.
 	MakeRShared(path string) error
 	// GetFileType checks for sockets/block/character devices
-	GetFileType(pathname string) (FileType, error)
+	GetFileType(pathname string) (metav1.FileType, error)
 	// MakeFile creates an empty file
 	MakeFile(pathname string) error
 	// MakeDir creates a new directory

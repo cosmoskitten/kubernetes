@@ -35,7 +35,6 @@ import (
 	_ "k8s.io/kubernetes/pkg/api/testapi"
 	"k8s.io/kubernetes/pkg/capabilities"
 	"k8s.io/kubernetes/pkg/security/apparmor"
-	"k8s.io/kubernetes/pkg/util/mount"
 )
 
 const (
@@ -44,9 +43,9 @@ const (
 	envVarNameErrMsg        = "a valid environment variable name must consist of"
 )
 
-func newHostPathType(pathType string) *mount.FileType {
-	hostPathType := new(mount.FileType)
-	*hostPathType = mount.FileType(pathType)
+func newHostPathType(pathType string) *metav1.FileType {
+	hostPathType := new(metav1.FileType)
+	*hostPathType = metav1.FileType(pathType)
 	return hostPathType
 }
 
@@ -95,7 +94,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 				PersistentVolumeSource: api.PersistentVolumeSource{
 					HostPath: &api.HostPathVolumeSource{
 						Path: "/foo",
-						Type: newHostPathType(string(mount.FilePathDirectory)),
+						Type: newHostPathType(string(metav1.FilePathDirectory)),
 					},
 				},
 				StorageClassName: "valid",
@@ -111,7 +110,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 				PersistentVolumeSource: api.PersistentVolumeSource{
 					HostPath: &api.HostPathVolumeSource{
 						Path: "/foo",
-						Type: newHostPathType(string(mount.FilePathDirectory)),
+						Type: newHostPathType(string(metav1.FilePathDirectory)),
 					},
 				},
 				PersistentVolumeReclaimPolicy: api.PersistentVolumeReclaimRetain,
@@ -127,7 +126,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 				PersistentVolumeSource: api.PersistentVolumeSource{
 					HostPath: &api.HostPathVolumeSource{
 						Path: "/foo",
-						Type: newHostPathType(string(mount.FilePathDirectory)),
+						Type: newHostPathType(string(metav1.FilePathDirectory)),
 					},
 				},
 			}),
@@ -142,7 +141,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 				PersistentVolumeSource: api.PersistentVolumeSource{
 					HostPath: &api.HostPathVolumeSource{
 						Path: "/foo",
-						Type: newHostPathType(string(mount.FilePathDirectory)),
+						Type: newHostPathType(string(metav1.FilePathDirectory)),
 					},
 				},
 				PersistentVolumeReclaimPolicy: "fakeReclaimPolicy",
@@ -158,7 +157,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 				PersistentVolumeSource: api.PersistentVolumeSource{
 					HostPath: &api.HostPathVolumeSource{
 						Path: "/foo",
-						Type: newHostPathType(string(mount.FilePathDirectory)),
+						Type: newHostPathType(string(metav1.FilePathDirectory)),
 					},
 				},
 			}),
@@ -173,7 +172,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 				PersistentVolumeSource: api.PersistentVolumeSource{
 					HostPath: &api.HostPathVolumeSource{
 						Path: "/foo",
-						Type: newHostPathType(string(mount.FilePathDirectory)),
+						Type: newHostPathType(string(metav1.FilePathDirectory)),
 					},
 				},
 			}),
@@ -200,7 +199,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 				PersistentVolumeSource: api.PersistentVolumeSource{
 					HostPath: &api.HostPathVolumeSource{
 						Path: "/foo",
-						Type: newHostPathType(string(mount.FilePathDirectory)),
+						Type: newHostPathType(string(metav1.FilePathDirectory)),
 					},
 				},
 			}),
@@ -214,7 +213,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 				PersistentVolumeSource: api.PersistentVolumeSource{
 					HostPath: &api.HostPathVolumeSource{
 						Path: "/foo",
-						Type: newHostPathType(string(mount.FilePathDirectory)),
+						Type: newHostPathType(string(metav1.FilePathDirectory)),
 					},
 					GCEPersistentDisk: &api.GCEPersistentDiskVolumeSource{PDName: "foo", FSType: "ext4"},
 				},
@@ -230,7 +229,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 				PersistentVolumeSource: api.PersistentVolumeSource{
 					HostPath: &api.HostPathVolumeSource{
 						Path: "/",
-						Type: newHostPathType(string(mount.FilePathDirectory)),
+						Type: newHostPathType(string(metav1.FilePathDirectory)),
 					},
 				},
 				PersistentVolumeReclaimPolicy: api.PersistentVolumeReclaimRecycle,
@@ -246,7 +245,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 				PersistentVolumeSource: api.PersistentVolumeSource{
 					HostPath: &api.HostPathVolumeSource{
 						Path: "/a/..",
-						Type: newHostPathType(string(mount.FilePathDirectory)),
+						Type: newHostPathType(string(metav1.FilePathDirectory)),
 					},
 				},
 				PersistentVolumeReclaimPolicy: api.PersistentVolumeReclaimRecycle,
@@ -262,7 +261,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 				PersistentVolumeSource: api.PersistentVolumeSource{
 					HostPath: &api.HostPathVolumeSource{
 						Path: "/foo",
-						Type: newHostPathType(string(mount.FilePathDirectory)),
+						Type: newHostPathType(string(metav1.FilePathDirectory)),
 					},
 				},
 				StorageClassName: "-invalid-",
@@ -314,7 +313,7 @@ func TestValidatePersistentVolumes(t *testing.T) {
 				PersistentVolumeSource: api.PersistentVolumeSource{
 					HostPath: &api.HostPathVolumeSource{
 						Path: "/foo/..",
-						Type: newHostPathType(string(mount.FilePathDirectory)),
+						Type: newHostPathType(string(metav1.FilePathDirectory)),
 					},
 				},
 				StorageClassName: "backstep-hostpath",
@@ -1258,7 +1257,7 @@ func TestValidateVolumes(t *testing.T) {
 					EmptyDir: &api.EmptyDirVolumeSource{},
 					HostPath: &api.HostPathVolumeSource{
 						Path: "/mnt/path",
-						Type: newHostPathType(string(mount.FilePathDirectory)),
+						Type: newHostPathType(string(metav1.FilePathDirectory)),
 					},
 				},
 			},
@@ -1274,7 +1273,7 @@ func TestValidateVolumes(t *testing.T) {
 				VolumeSource: api.VolumeSource{
 					HostPath: &api.HostPathVolumeSource{
 						Path: "/mnt/path",
-						Type: newHostPathType(string(mount.FilePathDirectory)),
+						Type: newHostPathType(string(metav1.FilePathDirectory)),
 					},
 				},
 			},
@@ -1287,7 +1286,7 @@ func TestValidateVolumes(t *testing.T) {
 				VolumeSource: api.VolumeSource{
 					HostPath: &api.HostPathVolumeSource{
 						Path: "/mnt/path",
-						Type: newHostPathType(string(mount.FilePathSocket)),
+						Type: newHostPathType(string(metav1.FilePathSocket)),
 					},
 				},
 			},
@@ -1314,7 +1313,7 @@ func TestValidateVolumes(t *testing.T) {
 				VolumeSource: api.VolumeSource{
 					HostPath: &api.HostPathVolumeSource{
 						Path: "/mnt/path/..",
-						Type: newHostPathType(string(mount.FilePathDirectory)),
+						Type: newHostPathType(string(metav1.FilePathDirectory)),
 					},
 				},
 			},

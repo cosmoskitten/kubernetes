@@ -27,6 +27,8 @@ import (
 	"strings"
 	"syscall"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/golang/glog"
 )
 
@@ -149,8 +151,8 @@ func (mounter *Mounter) MakeRShared(path string) error {
 }
 
 // GetFileType checks for sockets/block/character devices
-func (mounter *Mounter) GetFileType(pathname string) (FileType, error) {
-	var pathType FileType
+func (mounter *Mounter) GetFileType(pathname string) (metav1.FileType, error) {
+	var pathType metav1.FileType
 	info, err := os.Stat(pathname)
 	if os.IsNotExist(err) {
 		return pathType, fmt.Errorf("path %q does not exist", pathname)
@@ -163,15 +165,15 @@ func (mounter *Mounter) GetFileType(pathname string) (FileType, error) {
 	mode := info.Sys().(*syscall.Win32FileAttributeData).FileAttributes
 	switch mode & syscall.S_IFMT {
 	case syscall.S_IFSOCK:
-		return FilePathSocket, nil
+		return metav1.FilePathSocket, nil
 	case syscall.S_IFBLK:
-		return FilePathBlockDev, nil
+		return metav1.FilePathBlockDev, nil
 	case syscall.S_IFCHR:
-		return FilePathCharDev, nil
+		return metav1.FilePathCharDev, nil
 	case syscall.S_IFDIR:
-		return FilePathDirectory, nil
+		return metav1.FilePathDirectory, nil
 	case syscall.S_IFREG:
-		return FilePathFile, nil
+		return metav1.FilePathFile, nil
 	}
 
 	return pathType, fmt.Errorf("only recognise file, directory, socket, block device and character device")

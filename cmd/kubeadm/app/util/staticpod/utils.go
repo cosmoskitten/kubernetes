@@ -29,7 +29,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	kubeadmconstants "k8s.io/kubernetes/cmd/kubeadm/app/constants"
 	kubetypes "k8s.io/kubernetes/pkg/kubelet/types"
-	"k8s.io/kubernetes/pkg/util/mount"
 )
 
 // ComponentPod returns a Pod object from the container and volume specifications
@@ -83,7 +82,7 @@ func ComponentProbe(port int, path string, scheme v1.URIScheme) *v1.Probe {
 }
 
 // NewVolume creates a v1.Volume with a hostPath mount to the specified location
-func NewVolume(name, path string, pathType *mount.FileType) v1.Volume {
+func NewVolume(name, path string, pathType *metav1.FileType) v1.Volume {
 	return v1.Volume{
 		Name: name,
 		VolumeSource: v1.VolumeSource{

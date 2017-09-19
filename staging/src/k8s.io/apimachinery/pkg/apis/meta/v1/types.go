@@ -929,3 +929,26 @@ const (
 	LabelSelectorOpExists       LabelSelectorOperator = "Exists"
 	LabelSelectorOpDoesNotExist LabelSelectorOperator = "DoesNotExist"
 )
+
+type FileType string
+
+const (
+	// For backwards compatible, leave it empty if unset
+	FilePathUnset FileType = ""
+	// If nothing exists at the given path, an empty directory will be created there
+	// as needed with file mode 0755, having the same group and ownership with Kubelet.
+	FilePathDirectoryOrCreate FileType = "DirectoryOrCreate"
+	// A directory must exist at the given path
+	FilePathDirectory FileType = "Directory"
+	// If nothing exists at the given path, an empty file will be created there
+	// as needed with file mode 0644, having the same group and ownership with Kubelet.
+	FilePathFileOrCreate FileType = "FileOrCreate"
+	// A file must exist at the given path
+	FilePathFile FileType = "File"
+	// A UNIX socket must exist at the given path
+	FilePathSocket FileType = "Socket"
+	// A character device must exist at the given path
+	FilePathCharDev FileType = "CharDevice"
+	// A block device must exist at the given path
+	FilePathBlockDev FileType = "BlockDevice"
+)

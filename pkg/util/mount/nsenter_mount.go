@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kubernetes/pkg/util/nsenter"
 )
 
@@ -210,7 +211,7 @@ func (n *NsenterMounter) DeviceOpened(pathname string) (bool, error) {
 // to a device.
 func (n *NsenterMounter) PathIsDevice(pathname string) (bool, error) {
 	pathType, err := n.GetFileType(pathname)
-	isDevice := pathType == FilePathCharDev || pathType == FilePathBlockDev
+	isDevice := pathType == metav1.FilePathCharDev || pathType == metav1.FilePathBlockDev
 	return isDevice, err
 }
 
@@ -223,8 +224,8 @@ func (n *NsenterMounter) MakeRShared(path string) error {
 	return doMakeRShared(path, hostProcMountinfoPath)
 }
 
-func (mounter *NsenterMounter) GetFileType(pathname string) (FileType, error) {
-	var pathType FileType
+func (mounter *NsenterMounter) GetFileType(pathname string) (metav1.FileType, error) {
+	var pathType metav1.FileType
 	outputBytes, err := mounter.ne.Exec("stat", []string{"-L", `--printf "%F"`, pathname}).CombinedOutput()
 	if err != nil {
 		return pathType, err
@@ -232,15 +233,15 @@ func (mounter *NsenterMounter) GetFileType(pathname string) (FileType, error) {
 
 	switch string(outputBytes) {
 	case "socket":
-		return FilePathSocket, nil
+		return metav1.FilePathSocket, nil
 	case "character special file":
-		return FilePathCharDev, nil
+		return metav1.FilePathCharDev, nil
 	case "block special file":
-		return FilePathBlockDev, nil
+		return metav1.FilePathBlockDev, nil
 	case "directory":
-		return FilePathDirectory, nil
+		return metav1.FilePathDirectory, nil
 	case "regular file":
-		return FilePathFile, nil
+		return metav1.FilePathFile, nil
 	}
 
 	return pathType, fmt.Errorf("only recognise file, directory, socket, block device and character device")

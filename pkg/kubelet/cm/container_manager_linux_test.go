@@ -28,6 +28,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kubernetes/pkg/util/mount"
 )
 
@@ -79,8 +80,8 @@ func (mi *fakeMountInterface) MakeRShared(path string) error {
 	return nil
 }
 
-func (mi *fakeMountInterface) GetFileType(pathname string) (mount.FileType, error) {
-	return mount.FileType("fake"), nil
+func (mi *fakeMountInterface) GetFileType(pathname string) (metav1.FileType, error) {
+	return metav1.FileType("fake"), nil
 }
 
 func (mi *fakeMountInterface) MakeDir(pathname string) error {

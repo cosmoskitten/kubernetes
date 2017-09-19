@@ -18,6 +18,10 @@ limitations under the License.
 
 package mount
 
+import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
 type Mounter struct {
 	mounterPath string
 }
@@ -79,8 +83,8 @@ func (mounter *SafeFormatAndMount) diskLooksUnformatted(disk string) (bool, erro
 	return true, nil
 }
 
-func (mounter *Mounter) GetFileType(pathname string) (FileType, error) {
-	return FileType("fake"), nil
+func (mounter *Mounter) GetFileType(pathname string) (metav1.FileType, error) {
+	return metav1.FileType("fake"), nil
 }
 
 func (mounter *Mounter) MakeDir(pathname string) error {

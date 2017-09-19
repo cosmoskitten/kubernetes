@@ -23,6 +23,7 @@ import (
 	"strings"
 	"testing"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utiltesting "k8s.io/client-go/util/testing"
 	"k8s.io/kubernetes/pkg/util/mount"
 )
@@ -63,8 +64,8 @@ func (mounter *fakeMounter) IsNotMountPoint(dir string) (bool, error) {
 	return mount.IsNotMountPoint(mounter, dir)
 }
 
-func (mounter *fakeMounter) GetFileType(pathname string) (mount.FileType, error) {
-	return mount.FileType("fake"), errors.New("not implemented")
+func (mounter *fakeMounter) GetFileType(pathname string) (metav1.FileType, error) {
+	return metav1.FileType("fake"), errors.New("not implemented")
 }
 
 func (mounter *fakeMounter) MakeDir(pathname string) error {

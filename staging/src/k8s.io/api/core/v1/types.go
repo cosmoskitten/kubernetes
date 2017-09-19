@@ -21,7 +21,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/kubernetes/pkg/util/mount"
 )
 
 // The comments for the structs and fields can be used from go-restful to
@@ -732,7 +731,7 @@ type HostPathVolumeSource struct {
 	// Defaults to ""
 	// More info: https://kubernetes.io/docs/concepts/storage/volumes#hostpath
 	// +optional
-	Type *mount.FileType `json:"type,omitempty" protobuf:"bytes,2,opt,name=type"`
+	Type *metav1.FileType `json:"type,omitempty" protobuf:"bytes,2,opt,name=type"`
 }
 
 // Represents an empty directory for a pod.

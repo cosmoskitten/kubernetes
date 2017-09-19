@@ -22,8 +22,8 @@ import (
 	"testing"
 
 	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeadmconstants "k8s.io/kubernetes/cmd/kubeadm/app/constants"
-	"k8s.io/kubernetes/pkg/util/mount"
 )
 
 func TestMutatePodSpec(t *testing.T) {
@@ -187,7 +187,7 @@ func TestSetRightDNSPolicyOnPodSpec(t *testing.T) {
 }
 
 func TestSetSelfHostedVolumesForAPIServer(t *testing.T) {
-	hostPathDirectoryOrCreate := mount.FilePathDirectoryOrCreate
+	hostPathDirectoryOrCreate := metav1.FilePathDirectoryOrCreate
 	var tests = []struct {
 		podSpec  *v1.PodSpec
 		expected v1.PodSpec
@@ -281,8 +281,8 @@ func TestSetSelfHostedVolumesForAPIServer(t *testing.T) {
 }
 
 func TestSetSelfHostedVolumesForControllerManager(t *testing.T) {
-	hostPathFileOrCreate := mount.FilePathFileOrCreate
-	hostPathDirectoryOrCreate := mount.FilePathDirectoryOrCreate
+	hostPathFileOrCreate := metav1.FilePathFileOrCreate
+	hostPathDirectoryOrCreate := metav1.FilePathDirectoryOrCreate
 	var tests = []struct {
 		podSpec  *v1.PodSpec
 		expected v1.PodSpec
@@ -399,7 +399,7 @@ func TestSetSelfHostedVolumesForControllerManager(t *testing.T) {
 }
 
 func TestSetSelfHostedVolumesForScheduler(t *testing.T) {
-	hostPathFileOrCreate := mount.FilePathFileOrCreate
+	hostPathFileOrCreate := metav1.FilePathFileOrCreate
 	var tests = []struct {
 		podSpec  *v1.PodSpec
 		expected v1.PodSpec

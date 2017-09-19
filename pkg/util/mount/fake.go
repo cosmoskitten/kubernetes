@@ -21,6 +21,8 @@ import (
 	"sync"
 
 	"github.com/golang/glog"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // FakeMounter implements mount.Interface for tests.
@@ -176,8 +178,8 @@ func (f *FakeMounter) MakeRShared(path string) error {
 	return nil
 }
 
-func (f *FakeMounter) GetFileType(pathname string) (FileType, error) {
-	return FileType("fake"), nil
+func (f *FakeMounter) GetFileType(pathname string) (metav1.FileType, error) {
+	return metav1.FileType("fake"), nil
 }
 
 func (f *FakeMounter) MakeDir(pathname string) error {

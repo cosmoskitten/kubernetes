@@ -32,7 +32,6 @@ import (
 	etcdtesting "k8s.io/apiserver/pkg/storage/etcd/testing"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/registry/registrytest"
-	"k8s.io/kubernetes/pkg/util/mount"
 )
 
 func newStorage(t *testing.T) (*REST, *StatusREST, *etcdtesting.EtcdTestServer) {
@@ -47,9 +46,9 @@ func newStorage(t *testing.T) (*REST, *StatusREST, *etcdtesting.EtcdTestServer) 
 	return persistentVolumeStorage, statusStorage, server
 }
 
-func newHostPathType(pathType string) *mount.FileType {
-	hostPathType := new(mount.FileType)
-	*hostPathType = mount.FileType(pathType)
+func newHostPathType(pathType string) *metav1.FileType {
+	hostPathType := new(metav1.FileType)
+	*hostPathType = metav1.FileType(pathType)
 	return hostPathType
 }
 
@@ -64,7 +63,7 @@ func validNewPersistentVolume(name string) *api.PersistentVolume {
 			},
 			AccessModes: []api.PersistentVolumeAccessMode{api.ReadWriteOnce},
 			PersistentVolumeSource: api.PersistentVolumeSource{
-				HostPath: &api.HostPathVolumeSource{Path: "/foo", Type: newHostPathType(string(mount.FilePathDirectoryOrCreate))},
+				HostPath: &api.HostPathVolumeSource{Path: "/foo", Type: newHostPathType(string(metav1.FilePathDirectoryOrCreate))},
 			},
 			PersistentVolumeReclaimPolicy: api.PersistentVolumeReclaimRetain,
 		},

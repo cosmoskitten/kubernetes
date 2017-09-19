@@ -28,6 +28,7 @@ import (
 
 	"github.com/golang/glog"
 	"golang.org/x/sys/unix"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	utilio "k8s.io/kubernetes/pkg/util/io"
 	utilexec "k8s.io/utils/exec"
@@ -256,7 +257,7 @@ func (mounter *Mounter) DeviceOpened(pathname string) (bool, error) {
 // to a device.
 func (mounter *Mounter) PathIsDevice(pathname string) (bool, error) {
 	pathType, err := mounter.GetFileType(pathname)
-	isDevice := pathType == FilePathCharDev || pathType == FilePathBlockDev
+	isDevice := pathType == metav1.FilePathCharDev || pathType == metav1.FilePathBlockDev
 	return isDevice, err
 }
 
@@ -351,8 +352,8 @@ func (mounter *Mounter) MakeRShared(path string) error {
 	return doMakeRShared(path, procMountInfoPath)
 }
 
-func (mounter *Mounter) GetFileType(pathname string) (FileType, error) {
-	var pathType FileType
+func (mounter *Mounter) GetFileType(pathname string) (metav1.FileType, error) {
+	var pathType metav1.FileType
 	finfo, err := os.Stat(pathname)
 	if os.IsNotExist(err) {
 		return pathType, fmt.Errorf("path %q does not exist", pathname)
@@ -365,15 +366,15 @@ func (mounter *Mounter) GetFileType(pathname string) (FileType, error) {
 	mode := finfo.Sys().(*syscall.Stat_t).Mode
 	switch mode & syscall.S_IFMT {
 	case syscall.S_IFSOCK:
-		return FilePathSocket, nil
+		return metav1.FilePathSocket, nil
 	case syscall.S_IFBLK:
-		return FilePathBlockDev, nil
+		return metav1.FilePathBlockDev, nil
 	case syscall.S_IFCHR:
-		return FilePathCharDev, nil
+		return metav1.FilePathCharDev, nil
 	case syscall.S_IFDIR:
-		return FilePathDirectory, nil
+		return metav1.FilePathDirectory, nil
 	case syscall.S_IFREG:
-		return FilePathFile, nil
+		return metav1.FilePathFile, nil
 	}
 
 	return pathType, fmt.Errorf("only recognise file, directory, socket, block device and character device")

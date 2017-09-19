@@ -24,7 +24,6 @@ import (
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/kubernetes/pkg/util/mount"
 )
 
 func TestComponentResources(t *testing.T) {
@@ -124,12 +123,12 @@ func TestComponentPod(t *testing.T) {
 }
 
 func TestNewVolume(t *testing.T) {
-	hostPathDirectoryOrCreate := mount.FilePathDirectoryOrCreate
+	hostPathDirectoryOrCreate := metav1.FilePathDirectoryOrCreate
 	var tests = []struct {
 		name     string
 		path     string
 		expected v1.Volume
-		pathType *mount.FileType
+		pathType *metav1.FileType
 	}{
 		{
 			name: "foo",

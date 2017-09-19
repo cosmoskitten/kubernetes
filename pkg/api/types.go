@@ -24,7 +24,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/kubernetes/pkg/util/mount"
 )
 
 // Common string formats
@@ -631,7 +630,7 @@ type HostPathVolumeSource struct {
 	// If the path is a symlink, it will follow the link to the real path.
 	Path string
 	// Defaults to ""
-	Type *mount.FileType
+	Type *metav1.FileType
 }
 
 // Represents an empty directory for a pod.

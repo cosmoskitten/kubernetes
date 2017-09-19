@@ -51,7 +51,6 @@ import (
 	"k8s.io/kubernetes/pkg/capabilities"
 	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/security/apparmor"
-	"k8s.io/kubernetes/pkg/util/mount"
 )
 
 // TODO: delete this global variable when we enable the validation of common
@@ -982,16 +981,16 @@ func validateProjectedVolumeSource(projection *api.ProjectedVolumeSource, fldPat
 }
 
 var supportedHostPathTypes = sets.NewString(
-	string(mount.FilePathUnset),
-	string(mount.FilePathDirectoryOrCreate),
-	string(mount.FilePathDirectory),
-	string(mount.FilePathFileOrCreate),
-	string(mount.FilePathFile),
-	string(mount.FilePathSocket),
-	string(mount.FilePathCharDev),
-	string(mount.FilePathBlockDev))
+	string(metav1.FilePathUnset),
+	string(metav1.FilePathDirectoryOrCreate),
+	string(metav1.FilePathDirectory),
+	string(metav1.FilePathFileOrCreate),
+	string(metav1.FilePathFile),
+	string(metav1.FilePathSocket),
+	string(metav1.FilePathCharDev),
+	string(metav1.FilePathBlockDev))
 
-func validateHostPathType(hostPathType *mount.FileType, fldPath *field.Path) field.ErrorList {
+func validateHostPathType(hostPathType *metav1.FileType, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	if !supportedHostPathTypes.Has(string(*hostPathType)) {

@@ -33,14 +33,14 @@ import (
 	volumetest "k8s.io/kubernetes/pkg/volume/testing"
 )
 
-func newHostPathType(pathType string) *utilmount.FileType {
-	hostPathType := new(utilmount.FileType)
-	*hostPathType = utilmount.FileType(pathType)
+func newHostPathType(pathType string) *metav1.FileType {
+	hostPathType := new(metav1.FileType)
+	*hostPathType = metav1.FileType(pathType)
 	return hostPathType
 }
 
-func newHostPathTypeList(pathType ...string) []*utilmount.FileType {
-	typeList := []*utilmount.FileType{}
+func newHostPathTypeList(pathType ...string) []*metav1.FileType {
+	typeList := []*metav1.FileType{}
 	for _, ele := range pathType {
 		typeList = append(typeList, newHostPathType(ele))
 	}
@@ -236,7 +236,7 @@ func TestPlugin(t *testing.T) {
 	volPath := "/tmp/vol1"
 	spec := &v1.Volume{
 		Name:         "vol1",
-		VolumeSource: v1.VolumeSource{HostPath: &v1.HostPathVolumeSource{Path: volPath, Type: newHostPathType(string(utilmount.FilePathDirectoryOrCreate))}},
+		VolumeSource: v1.VolumeSource{HostPath: &v1.HostPathVolumeSource{Path: volPath, Type: newHostPathType(string(metav1.FilePathDirectoryOrCreate))}},
 	}
 	pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{UID: types.UID("poduid")}}
 	defer os.RemoveAll(volPath)
@@ -277,7 +277,7 @@ func TestPersistentClaimReadOnlyFlag(t *testing.T) {
 		},
 		Spec: v1.PersistentVolumeSpec{
 			PersistentVolumeSource: v1.PersistentVolumeSource{
-				HostPath: &v1.HostPathVolumeSource{Path: "foo", Type: newHostPathType(string(utilmount.FilePathDirectoryOrCreate))},
+				HostPath: &v1.HostPathVolumeSource{Path: "foo", Type: newHostPathType(string(metav1.FilePathDirectoryOrCreate))},
 			},
 			ClaimRef: &v1.ObjectReference{
 				Name: "claimA",
@@ -372,7 +372,7 @@ func (fftc *fakeFileTypeChecker) ExistsPath(pathname string) bool {
 	return true
 }
 
-func (fftc *fakeFileTypeChecker) GetFileType(_ string) (utilmount.FileType, error) {
+func (fftc *fakeFileTypeChecker) GetFileType(_ string) (metav1.FileType, error) {
 	return *newHostPathType(fftc.desiredType), nil
 }
 
@@ -414,31 +414,31 @@ func TestOSFileTypeChecker(t *testing.T) {
 		{
 			name:        "Existing Folder",
 			path:        "/tmp/ExistingFolder",
-			desiredType: string(utilmount.FilePathDirectory),
+			desiredType: string(metav1.FilePathDirectory),
 			isDir:       true,
 		},
 		{
 			name:        "Existing File",
 			path:        "/tmp/ExistingFolder/foo",
-			desiredType: string(utilmount.FilePathFile),
+			desiredType: string(metav1.FilePathFile),
 			isFile:      true,
 		},
 		{
 			name:        "Existing Socket File",
 			path:        "/tmp/ExistingFolder/foo",
-			desiredType: string(utilmount.FilePathSocket),
+			desiredType: string(metav1.FilePathSocket),
 			isSocket:    true,
 		},
 		{
 			name:        "Existing Character Device",
 			path:        "/tmp/ExistingFolder/foo",
-			desiredType: string(utilmount.FilePathCharDev),
+			desiredType: string(metav1.FilePathCharDev),
 			isChar:      true,
 		},
 		{
 			name:        "Existing Block Device",
 			path:        "/tmp/ExistingFolder/foo",
-			desiredType: string(utilmount.FilePathBlockDev),
+			desiredType: string(metav1.FilePathBlockDev),
 			isBlock:     true,
 		},
 	}
@@ -559,8 +559,8 @@ type fakeHostPathTypeChecker struct {
 	isSocket        bool
 	isBlock         bool
 	isChar          bool
-	validpathType   []*utilmount.FileType
-	invalidpathType []*utilmount.FileType
+	validpathType   []*metav1.FileType
+	invalidpathType []*metav1.FileType
 }
 
 func (ftc *fakeHostPathTypeChecker) MakeFile() error { return nil }
@@ -580,36 +580,36 @@ func TestHostPathTypeCheckerInternal(t *testing.T) {
 			path:          "/existingFolder",
 			isDir:         true,
 			exists:        true,
-			validpathType: newHostPathTypeList(string(utilmount.FilePathDirectoryOrCreate), string(utilmount.FilePathDirectory)),
-			invalidpathType: newHostPathTypeList(string(utilmount.FilePathFileOrCreate), string(utilmount.FilePathFile),
-				string(utilmount.FilePathSocket), string(utilmount.FilePathCharDev), string(utilmount.FilePathBlockDev)),
+			validpathType: newHostPathTypeList(string(metav1.FilePathDirectoryOrCreate), string(metav1.FilePathDirectory)),
+			invalidpathType: newHostPathTypeList(string(metav1.FilePathFileOrCreate), string(metav1.FilePathFile),
+				string(metav1.FilePathSocket), string(metav1.FilePathCharDev), string(metav1.FilePathBlockDev)),
 		},
 		{
 			name:          "New Folder",
 			path:          "/newFolder",
 			isDir:         false,
 			exists:        false,
-			validpathType: newHostPathTypeList(string(utilmount.FilePathDirectoryOrCreate)),
-			invalidpathType: newHostPathTypeList(string(utilmount.FilePathDirectory), string(utilmount.FilePathFile),
-				string(utilmount.FilePathSocket), string(utilmount.FilePathCharDev), string(utilmount.FilePathBlockDev)),
+			validpathType: newHostPathTypeList(string(metav1.FilePathDirectoryOrCreate)),
+			invalidpathType: newHostPathTypeList(string(metav1.FilePathDirectory), string(metav1.FilePathFile),
+				string(metav1.FilePathSocket), string(metav1.FilePathCharDev), string(metav1.FilePathBlockDev)),
 		},
 		{
 			name:          "Existing File",
 			path:          "/existingFile",
 			isFile:        true,
 			exists:        true,
-			validpathType: newHostPathTypeList(string(utilmount.FilePathFileOrCreate), string(utilmount.FilePathFile)),
-			invalidpathType: newHostPathTypeList(string(utilmount.FilePathDirectoryOrCreate), string(utilmount.FilePathDirectory),
-				string(utilmount.FilePathSocket), string(utilmount.FilePathCharDev), string(utilmount.FilePathBlockDev)),
+			validpathType: newHostPathTypeList(string(metav1.FilePathFileOrCreate), string(metav1.FilePathFile)),
+			invalidpathType: newHostPathTypeList(string(metav1.FilePathDirectoryOrCreate), string(metav1.FilePathDirectory),
+				string(metav1.FilePathSocket), string(metav1.FilePathCharDev), string(metav1.FilePathBlockDev)),
 		},
 		{
 			name:          "New File",
 			path:          "/newFile",
 			isFile:        false,
 			exists:        false,
-			validpathType: newHostPathTypeList(string(utilmount.FilePathFileOrCreate)),
-			invalidpathType: newHostPathTypeList(string(utilmount.FilePathDirectory),
-				string(utilmount.FilePathSocket), string(utilmount.FilePathCharDev), string(utilmount.FilePathBlockDev)),
+			validpathType: newHostPathTypeList(string(metav1.FilePathFileOrCreate)),
+			invalidpathType: newHostPathTypeList(string(metav1.FilePathDirectory),
+				string(metav1.FilePathSocket), string(metav1.FilePathCharDev), string(metav1.FilePathBlockDev)),
 		},
 		{
 			name:          "Existing Socket",
@@ -617,9 +617,9 @@ func TestHostPathTypeCheckerInternal(t *testing.T) {
 			isSocket:      true,
 			isFile:        true,
 			exists:        true,
-			validpathType: newHostPathTypeList(string(utilmount.FilePathSocket), string(utilmount.FilePathFileOrCreate), string(utilmount.FilePathFile)),
-			invalidpathType: newHostPathTypeList(string(utilmount.FilePathDirectoryOrCreate), string(utilmount.FilePathDirectory),
-				string(utilmount.FilePathCharDev), string(utilmount.FilePathBlockDev)),
+			validpathType: newHostPathTypeList(string(metav1.FilePathSocket), string(metav1.FilePathFileOrCreate), string(metav1.FilePathFile)),
+			invalidpathType: newHostPathTypeList(string(metav1.FilePathDirectoryOrCreate), string(metav1.FilePathDirectory),
+				string(metav1.FilePathCharDev), string(metav1.FilePathBlockDev)),
 		},
 		{
 			name:          "Existing Character Device",
@@ -627,9 +627,9 @@ func TestHostPathTypeCheckerInternal(t *testing.T) {
 			isChar:        true,
 			isFile:        true,
 			exists:        true,
-			validpathType: newHostPathTypeList(string(utilmount.FilePathCharDev), string(utilmount.FilePathFileOrCreate), string(utilmount.FilePathFile)),
-			invalidpathType: newHostPathTypeList(string(utilmount.FilePathDirectoryOrCreate), string(utilmount.FilePathDirectory),
-				string(utilmount.FilePathSocket), string(utilmount.FilePathBlockDev)),
+			validpathType: newHostPathTypeList(string(metav1.FilePathCharDev), string(metav1.FilePathFileOrCreate), string(metav1.FilePathFile)),
+			invalidpathType: newHostPathTypeList(string(metav1.FilePathDirectoryOrCreate), string(metav1.FilePathDirectory),
+				string(metav1.FilePathSocket), string(metav1.FilePathBlockDev)),
 		},
 		{
 			name:          "Existing Block Device",
@@ -637,9 +637,9 @@ func TestHostPathTypeCheckerInternal(t *testing.T) {
 			isBlock:       true,
 			isFile:        true,
 			exists:        true,
-			validpathType: newHostPathTypeList(string(utilmount.FilePathBlockDev), string(utilmount.FilePathFileOrCreate), string(utilmount.FilePathFile)),
-			invalidpathType: newHostPathTypeList(string(utilmount.FilePathDirectoryOrCreate), string(utilmount.FilePathDirectory),
-				string(utilmount.FilePathSocket), string(utilmount.FilePathCharDev)),
+			validpathType: newHostPathTypeList(string(metav1.FilePathBlockDev), string(metav1.FilePathFileOrCreate), string(metav1.FilePathFile)),
+			invalidpathType: newHostPathTypeList(string(metav1.FilePathDirectoryOrCreate), string(metav1.FilePathDirectory),
+				string(metav1.FilePathSocket), string(metav1.FilePathCharDev)),
 		},
 	}
 

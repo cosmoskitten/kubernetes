@@ -18,6 +18,10 @@ limitations under the License.
 
 package mount
 
+import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
 type NsenterMounter struct{}
 
 func NewNsenterMounter() *NsenterMounter {
@@ -66,8 +70,8 @@ func (*NsenterMounter) MakeRShared(path string) error {
 	return nil
 }
 
-func (*NsenterMounter) GetFileType(_ string) (FileType, error) {
-	return FileType("fake"), nil
+func (*NsenterMounter) GetFileType(_ string) (metav1.FileType, error) {
+	return metav1.FileType("fake"), nil
 }
 
 func (*NsenterMounter) MakeDir(pathname string) error {

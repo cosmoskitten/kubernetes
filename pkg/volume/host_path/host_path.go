@@ -179,7 +179,7 @@ func newProvisioner(options volume.VolumeOptions, host volume.VolumeHost, plugin
 // The direct at the specified path will be directly exposed to the container.
 type hostPath struct {
 	path     string
-	pathType *mount.FileType
+	pathType *metav1.FileType
 	volume.MetricsNil
 }
 
@@ -217,7 +217,7 @@ func (b *hostPathMounter) SetUp(fsGroup *int64) error {
 		return fmt.Errorf("invalid HostPath `%s`: %v", b.GetPath(), err)
 	}
 
-	if *b.pathType == mount.FilePathUnset {
+	if *b.pathType == metav1.FilePathUnset {
 		return nil
 	}
 	return checkType(b.GetPath(), b.pathType, b.mounter)
@@ -336,9 +336,6 @@ type hostPathTypeChecker interface {
 	GetPath() string
 }
 
-// Factory is a function that returns an Interface to check for sockets/block/character devices
-type Factory func(pathname string) (mount.FileType, error)
-
 type fileTypeChecker struct {
 	path    string
 	exists  bool
@@ -368,7 +365,7 @@ func (ftc *fileTypeChecker) IsDir() bool {
 	if err != nil {
 		return false
 	}
-	return pathType == mount.FilePathDirectory
+	return pathType == metav1.FilePathDirectory
 }
 
 func (ftc *fileTypeChecker) MakeDir() error {
@@ -380,7 +377,7 @@ func (ftc *fileTypeChecker) IsBlock() bool {
 	if err != nil {
 		return false
 	}
-	return blkDevType == mount.FilePathBlockDev
+	return blkDevType == metav1.FilePathBlockDev
 }
 
 func (ftc *fileTypeChecker) IsChar() bool {
@@ -388,7 +385,7 @@ func (ftc *fileTypeChecker) IsChar() bool {
 	if err != nil {
 		return false
 	}
-	return charDevType == mount.FilePathCharDev
+	return charDevType == metav1.FilePathCharDev
 }
 
 func (ftc *fileTypeChecker) IsSocket() bool {
@@ -396,7 +393,7 @@ func (ftc *fileTypeChecker) IsSocket() bool {
 	if err != nil {
 		return false
 	}
-	return socketType == mount.FilePathSocket
+	return socketType == metav1.FilePathSocket
 }
 
 func (ftc *fileTypeChecker) GetPath() string {
@@ -408,39 +405,39 @@ func newFileTypeChecker(path string, mounter mount.Interface) hostPathTypeChecke
 }
 
 // checkType checks whether the given path is the exact pathType
-func checkType(path string, pathType *mount.FileType, mounter mount.Interface) error {
+func checkType(path string, pathType *metav1.FileType, mounter mount.Interface) error {
 	return checkTypeInternal(newFileTypeChecker(path, mounter), pathType)
 }
 
-func checkTypeInternal(ftc hostPathTypeChecker, pathType *mount.FileType) error {
+func checkTypeInternal(ftc hostPathTypeChecker, pathType *metav1.FileType) error {
 	switch *pathType {
-	case mount.FilePathDirectoryOrCreate:
+	case metav1.FilePathDirectoryOrCreate:
 		if !ftc.Exists() {
 			return ftc.MakeDir()
 		}
 		fallthrough
-	case mount.FilePathDirectory:
+	case metav1.FilePathDirectory:
 		if !ftc.IsDir() {
 			return fmt.Errorf("hostPath type check failed: %s is not a directory", ftc.GetPath())
 		}
-	case mount.FilePathFileOrCreate:
+	case metav1.FilePathFileOrCreate:
 		if !ftc.Exists() {
 			return ftc.MakeFile()
 		}
 		fallthrough
-	case mount.FilePathFile:
+	case metav1.FilePathFile:
 		if !ftc.IsFile() {
 			return fmt.Errorf("hostPath type check failed: %s is not a file", ftc.GetPath())
 		}
-	case mount.FilePathSocket:
+	case metav1.FilePathSocket:
 		if !ftc.IsSocket() {
 			return fmt.Errorf("hostPath type check failed: %s is not a socket file", ftc.GetPath())
 		}
-	case mount.FilePathCharDev:
+	case metav1.FilePathCharDev:
 		if !ftc.IsChar() {
 			return fmt.Errorf("hostPath type check failed: %s is not a character device", ftc.GetPath())
 		}
-	case mount.FilePathBlockDev:
+	case metav1.FilePathBlockDev:
 		if !ftc.IsBlock() {
 			return fmt.Errorf("hostPath type check failed: %s is not a block device", ftc.GetPath())
 		}

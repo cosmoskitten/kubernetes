@@ -23,11 +23,11 @@ import (
 	"strings"
 
 	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	kubeadmapi "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm"
 	kubeadmconstants "k8s.io/kubernetes/cmd/kubeadm/app/constants"
 	staticpodutil "k8s.io/kubernetes/cmd/kubeadm/app/util/staticpod"
-	"k8s.io/kubernetes/pkg/util/mount"
 )
 
 const (
@@ -45,8 +45,8 @@ var caCertsPkiVolumePath = "/etc/pki"
 
 // getHostPathVolumesForTheControlPlane gets the required hostPath volumes and mounts for the control plane
 func getHostPathVolumesForTheControlPlane(cfg *kubeadmapi.MasterConfiguration) controlPlaneHostPathMounts {
-	hostPathDirectoryOrCreate := mount.FilePathDirectoryOrCreate
-	hostPathFileOrCreate := mount.FilePathFileOrCreate
+	hostPathDirectoryOrCreate := metav1.FilePathDirectoryOrCreate
+	hostPathFileOrCreate := metav1.FilePathFileOrCreate
 	mounts := newControlPlaneHostPathMounts()
 
 	// HostPath volumes for the API Server
@@ -103,7 +103,7 @@ func newControlPlaneHostPathMounts() controlPlaneHostPathMounts {
 	}
 }
 
-func (c *controlPlaneHostPathMounts) NewHostPathMount(component, mountName, hostPath, containerPath string, readOnly bool, hostPathType *mount.FileType) {
+func (c *controlPlaneHostPathMounts) NewHostPathMount(component, mountName, hostPath, containerPath string, readOnly bool, hostPathType *metav1.FileType) {
 	c.volumes[component] = append(c.volumes[component], staticpodutil.NewVolume(mountName, hostPath, hostPathType))
 	c.volumeMounts[component] = append(c.volumeMounts[component], staticpodutil.NewVolumeMount(mountName, containerPath, readOnly))
 }
@@ -151,7 +151,7 @@ func getEtcdCertVolumes(etcdCfg kubeadmapi.Etcd) ([]v1.Volume, []v1.VolumeMount)
 
 	volumes := []v1.Volume{}
 	volumeMounts := []v1.VolumeMount{}
-	pathType := mount.FilePathDirectoryOrCreate
+	pathType := metav1.FilePathDirectoryOrCreate
 	for i, certDir := range certDirs.List() {
 		name := fmt.Sprintf("etcd-certs-%d", i)
 		volumes = append(volumes, staticpodutil.NewVolume(name, certDir, &pathType))
