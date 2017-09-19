@@ -72,7 +72,7 @@ func NewCmdToken(out io.Writer, errW io.Writer) *cobra.Command {
 
 			You can read more about Bootstrap Tokens in this proposal:
 
-			  https://git.k8s.io/community/contributors/design-proposals/bootstrap-discovery.md
+			  https://git.k8s.io/community/contributors/design-proposals/cluster-lifecycle/bootstrap-discovery.md
 		`),
 
 		// Without this callback, if a user runs just the "token"
