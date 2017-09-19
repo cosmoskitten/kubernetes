@@ -94,7 +94,7 @@ var _ = framework.KubeDescribe("LocalStorageAllocatableEviction [Slow] [Serial] 
 		// Set up --kube-reserved for scratch storage
 		tempSetCurrentKubeletConfig(f, func(initialConfig *kubeletconfig.KubeletConfiguration) {
 			framework.Logf("Set up --kube-reserved for local storage reserved %dMi", diskReserve)
-			initialConfig.KubeReserved = kubeletconfig.ConfigurationMap(map[string]string{"storage": fmt.Sprintf("%dMi", diskReserve)})
+			initialConfig.KubeReserved = kubeletconfig.ConfigurationMap(map[string]string{string(v1.ResourceEphemeralStorage): fmt.Sprintf("%dMi", diskReserve)})
 
 		})
 
