@@ -56,13 +56,7 @@ type Controller struct {
 	workqueue workqueue.RateLimitingInterface
 }
 
-func NewController() (*Controller, error) {
-	cfg, err := kubeConfig()
-
-	if err != nil {
-		return nil, err
-	}
-
+func NewController(cfg *rest.Config) (*Controller, error) {
 	clientset, err := kubernetes.NewForConfig(cfg)
 
 	if err != nil {

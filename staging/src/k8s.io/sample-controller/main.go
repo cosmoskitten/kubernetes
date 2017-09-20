@@ -20,15 +20,27 @@ import (
 	"flag"
 
 	"github.com/golang/glog"
-	_ "k8s.io/client-go/plugin/pkg/client/auth"
-
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/sample-controller/pkg/signals"
+	// Uncomment the following line to load the gcp plugin (only required to authenticate against GKE clusters).
+	// _ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+)
+
+var (
+	kubeconfig string
 )
 
 func main() {
 	flag.Parse()
 
-	controller, err := NewController()
+	cfg, err := buildConfig(kubeconfig)
+
+	if err != nil {
+		glog.Fatalf("error building kubeconfig: %s", err.Error())
+	}
+
+	controller, err := NewController(cfg)
 
 	if err != nil {
 		glog.Fatalf("Error initializing controller: %s", err.Error())
@@ -39,4 +51,15 @@ func main() {
 	if err = controller.Run(stopCh); err != nil {
 		glog.Fatalf("Error running controller: %s", err.Error())
 	}
+}
+
+func buildConfig(kubeconfig string) (*rest.Config, error) {
+	if kubeconfig != "" {
+		return clientcmd.BuildConfigFromFlags("", kubeconfig)
+	}
+	return rest.InClusterConfig()
+}
+
+func init() {
+	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 }
