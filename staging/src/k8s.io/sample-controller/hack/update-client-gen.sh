@@ -25,4 +25,4 @@ export CODEGEN_PKG="${PKGROOT}/k8s.io/code-generator"
 source ${CODEGEN_PKG}/hack/lib/codegen.sh
 
 # Run code generators
-generate-groups "${PKGROOT}" k8s.io/sample-controller/pkg/client k8s.io/sample-controller/pkg/apis example:v1alpha1
+codegen::generate-groups "deepcopy,client,informer,lister" "${PKGROOT}" k8s.io/sample-controller/pkg/client k8s.io/sample-controller/pkg/apis example:v1alpha1
