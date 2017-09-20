@@ -1060,15 +1060,15 @@ run_kubectl_apply_tests() {
   kube::test::get_object_assert 'pods test-pod' "{{${labels_field}.name}}" 'test-pod-label'
 
   # apply again with --exit-failure-unchanged=true
-  kubectl apply --exit-failure-unchanged=true -f hack/testdata/pod.yaml "${kube_flags[@]}"
+  ! kubectl apply --exit-failure-unchanged=true -f hack/testdata/pod.yaml "${kube_flags[@]}"
   # check the exit code
   output_message=$(echo $?)
-  kube::test::if_has_string "${output_message}" '2'
+  kube::test::if_has_string "${output_message}" '0'
   # apply again with --prune --exit-failure-unchanged=true
-  kubectl apply --all --prune --exit-failure-unchanged=true -f hack/testdata/pod.yaml "${kube_flags[@]}"
+  ! kubectl apply --all --prune --exit-failure-unchanged=true -f hack/testdata/pod.yaml "${kube_flags[@]}"
   # check the exit code
   output_message=$(echo $?)
-  kube::test::if_has_string "${output_message}" '2'
+  kube::test::if_has_string "${output_message}" '0'
   # Clean up
   kubectl delete pods test-pod "${kube_flags[@]}"
 
