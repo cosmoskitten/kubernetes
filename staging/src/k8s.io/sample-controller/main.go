@@ -22,9 +22,10 @@ import (
 	"github.com/golang/glog"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/sample-controller/pkg/signals"
 	// Uncomment the following line to load the gcp plugin (only required to authenticate against GKE clusters).
 	// _ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+
+	"k8s.io/sample-controller/pkg/signals"
 )
 
 var (
@@ -46,6 +47,7 @@ func main() {
 		glog.Fatalf("Error initializing controller: %s", err.Error())
 	}
 
+	// set up signals so we handle the first shutdown signal gracefully
 	stopCh := signals.SetupSignalHandler()
 
 	if err = controller.Run(stopCh); err != nil {

@@ -18,6 +18,7 @@ package main
 
 import (
 	"fmt"
+	"reflect"
 	"sync"
 	"time"
 
@@ -26,36 +27,48 @@ import (
 	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/informers"
 	appsinformers "k8s.io/client-go/informers/apps/v1beta1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/workqueue"
 
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	example "k8s.io/sample-controller/pkg/apis/example/v1alpha1"
 	"k8s.io/sample-controller/pkg/client/clientset/versioned"
 	intinformers "k8s.io/sample-controller/pkg/client/informers/externalversions"
 	exampleinformers "k8s.io/sample-controller/pkg/client/informers/externalversions/example/v1alpha1"
-	"reflect"
 )
 
 type Controller struct {
-	clientset        kubernetes.Interface
+	// clientset is a standard kubernetes clientset
+	clientset kubernetes.Interface
+	// exampleclientset is a clientset for our own API group
 	exampleclientset versioned.Interface
 
-	informerFactory        informers.SharedInformerFactory
+	// informerFactory produces shared informers for kubernetes types
+	informerFactory informers.SharedInformerFactory
+	// exampleInformerFactory produces shared informers for our own API group
 	exampleInformerFactory intinformers.SharedInformerFactory
 
+	// deploymentsInformer is used to watch for changes to deployments, and for
+	// it's underlying lister
 	deploymentsInformer appsinformers.DeploymentInformer
-	nginxInformer       exampleinformers.NGINXInformer
+	// nginxInformer is used to watch for changes to NGINXs, and for it's
+	// underlying lister
+	nginxInformer exampleinformers.NGINXInformer
 
+	// workqueue is a rate limited work queue. This is used to queue work to be
+	// processed instead of performing it as soon as a change happens. This
+	// means we can ensure we only process a fixed amount of resources at a
+	// time, and makes it easy to ensure we are never processing the same item
+	// simultaneously in two different workers.
 	workqueue workqueue.RateLimitingInterface
 }
 
+// NewController returns a new controller for the given kubeconfig
 func NewController(cfg *rest.Config) (*Controller, error) {
 	clientset, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
@@ -83,8 +96,13 @@ func NewController(cfg *rest.Config) (*Controller, error) {
 	}, nil
 }
 
+// Run will set up the event handlers for types we are interested in, as well
+// as syncing informer caches and starting workers. It will block until stopCh
+// is closed, at which point it will shutdown the workqueue and wait for
+// workers to finish processing their current work items.
 func (c *Controller) Run(stopCh <-chan struct{}) error {
 	glog.Info("Setting up event handlers")
+	// Set up an event handler for when NGINX resources change
 	c.nginxInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: c.enqueueNGINX,
 		UpdateFunc: func(old, new interface{}) {
@@ -93,6 +111,12 @@ func (c *Controller) Run(stopCh <-chan struct{}) error {
 			}
 		},
 	})
+	// Set up an event handler for when Deployment resources change. This
+	// handler will lookup the owner of the given Deployment, and if it is
+	// owned by a NGINX resource will enqueue that NGINX resource for
+	// processing. This way, we don't need to implement custom logic for
+	// handling Deployment resources. More info on this pattern:
+	// https://github.com/kubernetes/community/blob/8cafef897a22026d42f5e5bb3f104febe7e29830/contributors/devel/controllers.md
 	c.deploymentsInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: c.handleObject,
 		UpdateFunc: func(old, new interface{}) {
@@ -103,10 +127,12 @@ func (c *Controller) Run(stopCh <-chan struct{}) error {
 		DeleteFunc: c.handleObject,
 	})
 
+	// Start the informer factories to begin populating the informer caches
 	glog.Info("Starting informer factories")
 	go c.informerFactory.Start(stopCh)
 	go c.exampleInformerFactory.Start(stopCh)
 
+	// Wait for the caches to be synced before starting workers
 	glog.Info("Waiting for informer caches to sync")
 	if ok := cache.WaitForCacheSync(stopCh, c.nginxInformer.Informer().HasSynced, c.deploymentsInformer.Informer().HasSynced); !ok {
 		return fmt.Errorf("failed to wait for caches to sync")
@@ -116,6 +142,7 @@ func (c *Controller) Run(stopCh <-chan struct{}) error {
 	// We use a WaitGroup here so that upon initial shutdown signal, we wait
 	// for the items that are currently being processed to finish processing
 	var wg sync.WaitGroup
+	// Launch two workers to process NGINX resources
 	for i := 0; i < 2; i++ {
 		wg.Add(1)
 		go func() {
@@ -134,6 +161,9 @@ func (c *Controller) Run(stopCh <-chan struct{}) error {
 	return nil
 }
 
+// worker is a long-running function that will continually read messages off
+// workqueue and attempt to process them. It will run until the workqueue has
+// been shutdown by a call to workqueue.ShutDown().
 func (c *Controller) worker() {
 	for {
 		obj, shutdown := c.workqueue.Get()
@@ -142,18 +172,37 @@ func (c *Controller) worker() {
 			return
 		}
 
+		// We wrap this block in a func so we can defer c.workqueue.Done.
 		err := func(obj interface{}) error {
+			// We call Done here so the workqueue knows we have finished
+			// processing this item. We also must remember to call Forget if we
+			// do not want this work item being re-queued. For example, we do
+			// not call Forget if a transient error occurs, instead the item is
+			// put back on the workqueue and attempted again after a back-off
+			// period.
 			defer c.workqueue.Done(obj)
 			var key string
 			var ok bool
+			// We expect strings to come off the workqueue. These are of the
+			// form namespace/name. We do this as the delayed nature of the
+			// workqueue means the items in the informer cache may actually be
+			// more up to date that when the item was initially put onto the
+			// workqueue.
 			if key, ok = obj.(string); !ok {
+				// As the item in the workqueue is actually invalid, we call
+				// Forget here else we'd go into a loop of attempting to
+				// process a work item that is invalid.
 				c.workqueue.Forget(obj)
 				runtime.HandleError(fmt.Errorf("expected string in workqueue but got %#v", obj))
 				return nil
 			}
+			// Run the syncHandler, passing it the namespace/name string of the
+			// NGINX resource to be synced.
 			if err := c.syncHandler(key); err != nil {
 				return fmt.Errorf("error syncing '%s': %s", key, err.Error())
 			}
+			// Finally, if no error occurs we Forget this item so it does not
+			// get queued again until another change happens.
 			c.workqueue.Forget(obj)
 			return nil
 		}(obj)
@@ -165,16 +214,23 @@ func (c *Controller) worker() {
 	}
 }
 
+// syncHandler compares the actual state with the desired, and attempts to
+// converge the two. It then updates the Status block of the NGINX resource
+// with the current status of the resource.
 func (c *Controller) syncHandler(key string) error {
+	// Convert the namespace/name string into a distinct namespace and name
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
 		runtime.HandleError(fmt.Errorf("invalid resource key: %s", key))
 		return nil
 	}
 
+	// Get the nginx object with this namespace/name
 	nginx, err := c.nginxInformer.Lister().NGINXs(namespace).Get(name)
 
 	if err != nil {
+		// The nginx resource may no longer exist, in which case we stop
+		// processing.
 		if errors.IsNotFound(err) {
 			runtime.HandleError(fmt.Errorf("nginx '%s' in work queue no longer exists", key))
 			return nil
@@ -185,21 +241,29 @@ func (c *Controller) syncHandler(key string) error {
 
 	deploymentName := nginx.Spec.DeploymentName
 	if deploymentName == "" {
-		// we don't return an error here so that the item doesn't get requeued
-		// until it is next modified
+		// We choose to absorb the error here as the worker would requeue the
+		// resource otherwise. Instead, the next time the resource is updated
+		// the resource will be queued again.
 		runtime.HandleError(fmt.Errorf("%s: deployment name must be specified", key))
 		return nil
 	}
 
+	// Get the deployment with the name specified in NGINX.spec
 	deployment, err := c.deploymentsInformer.Lister().Deployments(nginx.Namespace).Get(deploymentName)
+	// If the resource doesn't exist, we'll create it
 	if errors.IsNotFound(err) {
 		deployment, err = c.clientset.AppsV1beta1().Deployments(nginx.Namespace).Create(newDeployment(nginx))
 	}
 
+	// If an error occurs during Get/Create, we'll requeue the item so we can
+	// attempt processing again later. This could have been caused by a
+	// temporary network failure, or any other transient reason.
 	if err != nil {
 		return err
 	}
 
+	// Finally, we update the status block of the NGINX resource to reflect the
+	// current state of the world
 	return c.updateNGINXStatus(nginx, deployment)
 }
 
@@ -217,6 +281,9 @@ func (c *Controller) updateNGINXStatus(nginx *example.NGINX, deployment *apps.De
 	return err
 }
 
+// enqueueNGINX takes an NGINX resource and converts it into a namespace/name
+// string which is then put onto the work queue. This method should *not* be
+// passed resources of any type other than NGINX.
 func (c *Controller) enqueueNGINX(obj interface{}) {
 	var key string
 	var err error
@@ -227,6 +294,11 @@ func (c *Controller) enqueueNGINX(obj interface{}) {
 	c.workqueue.Add(key)
 }
 
+// handleObject will take any resource implementing metav1.Object and attempt
+// to find the NGINX resource that 'owns' it. It does this by looking at the
+// objects metadata.ownerReferences field for an appropriate OwnerReference.
+// It then enqueues that NGINX resource to be processed. If the object does not
+// have an appropriate OwnerReference, it will simply be skipped.
 func (c *Controller) handleObject(obj interface{}) {
 	var object metav1.Object
 	var ok bool
@@ -248,6 +320,9 @@ func (c *Controller) handleObject(obj interface{}) {
 	}
 }
 
+// newDeployment creates a new Deployment for a nginx resource. It also sets
+// the appropriate OwnerReferences on the resource so handleObject can discover
+// the NGINX resource that 'owns' it.
 func newDeployment(nginx *example.NGINX) *apps.Deployment {
 	return &apps.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -281,20 +356,4 @@ func newDeployment(nginx *example.NGINX) *apps.Deployment {
 			},
 		},
 	}
-}
-
-func kubeConfig() (*rest.Config, error) {
-	apiCfg, err := clientcmd.NewDefaultClientConfigLoadingRules().Load()
-
-	if err != nil {
-		return nil, fmt.Errorf("error loading cluster config: %s", err.Error())
-	}
-
-	cfg, err := clientcmd.NewDefaultClientConfig(*apiCfg, &clientcmd.ConfigOverrides{}).ClientConfig()
-
-	if err != nil {
-		return nil, fmt.Errorf("error loading cluster client config: %s", err.Error())
-	}
-
-	return cfg, nil
 }
