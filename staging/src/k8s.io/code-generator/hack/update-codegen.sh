@@ -20,5 +20,5 @@ set -o pipefail
 
 source "$(dirname ${BASH_SOURCE})/lib/codegen.sh"
 
-generate-internal-groups "$(dirname ${BASH_SOURCE})/../../.." k8s.io/code-generator/examples/apiserver k8s.io/code-generator/examples/apiserver/apis k8s.io/code-generator/examples/apiserver/apis example:v1
-generate-groups "$(dirname ${BASH_SOURCE})/../../.." k8s.io/code-generator/examples/crd k8s.io/code-generator/examples/crd/apis example:v1
+codegen::generate-internal-groups "$(dirname ${BASH_SOURCE})/../../.." k8s.io/code-generator/examples/apiserver k8s.io/code-generator/examples/apiserver/apis k8s.io/code-generator/examples/apiserver/apis example:v1
+codegen::generate-groups "$(dirname ${BASH_SOURCE})/../../.." k8s.io/code-generator/examples/crd k8s.io/code-generator/examples/crd/apis example:v1
