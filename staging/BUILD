@@ -198,6 +198,8 @@ filegroup(
         "//staging/src/k8s.io/client-go/util/retry:all-srcs",
         "//staging/src/k8s.io/client-go/util/testing:all-srcs",
         "//staging/src/k8s.io/client-go/util/workqueue:all-srcs",
+        "//staging/src/k8s.io/code-generator/_examples/apiserver/apis/example:all-srcs",
+        "//staging/src/k8s.io/code-generator/_examples/crd/apis/example/v1:all-srcs",
         "//staging/src/k8s.io/code-generator/cmd/client-gen:all-srcs",
         "//staging/src/k8s.io/code-generator/cmd/conversion-gen:all-srcs",
         "//staging/src/k8s.io/code-generator/cmd/deepcopy-gen:all-srcs",
