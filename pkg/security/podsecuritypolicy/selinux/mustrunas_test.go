@@ -77,7 +77,7 @@ func TestMustRunAsValidate(t *testing.T) {
 		return &api.SELinuxOptions{
 			User:  "user",
 			Role:  "role",
-			Level: "level",
+			Level: "s0:c6,c0",
 			Type:  "type",
 		}
 	}
@@ -94,43 +94,76 @@ func TestMustRunAsValidate(t *testing.T) {
 	seType := newValidOpts()
 	seType.Type = "invalid"
 
+	levelWithIdenticalSensitivity := newValidOpts()
+	levelWithIdenticalSensitivity.Level = "s0-s0:c6,c0"
+
+	levelWithDifferentOrderOfCategories := newValidOpts()
+	levelWithDifferentOrderOfCategories.Level = "s0:c0,c6"
+
+	levelWithAbbreviatedCategories := newValidOpts()
+	levelWithAbbreviatedCategories.Level = "s0:c0.c3"
+
+	levelWithContiguousSeriesOfCategories := newValidOpts()
+	levelWithContiguousSeriesOfCategories.Level = "s0:c0,c1,c2,c3"
+
 	tests := map[string]struct {
-		seLinux     *api.SELinuxOptions
-		expectedMsg string
+		seLinux         *api.SELinuxOptions
+		expectedSeLinux *api.SELinuxOptions
+		expectedMsg     string
 	}{
 		"invalid role": {
-			seLinux:     role,
-			expectedMsg: "does not match required role",
+			seLinux:         role,
+			expectedSeLinux: newValidOpts(),
+			expectedMsg:     "does not match required role",
 		},
 		"invalid user": {
-			seLinux:     user,
-			expectedMsg: "does not match required user",
+			seLinux:         user,
+			expectedSeLinux: newValidOpts(),
+			expectedMsg:     "does not match required user",
 		},
 		"invalid level": {
-			seLinux:     level,
-			expectedMsg: "does not match required level",
+			seLinux:         level,
+			expectedSeLinux: newValidOpts(),
+			expectedMsg:     "does not match required level",
 		},
 		"invalid type": {
-			seLinux:     seType,
-			expectedMsg: "does not match required type",
+			seLinux:         seType,
+			expectedSeLinux: newValidOpts(),
+			expectedMsg:     "does not match required type",
 		},
 		"valid": {
-			seLinux:     newValidOpts(),
-			expectedMsg: "",
+			seLinux:         newValidOpts(),
+			expectedSeLinux: newValidOpts(),
+			expectedMsg:     "",
 		},
-	}
-
-	opts := &extensions.SELinuxStrategyOptions{
-		SELinuxOptions: newValidOpts(),
+		"valid level with identical sensitivity": { // "s0:c6,c0" == "s0-s0:c6,c0"
+			seLinux:         levelWithIdenticalSensitivity,
+			expectedSeLinux: newValidOpts(),
+			expectedMsg:     "",
+		},
+		"valid level with different order of categories": { // "s0:c6,c0" == "s0:c0,c6"
+			seLinux:         levelWithDifferentOrderOfCategories,
+			expectedSeLinux: newValidOpts(),
+			expectedMsg:     "",
+		},
+		"valid level with abbreviated categories": { // "s0:c0.c3" == "s0:c0,c1,c2,c3"
+			seLinux:         levelWithAbbreviatedCategories,
+			expectedSeLinux: levelWithContiguousSeriesOfCategories,
+			expectedMsg:     "",
+		},
 	}
 
 	for name, tc := range tests {
+		opts := &extensions.SELinuxStrategyOptions{
+			SELinuxOptions: tc.expectedSeLinux,
+		}
 		mustRunAs, err := NewMustRunAs(opts)
 		if err != nil {
 			t.Errorf("unexpected error initializing NewMustRunAs for testcase %s: %#v", name, err)
 			continue
 		}
 		container := &api.Container{
+			Name: "selinux-testing-container",
 			SecurityContext: &api.SecurityContext{
 				SELinuxOptions: tc.seLinux,
 			},
@@ -139,20 +172,20 @@ func TestMustRunAsValidate(t *testing.T) {
 		errs := mustRunAs.Validate(nil, container)
 		//should've passed but didn't
 		if len(tc.expectedMsg) == 0 && len(errs) > 0 {
-			t.Errorf("%s expected no errors but received %v", name, errs)
+			t.Errorf("%q expected no errors but received %v", name, errs)
 		}
 		//should've failed but didn't
 		if len(tc.expectedMsg) != 0 && len(errs) == 0 {
-			t.Errorf("%s expected error %s but received no errors", name, tc.expectedMsg)
+			t.Errorf("%q expected error %s but received no errors", name, tc.expectedMsg)
 		}
 		//failed with additional messages
 		if len(tc.expectedMsg) != 0 && len(errs) > 1 {
-			t.Errorf("%s expected error %s but received multiple errors: %v", name, tc.expectedMsg, errs)
+			t.Errorf("%q expected error %s but received multiple errors: %v", name, tc.expectedMsg, errs)
 		}
 		//check that we got the right message
 		if len(tc.expectedMsg) != 0 && len(errs) == 1 {
 			if !strings.Contains(errs[0].Error(), tc.expectedMsg) {
-				t.Errorf("%s expected error to contain %s but it did not: %v", name, tc.expectedMsg, errs)
+				t.Errorf("%q expected error to contain %s but it did not: %v", name, tc.expectedMsg, errs)
 			}
 		}
 	}
