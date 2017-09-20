@@ -22,4 +22,4 @@ SCRIPT_ROOT=$(dirname ${BASH_SOURCE})/..
 CODEGEN_PKG=${CODEGEN_PKG:-$(cd ${SCRIPT_ROOT}; ls -d -1 ./vendor/k8s.io/code-generator 2>/dev/null || echo ../code-generator)}
 source ${CODEGEN_PKG}/hack/lib/codegen.sh
 
-codegen::generate-internal-groups "$(dirname ${BASH_SOURCE})/../../.." k8s.io/sample-apiserver/pkg/client k8s.io/sample-apiserver/pkg/apis k8s.io/sample-apiserver/pkg/apis wardle:v1alpha1
+codegen::generate-internal-groups all "$(dirname ${BASH_SOURCE})/../../.." k8s.io/sample-apiserver/pkg/client k8s.io/sample-apiserver/pkg/apis k8s.io/sample-apiserver/pkg/apis wardle:v1alpha1

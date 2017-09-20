@@ -36,12 +36,13 @@ function codegen::ensure-generators-built() {
 function codegen::join() { local IFS="$1"; shift; echo "$*"; }
 
 function codegen::generate-internal-groups() {
-  local BASE="$1" # the base packages are resolved against (empty or the vendor/ directory ${OUTPUT_PKG} is in)
-  local OUTPUT_PKG="$2" # the output package name (without a "foo/var/vendor/" prefix, if inside vendor/)
-  local INT_APIS_PKG="$3" # the internal types dir (e.g. k8s.io/kubernetes/pkg/apis)
-  local EXT_APIS_PKG="$4" # the external types dir (e.g. k8s.io/api; often equals the internal types dir)
-  local GROUPS_WITH_VERSIONS="$5" # groupA:v1,v2 groupB:v1 groupC:v2
-  shift 5
+  local GENS="$1" # the generators comma separated to run (deepcopy,defaulter,conversion,client,lister,informer) or "all"
+  local BASE="$2" # the base packages are resolved against (empty or the vendor/ directory ${OUTPUT_PKG} is in)
+  local OUTPUT_PKG="$3" # the output package name (without a "foo/var/vendor/" prefix, if inside vendor/)
+  local INT_APIS_PKG="$4" # the internal types dir (e.g. k8s.io/kubernetes/pkg/apis)
+  local EXT_APIS_PKG="$5" # the external types dir (e.g. k8s.io/api; often equals the internal types dir)
+  local GROUPS_WITH_VERSIONS="$6" # groupA:v1,v2 groupB:v1 groupC:v2
+  shift 6
 
   codegen::ensure-generators-built
 
@@ -62,38 +63,51 @@ function codegen::generate-internal-groups() {
     done
   done
 
-  echo "Generating deepcopy funcs"
-  ${GOPATH}/bin/deepcopy-gen -i $(codegen::join , "${ALL_FQ_APIS[@]}") -O zz_generated.deepcopy --bounding-dirs ${INT_APIS_PKG},${EXT_APIS_PKG} "$@"
+  if [ "${GENS}" = "all" ] || grep -qw "deepcopy" <<<"${GENS}"; then
+    echo "Generating deepcopy funcs"
+    ${GOPATH}/bin/deepcopy-gen -i $(codegen::join , "${ALL_FQ_APIS[@]}") -O zz_generated.deepcopy --bounding-dirs ${INT_APIS_PKG},${EXT_APIS_PKG} "$@"
+  fi
 
-  echo "Generating defaulters"
-  ${GOPATH}/bin/defaulter-gen  -i $(codegen::join , "${EXT_FQ_APIS[@]}") -O zz_generated.defaults
+  if [ "${GENS}" = "all" ] || grep -qw "defaulter" <<<"${GENS}"; then
+    echo "Generating defaulters"
+    ${GOPATH}/bin/defaulter-gen  -i $(codegen::join , "${EXT_FQ_APIS[@]}") -O zz_generated.defaults "$@"
+  fi
 
-  echo "Generating conversions"
-  ${GOPATH}/bin/conversion-gen -i $(codegen::join , "${ALL_FQ_APIS[@]}") -O zz_generated.conversions
+  if [ "${GENS}" = "all" ] || grep -qw "conversion" <<<"${GENS}"; then
+    echo "Generating conversions"
+    ${GOPATH}/bin/conversion-gen -i $(codegen::join , "${ALL_FQ_APIS[@]}") -O zz_generated.conversions "$@"
+  fi
 
-  echo "Generating clientset for ${GROUPS_WITH_VERSIONS} at ${OUTPUT_PKG}/clientset"
-  ${GOPATH}/bin/client-gen --clientset-name internalversion --input-base "" --input $(codegen::join "/," "${INT_FQ_APIS[@]}")/ --clientset-path ${OUTPUT_PKG}/clientset --output-base "${BASE}" "$@"
-  ${GOPATH}/bin/client-gen --clientset-name versioned --input-base "" --input $(codegen::join , "${EXT_FQ_APIS[@]}") --clientset-path ${OUTPUT_PKG}/clientset --output-base "${BASE}" "$@"
+  if [ "${GENS}" = "all" ] || grep -qw "client" <<<"${GENS}"; then
+    echo "Generating clientset for ${GROUPS_WITH_VERSIONS} at ${OUTPUT_PKG}/clientset"
+    ${GOPATH}/bin/client-gen --clientset-name internalversion --input-base "" --input $(codegen::join "/," "${INT_FQ_APIS[@]}")/ --clientset-path ${OUTPUT_PKG}/clientset --output-base "${BASE}" "$@"
+    ${GOPATH}/bin/client-gen --clientset-name versioned --input-base "" --input $(codegen::join , "${EXT_FQ_APIS[@]}") --clientset-path ${OUTPUT_PKG}/clientset --output-base "${BASE}" "$@"
+  fi
 
-  echo "Generating listers for ${GROUPS_WITH_VERSIONS} at ${OUTPUT_PKG}/listers"
-  ${GOPATH}/bin/lister-gen --input-dirs $(codegen::join , "${ALL_FQ_APIS[@]}") --output-package ${OUTPUT_PKG}/listers --output-base "${BASE}" "$@"
+  if [ "${GENS}" = "all" ] || grep -qw "lister" <<<"${GENS}"; then
+    echo "Generating listers for ${GROUPS_WITH_VERSIONS} at ${OUTPUT_PKG}/listers"
+    ${GOPATH}/bin/lister-gen --input-dirs $(codegen::join , "${ALL_FQ_APIS[@]}") --output-package ${OUTPUT_PKG}/listers --output-base "${BASE}" "$@"
+  fi
 
-  echo "Generating informers for ${GROUPS_WITH_VERSIONS} at ${OUTPUT_PKG}/informers"
-  ${GOPATH}/bin/informer-gen \
-    --input-dirs $(codegen::join , "${ALL_FQ_APIS[@]}") \
-    --versioned-clientset-package ${OUTPUT_PKG}/clientset/versioned \
-    --internal-clientset-package ${OUTPUT_PKG}/clientset/internalversion \
-    --listers-package ${OUTPUT_PKG}/listers \
-    --output-package ${OUTPUT_PKG}/informers \
-    --output-base ${BASE} \
-    "$@"
+  if [ "${GENS}" = "all" ] || grep -qw "informer" <<<"${GENS}"; then
+    echo "Generating informers for ${GROUPS_WITH_VERSIONS} at ${OUTPUT_PKG}/informers"
+    ${GOPATH}/bin/informer-gen \
+             --input-dirs $(codegen::join , "${ALL_FQ_APIS[@]}") \
+             --versioned-clientset-package ${OUTPUT_PKG}/clientset/versioned \
+             --internal-clientset-package ${OUTPUT_PKG}/clientset/internalversion \
+             --listers-package ${OUTPUT_PKG}/listers \
+             --output-package ${OUTPUT_PKG}/informers \
+             --output-base ${BASE} \
+             "$@"
+  fi
 }
 
 function codegen::generate-groups() {
-  local BASE="$1" # the base packages are resolved against (empty or the vendor/ directory ${OUTPUT_PKG} is in)
-  local OUTPUT_PKG="$2" # the output package name (without a "foo/var/vendor/" prefix, if inside vendor/)
-  local APIS_PKG="$3" # the external types dir (e.g. k8s.io/api; often equals the internal types dir)
-  local GROUPS_WITH_VERSIONS="$4" # groupA:v1,v2,groupB,v1,groupC:v2
+  local GENS="$1" # the generators comma separated to run (deepcopy,defaulter,conversion,client,lister,informer) or "all"
+  local BASE="$2" # the base packages are resolved against (empty or the vendor/ directory ${OUTPUT_PKG} is in)
+  local OUTPUT_PKG="$3" # the output package name (without a "foo/var/vendor/" prefix, if inside vendor/)
+  local APIS_PKG="$4" # the external types dir (e.g. k8s.io/api; often equals the internal types dir)
+  local GROUPS_WITH_VERSIONS="$5" # groupA:v1,v2,groupB,v1,groupC:v2
   shift 4
 
   codegen::ensure-generators-built
@@ -109,21 +123,29 @@ function codegen::generate-groups() {
     done
   done
 
-  echo "Generating deepcopy funcs"
-  ${GOPATH}/bin/deepcopy-gen -i $(codegen::join , "${FQ_APIS[@]}") -O zz_generated.deepcopy --bounding-dirs ${APIS_PKG} "$@"
+  if [ "${GENS}" = "all" ] || grep -qw "deepcopy" <<<"${GENS}"; then
+    echo "Generating deepcopy funcs"
+    ${GOPATH}/bin/deepcopy-gen -i $(codegen::join , "${FQ_APIS[@]}") -O zz_generated.deepcopy --bounding-dirs ${APIS_PKG} "$@"
+  fi
 
-  echo "Generating clientset for ${GROUPS_WITH_VERSIONS} at ${OUTPUT_PKG}/clientset"
-  ${GOPATH}/bin/client-gen --clientset-name versioned --input-base "" --input $(codegen::join , "${FQ_APIS[@]}") --clientset-path ${OUTPUT_PKG}/clientset --output-base "${BASE}" "$@"
+  if [ "${GENS}" = "all" ] || grep -qw "client" <<<"${GENS}"; then
+    echo "Generating clientset for ${GROUPS_WITH_VERSIONS} at ${OUTPUT_PKG}/clientset"
+    ${GOPATH}/bin/client-gen --clientset-name versioned --input-base "" --input $(codegen::join , "${FQ_APIS[@]}") --clientset-path ${OUTPUT_PKG}/clientset --output-base "${BASE}" "$@"
+  fi
 
-  echo "Generating listers for ${GROUPS_WITH_VERSIONS} at ${OUTPUT_PKG}/listers"
-  ${GOPATH}/bin/lister-gen --input-dirs $(codegen::join , "${FQ_APIS[@]}") --output-package ${OUTPUT_PKG}/listers --output-base "${BASE}" "$@"
+  if [ "${GENS}" = "all" ] || grep -qw "lister" <<<"${GENS}"; then
+    echo "Generating listers for ${GROUPS_WITH_VERSIONS} at ${OUTPUT_PKG}/listers"
+    ${GOPATH}/bin/lister-gen --input-dirs $(codegen::join , "${FQ_APIS[@]}") --output-package ${OUTPUT_PKG}/listers --output-base "${BASE}" "$@"
+  fi
 
-  echo "Generating informers for ${GROUPS_WITH_VERSIONS} at ${OUTPUT_PKG}/informers"
-  ${GOPATH}/bin/informer-gen \
-    --input-dirs $(codegen::join , "${FQ_APIS[@]}") \
-    --versioned-clientset-package ${OUTPUT_PKG}/clientset/versioned \
-    --listers-package ${OUTPUT_PKG}/listers \
-    --output-package ${OUTPUT_PKG}/informers \
-    --output-base ${BASE} \
-    "$@"
+  if [ "${GENS}" = "all" ] || grep -qw "informer" <<<"${GENS}"; then
+    echo "Generating informers for ${GROUPS_WITH_VERSIONS} at ${OUTPUT_PKG}/informers"
+    ${GOPATH}/bin/informer-gen \
+             --input-dirs $(codegen::join , "${FQ_APIS[@]}") \
+             --versioned-clientset-package ${OUTPUT_PKG}/clientset/versioned \
+             --listers-package ${OUTPUT_PKG}/listers \
+             --output-package ${OUTPUT_PKG}/informers \
+             --output-base ${BASE} \
+             "$@"
+  fi
 }
