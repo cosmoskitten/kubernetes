@@ -58,13 +58,11 @@ type Controller struct {
 
 func NewController(cfg *rest.Config) (*Controller, error) {
 	clientset, err := kubernetes.NewForConfig(cfg)
-
 	if err != nil {
 		return nil, err
 	}
 
 	exampleclientset, err := versioned.NewForConfig(cfg)
-
 	if err != nil {
 		return nil, err
 	}
@@ -206,9 +204,16 @@ func (c *Controller) syncHandler(key string) error {
 }
 
 func (c *Controller) updateNGINXStatus(nginx *example.NGINX, deployment *apps.Deployment) error {
-	update := nginx.DeepCopy()
-	update.Status.AvailableReplicas = deployment.Status.AvailableReplicas
-	_, err := c.exampleclientset.ExampleV1alpha1().NGINXs(nginx.Namespace).Update(update)
+	// NEVER modify objects from the store. It's a read-only, local cache.
+	// You can use DeepCopy() to make a deep copy of original object and modify this copy
+	// Or create a copy manually for better performance
+	nginxCopy := nginx.DeepCopy()
+	nginxCopy.Status.AvailableReplicas = deployment.Status.AvailableReplicas
+	// Until #38113 is merged, we must use Update instead of UpdateStatus to
+	// update the Status block of the NGINX resource. UpdateStatus will not
+	// allow changes to the Spec of the resource, which is ideal for ensuring
+	// nothing other than resource status has been updated.
+	_, err := c.exampleclientset.ExampleV1alpha1().NGINXs(nginx.Namespace).Update(nginxCopy)
 	return err
 }
 
