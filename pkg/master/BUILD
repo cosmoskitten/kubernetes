@@ -107,6 +107,7 @@ go_test(
         "import_known_versions_test.go",
         "master_openapi_test.go",
         "master_test.go",
+        "services_test.go",
     ],
     library = ":go_default_library",
     deps = [
