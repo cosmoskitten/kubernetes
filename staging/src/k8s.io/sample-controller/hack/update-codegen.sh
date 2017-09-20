@@ -18,11 +18,8 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-export PKGROOT="$(dirname ${BASH_SOURCE})/../../.."
-export CODEGEN_PKG="${PKGROOT}/k8s.io/code-generator"
-
-# Load codegen library
+SCRIPT_ROOT=$(dirname ${BASH_SOURCE})/..
+CODEGEN_PKG=${CODEGEN_PKG:-$(cd ${SCRIPT_ROOT}; ls -d -1 ./vendor/k8s.io/code-generator 2>/dev/null || echo ../code-generator)}
 source ${CODEGEN_PKG}/hack/lib/codegen.sh
 
-# Run code generators
-codegen::generate-groups "deepcopy,client,informer,lister" "${PKGROOT}" k8s.io/sample-controller/pkg/client k8s.io/sample-controller/pkg/apis example:v1alpha1
+codegen::generate-groups "deepcopy,client,informer,lister" "$(dirname ${BASH_SOURCE})/../../.." k8s.io/sample-controller/pkg/client k8s.io/sample-controller/pkg/apis example:v1alpha1 --go-header-file ${SCRIPT_ROOT}/hack/custom-boilerplate.go.txt
