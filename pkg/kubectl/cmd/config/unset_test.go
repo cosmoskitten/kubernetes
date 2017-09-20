@@ -117,3 +117,42 @@ func (test unsetConfigTest) run(t *testing.T) {
 		}
 	}
 }
+
+func TestUnsetUnexistConfig(t *testing.T) {
+	conf := clientcmdapi.Config{
+		Kind:       "Config",
+		APIVersion: "v1",
+		Clusters: map[string]*clientcmdapi.Cluster{
+			"minikube":   {Server: "https://192.168.99.100:8443"},
+			"my-cluster": {Server: "https://192.168.0.1:3434"},
+		},
+		Contexts: map[string]*clientcmdapi.Context{
+			"minikube":   {AuthInfo: "minikube", Cluster: "minikube"},
+			"my-cluster": {AuthInfo: "mu-cluster", Cluster: "my-cluster"},
+		},
+		CurrentContext: "minikube",
+	}
+	fakeKubeFile, err := ioutil.TempFile(os.TempDir(), "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	defer os.Remove(fakeKubeFile.Name())
+	err = clientcmd.WriteToFile(conf, fakeKubeFile.Name())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	pathOptions := clientcmd.NewDefaultPathOptions()
+	pathOptions.GlobalFile = fakeKubeFile.Name()
+	pathOptions.EnvVar = ""
+	buf := bytes.NewBuffer([]byte{})
+	cmd := NewCmdConfigUnset(buf, pathOptions)
+	opts := &unsetOptions{configAccess: pathOptions}
+	err = opts.complete(cmd, []string{"contexts.foo.namespace"})
+	if err == nil {
+		err = opts.run()
+	}
+	expectErr := "current map key `foo` is invalid"
+	if err.Error() != expectErr {
+		t.Fatalf("expected error:\n %v\nbut got error:\n%v", expectErr, err)
+	}
+}
