@@ -21,8 +21,10 @@ limitations under the License.
 package app
 
 import (
+	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
@@ -73,9 +75,7 @@ func TestIsControllerEnabled(t *testing.T) {
 
 	for _, tc := range tcs {
 		actual := IsControllerEnabled(tc.controllerName, sets.NewString(tc.disabledByDefaultControllers...), tc.controllers...)
-		if actual != tc.expected {
-			t.Errorf("%v: expected %v, got %v", tc.name, tc.expected, actual)
-		}
+		assert.Equal(t, actual, tc.expected, fmt.Sprintf("%v: expected %v, got %v", tc.name, tc.expected, actual))
 	}
 
 }

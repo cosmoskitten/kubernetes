@@ -28,6 +28,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"k8s.io/api/core/v1"
 	extensions "k8s.io/api/extensions/v1beta1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -656,10 +657,8 @@ func TestRemoveTaintOffNode(t *testing.T) {
 				test.name, test.expectedTaints, node.Spec.Taints)
 		}
 
-		if test.nodeHandler.RequestCount != test.requestCount {
-			t.Errorf("%s: unexpected request count: expected %+v, got %+v",
-				test.name, test.requestCount, test.nodeHandler.RequestCount)
-		}
+		assert.Equal(t, test.nodeHandler.RequestCount, test.requestCount,
+			fmt.Sprintf("%s: unexpected request count: expected %+v, got %+v", test.name, test.requestCount, test.nodeHandler.RequestCount))
 	}
 }
 

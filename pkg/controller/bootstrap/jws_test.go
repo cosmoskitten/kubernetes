@@ -16,7 +16,12 @@ limitations under the License.
 
 package bootstrap
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
 
 const (
 	content = "Hello from the other side. I must have called a thousand times."
@@ -26,30 +31,19 @@ const (
 
 func TestComputeDetachedSig(t *testing.T) {
 	sig, err := computeDetachedSig(content, id, secret)
-	if err != nil {
-		t.Errorf("Error when computing signature: %v", err)
-	}
-	if sig != "eyJhbGciOiJIUzI1NiIsImtpZCI6Impvc2h1YSJ9..VShe2taLd-YTrmWuRkcL_8QTNDHYxQIEBsAYYiIj1_8" {
-		t.Errorf("Wrong signature. Got: %v", sig)
-	}
+	assert.Nil(t, err, fmt.Sprintf("Error when computing signature: %v", err))
+	assert.Equal(t, sig, "eyJhbGciOiJIUzI1NiIsImtpZCI6Impvc2h1YSJ9..VShe2taLd-YTrmWuRkcL_8QTNDHYxQIEBsAYYiIj1_8", fmt.Sprintf("Wrong signature. Got: %v", sig))
 
 	// Try with null content
 	sig, err = computeDetachedSig("", id, secret)
-	if err != nil {
-		t.Errorf("Error when computing signature: %v", err)
-	}
-	if sig != "eyJhbGciOiJIUzI1NiIsImtpZCI6Impvc2h1YSJ9..7Ui1ALizW4jXphVUB7xUqC9vLYLL9RZeOFfVLoB7Tgk" {
-		t.Errorf("Wrong signature. Got: %v", sig)
-	}
+	assert.Nil(t, err, fmt.Sprintf("Error when computing signature: %v", err))
+	assert.Equal(t, sig, "eyJhbGciOiJIUzI1NiIsImtpZCI6Impvc2h1YSJ9..7Ui1ALizW4jXphVUB7xUqC9vLYLL9RZeOFfVLoB7Tgk", fmt.Sprintf("Wrong signature. Got: %v", sig))
 
 	// Try with no secret
 	sig, err = computeDetachedSig(content, id, "")
-	if err != nil {
-		t.Errorf("Error when computing signature: %v", err)
-	}
-	if sig != "eyJhbGciOiJIUzI1NiIsImtpZCI6Impvc2h1YSJ9..UfkqvDGiIFxrMnFseDj9LYJOLNrvjW8aHhF71mvvAs8" {
-		t.Errorf("Wrong signature. Got: %v", sig)
-	}
+	assert.Nil(t, err, fmt.Sprintf("Error when computing signature: %v", err))
+	assert.Equal(t, sig, "eyJhbGciOiJIUzI1NiIsImtpZCI6Impvc2h1YSJ9..UfkqvDGiIFxrMnFseDj9LYJOLNrvjW8aHhF71mvvAs8", fmt.Sprintf("Wrong signature. Got: %v", sig))
+
 }
 
 func TestDetachedTokenIsValid(t *testing.T) {

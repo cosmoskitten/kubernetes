@@ -18,12 +18,14 @@ package cloud
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
 
 	"github.com/golang/glog"
 
+	"github.com/stretchr/testify/assert"
 	"k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -129,9 +131,8 @@ func TestEnsureNodeExistsByProviderIDOrNodeName(t *testing.T) {
 
 			instances, _ := fc.Instances()
 			exists, err := ensureNodeExistsByProviderIDOrExternalID(instances, tc.node)
-			if err != nil {
-				t.Error(err)
-			}
+
+			assert.Nil(t, err, fmt.Sprintf(err))
 
 			if !reflect.DeepEqual(fc.Calls, tc.expectedCalls) {
 				t.Errorf("expected cloud provider methods `%v` to be called but `%v` was called ", tc.expectedCalls, fc.Calls)
@@ -239,9 +240,9 @@ func TestNodeDeleted(t *testing.T) {
 	case <-time.After(wait.ForeverTestTimeout):
 		t.Errorf("Timed out waiting %v for node to be deleted", wait.ForeverTestTimeout)
 	}
-	if len(fnh.DeletedNodes) != 1 || fnh.DeletedNodes[0].Name != "node0" {
-		t.Errorf("Node was not deleted")
-	}
+
+	assert.Equal(t, len(fnh.DeletedNodes), 1, fmt.Sprintf("Node was not deleted"))
+	assert.Equal(t, fnh.DeletedNodes[0].Name, "node0", fmt.Sprintf("Node was not deleted"))
 }
 
 // This test checks that a node with the external cloud provider taint is cloudprovider initialized
@@ -314,14 +315,9 @@ func TestNodeInitialized(t *testing.T) {
 
 	cloudNodeController.AddCloudNode(fnh.Existing[0])
 
-	if len(fnh.UpdatedNodes) != 1 || fnh.UpdatedNodes[0].Name != "node0" {
-		t.Errorf("Node was not updated")
-	}
-
-	if len(fnh.UpdatedNodes[0].Spec.Taints) != 0 {
-		t.Errorf("Node Taint was not removed after cloud init")
-	}
-
+	assert.Equal(t, len(fnh.UpdatedNodes), 1, fmt.Sprintf("Node was not updated"))
+	assert.Equal(t, fnh.UpdatedNodes[0].Name, "node0", fmt.Sprintf("Node was not updated"))
+	assert.Equal(t, len(fnh.UpdatedNodes[0].Spec.Taints), 0, fmt.Sprintf("Node Taint was not removed after cloud init"))
 }
 
 // This test checks that a node without the external cloud provider taint are NOT cloudprovider initialized
@@ -383,10 +379,7 @@ func TestNodeIgnored(t *testing.T) {
 	eventBroadcaster.StartLogging(glog.Infof)
 
 	cloudNodeController.AddCloudNode(fnh.Existing[0])
-
-	if len(fnh.UpdatedNodes) != 0 {
-		t.Errorf("Node was wrongly updated")
-	}
+	assert.Equal(t, len(fnh.UpdatedNodes), 0, fmt.Sprintf("Node was wrongly updated"))
 
 }
 
@@ -464,10 +457,7 @@ func TestGCECondition(t *testing.T) {
 	if len(fnh.UpdatedNodes) != 1 && fnh.UpdatedNodes[0].Name != "node0" {
 		t.Errorf("Node was not updated")
 	}
-
-	if len(fnh.UpdatedNodes[0].Status.Conditions) != 2 {
-		t.Errorf("No new conditions were added for GCE")
-	}
+	assert.Equal(t, len(fnh.UpdatedNodes[0].Status.Conditions), 2, fmt.Sprintf("No new conditions were added for GCE"))
 
 	conditionAdded := false
 	for _, cond := range fnh.UpdatedNodes[0].Status.Conditions {
@@ -476,9 +466,7 @@ func TestGCECondition(t *testing.T) {
 		}
 	}
 
-	if !conditionAdded {
-		t.Errorf("Network Route Condition for GCE not added by external cloud intializer")
-	}
+	assert.True(t, conditionAdded, fmt.Sprintf("Network Route Condition for GCE not added by external cloud intializer"))
 }
 
 // This test checks that a node with the external cloud provider taint is cloudprovider initialized and
@@ -557,21 +545,10 @@ func TestZoneInitialized(t *testing.T) {
 
 	cloudNodeController.AddCloudNode(fnh.Existing[0])
 
-	if len(fnh.UpdatedNodes) != 1 && fnh.UpdatedNodes[0].Name != "node0" {
-		t.Errorf("Node was not updated")
-	}
-
-	if len(fnh.UpdatedNodes[0].ObjectMeta.Labels) != 2 {
-		t.Errorf("Node label for Region and Zone were not set")
-	}
-
-	if fnh.UpdatedNodes[0].ObjectMeta.Labels[kubeletapis.LabelZoneRegion] != "us-west" {
-		t.Errorf("Node Region not correctly updated")
-	}
-
-	if fnh.UpdatedNodes[0].ObjectMeta.Labels[kubeletapis.LabelZoneFailureDomain] != "us-west-1a" {
-		t.Errorf("Node FailureDomain not correctly updated")
-	}
+	assert.False(t, len(fnh.UpdatedNodes) != 1 && fnh.UpdatedNodes[0].Name != "node0", fmt.Sprintf("Node was not updated"))
+	assert.Equal(t, len(fnh.UpdatedNodes[0].ObjectMeta.Labels), 2, fmt.Sprintf("Node label for Region and Zone were not set"))
+	assert.Equal(t, fnh.UpdatedNodes[0].ObjectMeta.Labels[kubeletapis.LabelZoneRegion], "us-west", fmt.Sprintf("Node Region not correctly updated"))
+	assert.Equal(t, fnh.UpdatedNodes[0].ObjectMeta.Labels[kubeletapis.LabelZoneFailureDomain], "us-west-1a", fmt.Sprintf("Node FailureDomain not correctly updated"))
 }
 
 // This test checks that a node with the external cloud provider taint is cloudprovider initialized and
@@ -655,13 +632,8 @@ func TestNodeAddresses(t *testing.T) {
 
 	cloudNodeController.AddCloudNode(fnh.Existing[0])
 
-	if len(fnh.UpdatedNodes) != 1 && fnh.UpdatedNodes[0].Name != "node0" {
-		t.Errorf("Node was not updated")
-	}
-
-	if len(fnh.UpdatedNodes[0].Status.Addresses) != 3 {
-		t.Errorf("Node status not updated")
-	}
+	assert.False(t, len(fnh.UpdatedNodes) != 1 && fnh.UpdatedNodes[0].Name != "node0", fmt.Sprintf("Node was not updated"))
+	assert.Equal(t, len(fnh.UpdatedNodes[0].Status.Addresses), 3, fmt.Sprintf("Node status not updated"))
 
 	fakeCloud.Addresses = []v1.NodeAddress{
 		{
@@ -680,9 +652,8 @@ func TestNodeAddresses(t *testing.T) {
 
 	updatedNodes := fnh.GetUpdatedNodesCopy()
 
-	if len(updatedNodes[0].Status.Addresses) != 2 {
-		t.Errorf("Node Addresses not correctly updated")
-	}
+	assert.Equal(t, len(updatedNodes[0].Status.Addresses), 2, fmt.Sprintf("Node Addresses not correctly updated"))
+
 }
 
 // This test checks that a node with the external cloud provider taint is cloudprovider initialized and
@@ -775,13 +746,8 @@ func TestNodeProvidedIPAddresses(t *testing.T) {
 
 	cloudNodeController.AddCloudNode(fnh.Existing[0])
 
-	if len(fnh.UpdatedNodes) != 1 && fnh.UpdatedNodes[0].Name != "node0" {
-		t.Errorf("Node was not updated")
-	}
-
-	if len(fnh.UpdatedNodes[0].Status.Addresses) != 1 {
-		t.Errorf("Node status unexpectedly updated")
-	}
+	assert.False(t, len(fnh.UpdatedNodes) != 1 && fnh.UpdatedNodes[0].Name != "node0", fmt.Sprintf("Node was not updated"))
+	assert.Equal(t, len(fnh.UpdatedNodes[0].Status.Addresses), 1, fmt.Sprintf("Node status unexpectedly updated"))
 
 	cloudNodeController.Run()
 
@@ -789,9 +755,8 @@ func TestNodeProvidedIPAddresses(t *testing.T) {
 
 	updatedNodes := fnh.GetUpdatedNodesCopy()
 
-	if len(updatedNodes[0].Status.Addresses) != 1 || updatedNodes[0].Status.Addresses[0].Address != "10.0.0.1" {
-		t.Errorf("Node Addresses not correctly updated")
-	}
+	assert.Equal(t, len(updatedNodes[0].Status.Addresses), 1, fmt.Sprintf("Node Addresses not correctly updated"))
+	assert.Equal(t, updatedNodes[0].Status.Addresses[0].Address, "10.0.0.1", fmt.Sprintf("Node Addresses not correctly updated"))
 }
 
 // Tests that node address changes are detected correctly
@@ -816,9 +781,8 @@ func TestNodeAddressesChangeDetected(t *testing.T) {
 			Address: "132.143.154.163",
 		},
 	}
-	if nodeAddressesChangeDetected(addressSet1, addressSet2) {
-		t.Errorf("Node address changes are not detected correctly")
-	}
+
+	assert.False(t, nodeAddressesChangeDetected(addressSet1, addressSet2), fmt.Sprintf("Node address changes are not detected correctly"))
 
 	addressSet1 = []v1.NodeAddress{
 		{
@@ -840,9 +804,8 @@ func TestNodeAddressesChangeDetected(t *testing.T) {
 			Address: "132.143.154.163",
 		},
 	}
-	if !nodeAddressesChangeDetected(addressSet1, addressSet2) {
-		t.Errorf("Node address changes are not detected correctly")
-	}
+
+	assert.True(t, nodeAddressesChangeDetected(addressSet1, addressSet2), fmt.Sprintf("Node address changes are not detected correctly"))
 
 	addressSet1 = []v1.NodeAddress{
 		{
@@ -868,9 +831,8 @@ func TestNodeAddressesChangeDetected(t *testing.T) {
 			Address: "132.143.154.164",
 		},
 	}
-	if !nodeAddressesChangeDetected(addressSet1, addressSet2) {
-		t.Errorf("Node address changes are not detected correctly")
-	}
+
+	assert.True(t, nodeAddressesChangeDetected(addressSet1, addressSet2), fmt.Sprintf("Node address changes are not detected correctly"))
 
 	addressSet1 = []v1.NodeAddress{
 		{
@@ -896,9 +858,8 @@ func TestNodeAddressesChangeDetected(t *testing.T) {
 			Address: "hostname.zone.region.aws.test",
 		},
 	}
-	if !nodeAddressesChangeDetected(addressSet1, addressSet2) {
-		t.Errorf("Node address changes are not detected correctly")
-	}
+
+	assert.True(t, nodeAddressesChangeDetected(addressSet1, addressSet2), fmt.Sprintf("Node address changes are not detected correctly"))
 
 	addressSet1 = []v1.NodeAddress{
 		{
@@ -920,9 +881,8 @@ func TestNodeAddressesChangeDetected(t *testing.T) {
 			Address: "132.143.154.163",
 		},
 	}
-	if !nodeAddressesChangeDetected(addressSet1, addressSet2) {
-		t.Errorf("Node address changes are not detected correctly")
-	}
+
+	assert.True(t, nodeAddressesChangeDetected(addressSet1, addressSet2), fmt.Sprintf("Node address changes are not detected correctly"))
 }
 
 // This test checks that a node is set with the correct providerID
@@ -1003,13 +963,9 @@ func TestNodeProviderID(t *testing.T) {
 
 	cloudNodeController.AddCloudNode(fnh.Existing[0])
 
-	if len(fnh.UpdatedNodes) != 1 || fnh.UpdatedNodes[0].Name != "node0" {
-		t.Errorf("Node was not updated")
-	}
-
-	if fnh.UpdatedNodes[0].Spec.ProviderID != "test://12345" {
-		t.Errorf("Node ProviderID not set correctly")
-	}
+	assert.Equal(t, len(fnh.UpdatedNodes), 1, fmt.Sprintf("Node was not updated"))
+	assert.Equal(t, fnh.UpdatedNodes[0].Name, "node0", fmt.Sprintf("Node was not updated"))
+	assert.Equal(t, fnh.UpdatedNodes[0].Spec.ProviderID, "test://12345", fmt.Sprintf("Node ProviderID not set correctly"))
 }
 
 // This test checks that a node's provider ID will not be overwritten
@@ -1091,12 +1047,8 @@ func TestNodeProviderIDAlreadySet(t *testing.T) {
 
 	cloudNodeController.AddCloudNode(fnh.Existing[0])
 
-	if len(fnh.UpdatedNodes) != 1 || fnh.UpdatedNodes[0].Name != "node0" {
-		t.Errorf("Node was not updated")
-	}
-
+	assert.Equal(t, len(fnh.UpdatedNodes), 1, fmt.Sprintf("Node was not updated"))
+	assert.Equal(t, fnh.UpdatedNodes[0].Name, "node0", fmt.Sprintf("Node was not updated"))
 	// CCM node controller should not overwrite provider if it's already set
-	if fnh.UpdatedNodes[0].Spec.ProviderID != "test-provider-id" {
-		t.Errorf("Node ProviderID not set correctly")
-	}
+	assert.Equal(t, fnh.UpdatedNodes[0].Spec.ProviderID, "test-provider-id", fmt.Sprintf("Node ProviderID not set correctly"))
 }
