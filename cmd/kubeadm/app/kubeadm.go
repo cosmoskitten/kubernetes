@@ -17,10 +17,12 @@ limitations under the License.
 package app
 
 import (
+	"net/http"
 	"os"
 
 	"github.com/spf13/pflag"
 
+	netutil "k8s.io/apimachinery/pkg/util/net"
 	_ "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/install"
 	"k8s.io/kubernetes/cmd/kubeadm/app/cmd"
 )
@@ -29,6 +31,11 @@ func Run() error {
 	// We do not want these flags to show up in --help
 	pflag.CommandLine.MarkHidden("google-json-key")
 	pflag.CommandLine.MarkHidden("log-flush-frequency")
+
+	// We want to use for HTTP DefaultTransport same defaults
+	// as API machinery will be using for all other calls.
+	// This is critical for better NO_PROXY handling
+	netutil.SetTransportDefaults(http.DefaultTransport.(*http.Transport))
 
 	cmd := cmd.NewKubeadmCommand(os.Stdin, os.Stdout, os.Stderr)
 	return cmd.Execute()
