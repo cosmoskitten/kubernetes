@@ -41,6 +41,7 @@ go_test(
         "backward_compatibility_test.go",
         "conversion_test.go",
         "defaults_test.go",
+        "generate_test.go",
     ],
     deps = [
         ":go_default_library",
