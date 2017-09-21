@@ -26,8 +26,8 @@ go_library(
     tags = ["automanaged"],
     deps = [
         "//cmd/kubeadm/app/constants:go_default_library",
+        "//cmd/kubeadm/app/util:go_default_library",
         "//pkg/kubelet/types:go_default_library",
-        "//vendor/github.com/ghodss/yaml:go_default_library",
         "//vendor/k8s.io/api/core/v1:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/api/resource:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",

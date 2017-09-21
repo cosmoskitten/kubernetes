@@ -23,8 +23,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/ghodss/yaml"
+	"k8s.io/api/extensions/v1beta1"
 	"k8s.io/kubernetes/cmd/kubeadm/app/constants"
+	"k8s.io/kubernetes/cmd/kubeadm/app/util"
 )
 
 const (
@@ -102,7 +103,9 @@ spec:
 status: {}
 `
 
-	testAPIServerDaemonSet = `metadata:
+	testAPIServerDaemonSet = `apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
   creationTimestamp: null
   labels:
     k8s-app: self-hosted-kube-apiserver
@@ -258,7 +261,9 @@ spec:
 status: {}
 `
 
-	testControllerManagerDaemonSet = `metadata:
+	testControllerManagerDaemonSet = `apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
   creationTimestamp: null
   labels:
     k8s-app: self-hosted-kube-controller-manager
@@ -383,7 +388,9 @@ spec:
 status: {}
 `
 
-	testSchedulerDaemonSet = `metadata:
+	testSchedulerDaemonSet = `apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
   creationTimestamp: null
   labels:
     k8s-app: self-hosted-kube-scheduler
@@ -475,7 +482,7 @@ func TestBuildDaemonSet(t *testing.T) {
 		}
 
 		ds := BuildDaemonSet(rt.component, podSpec, GetDefaultMutators())
-		dsBytes, err := yaml.Marshal(ds)
+		dsBytes, err := util.MarshalToYaml(ds, v1beta1.SchemeGroupVersion)
 		if err != nil {
 			t.Fatalf("failed to marshal daemonset to YAML: %v", err)
 		}
