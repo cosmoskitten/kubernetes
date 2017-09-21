@@ -191,9 +191,9 @@ func Test_AddPodToVolume_Positive_ExistingVolumeNewNode(t *testing.T) {
 		},
 	}
 	volumeSpec := &volume.Spec{Volume: &pod.Spec.Volumes[0]}
-	generatedVolumeName, err := volumehelper.GetUniqueVolumeNameFromSpec(plugin, volumeSpec)
+	generatedVolumeName, _ := volumehelper.GetUniqueVolumeNameFromSpec(plugin, volumeSpec)
 
-	err = asw.MarkVolumeAsAttached(emptyVolumeName, volumeSpec, "" /* nodeName */, devicePath)
+	err := asw.MarkVolumeAsAttached(emptyVolumeName, volumeSpec, "" /* nodeName */, devicePath)
 	if err != nil {
 		t.Fatalf("MarkVolumeAsAttached failed. Expected: <no error> Actual: <%v>", err)
 	}
@@ -249,10 +249,10 @@ func Test_AddPodToVolume_Positive_ExistingVolumeExistingNode(t *testing.T) {
 	}
 
 	volumeSpec := &volume.Spec{Volume: &pod.Spec.Volumes[0]}
-	generatedVolumeName, err := volumehelper.GetUniqueVolumeNameFromSpec(
+	generatedVolumeName, _ := volumehelper.GetUniqueVolumeNameFromSpec(
 		plugin, volumeSpec)
 
-	err = asw.MarkVolumeAsAttached(emptyVolumeName, volumeSpec, "" /* nodeName */, devicePath)
+	err := asw.MarkVolumeAsAttached(emptyVolumeName, volumeSpec, "" /* nodeName */, devicePath)
 	if err != nil {
 		t.Fatalf("MarkVolumeAsAttached failed. Expected: <no error> Actual: <%v>", err)
 	}
@@ -318,7 +318,7 @@ func Test_AddPodToVolume_Negative_VolumeDoesntExist(t *testing.T) {
 			volumeSpec,
 			err)
 	}
-	volumeName, err := volumehelper.GetUniqueVolumeNameFromSpec(
+	volumeName, _ := volumehelper.GetUniqueVolumeNameFromSpec(
 		plugin, volumeSpec)
 
 	podName := volumehelper.GetUniquePodName(pod)
@@ -376,9 +376,9 @@ func Test_MarkDeviceAsMounted_Positive_NewVolume(t *testing.T) {
 	}
 	volumeSpec := &volume.Spec{Volume: &pod.Spec.Volumes[0]}
 	devicePath := "fake/device/path"
-	generatedVolumeName, err := volumehelper.GetUniqueVolumeNameFromSpec(plugin, volumeSpec)
+	generatedVolumeName, _ := volumehelper.GetUniqueVolumeNameFromSpec(plugin, volumeSpec)
 
-	err = asw.MarkVolumeAsAttached(emptyVolumeName, volumeSpec, "" /* nodeName */, devicePath)
+	err := asw.MarkVolumeAsAttached(emptyVolumeName, volumeSpec, "" /* nodeName */, devicePath)
 	if err != nil {
 		t.Fatalf("MarkVolumeAsAttached failed. Expected: <no error> Actual: <%v>", err)
 	}
