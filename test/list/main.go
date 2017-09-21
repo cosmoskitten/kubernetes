@@ -24,23 +24,72 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 )
 
 var (
-	dumpTree = flag.Bool("dump", false, "print AST")
-	dumpJson = flag.Bool("json", false, "output test list as JSON")
-	warn     = flag.Bool("warn", false, "print warnings")
+	dumpTree            = flag.Bool("dump", false, "print AST")
+	dumpJson            = flag.Bool("json", false, "output test list as JSON")
+	warn                = flag.Bool("warn", false, "print warnings")
+	writeConformanceDoc = flag.Bool("conformance", false, "write a conformance document")
 )
 
 type Test struct {
 	Loc      string
 	Name     string
 	TestName string
+	Comment  string
+}
+
+type ConformanceData struct {
+	URL         string
+	TestName    string
+	Description string
+}
+
+func convertToConformanceData(test *Test) ConformanceData {
+	baseURL := "https://github.com/kubernetes/kubernetes/tree/master/"
+
+	cd := ConformanceData{}
+
+	parts := strings.SplitN(test.Loc, ":", 3)
+	if len(parts) > 1 {
+		cd.URL = baseURL + parts[0] + "#L" + parts[1]
+	} else {
+		cd.URL = baseURL + test.Loc
+	}
+
+	lines := strings.Split(test.Comment, "\n")
+	cd.Description = ""
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "Testname:") {
+			line = strings.TrimSpace(line[9:])
+			cd.TestName = line
+			continue
+		}
+		if strings.HasPrefix(line, "Description:") {
+			line = strings.TrimSpace(line[12:])
+		}
+		cd.Description += line + "\n"
+	}
+
+	if cd.TestName == "" {
+		i := strings.Index(test.TestName, "[")
+		if i > 0 {
+			cd.TestName = strings.TrimSpace(test.TestName[:i])
+		} else {
+			cd.TestName = test.TestName
+		}
+	}
+
+	return cd
 }
 
 // collect extracts test metadata from a file.
@@ -54,13 +103,16 @@ func collect(filename string, src interface{}) []Test {
 		panic(err)
 	}
 
+	//create comment map
+	cmap := ast.NewCommentMap(fset, f, f.Comments)
+
 	if *dumpTree {
 		ast.Print(fset, f)
 	}
 
 	tests := make([]Test, 0)
 
-	ast.Walk(makeWalker("[k8s.io]", fset, &tests), f)
+	ast.Walk(makeWalker("[k8s.io]", fset, &tests, cmap), f)
 
 	// Unit tests are much simpler to enumerate!
 	if strings.HasSuffix(filename, "_test.go") {
@@ -77,7 +129,7 @@ func collect(filename string, src interface{}) []Test {
 			}
 			name := funcdecl.Name.Name
 			if strings.HasPrefix(name, "Test") {
-				tests = append(tests, Test{fset.Position(funcdecl.Pos()).String(), testPath, name})
+				tests = append(tests, Test{fset.Position(funcdecl.Pos()).String(), testPath, name, funcdecl.Doc.Text()})
 			}
 		}
 	}
@@ -107,15 +159,16 @@ type walker struct {
 	fset  *token.FileSet
 	tests *[]Test
 	vals  map[string]string
+	CMap  ast.CommentMap
 }
 
-func makeWalker(path string, fset *token.FileSet, tests *[]Test) *walker {
-	return &walker{path, fset, tests, make(map[string]string)}
+func makeWalker(path string, fset *token.FileSet, tests *[]Test, cmap ast.CommentMap) *walker {
+	return &walker{path, fset, tests, make(map[string]string), cmap}
 }
 
 // clone creates a new walker with the given string extending the path.
 func (w *walker) clone(ext string) *walker {
-	return &walker{w.path + " " + ext, w.fset, w.tests, w.vals}
+	return &walker{w.path + " " + ext, w.fset, w.tests, w.vals, w.CMap}
 }
 
 // firstArg attempts to statically determine the value of the first
@@ -192,13 +245,23 @@ func (w *walker) Visit(n ast.Node) ast.Visitor {
 			return w.clone(name)
 		}
 		name = w.itName(x)
+		comment := ""
+		for _, comm := range w.CMap.Comments() {
+			//make sure to pick up the comment that is above the It block
+			//comment may a line feed stripped and hence the exn position of comment
+			//could typically be 3 character behid the start of It block.
+			if x.Pos() > comm.End() && x.Pos()-comm.End() <= 3 {
+				comment = comm.Text()
+			}
+		}
+
 		if name != "" {
 			// We've found an It() call, the full test name
 			// can be determined now.
 			if w.path == "[k8s.io]" && *warn {
 				log.Printf("It without matching Describe: %s\n", w.fset.Position(n.Pos()))
 			}
-			*w.tests = append(*w.tests, Test{w.fset.Position(n.Pos()).String(), w.path, name})
+			*w.tests = append(*w.tests, Test{w.fset.Position(n.Pos()).String(), w.path, name, comment})
 			return nil // Stop walking
 		}
 	case *ast.AssignStmt:
@@ -262,12 +325,33 @@ func main() {
 			log.Fatalf("Error walking: %v", err)
 		}
 	}
+
 	if *dumpJson {
 		json, err := json.Marshal(tests.tests)
 		if err != nil {
 			log.Fatal(err)
 		}
 		fmt.Println(string(json))
+	} else if *writeConformanceDoc {
+		file, err := os.Create("Conformance.md")
+		if err != nil {
+			log.Fatalf("Error creating file Conformance.md: %v", err)
+		}
+		defer file.Close()
+
+		header, err := ioutil.ReadFile("test/list/header.md")
+		if err == nil {
+			file.Write([]byte(fmt.Sprintf("%s\n\n", header)))
+		}
+
+		for _, t := range tests.tests {
+			if matched, err := regexp.MatchString("\\[Conformance\\]", t.TestName); err == nil && matched {
+				cd := convertToConformanceData(&t)
+				hdr := fmt.Sprintf("## [%s](%s)\n\n", cd.TestName, cd.URL)
+				file.Write([]byte(hdr))
+				file.Write([]byte(cd.Description + "\n\n"))
+			}
+		}
 	} else {
 		for _, t := range tests.tests {
 			fmt.Println(t)
