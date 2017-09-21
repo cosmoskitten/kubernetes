@@ -19,10 +19,12 @@ package podsecuritypolicy
 import (
 	"fmt"
 	"io"
+	"sort"
 	"strings"
 
 	"github.com/golang/glog"
 
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/apiserver/pkg/admission"
@@ -142,6 +144,12 @@ func (c *podSecurityPolicyPlugin) Admit(a admission.Attributes) error {
 		return nil
 	}
 
+	// sort by name to make order deterministic
+	// TODO: add priority field to allow admins to bucket differently
+	sort.SliceStable(matchedPolicies, func(i, j int) bool {
+		return strings.Compare(matchedPolicies[i].Name, matchedPolicies[j].Name) < 0
+	})
+
 	providers, errs := c.createProvidersFromPolicies(matchedPolicies, pod.Namespace)
 	logProviders(pod, providers, errs)
 
@@ -149,20 +157,49 @@ func (c *podSecurityPolicyPlugin) Admit(a admission.Attributes) error {
 		return admission.NewForbidden(a, fmt.Errorf("no providers available to validate pod request"))
 	}
 
+	// TODO: allow spec mutation during initializing updates?
+	specMutationAllowed := a.GetOperation() == admission.Create
+
 	// all containers in a single pod must validate under a single provider or we will reject the request
 	validationErrs := field.ErrorList{}
+	var (
+		allowedPod       *api.Pod
+		allowingProvider psp.Provider
+	)
+
+loop:
 	for _, provider := range providers {
-		if errs := assignSecurityContext(provider, pod, field.NewPath(fmt.Sprintf("provider %s: ", provider.GetPSPName()))); len(errs) > 0 {
+		podCopy := pod.DeepCopy()
+
+		if errs := assignSecurityContext(provider, podCopy, field.NewPath(fmt.Sprintf("provider %s: ", provider.GetPSPName()))); len(errs) > 0 {
 			validationErrs = append(validationErrs, errs...)
 			continue
 		}
 
-		// the entire pod validated, annotate and accept the pod
-		glog.V(4).Infof("pod %s (generate: %s) validated against provider %s", pod.Name, pod.GenerateName, provider.GetPSPName())
+		// the entire pod validated
+
+		switch {
+		case apiequality.Semantic.DeepEqual(pod, podCopy):
+			// if it validated without mutating anything, use this result
+			allowedPod = podCopy
+			allowingProvider = provider
+			break loop
+		case specMutationAllowed && allowedPod == nil:
+			// if mutation is allowed and this is the first PSP to allow the pod, remember it,
+			// but continue to see if another PSP allows without mutating
+			allowedPod = podCopy
+			allowingProvider = provider
+		}
+	}
+
+	if allowedPod != nil {
+		*pod = *allowedPod
+		// annotate and accept the pod
+		glog.V(4).Infof("pod %s (generate: %s) validated against provider %s", pod.Name, pod.GenerateName, allowingProvider.GetPSPName())
 		if pod.ObjectMeta.Annotations == nil {
 			pod.ObjectMeta.Annotations = map[string]string{}
 		}
-		pod.ObjectMeta.Annotations[psputil.ValidatedPSPAnnotation] = provider.GetPSPName()
+		pod.ObjectMeta.Annotations[psputil.ValidatedPSPAnnotation] = allowingProvider.GetPSPName()
 		return nil
 	}
 
