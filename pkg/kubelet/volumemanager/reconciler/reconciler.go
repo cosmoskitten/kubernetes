@@ -382,7 +382,7 @@ func (rc *reconciler) syncStates(podsDir string) {
 		aswExist, _, _ := rc.actualStateOfWorld.PodExistsInVolume(reconstructedVolume.podName, reconstructedVolume.volumeName)
 
 		if !rc.StatesHasBeenSynced() {
-			// In case this is the first time to reconstruct state after kubelet starts, for a persistant volume, it must have
+			// In case this is the first time to reconstruct state after kubelet starts, for a persistent volume, it must have
 			// been mounted before kubelet restarts because no mount operations could be started at this time (node
 			// status has not yet been updated before this very first syncStates finishes, so that VerifyControllerAttachedVolume will fail),
 			// In this case, the volume state should be put back to actual state now no matter desired state has it or not.
