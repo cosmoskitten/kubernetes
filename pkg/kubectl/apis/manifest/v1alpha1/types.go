@@ -28,8 +28,8 @@ type Package struct {
 	// More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#metadata
 	metav1.ObjectMeta `json:"metadata,omitempty" yaml:"metadata,omitempty"`
 
-	// Name of an instance of the package.
-	// There may be multiple instances with the same package and different packageVersions.
+	// The name of the package.
+	// The name of an individual instance should live in ObjectMeta.Name.
 	Name string `json:"name,omitempty" yaml:"name,omitempty"`
 
 	// Description of the package.
@@ -62,17 +62,13 @@ type Manifest struct {
 	// More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#metadata
 	metav1.ObjectMeta `json:"metadata,omitempty" yaml:"metadata,omitempty"`
 
-	// Name of an instance of the manifest.
-	// There may be multiple instances with the same manifest and different manifestVersions.
-	Name string `json:"name,omitempty" yaml:"name,omitempty"`
-
-	// Description of the manifest.
-	Description string `json:"description,omitempty" yaml:"description,omitempty"`
-
+	// TODO: figure out if we need field ManifestVersion.
+	// See: https://github.com/kubernetes/kubernetes/pull/52570/files/3eea91793dfbc3fdb0799589fac3790c4cde58a4#r140391019
 	// Version of the manifest.
-	ManifestVersion string `json:"manifestVersion,omitempty" yaml:"manifestVersion,omitempty"`
+	// ManifestVersion string `json:"manifestVersion,omitempty" yaml:"manifestVersion,omitempty"`
 
-	// Partial name that will prefix the name of the base resources.
+	// NamePrefix will prefix the names of all resources mentioned in the manifest
+	// including generated configmaps and secrets.
 	NamePrefix string `json:"namePrefix,omitempty" yaml:"namePrefix,omitempty"`
 
 	// Labels to add to all objects and selectors.
@@ -117,7 +113,8 @@ type ConfigMap struct {
 	// The type of the configmap. e.g. `env` and `file`.
 	Type string `json:"type,omitempty" yaml:"type,omitempty"`
 
-	// Name prefix of the configmap, the full name will be NamePrefix + hash(content of configmap).
+	// Name prefix of the configmap.
+	// The full name should be Manifest.NamePrefix + Configmap.NamePrefix + hash(content of configmap).
 	NamePrefix string `json:"namePrefix,omitempty" yaml:"namePrefix,omitempty"`
 
 	// Configuration source file name.
@@ -129,7 +126,8 @@ type Secret struct {
 	// The type of the secret. e.g. `tls`.
 	Type string `json:"type,omitempty" yaml:"type,omitempty"`
 
-	// Name prefix of the secret, the full name will be NamePrefix + hash(content of secret).
+	// Name prefix of the secret.
+	// The full name should be Manifest.NamePrefix + Secret.NamePrefix + hash(content of secret).
 	NamePrefix string `json:"namePrefix,omitempty" yaml:"namePrefix,omitempty"`
 
 	// Cert file for the secret.
