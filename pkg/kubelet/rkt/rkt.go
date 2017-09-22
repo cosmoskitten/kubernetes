@@ -27,6 +27,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -754,9 +755,15 @@ func podFinishedMarkerPath(podDir string, rktUID string) string {
 	return filepath.Join(podDir, "finished-"+rktUID)
 }
 
-func podFinishedMarkCommand(touchPath, podDir, rktUID string) string {
-	// TODO, if the path has a `'` character in it, this breaks.
-	return touchPath + " " + podFinishedMarkerPath(podDir, rktUID)
+func podFinishedMarkCommand(touchPath, podDir, rktUID string) (string, error) {
+	apostropheFlag, err := regexp.MatchString(`'`, touchPath)
+	if err != nil {
+		return "", fmt.Errorf("checks regular expression failed %v: ", err)
+	}
+	if apostropheFlag {
+		return "", fmt.Errorf("the path: %s has a `'` character in it", touchPath)
+	}
+	return touchPath + " " + podFinishedMarkerPath(podDir, rktUID), nil
 }
 
 // podFinishedAt returns the time that a pod exited, or a zero time if it has
@@ -1232,7 +1239,10 @@ func (r *Runtime) preparePod(pod *v1.Pod, podIP string, pullSecrets []v1.Secret,
 	// TODO handle pod.Spec.HostIPC
 
 	// TODO per container finishedAt, not just per pod
-	markPodFinished := podFinishedMarkCommand(r.touchPath, r.runtimeHelper.GetPodDir(pod.UID), uuid)
+	markPodFinished, err := podFinishedMarkCommand(r.touchPath, r.runtimeHelper.GetPodDir(pod.UID), uuid)
+	if err != nil {
+		return "", nil, err
+	}
 
 	hostNetwork := kubecontainer.IsHostNetworkPod(pod)
 	units := []*unit.UnitOption{
