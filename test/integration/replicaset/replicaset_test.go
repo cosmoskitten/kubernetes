@@ -42,7 +42,7 @@ import (
 
 const (
 	interval = 100 * time.Millisecond
-	timeout  = 5 * time.Second
+	timeout  = 60 * time.Second
 )
 
 func testLabels() map[string]string {
