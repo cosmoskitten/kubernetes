@@ -464,26 +464,5 @@ var _ = framework.KubeDescribe("DNS", func() {
 		pod2 := createDNSPod(f.Namespace.Name, wheezyProbeCmd, jessieProbeCmd, true)
 
 		validateTargetedProbeOutput(f, pod2, []string{wheezyFileName, jessieFileName}, "bar.example.com.")
-
-		// Test changing type from ExternalName to ClusterIP
-		By("changing the service to type=ClusterIP")
-		_, err = framework.UpdateService(f.ClientSet, f.Namespace.Name, serviceName, func(s *v1.Service) {
-			s.Spec.Type = v1.ServiceTypeClusterIP
-			s.Spec.ClusterIP = "10.0.0.123"
-			s.Spec.Ports = []v1.ServicePort{
-				{Port: 80, Name: "http", Protocol: "TCP"},
-			}
-		})
-		Expect(err).NotTo(HaveOccurred())
-		wheezyProbeCmd, wheezyFileName = createTargetedProbeCommand(hostFQDN, "A", "wheezy")
-		jessieProbeCmd, jessieFileName = createTargetedProbeCommand(hostFQDN, "A", "jessie")
-		By("Running these commands on wheezy: " + wheezyProbeCmd + "\n")
-		By("Running these commands on jessie: " + jessieProbeCmd + "\n")
-
-		// Run a pod which probes DNS and exposes the results by HTTP.
-		By("creating a third pod to probe DNS")
-		pod3 := createDNSPod(f.Namespace.Name, wheezyProbeCmd, jessieProbeCmd, true)
-
-		validateTargetedProbeOutput(f, pod3, []string{wheezyFileName, jessieFileName}, "10.0.0.123")
 	})
 })
