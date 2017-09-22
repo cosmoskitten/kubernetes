@@ -67,14 +67,6 @@ func (m *Stub) Start() error {
 	pluginapi.RegisterDevicePluginServer(m.server, m)
 
 	go m.server.Serve(sock)
-	// Wait till grpc server is ready.
-	for i := 0; i < 10; i++ {
-		services := m.server.GetServiceInfo()
-		if len(services) > 1 {
-			break
-		}
-		time.Sleep(1 * time.Second)
-	}
 	log.Println("Starting to serve on", m.socket)
 
 	return nil
