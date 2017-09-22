@@ -66,3 +66,15 @@ func (os *OpenStack) NewBlockStorageV2() (*gophercloud.ServiceClient, error) {
 	}
 	return storage, nil
 }
+
+func (os *OpenStack) NewBlockStorageV3() (*gophercloud.ServiceClient, error) {
+	// change NewBlockStorageV2 to NewBlockStorageV3
+	storage, err := openstack.NewBlockStorageV2(os.provider, gophercloud.EndpointOpts{
+		Region: os.region,
+	})
+	if err != nil {
+		glog.Errorf("Unable to initialize cinder v3 client for region %s: %v", os.region, err)
+		return nil, err
+	}
+	return storage, nil
+}

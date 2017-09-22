@@ -662,6 +662,8 @@ func (apiVersions APIVersionsByID) Less(i, j int) bool {
 
 func autoVersionSelector(apiVersion *apiversions_v1.APIVersion) string {
 	switch strings.ToLower(apiVersion.ID) {
+	case "v3.0":
+		return "v3"
 	case "v2.0":
 		return "v2"
 	case "v1.0":
@@ -698,6 +700,9 @@ func (os *OpenStack) volumeService(forceVersion string) (volumeService, error) {
 
 	switch bsVersion {
 	case "v1":
+		// Since Cinder volume v1 is deprecated in the OpenStack Grizzly release, let's deprecate it.
+		// Reference OpenStack doc:	https://specs.openstack.org/openstack/cinder-specs/specs/juno/deprecate_v1_api.html
+		glog.Warningf("The Cinder volume v1 of OpenStack cloud provider has been deprecated.")
 		sClient, err := os.NewBlockStorageV1()
 		if err != nil {
 			return nil, err
@@ -709,6 +714,12 @@ func (os *OpenStack) volumeService(forceVersion string) (volumeService, error) {
 			return nil, err
 		}
 		return &VolumesV2{sClient, os.bsOpts}, nil
+	case "v3":
+		sClient, err := os.NewBlockStorageV3()
+		if err != nil {
+			return nil, err
+		}
+		return &VolumesV3{sClient, os.bsOpts}, nil
 	case "auto":
 		sClient, err := os.NewBlockStorageV1()
 		if err != nil {

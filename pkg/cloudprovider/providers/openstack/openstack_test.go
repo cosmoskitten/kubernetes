@@ -527,6 +527,7 @@ func TestCinderAutoDetectApiVersion(t *testing.T) {
 
 	api_supported_v1 := apiversions.APIVersion{ID: api_version[1], Status: status_supported, Updated: updated}
 	api_supported_v2 := apiversions.APIVersion{ID: api_version[2], Status: status_supported, Updated: updated}
+	api_supported_v3 := apiversions.APIVersion{ID: api_version[3], Status: status_supported, Updated: updated}
 
 	api_deprecated_v1 := apiversions.APIVersion{ID: api_version[1], Status: status_deprecated, Updated: updated}
 	api_deprecated_v2 := apiversions.APIVersion{ID: api_version[2], Status: status_deprecated, Updated: updated}
@@ -537,10 +538,15 @@ func TestCinderAutoDetectApiVersion(t *testing.T) {
 	}{
 		{[]apiversions.APIVersion{api_current_v1}, result_version[1]},
 		{[]apiversions.APIVersion{api_current_v2}, result_version[2]},
-		{[]apiversions.APIVersion{api_supported_v1, api_current_v2}, result_version[2]},                     // current always selected
-		{[]apiversions.APIVersion{api_current_v1, api_supported_v2}, result_version[1]},                     // current always selected
-		{[]apiversions.APIVersion{api_current_v3, api_supported_v2, api_deprecated_v1}, result_version[2]},  // with current v3, but should fall back to v2
-		{[]apiversions.APIVersion{api_current_v3, api_deprecated_v2, api_deprecated_v1}, result_version[0]}, // v3 is not supported
+		{[]apiversions.APIVersion{api_current_v3}, result_version[3]},
+		{[]apiversions.APIVersion{api_supported_v1, api_current_v2}, result_version[2]}, // current always selected
+		{[]apiversions.APIVersion{api_current_v1, api_supported_v2}, result_version[1]}, // current always selected
+		{[]apiversions.APIVersion{api_supported_v3, api_current_v2}, result_version[2]}, // current always selected
+		{[]apiversions.APIVersion{api_supported_v1, api_current_v3}, result_version[3]}, // current always selected
+		{[]apiversions.APIVersion{api_supported_v2, api_current_v3}, result_version[3]}, // current always selected
+		{[]apiversions.APIVersion{api_current_v3, api_supported_v2, api_deprecated_v1}, result_version[3]},
+		{[]apiversions.APIVersion{api_current_v3, api_deprecated_v2, api_deprecated_v1}, result_version[3]},
+		{[]apiversions.APIVersion{api_current_v3, api_supported_v2, api_supported_v1}, result_version[3]},
 	}
 
 	for _, suite := range testCases {

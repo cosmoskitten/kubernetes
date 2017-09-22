@@ -41,6 +41,8 @@ type volumeService interface {
 	deleteVolume(volumeName string) error
 }
 
+// Deprecated; Since volume v1 is deprecated in the OpenStack Grizzly release, Kubernetes deprecated it.
+// TODO(FengyunPan): remove LBaaS v1 after kubernetes V1.9 release.
 // Volumes implementation for v1
 type VolumesV1 struct {
 	blockstorage *gophercloud.ServiceClient
@@ -49,6 +51,12 @@ type VolumesV1 struct {
 
 // Volumes implementation for v2
 type VolumesV2 struct {
+	blockstorage *gophercloud.ServiceClient
+	opts         BlockStorageOpts
+}
+
+// Volumes implementation for v3
+type VolumesV3 struct {
 	blockstorage *gophercloud.ServiceClient
 	opts         BlockStorageOpts
 }
@@ -121,6 +129,11 @@ func (volumes *VolumesV2) createVolume(opts VolumeCreateOpts) (string, string, e
 	return vol.ID, vol.AvailabilityZone, nil
 }
 
+func (volumes *VolumesV3) createVolume(opts VolumeCreateOpts) (string, string, error) {
+	//TODO
+	return "", "", nil
+}
+
 func (volumes *VolumesV1) getVolume(volumeID string) (Volume, error) {
 	startTime := time.Now()
 	volumeV1, err := volumes_v1.Get(volumes.blockstorage, volumeID).Extract()
@@ -169,6 +182,11 @@ func (volumes *VolumesV2) getVolume(volumeID string) (Volume, error) {
 	return volume, nil
 }
 
+func (volumes *VolumesV3) getVolume(volumeID string) (Volume, error) {
+	//TODO
+	return Volume{}, nil
+}
+
 func (volumes *VolumesV1) deleteVolume(volumeID string) error {
 	startTime := time.Now()
 	err := volumes_v1.Delete(volumes.blockstorage, volumeID).ExtractErr()
@@ -191,6 +209,11 @@ func (volumes *VolumesV2) deleteVolume(volumeID string) error {
 	}
 
 	return err
+}
+
+func (volumes *VolumesV3) deleteVolume(volumeID string) error {
+	//TODO
+	return nil
 }
 
 func (os *OpenStack) OperationPending(diskName string) (bool, string, error) {
