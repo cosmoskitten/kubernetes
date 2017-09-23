@@ -43,8 +43,7 @@ type Tunneler interface {
 	Run(AddressFunc)
 	Stop()
 	Dial(net, addr string) (net.Conn, error)
-	SecondsSinceSync() int64
-	SecondsSinceSSHKeySync() int64
+	Healthy() error
 }
 
 // TunnelSyncHealthChecker returns a health func that indicates if a tunneler is healthy.
@@ -54,15 +53,7 @@ func TunnelSyncHealthChecker(tunneler Tunneler) func(req *http.Request) error {
 		if tunneler == nil {
 			return nil
 		}
-		lag := tunneler.SecondsSinceSync()
-		if lag > 600 {
-			return fmt.Errorf("Tunnel sync is taking too long: %d", lag)
-		}
-		sshKeyLag := tunneler.SecondsSinceSSHKeySync()
-		if sshKeyLag > 600 {
-			return fmt.Errorf("SSHKey sync is taking too long: %d", sshKeyLag)
-		}
-		return nil
+		return tunneler.Healthy()
 	}
 }
 
@@ -197,6 +188,21 @@ func (c *SSHTunneler) nodesSyncLoop() {
 		c.tunnels.Update(addrs)
 		atomic.StoreInt64(&c.lastSync, c.clock.Now().Unix())
 	}, 15*time.Second, c.stopChan)
+}
+
+func (c *SSHTunneler) Healthy() error {
+	lag := c.SecondsSinceSync()
+	if lag > 600 {
+		return fmt.Errorf("Tunnel sync is taking to long: %d", lag)
+	}
+	if c.InstallSSHKey != nil {
+		sshKeyLag := c.SecondsSinceSSHKeySync()
+		if sshKeyLag > 600 {
+			return fmt.Errorf("SSHKey sync is taking to long: %d", sshKeyLag)
+		}
+	}
+
+	return nil
 }
 
 func generateSSHKey(privateKeyfile, publicKeyfile string) error {
