@@ -153,17 +153,17 @@ func (r *realIPGetter) NodeIPs() (ips []net.IP, err error) {
 		}
 		intf, err := net.InterfaceByName(name)
 		if err != nil {
+			glog.Errorf("Failed to get interface by name: %s, error: %v", name, err)
 			continue
 		}
 		addrs, err := intf.Addrs()
 		if err != nil {
+			glog.Errorf("Failed to get addresses from interface: %s, error: %v", name, err)
 			continue
 		}
 		for _, a := range addrs {
 			if ipnet, ok := a.(*net.IPNet); ok {
-				if ipnet.IP.To4() != nil {
-					ips = append(ips, ipnet.IP.To4())
-				}
+				ips = append(ips, ipnet.IP)
 			}
 		}
 	}
