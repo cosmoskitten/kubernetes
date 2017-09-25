@@ -1041,7 +1041,7 @@ type RunAsUserStrategyOptions struct {
 type RunAsGroupStrategyOptions struct {
 	// Rule is the strategy that will dictate the allowable RunAsGroup values that may be set.
 	Rule RunAsGroupStrategy
-	// Ranges are the allowed ranges of uids that may be used.
+	// Ranges are the allowed ranges of gids that may be used.
 	// +optional
 	Ranges []GroupIDRange
 }
@@ -1082,9 +1082,9 @@ type RunAsGroupStrategy string
 const (
 	// container must run as a particular gid.
 	RunAsGroupStrategyMustRunAs RunAsGroupStrategy = "MustRunAs"
-	// container must run as a non-root uid
+	// container must run as a non-root gid
 	RunAsGroupStrategyMustRunAsNonRoot RunAsGroupStrategy = "MustRunAsNonRoot"
-	// container may make requests for any uid.
+	// container may make requests for any gid.
 	RunAsGroupStrategyRunAsAny RunAsGroupStrategy = "RunAsAny"
 )
 

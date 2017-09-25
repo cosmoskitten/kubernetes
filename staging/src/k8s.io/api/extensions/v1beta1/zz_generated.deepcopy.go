@@ -1424,7 +1424,6 @@ func (in *PodSecurityPolicySpec) DeepCopyInto(out *PodSecurityPolicySpec) {
 	}
 	in.SELinux.DeepCopyInto(&out.SELinux)
 	in.RunAsUser.DeepCopyInto(&out.RunAsUser)
-	in.RunAsGroup.DeepCopyInto(&out.RunAsGroup)
 	in.SupplementalGroups.DeepCopyInto(&out.SupplementalGroups)
 	in.FSGroup.DeepCopyInto(&out.FSGroup)
 	if in.DefaultAllowPrivilegeEscalation != nil {
@@ -1450,6 +1449,7 @@ func (in *PodSecurityPolicySpec) DeepCopyInto(out *PodSecurityPolicySpec) {
 		*out = make([]AllowedHostPath, len(*in))
 		copy(*out, *in)
 	}
+	in.RunAsGroup.DeepCopyInto(&out.RunAsGroup)
 	return
 }
 

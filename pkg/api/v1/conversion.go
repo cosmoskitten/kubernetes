@@ -447,6 +447,7 @@ func Convert_api_SecurityContext_To_v1_SecurityContext(in *api.SecurityContext, 
 		out.SELinuxOptions = nil
 	}
 	out.RunAsUser = in.RunAsUser
+	out.RunAsGroup = in.RunAsGroup
 	out.RunAsNonRoot = in.RunAsNonRoot
 	out.ReadOnlyRootFilesystem = in.ReadOnlyRootFilesystem
 	out.AllowPrivilegeEscalation = in.AllowPrivilegeEscalation
