@@ -18,6 +18,9 @@ package unstructured
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestUnstructuredList(t *testing.T) {
@@ -29,10 +32,8 @@ func TestUnstructuredList(t *testing.T) {
 	}
 	content := list.UnstructuredContent()
 	items := content["items"].([]interface{})
-	if len(items) != 1 {
-		t.Fatalf("unexpected items: %#v", items)
-	}
-	if getNestedField(items[0].(map[string]interface{}), "metadata", "name") != "test" {
-		t.Fatalf("unexpected fields: %#v", items[0])
-	}
+	require.Len(t, items, 1)
+	val, ok := NestedField(items[0].(map[string]interface{}), "metadata", "name")
+	require.True(t, ok)
+	assert.Equal(t, "test", val)
 }

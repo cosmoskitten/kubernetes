@@ -147,14 +147,14 @@ func TestUnstructuredGetters(t *testing.T) {
 				"annotations": map[string]interface{}{
 					"test_annotation": "test_value",
 				},
-				"ownerReferences": []map[string]interface{}{
-					{
+				"ownerReferences": []interface{}{
+					map[string]interface{}{
 						"kind":       "Pod",
 						"name":       "poda",
 						"apiVersion": "v1",
 						"uid":        "1",
 					},
-					{
+					map[string]interface{}{
 						"kind":       "Pod",
 						"name":       "podb",
 						"apiVersion": "v1",
@@ -273,7 +273,7 @@ func TestUnstructuredSetters(t *testing.T) {
 				"selfLink":                   "test_selfLink",
 				"creationTimestamp":          "2009-11-10T23:00:00Z",
 				"deletionTimestamp":          "2010-11-10T23:00:00Z",
-				"deletionGracePeriodSeconds": &ten,
+				"deletionGracePeriodSeconds": ten,
 				"generation":                 ten,
 				"labels": map[string]interface{}{
 					"test_label": "test_value",
@@ -281,14 +281,14 @@ func TestUnstructuredSetters(t *testing.T) {
 				"annotations": map[string]interface{}{
 					"test_annotation": "test_value",
 				},
-				"ownerReferences": []map[string]interface{}{
-					{
+				"ownerReferences": []interface{}{
+					map[string]interface{}{
 						"kind":       "Pod",
 						"name":       "poda",
 						"apiVersion": "v1",
 						"uid":        "1",
 					},
-					{
+					map[string]interface{}{
 						"kind":               "Pod",
 						"name":               "podb",
 						"apiVersion":         "v1",

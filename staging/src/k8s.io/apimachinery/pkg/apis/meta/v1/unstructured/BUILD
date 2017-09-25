@@ -13,7 +13,10 @@ go_test(
         "unstructured_list_test.go",
     ],
     library = ":go_default_library",
-    deps = ["//vendor/github.com/stretchr/testify/assert:go_default_library"],
+    deps = [
+        "//vendor/github.com/stretchr/testify/assert:go_default_library",
+        "//vendor/github.com/stretchr/testify/require:go_default_library",
+    ],
 )
 
 go_library(
@@ -25,7 +28,6 @@ go_library(
         "zz_generated.deepcopy.go",
     ],
     deps = [
-        "//vendor/github.com/golang/glog:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/conversion:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/conversion/unstructured:go_default_library",
