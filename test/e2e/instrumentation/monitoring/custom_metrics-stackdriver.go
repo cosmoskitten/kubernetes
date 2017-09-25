@@ -58,11 +58,11 @@ var _ = instrumentation.SIGDescribe("Stackdriver Monitoring", func() {
 		}
 		customMetricsClient = customclient.NewForConfigOrDie(config)
 		discoveryClient = discovery.NewDiscoveryClientForConfigOrDie(config)
-		testAdapter(f, kubeClient, kubeAggrClient, customMetricsClient, discoveryClient)
+		testAdapter(f, kubeClient, customMetricsClient, discoveryClient)
 	})
 })
 
-func testAdapter(f *framework.Framework, kubeClient clientset.Interface, kubeAggrClient kubeaggrcs.Interface, customMetricsClient customclient.CustomMetricsClient, discoveryClient *discovery.DiscoveryClient) {
+func testAdapter(f *framework.Framework, kubeClient clientset.Interface, customMetricsClient customclient.CustomMetricsClient, discoveryClient *discovery.DiscoveryClient) {
 	projectId := framework.TestContext.CloudConfig.ProjectID
 
 	ctx := context.Background()
@@ -73,12 +73,12 @@ func testAdapter(f *framework.Framework, kubeClient clientset.Interface, kubeAgg
 	// $ gcloud auth application-default login
 	// and uncomment following lines (comment out the two lines above):
 	/*
-	ts, err := google.DefaultTokenSource(oauth2.NoContext)
-	framework.Logf("Couldn't get application default credentials, %v", err)
-	if err != nil {
-		framework.Failf("Error accessing application default credentials, %v", err)
-	}
-	client := oauth2.NewClient(oauth2.NoContext, ts)
+		ts, err := google.DefaultTokenSource(oauth2.NoContext)
+		framework.Logf("Couldn't get application default credentials, %v", err)
+		if err != nil {
+			framework.Failf("Error accessing application default credentials, %v", err)
+		}
+		client := oauth2.NewClient(oauth2.NoContext, ts)
 	*/
 
 	gcmService, err := gcm.New(client)
@@ -140,8 +140,8 @@ func testAdapter(f *framework.Framework, kubeClient clientset.Interface, kubeAgg
 		framework.Failf("Expected results for exactly 2 pods, but %v results received", len(values.Items))
 	}
 	for _, value := range values.Items {
-		if (value.DescribedObject.Name == SDExporterPod1.Name && value.Value.Value() != MetricValue1) ||
-			(value.DescribedObject.Name == SDExporterPod2.Name && value.Value.Value() != MetricValue2) {
+		if (value.DescribedObject.Name == "sd-exporter-1" && value.Value.Value() != MetricValue1) ||
+			(value.DescribedObject.Name == "sd-exporter-2" && value.Value.Value() != MetricValue2) {
 			framework.Failf("Unexpected metric value for metric %s and pod %s: %v", CustomMetricName, value.DescribedObject.Name, value.Value.Value())
 		}
 	}
@@ -169,11 +169,11 @@ func createDescriptors(service *gcm.Service, projectId string) error {
 }
 
 func createSDExporterPod(cs clientset.Interface) error {
-	_, err := cs.Core().Pods("default").Create(SDExporterPod1)
+	_, err := cs.Core().Pods("default").Create(SDExporterPod("sd-exporter-1", "sd-exporter", CustomMetricName, MetricValue1))
 	if err != nil {
 		return err
 	}
-	_, err = cs.Core().Pods("default").Create(SDExporterPod2)
+	_, err = cs.Core().Pods("default").Create(SDExporterPod("sd-exporter-2", "sd-exporter", UnusedMetricName, MetricValue2))
 	return err
 }
 
