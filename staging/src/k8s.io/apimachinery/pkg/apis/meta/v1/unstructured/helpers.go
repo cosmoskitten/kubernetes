@@ -31,169 +31,276 @@ import (
 	"k8s.io/apimachinery/pkg/util/json"
 )
 
-func getNestedField(obj map[string]interface{}, fields ...string) interface{} {
+// NestedField returns the value of a nested field.
+// false is returned if the value is missing.
+func NestedField(obj map[string]interface{}, fields ...string) (interface{}, bool) {
 	var val interface{} = obj
 	for _, field := range fields {
-		if _, ok := val.(map[string]interface{}); !ok {
-			return nil
+		if m, ok := val.(map[string]interface{}); ok {
+			val, ok = m[field]
+			if !ok {
+				return nil, false
+			}
+		} else {
+			return nil, false
 		}
-		val = val.(map[string]interface{})[field]
 	}
-	return val
+	return val, true
 }
 
-func getNestedString(obj map[string]interface{}, fields ...string) string {
-	if str, ok := getNestedField(obj, fields...).(string); ok {
-		return str
+// NestedString returns the string value of a nested field.
+// Returns false if value is not found or is not a string.
+func NestedString(obj map[string]interface{}, fields ...string) (string, bool) {
+	val, ok := NestedField(obj, fields...)
+	if !ok {
+		return "", false
 	}
-	return ""
+	s, ok := val.(string)
+	return s, ok
 }
 
-func getNestedInt64(obj map[string]interface{}, fields ...string) int64 {
-	if str, ok := getNestedField(obj, fields...).(int64); ok {
-		return str
+// NestedBool returns the bool value of a nested field.
+// Returns false if value is not found or is not a bool.
+func NestedBool(obj map[string]interface{}, fields ...string) (bool, bool) {
+	val, ok := NestedField(obj, fields...)
+	if !ok {
+		return false, false
 	}
-	return 0
+	b, ok := val.(bool)
+	return b, ok
 }
 
-func getNestedInt64Pointer(obj map[string]interface{}, fields ...string) *int64 {
-	nested := getNestedField(obj, fields...)
-	switch n := nested.(type) {
-	case int64:
-		return &n
-	case *int64:
-		return n
-	default:
-		return nil
+// NestedFloat64 returns the bool value of a nested field.
+// Returns false if value is not found or is not a float64.
+func NestedFloat64(obj map[string]interface{}, fields ...string) (float64, bool) {
+	val, ok := NestedField(obj, fields...)
+	if !ok {
+		return 0, false
 	}
+	f, ok := val.(float64)
+	return f, ok
 }
 
-func getNestedSlice(obj map[string]interface{}, fields ...string) []string {
-	if m, ok := getNestedField(obj, fields...).([]interface{}); ok {
+// NestedInt64 returns the int64 value of a nested field.
+// Returns false if value is not found or is not an int64.
+func NestedInt64(obj map[string]interface{}, fields ...string) (int64, bool) {
+	val, ok := NestedField(obj, fields...)
+	if !ok {
+		return 0, false
+	}
+	i, ok := val.(int64)
+	return i, ok
+}
+
+// NestedStringSlice returns the []string value of a nested field.
+// Returns false if value is not found or is not a []interface{}.
+func NestedStringSlice(obj map[string]interface{}, fields ...string) ([]string, bool) {
+	val, ok := NestedField(obj, fields...)
+	if !ok {
+		return nil, false
+	}
+	if m, ok := val.([]interface{}); ok {
 		strSlice := make([]string, 0, len(m))
 		for _, v := range m {
 			if str, ok := v.(string); ok {
 				strSlice = append(strSlice, str)
+			} else {
+				return nil, false
 			}
 		}
-		return strSlice
+		return strSlice, true
 	}
-	return nil
+	return nil, false
 }
 
-func getNestedMap(obj map[string]interface{}, fields ...string) map[string]string {
-	if m, ok := getNestedField(obj, fields...).(map[string]interface{}); ok {
+// NestedSlice returns the []interface{} value of a nested field.
+// Returns false if value is not found or is not a []interface{}.
+func NestedSlice(obj map[string]interface{}, fields ...string) ([]interface{}, bool) {
+	val, ok := NestedField(obj, fields...)
+	if !ok {
+		return nil, false
+	}
+	if m, ok := val.([]interface{}); ok {
+		slice := make([]interface{}, len(m))
+		copy(slice, m)
+		return slice, true
+	}
+	return nil, false
+}
+
+// NestedStringMap returns the map[string]string value of a nested field.
+// Returns false if value is not found or is not a map[string]interface{}.
+func NestedStringMap(obj map[string]interface{}, fields ...string) (map[string]string, bool) {
+	val, ok := NestedField(obj, fields...)
+	if !ok {
+		return nil, false
+	}
+	if m, ok := val.(map[string]interface{}); ok {
 		strMap := make(map[string]string, len(m))
 		for k, v := range m {
 			if str, ok := v.(string); ok {
 				strMap[k] = str
+			} else {
+				return nil, false
 			}
 		}
-		return strMap
+		return strMap, true
 	}
-	return nil
+	return nil, false
 }
 
-func setNestedField(obj map[string]interface{}, value interface{}, fields ...string) {
+// NestedMap returns the map[string]interface{} value of a nested field.
+// Returns false if value is not found or is not a map[string]interface{}.
+func NestedMap(obj map[string]interface{}, fields ...string) (map[string]interface{}, bool) {
+	val, ok := NestedField(obj, fields...)
+	if !ok {
+		return nil, false
+	}
+	if m, ok := val.(map[string]interface{}); ok {
+		nMap := make(map[string]interface{}, len(m))
+		for k, v := range m {
+			nMap[k] = v
+		}
+		return nMap, true
+	}
+	return nil, false
+}
+
+func assertValueType(val interface{}) {
+	switch x := val.(type) {
+	case map[string]interface{}:
+		for _, v := range x {
+			assertValueType(v)
+		}
+	case []interface{}:
+		for _, v := range x {
+			assertValueType(v)
+		}
+	case string, int64, bool, float64, nil, gojson.Number:
+	default:
+		panic(fmt.Errorf("invalid value type: %T", val))
+	}
+}
+
+// SetNestedField sets the value of a nested field.
+// Returns false if value cannot be set because one of the nesting levels is not a map[string]interface{}.
+func SetNestedField(obj map[string]interface{}, value interface{}, fields ...string) bool {
+	assertValueType(value)
 	m := obj
-	if len(fields) > 1 {
-		for _, field := range fields[0 : len(fields)-1] {
-			if _, ok := m[field].(map[string]interface{}); !ok {
-				m[field] = make(map[string]interface{})
+	for _, field := range fields[:len(fields)-1] {
+		if val, ok := m[field]; ok {
+			if valMap, ok := val.(map[string]interface{}); ok {
+				m = valMap
+			} else {
+				return false
 			}
-			m = m[field].(map[string]interface{})
+		} else {
+			newVal := make(map[string]interface{})
+			m[field] = newVal
+			m = newVal
 		}
 	}
 	m[fields[len(fields)-1]] = value
+	return true
 }
 
-func setNestedSlice(obj map[string]interface{}, value []string, fields ...string) {
+// SetNestedStringSlice sets the string slice value of a nested field.
+// Returns false if value cannot be set because one of the nesting levels is not a map[string]interface{}.
+func SetNestedStringSlice(obj map[string]interface{}, value []string, fields ...string) bool {
 	m := make([]interface{}, 0, len(value))
 	for _, v := range value {
 		m = append(m, v)
 	}
-	setNestedField(obj, m, fields...)
+	return SetNestedField(obj, m, fields...)
 }
 
-func setNestedMap(obj map[string]interface{}, value map[string]string, fields ...string) {
+// SetNestedSlice sets the slice value of a nested field.
+// Returns false if value cannot be set because one of the nesting levels is not a map[string]interface{}.
+func SetNestedSlice(obj map[string]interface{}, value []interface{}, fields ...string) bool {
+	m := make([]interface{}, len(value))
+	copy(m, value)
+	return SetNestedField(obj, m, fields...)
+}
+
+// SetNestedStringMap sets the map[string]string value of a nested field.
+// Returns false if value cannot be set because one of the nesting levels is not a map[string]interface{}.
+func SetNestedStringMap(obj map[string]interface{}, value map[string]string, fields ...string) bool {
 	m := make(map[string]interface{}, len(value))
 	for k, v := range value {
 		m[k] = v
 	}
-	setNestedField(obj, m, fields...)
+	return SetNestedField(obj, m, fields...)
 }
 
-func extractOwnerReference(src interface{}) metav1.OwnerReference {
-	v := src.(map[string]interface{})
+// SetNestedMap sets the map[string]interface{} value of a nested field.
+// Returns false if value cannot be set because one of the nesting levels is not a map[string]interface{}.
+func SetNestedMap(obj map[string]interface{}, value map[string]interface{}, fields ...string) bool {
+	m := make(map[string]interface{}, len(value))
+	for k, v := range value {
+		m[k] = v
+	}
+	return SetNestedField(obj, m, fields...)
+}
+
+// RemoveNestedField removes the nested field from the obj.
+func RemoveNestedField(obj map[string]interface{}, fields ...string) {
+	m := obj
+	for _, field := range fields[:len(fields)-1] {
+		if x, ok := m[field].(map[string]interface{}); ok {
+			m = x
+		} else {
+			return
+		}
+	}
+	delete(m, fields[len(fields)-1])
+}
+
+func getNestedString(obj map[string]interface{}, fields ...string) string {
+	val, ok := NestedString(obj, fields...)
+	if !ok {
+		return ""
+	}
+	return val
+}
+
+func extractOwnerReference(v map[string]interface{}) metav1.OwnerReference {
 	// though this field is a *bool, but when decoded from JSON, it's
 	// unmarshalled as bool.
 	var controllerPtr *bool
-	controller, ok := (getNestedField(v, "controller")).(bool)
-	if !ok {
-		controllerPtr = nil
-	} else {
-		controllerCopy := controller
-		controllerPtr = &controllerCopy
+	if controller, ok := NestedBool(v, "controller"); ok {
+		controllerPtr = &controller
 	}
 	var blockOwnerDeletionPtr *bool
-	blockOwnerDeletion, ok := (getNestedField(v, "blockOwnerDeletion")).(bool)
-	if !ok {
-		blockOwnerDeletionPtr = nil
-	} else {
-		blockOwnerDeletionCopy := blockOwnerDeletion
-		blockOwnerDeletionPtr = &blockOwnerDeletionCopy
+	if blockOwnerDeletion, ok := NestedBool(v, "blockOwnerDeletion"); ok {
+		blockOwnerDeletionPtr = &blockOwnerDeletion
 	}
 	return metav1.OwnerReference{
 		Kind:               getNestedString(v, "kind"),
 		Name:               getNestedString(v, "name"),
 		APIVersion:         getNestedString(v, "apiVersion"),
-		UID:                (types.UID)(getNestedString(v, "uid")),
+		UID:                types.UID(getNestedString(v, "uid")),
 		Controller:         controllerPtr,
 		BlockOwnerDeletion: blockOwnerDeletionPtr,
 	}
 }
 
 func setOwnerReference(src metav1.OwnerReference) map[string]interface{} {
-	ret := make(map[string]interface{})
-	setNestedField(ret, src.Kind, "kind")
-	setNestedField(ret, src.Name, "name")
-	setNestedField(ret, src.APIVersion, "apiVersion")
-	setNestedField(ret, string(src.UID), "uid")
+	ret := map[string]interface{}{
+		"kind":       src.Kind,
+		"name":       src.Name,
+		"apiVersion": src.APIVersion,
+		"uid":        string(src.UID),
+	}
 	// json.Unmarshal() extracts boolean json fields as bool, not as *bool and hence extractOwnerReference()
 	// expects bool or a missing field, not *bool. So if pointer is nil, fields are omitted from the ret object.
 	// If pointer is non-nil, they are set to the referenced value.
 	if src.Controller != nil {
-		setNestedField(ret, *src.Controller, "controller")
+		ret["controller"] = *src.Controller
 	}
 	if src.BlockOwnerDeletion != nil {
-		setNestedField(ret, *src.BlockOwnerDeletion, "blockOwnerDeletion")
+		ret["blockOwnerDeletion"] = *src.BlockOwnerDeletion
 	}
 	return ret
-}
-
-func getOwnerReferences(object map[string]interface{}) ([]map[string]interface{}, error) {
-	field := getNestedField(object, "metadata", "ownerReferences")
-	if field == nil {
-		return nil, fmt.Errorf("cannot find field metadata.ownerReferences in %v", object)
-	}
-	ownerReferences, ok := field.([]map[string]interface{})
-	if ok {
-		return ownerReferences, nil
-	}
-	// TODO: This is hacky...
-	interfaces, ok := field.([]interface{})
-	if !ok {
-		return nil, fmt.Errorf("expect metadata.ownerReferences to be a slice in %#v", object)
-	}
-	ownerReferences = make([]map[string]interface{}, 0, len(interfaces))
-	for i := 0; i < len(interfaces); i++ {
-		r, ok := interfaces[i].(map[string]interface{})
-		if !ok {
-			return nil, fmt.Errorf("expect element metadata.ownerReferences to be a map[string]interface{} in %#v", object)
-		}
-		ownerReferences = append(ownerReferences, r)
-	}
-	return ownerReferences, nil
 }
 
 var converter = unstructured.NewConverter(false)
@@ -230,7 +337,7 @@ func (unstructuredJSONScheme) Encode(obj runtime.Object, w io.Writer) error {
 	case *Unstructured:
 		return json.NewEncoder(w).Encode(t.Object)
 	case *UnstructuredList:
-		items := make([]map[string]interface{}, 0, len(t.Items))
+		items := make([]interface{}, 0, len(t.Items))
 		for _, i := range t.Items {
 			items = append(items, i.Object)
 		}
