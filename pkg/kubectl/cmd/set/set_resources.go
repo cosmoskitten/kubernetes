@@ -70,6 +70,7 @@ type ResourcesOptions struct {
 	Err               io.Writer
 	Selector          string
 	ContainerSelector string
+	Output            string
 	ShortOutput       bool
 	All               bool
 	Record            bool
@@ -130,6 +131,7 @@ func (o *ResourcesOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args 
 	o.Mapper, o.Typer = f.Object()
 	o.UpdatePodSpecForObject = f.UpdatePodSpecForObject
 	o.Encoder = f.JSONEncoder()
+	o.Output = cmdutil.GetFlagString(cmd, "output")
 	o.ShortOutput = cmdutil.GetFlagString(cmd, "output") == "name"
 	o.Record = cmdutil.GetRecordFlag(cmd)
 	o.Local = cmdutil.GetFlagBool(cmd, "local")
@@ -216,10 +218,13 @@ func (o *ResourcesOptions) Run() error {
 			return nil
 		})
 		if !transformed {
-			if _, err := fmt.Fprintln(o.Out, "no resources changed"); err != nil {
-				return nil, nil
+			if isSelectedPrintMode(o.Output) {
+				if _, err := fmt.Fprintln(o.Out, "no resources changed"); err != nil {
+					return nil, nil
+				}
+				return nil, err
 			}
-			return nil, err
+			return nil, nil
 		}
 		if transformed && err == nil {
 			return runtime.Encode(o.Encoder, info.Object)
@@ -236,8 +241,10 @@ func (o *ResourcesOptions) Run() error {
 
 		//no changes
 		if string(patch.Patch) == "{}" || len(patch.Patch) == 0 {
-			if _, err := fmt.Fprintf(o.Out, "%s %q was not changed\n", info.Mapping.Resource, info.Name); err != nil {
-				return err
+			if isSelectedPrintMode(o.Output) {
+				if _, err := fmt.Fprintf(o.Out, "%s %q was not changed\n", info.Mapping.Resource, info.Name); err != nil {
+					return err
+				}
 			}
 			continue
 		}

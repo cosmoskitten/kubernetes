@@ -225,10 +225,13 @@ func (o *ImageOptions) Run() error {
 			return nil
 		})
 		if !transformed {
-			if _, err := fmt.Fprintln(o.Out, "no resources changed"); err != nil {
-				return nil, nil
+			if isSelectedPrintMode(o.Output) {
+				if _, err := fmt.Fprintln(o.Out, "no resources changed"); err != nil {
+					return nil, nil
+				}
+				return nil, err
 			}
-			return nil, err
+			return nil, nil
 		}
 		if transformed && err == nil {
 			return runtime.Encode(o.Encoder, info.Object)
@@ -245,8 +248,10 @@ func (o *ImageOptions) Run() error {
 
 		// no changes
 		if string(patch.Patch) == "{}" || len(patch.Patch) == 0 {
-			if _, err := fmt.Fprintf(o.Out, "%s %q was not changed\n", info.Mapping.Resource, info.Name); err != nil {
-				return err
+			if isSelectedPrintMode(o.Output) {
+				if _, err := fmt.Fprintf(o.Out, "%s %q was not changed\n", info.Mapping.Resource, info.Name); err != nil {
+					return err
+				}
 			}
 			continue
 		}

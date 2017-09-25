@@ -65,6 +65,7 @@ type SubjectOptions struct {
 	Err               io.Writer
 	Selector          string
 	ContainerSelector string
+	Output            string
 	ShortOutput       bool
 	All               bool
 	DryRun            bool
@@ -113,6 +114,7 @@ func (o *SubjectOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args []
 	o.Local = cmdutil.GetFlagBool(cmd, "local")
 	o.Mapper, o.Typer = f.Object()
 	o.Encoder = f.JSONEncoder()
+	o.Output = cmdutil.GetFlagString(cmd, "output")
 	o.ShortOutput = cmdutil.GetFlagString(cmd, "output") == "name"
 	o.DryRun = cmdutil.GetDryRunFlag(cmd)
 	o.PrintObject = func(mapper meta.RESTMapper, obj runtime.Object, out io.Writer) error {
@@ -218,10 +220,13 @@ func (o *SubjectOptions) Run(f cmdutil.Factory, fn updateSubjects) error {
 
 		transformed, err := updateSubjectForObject(info.Object, subjects, fn)
 		if !transformed {
-			if _, err := fmt.Fprintln(o.Out, "no resources changed"); err != nil {
-				return nil, nil
+			if isSelectedPrintMode(o.Output) {
+				if _, err := fmt.Fprintln(o.Out, "no resources changed"); err != nil {
+					return nil, nil
+				}
+				return nil, err
 			}
-			return nil, err
+			return nil, nil
 		}
 		if transformed && err == nil {
 			return runtime.Encode(o.Encoder, info.Object)

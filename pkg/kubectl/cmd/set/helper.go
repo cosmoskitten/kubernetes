@@ -193,3 +193,10 @@ func updateEnv(existing []api.EnvVar, env []api.EnvVar, remove []string) []api.E
 	}
 	return out
 }
+
+func isSelectedPrintMode(output string) bool {
+	if output == "yaml" || output == "json" {
+		return true
+	}
+	return false
+}
