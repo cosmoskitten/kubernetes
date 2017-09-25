@@ -18,13 +18,18 @@ package main
 
 import (
 	"flag"
+	"time"
 
 	"github.com/golang/glog"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	// Uncomment the following line to load the gcp plugin (only required to authenticate against GKE clusters).
 	// _ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	kubeinformers "k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes"
 
+	clientset "k8s.io/sample-controller/pkg/client/clientset/versioned"
+	informers "k8s.io/sample-controller/pkg/client/informers/externalversions"
 	"k8s.io/sample-controller/pkg/signals"
 )
 
@@ -35,22 +40,35 @@ var (
 func main() {
 	flag.Parse()
 
+	// set up signals so we handle the first shutdown signal gracefully
+	stopCh := signals.SetupSignalHandler()
+
 	cfg, err := buildConfig(kubeconfig)
 
 	if err != nil {
-		glog.Fatalf("error building kubeconfig: %s", err.Error())
+		glog.Fatalf("Error building kubeconfig: %s", err.Error())
 	}
 
-	controller, err := NewController(cfg)
+	kubeClient, err := kubernetes.NewForConfig(cfg)
+
+	if err != nil {
+		glog.Fatalf("Error building kubernetes clientset: %s", err.Error())
+	}
+
+	exampleClient, err := clientset.NewForConfig(cfg)
+
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
+	exampleInformerFactory := informers.NewSharedInformerFactory(exampleClient, time.Second*30)
+	controller, err := NewController(kubeClient, exampleClient, kubeInformerFactory, exampleInformerFactory)
 
 	if err != nil {
 		glog.Fatalf("Error initializing controller: %s", err.Error())
 	}
 
-	// set up signals so we handle the first shutdown signal gracefully
-	stopCh := signals.SetupSignalHandler()
+	go kubeInformerFactory.Start(stopCh)
+	go exampleInformerFactory.Start(stopCh)
 
-	if err = controller.Run(stopCh); err != nil {
+	if err = controller.Run(2, stopCh); err != nil {
 		glog.Fatalf("Error running controller: %s", err.Error())
 	}
 }
