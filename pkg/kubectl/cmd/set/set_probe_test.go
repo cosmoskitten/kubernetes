@@ -49,16 +49,16 @@ func TestSetLivenessCommandProbeLocal(t *testing.T) {
 	cmd.SetOutput(buf)
 	cmd.Flags().Set("output", "name")
 	cmd.Flags().Set("local", "true")
+	cmd.SetArgs([]string{"--", "echo ok"})
 	mapper, typer := f.Object()
 	tf.Printer = &printers.NamePrinter{Decoders: []runtime.Decoder{codec}, Typer: typer, Mapper: mapper}
-
 	opts := ProbeOptions{FilenameOptions: resource.FilenameOptions{
 		Filenames: []string{"../../../../examples/storage/cassandra/cassandra-controller.yaml"}},
 		Out:               buf,
 		Local:             true,
 		Liveness:          true,
 		ContainerSelector: "*"}
-	err := opts.Complete(f, cmd, []string{"--", "echo ok"})
+	err := opts.Complete(f, cmd, []string{})
 	if err == nil {
 		err = opts.Validate()
 	}
@@ -91,6 +91,7 @@ func TestSetLivenessTCPProbeLocal(t *testing.T) {
 	cmd.SetOutput(buf)
 	cmd.Flags().Set("output", "name")
 	cmd.Flags().Set("local", "true")
+	cmd.Flags().Set("--open-tcp", "3306")
 	mapper, typer := f.Object()
 	tf.Printer = &printers.NamePrinter{Decoders: []runtime.Decoder{codec}, Typer: typer, Mapper: mapper}
 
@@ -100,7 +101,7 @@ func TestSetLivenessTCPProbeLocal(t *testing.T) {
 		Local:             true,
 		Liveness:          true,
 		ContainerSelector: "*"}
-	err := opts.Complete(f, cmd, []string{"--open-tcp=3306"})
+	err := opts.Complete(f, cmd, []string{})
 	if err == nil {
 		err = opts.Validate()
 	}
@@ -133,6 +134,7 @@ func TestSetReadinessHttpProbeSpecContainerLocal(t *testing.T) {
 	cmd.SetOutput(buf)
 	cmd.Flags().Set("output", "name")
 	cmd.Flags().Set("local", "true")
+	cmd.Flags().Set("get-url", "http://:8080/healthz")
 	mapper, typer := f.Object()
 	tf.Printer = &printers.NamePrinter{Decoders: []runtime.Decoder{codec}, Typer: typer, Mapper: mapper}
 
@@ -142,7 +144,7 @@ func TestSetReadinessHttpProbeSpecContainerLocal(t *testing.T) {
 		Local:             true,
 		Readiness:         true,
 		ContainerSelector: "cassandra"}
-	err := opts.Complete(f, cmd, []string{"--get-url=http://:8080/healthz"})
+	err := opts.Complete(f, cmd, []string{})
 	if err == nil {
 		err = opts.Validate()
 	}
