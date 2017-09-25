@@ -11293,6 +11293,10 @@
      "involvedObject"
     ],
     "properties": {
+     "action": {
+      "description": "What action was taken/failed regarding to the Regarding object.",
+      "type": "string"
+     },
      "apiVersion": {
       "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources",
       "type": "string"
@@ -11301,6 +11305,10 @@
       "description": "The number of times this event has occurred.",
       "type": "integer",
       "format": "int32"
+     },
+     "eventTime": {
+      "description": "Time when this Event was first observed.",
+      "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.MicroTime"
      },
      "firstTimestamp": {
       "description": "The time at which the event was first recorded. (Time of server receipt is in TypeMeta.)",
@@ -11329,6 +11337,22 @@
      "reason": {
       "description": "This should be a short, machine understandable string that gives the reason for the transition into the object's current status.",
       "type": "string"
+     },
+     "related": {
+      "description": "\n Optional secondary object for more complex actions.",
+      "$ref": "#/definitions/io.k8s.api.core.v1.ObjectReference"
+     },
+     "reportingComponent": {
+      "description": "Name of the controller that emitted this Event, e.g. `kubernetes.io/kubelet`.",
+      "type": "string"
+     },
+     "reportingInstance": {
+      "description": "ID of the controller instance, e.g. `kubelet-xyzf`.",
+      "type": "string"
+     },
+     "series": {
+      "description": "Data about the Event series this event represents or nil if it's a singleton Event.",
+      "$ref": "#/definitions/io.k8s.api.core.v1.EventSeries"
      },
      "source": {
       "description": "The component reporting this event. Should be a short machine understandable string.",
@@ -11380,6 +11404,23 @@
       "kind": "EventList"
      }
     ]
+   },
+   "io.k8s.api.core.v1.EventSeries": {
+    "properties": {
+     "count": {
+      "description": "Number of occurrences in this series up to the last heartbeat time",
+      "type": "integer",
+      "format": "int32"
+     },
+     "lastObservedTime": {
+      "description": "Time of the last occurence observed",
+      "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.MicroTime"
+     },
+     "state": {
+      "description": "State of this Series: Ongoing or Finished",
+      "type": "string"
+     }
+    }
    },
    "io.k8s.api.core.v1.EventSource": {
     "description": "EventSource contains information for an event.",
@@ -14379,6 +14420,11 @@
       "kind": "DeleteOptions"
      },
      {
+      "group": "events.k8s.io",
+      "version": "v1beta1",
+      "kind": "DeleteOptions"
+     },
+     {
       "group": "extensions",
       "version": "v1beta1",
       "kind": "DeleteOptions"
@@ -14551,6 +14597,10 @@
       "type": "string"
      }
     }
+   },
+   "io.k8s.apimachinery.pkg.apis.meta.v1.MicroTime": {
+    "type": "string",
+    "format": "date-time"
    },
    "io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta": {
     "description": "ObjectMeta is metadata that all persisted resources must have, which includes all objects users must create.",
@@ -14894,6 +14944,11 @@
      },
      {
       "group": "certificates.k8s.io",
+      "version": "v1beta1",
+      "kind": "WatchEvent"
+     },
+     {
+      "group": "events.k8s.io",
       "version": "v1beta1",
       "kind": "WatchEvent"
      },
