@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1
+package v1beta2
 
 import (
 	authnv1 "k8s.io/api/authentication/v1"
@@ -28,13 +28,6 @@ const (
 	// Header to hold the audit ID as the request is propagated through the serving hierarchy. The
 	// Audit-ID header should be set by the first server to receive the request (e.g. the federation
 	// server or kube-aggregator).
-	//
-	// Audit ID is also returned to client by http response header.
-	// It's not guaranteed Audit-Id http header is sent for all requests. When kube-apiserver didn't
-	// audit the events according to the audit policy, no Audit-ID is returned. Also, for request to
-	// pods/exec, pods/attach, pods/proxy, kube-apiserver works like a proxy and redirect the request
-	// to kubelet node, users will only get http headers sent from kubelet node, so no Audit-ID is
-	// sent when users run command like "kubectl exec" or "kubectl attach".
 	HeaderAuditID = "Audit-ID"
 )
 
@@ -79,13 +72,15 @@ const (
 type Event struct {
 	metav1.TypeMeta `json:",inline"`
 	// ObjectMeta is included for interoperability with API infrastructure.
-	// +optional
+	// +option
+	// DEPRECATED: Use StageTimestamp which supports micro second instead.
 	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	// AuditLevel at which event was generated
 	Level Level `json:"level" protobuf:"bytes,2,opt,name=level,casttype=Level"`
 
 	// Time the request reached the apiserver.
+	// DEPRECATED: Use RequestStartTimestamp which supports micro second instead.
 	Timestamp metav1.Time `json:"timestamp" protobuf:"bytes,3,opt,name=timestamp"`
 	// Unique audit ID, generated for each request.
 	AuditID types.UID `json:"auditID" protobuf:"bytes,4,opt,name=auditID,casttype=k8s.io/apimachinery/pkg/types.UID"`
@@ -227,9 +222,9 @@ type GroupResources struct {
 	// +optional
 	Group string `json:"group,omitempty" protobuf:"bytes,1,opt,name=group"`
 	// Resources is a list of resources within the API group. Subresources are
-	// matched using a "/" to indicate the subresource. For example, "pods/logs"
-	// would match request to the logs subresource of pods. The top level resource
-	// does not match subresources, "pods" doesn't match "pods/logs".
+	// matched using a "/" to indicate the subresource. For example, "pods/log"
+	// would match request to the log subresource of pods. The top level resource
+	// does not match subresources, "pods" doesn't match "pods/log".
 	// +optional
 	Resources []string `json:"resources,omitempty" protobuf:"bytes,2,rep,name=resources"`
 	// ResourceNames is a list of resource instance names that the policy matches.
@@ -249,10 +244,15 @@ type ObjectReference struct {
 	Name string `json:"name,omitempty" protobuf:"bytes,3,opt,name=name"`
 	// +optional
 	UID types.UID `json:"uid,omitempty" protobuf:"bytes,4,opt,name=uid,casttype=k8s.io/apimachinery/pkg/types.UID"`
+	// APIGroup is the name of the API group that contains the referred object.
+	// The empty string represents the core API group.
 	// +optional
-	APIVersion string `json:"apiVersion,omitempty" protobuf:"bytes,5,opt,name=apiVersion"`
+	APIGroup string `json:"apiGroup,omitempty" protobuf:"bytes,5,opt,name=apiGroup"`
+	// APIVersion is the version of the API group that contains the referred object.
 	// +optional
-	ResourceVersion string `json:"resourceVersion,omitempty" protobuf:"bytes,6,opt,name=resourceVersion"`
+	APIVersion string `json:"apiVersion,omitempty" protobuf:"bytes,6,opt,name=apiVersion"`
 	// +optional
-	Subresource string `json:"subresource,omitempty" protobuf:"bytes,7,opt,name=subresource"`
+	ResourceVersion string `json:"resourceVersion,omitempty" protobuf:"bytes,7,opt,name=resourceVersion"`
+	// +optional
+	Subresource string `json:"subresource,omitempty" protobuf:"bytes,8,opt,name=subresource"`
 }
