@@ -17,7 +17,8 @@ limitations under the License.
 package deviceplugin
 
 import (
-	"path"
+	"io/ioutil"
+	"os"
 	"testing"
 	"time"
 
@@ -26,12 +27,18 @@ import (
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha1"
 )
 
-var (
-	esocketName = "mock.sock"
-)
+// tmpSocketFile returns an unique name for unix domain socket
+func tmpSocketFile(t *testing.T, tmpDir string) string {
+	socket, err := ioutil.TempFile(tmpDir, "mock.sock")
+	require.NoError(t, err)
+	addr := socket.Name()
+	socket.Close()
+	os.Remove(addr)
+	return addr
+}
 
 func TestNewEndpoint(t *testing.T) {
-	socket := path.Join("/tmp", esocketName)
+	socket := tmpSocketFile(t, "/tmp")
 
 	devs := []*pluginapi.Device{
 		{ID: "ADeviceId", Health: pluginapi.Healthy},
@@ -42,12 +49,11 @@ func TestNewEndpoint(t *testing.T) {
 }
 
 func TestList(t *testing.T) {
-	socket := path.Join("/tmp", esocketName)
+	socket := tmpSocketFile(t, "/tmp")
 
 	devs := []*pluginapi.Device{
 		{ID: "ADeviceId", Health: pluginapi.Healthy},
 	}
-
 	p, e := esetup(t, devs, socket, "mock", func(n string, a, u, r []*pluginapi.Device) {})
 	defer ecleanup(t, p, e)
 
@@ -67,7 +73,7 @@ func TestList(t *testing.T) {
 }
 
 func TestListAndWatch(t *testing.T) {
-	socket := path.Join("/tmp", esocketName)
+	socket := tmpSocketFile(t, "/tmp")
 
 	devs := []*pluginapi.Device{
 		{ID: "ADeviceId", Health: pluginapi.Healthy},

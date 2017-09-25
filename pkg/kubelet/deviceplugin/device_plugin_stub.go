@@ -66,8 +66,11 @@ func (m *Stub) Start() error {
 	m.server = grpc.NewServer([]grpc.ServerOption{}...)
 	pluginapi.RegisterDevicePluginServer(m.server, m)
 
-	go m.server.Serve(sock)
-	log.Println("Starting to serve on", m.socket)
+	go func() {
+		err := m.server.Serve(sock)
+		log.Printf("failed to serve on %s, err: %v", m.socket, err)
+	}()
+	log.Println("starting to serve on", m.socket)
 
 	return nil
 }
@@ -106,7 +109,6 @@ func (m *Stub) Register(kubeletEndpoint, resourceName string) error {
 
 // ListAndWatch lists devices and update that list according to the Update call
 func (m *Stub) ListAndWatch(e *pluginapi.Empty, s pluginapi.DevicePlugin_ListAndWatchServer) error {
-	log.Println("ListAndWatch")
 	var devs []*pluginapi.Device
 
 	for _, d := range m.devs {
@@ -135,8 +137,6 @@ func (m *Stub) Update(devs []*pluginapi.Device) {
 
 // Allocate does a mock allocation
 func (m *Stub) Allocate(ctx context.Context, r *pluginapi.AllocateRequest) (*pluginapi.AllocateResponse, error) {
-	log.Printf("Allocate, %+v", r)
-
 	var response pluginapi.AllocateResponse
 	return &response, nil
 }
