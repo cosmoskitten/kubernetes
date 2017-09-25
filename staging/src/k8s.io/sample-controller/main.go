@@ -44,23 +44,24 @@ func main() {
 	stopCh := signals.SetupSignalHandler()
 
 	cfg, err := buildConfig(kubeconfig)
-
 	if err != nil {
 		glog.Fatalf("Error building kubeconfig: %s", err.Error())
 	}
 
 	kubeClient, err := kubernetes.NewForConfig(cfg)
-
 	if err != nil {
 		glog.Fatalf("Error building kubernetes clientset: %s", err.Error())
 	}
 
 	exampleClient, err := clientset.NewForConfig(cfg)
+	if err != nil {
+		glog.Fatalf("Error building example clientset: %s", err.Error())
+	}
 
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
 	exampleInformerFactory := informers.NewSharedInformerFactory(exampleClient, time.Second*30)
-	controller, err := NewController(kubeClient, exampleClient, kubeInformerFactory, exampleInformerFactory)
 
+	controller, err := NewController(kubeClient, exampleClient, kubeInformerFactory, exampleInformerFactory)
 	if err != nil {
 		glog.Fatalf("Error initializing controller: %s", err.Error())
 	}
