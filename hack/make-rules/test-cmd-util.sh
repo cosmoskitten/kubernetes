@@ -2829,12 +2829,13 @@ run_deployment_tests() {
   kube::test::get_object_assert deployment "{{range.items}}{{$id_field}}:{{end}}" ''
   # create namespace 'my-namespace'
   kubectl create namespace my-namespace "${kube_flags[@]}"
+  kubectl config set-context "${CONTEXT}" --namespace="my-namespace"
   kube::test::get_object_assert 'namespace my-namespace' "{{$id_field}}" 'my-namespace'
   kubectl create -f hack/testdata/deployment-rollout-status.yaml "${kube_flags[@]}"
   kubectl rollout status -f hack/testdata/deployment-rollout-status.yaml "${kube_flags[@]}"
   # Clean up
-  kubectl delete namespace my-namespace "${kube_flags[@]}"
-
+  kubectl delete deployment nginx "${kube_flags[@]}"
+  
   ### Set image of a deployment
   # Pre-condition: no deployment exists
   kube::test::get_object_assert deployment "{{range.items}}{{$id_field}}:{{end}}" ''
