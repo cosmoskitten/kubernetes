@@ -98,13 +98,14 @@ func NewCmdSubject(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Co
 	cmdutil.AddPrinterFlags(cmd)
 	usage := "the resource to update the subjects"
 	cmdutil.AddFilenameOptionFlags(cmd, &options.FilenameOptions, usage)
-	cmd.Flags().BoolVar(&options.All, "all", false, "Select all resources in the namespace of the specified resource types")
-	cmd.Flags().StringVarP(&options.Selector, "selector", "l", "", "Selector (label query) to filter on, supports '=', '==', and '!='.(e.g. -l key1=value1,key2=value2)")
+	cmd.Flags().BoolVar(&options.All, "all", false, "Select all resources, including uninitialized ones, in the namespace of the specified resource types")
+	cmd.Flags().StringVarP(&options.Selector, "selector", "l", "", "Selector (label query) to filter on, not including uninitialized ones, supports '=', '==', and '!='.(e.g. -l key1=value1,key2=value2)")
 	cmd.Flags().BoolVar(&options.Local, "local", false, "If true, set resources will NOT contact api-server but run locally.")
 	cmdutil.AddDryRunFlag(cmd)
 	cmd.Flags().StringArrayVar(&options.Users, "user", []string{}, "Usernames to bind to the role")
 	cmd.Flags().StringArrayVar(&options.Groups, "group", []string{}, "Groups to bind to the role")
 	cmd.Flags().StringArrayVar(&options.ServiceAccounts, "serviceaccount", []string{}, "Service accounts to bind to the role")
+	cmdutil.AddIncludeUninitializedFlag(cmd)
 	return cmd
 }
 
@@ -123,10 +124,12 @@ func (o *SubjectOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args []
 		return err
 	}
 
-	builder := f.NewBuilder(!o.Local).
+	includeUninitialized := cmdutil.ShouldIncludeUninitialized(cmd, false)
+	builder := f.NewBuilder().
 		ContinueOnError().
 		NamespaceParam(cmdNamespace).DefaultNamespace().
 		FilenameParam(enforceNamespace, &o.FilenameOptions).
+		IncludeUninitialized(includeUninitialized).
 		Flatten()
 
 	if !o.Local {
@@ -134,7 +137,17 @@ func (o *SubjectOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args []
 			SelectorParam(o.Selector).
 			ResourceTypeOrNameArgs(o.All, args...).
 			Latest()
+	} else {
+		// if a --local flag was provided, and a resource was specified in the form
+		// <resource>/<name>, fail immediately as --local cannot query the api server
+		// for the specified resource.
+		if len(args) > 0 {
+			return resource.LocalResourceError
+		}
+
+		builder = builder.Local(f.ClientForMapping)
 	}
+
 	o.Infos, err = builder.Do().Infos()
 	if err != nil {
 		return err

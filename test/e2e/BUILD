@@ -10,6 +10,7 @@ go_test(
     name = "go_default_test",
     srcs = ["e2e_test.go"],
     library = ":go_default_library",
+    tags = ["e2e"],
     deps = [
         "//test/e2e/apimachinery:go_default_library",
         "//test/e2e/apps:go_default_library",
@@ -67,6 +68,7 @@ go_library(
         "//test/e2e/manifest:go_default_library",
         "//test/e2e_federation:go_default_library",
         "//test/utils:go_default_library",
+        "//test/utils/image:go_default_library",
         "//vendor/github.com/golang/glog:go_default_library",
         "//vendor/github.com/onsi/ginkgo:go_default_library",
         "//vendor/github.com/onsi/ginkgo/config:go_default_library",
@@ -74,6 +76,7 @@ go_library(
         "//vendor/github.com/onsi/gomega:go_default_library",
         "//vendor/k8s.io/api/core/v1:go_default_library",
         "//vendor/k8s.io/api/rbac/v1beta1:go_default_library",
+        "//vendor/k8s.io/apimachinery/pkg/api/errors:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/api/resource:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/fields:go_default_library",

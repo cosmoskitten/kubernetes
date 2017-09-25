@@ -29,7 +29,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -424,7 +423,7 @@ func (f *FakeFactory) SwaggerSchema(schema.GroupVersionKind) (*swagger.ApiDeclar
 	return nil, nil
 }
 
-func (f *FakeFactory) OpenAPISchema(cacheDir string) (openapi.Resources, error) {
+func (f *FakeFactory) OpenAPISchema() (openapi.Resources, error) {
 	return nil, nil
 }
 
@@ -484,21 +483,9 @@ func (f *FakeFactory) PrinterForMapping(cmd *cobra.Command, isLocal bool, output
 	return f.tf.Printer, f.tf.Err
 }
 
-func (f *FakeFactory) NewBuilder(allowRemoteCalls bool) *resource.Builder {
-	return nil
-}
-
-func (f *FakeFactory) NewUnstructuredBuilder(allowRemoteCalls bool) (*resource.Builder, error) {
-	if !allowRemoteCalls {
-		return f.NewBuilder(allowRemoteCalls), nil
-	}
-
-	mapper, typer, err := f.UnstructuredObject()
-	if err != nil {
-		return nil, err
-	}
-
-	return resource.NewBuilder(mapper, f.CategoryExpander(), typer, resource.ClientMapperFunc(f.UnstructuredClientForMapping), unstructured.UnstructuredJSONScheme), nil
+func (f *FakeFactory) NewBuilder() *resource.Builder {
+	mapper, typer := f.Object()
+	return resource.NewBuilder(mapper, f.CategoryExpander(), typer, resource.ClientMapperFunc(f.ClientForMapping), f.Decoder(true))
 }
 
 func (f *FakeFactory) DefaultResourceFilterOptions(cmd *cobra.Command, withNamespace bool) *printers.PrintOptions {
@@ -598,7 +585,7 @@ func (f *fakeAPIFactory) KubernetesClientSet() (*kubernetes.Clientset, error) {
 	clientset.AuthorizationV1().RESTClient().(*restclient.RESTClient).Client = fakeClient.Client
 	clientset.AuthorizationV1beta1().RESTClient().(*restclient.RESTClient).Client = fakeClient.Client
 	clientset.AutoscalingV1().RESTClient().(*restclient.RESTClient).Client = fakeClient.Client
-	clientset.AutoscalingV2alpha1().RESTClient().(*restclient.RESTClient).Client = fakeClient.Client
+	clientset.AutoscalingV2beta1().RESTClient().(*restclient.RESTClient).Client = fakeClient.Client
 	clientset.BatchV1().RESTClient().(*restclient.RESTClient).Client = fakeClient.Client
 	clientset.BatchV2alpha1().RESTClient().(*restclient.RESTClient).Client = fakeClient.Client
 	clientset.CertificatesV1beta1().RESTClient().(*restclient.RESTClient).Client = fakeClient.Client
@@ -769,23 +756,9 @@ func (f *fakeAPIFactory) PrinterForMapping(cmd *cobra.Command, isLocal bool, out
 	return f.tf.Printer, f.tf.Err
 }
 
-func (f *fakeAPIFactory) NewBuilder(allowRemoteCalls bool) *resource.Builder {
+func (f *fakeAPIFactory) NewBuilder() *resource.Builder {
 	mapper, typer := f.Object()
-
 	return resource.NewBuilder(mapper, f.CategoryExpander(), typer, resource.ClientMapperFunc(f.ClientForMapping), f.Decoder(true))
-}
-
-func (f *fakeAPIFactory) NewUnstructuredBuilder(allowRemoteCalls bool) (*resource.Builder, error) {
-	if !allowRemoteCalls {
-		return f.NewBuilder(allowRemoteCalls), nil
-	}
-
-	mapper, typer, err := f.UnstructuredObject()
-	if err != nil {
-		return nil, err
-	}
-
-	return resource.NewBuilder(mapper, f.CategoryExpander(), typer, resource.ClientMapperFunc(f.UnstructuredClientForMapping), unstructured.UnstructuredJSONScheme), nil
 }
 
 func (f *fakeAPIFactory) SuggestedPodTemplateResources() []schema.GroupResource {
@@ -796,7 +769,7 @@ func (f *fakeAPIFactory) SwaggerSchema(schema.GroupVersionKind) (*swagger.ApiDec
 	return nil, nil
 }
 
-func (f *fakeAPIFactory) OpenAPISchema(cacheDir string) (openapi.Resources, error) {
+func (f *fakeAPIFactory) OpenAPISchema() (openapi.Resources, error) {
 	if f.tf.OpenAPISchemaFunc != nil {
 		return f.tf.OpenAPISchemaFunc()
 	}

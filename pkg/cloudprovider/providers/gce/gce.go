@@ -21,6 +21,7 @@ import (
 	"io"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -29,8 +30,15 @@ import (
 
 	"cloud.google.com/go/compute/metadata"
 
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/apiserver/pkg/server/options/encryptionconfig"
+	"k8s.io/apiserver/pkg/storage/value/encrypt/envelope"
+	clientset "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
+	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/flowcontrol"
 	"k8s.io/kubernetes/pkg/cloudprovider"
 	"k8s.io/kubernetes/pkg/controller"
@@ -77,7 +85,8 @@ const (
 	// Defaults to 5 * 2 = 10 seconds before the LB will steer traffic away
 	gceHcUnhealthyThreshold = int64(5)
 
-	gceComputeAPIEndpoint = "https://www.googleapis.com/compute/v1/"
+	gceComputeAPIEndpoint      = "https://www.googleapis.com/compute/v1/"
+	gceComputeAPIEndpointAlpha = "https://www.googleapis.com/compute/alpha/"
 )
 
 // gceObject is an abstraction of all GCE API object in go client
@@ -96,7 +105,10 @@ type GCECloud struct {
 	serviceAlpha             *computealpha.Service
 	containerService         *container.Service
 	cloudkmsService          *cloudkms.Service
+	client                   clientset.Interface
 	clientBuilder            controller.ControllerClientBuilder
+	eventBroadcaster         record.EventBroadcaster
+	eventRecorder            record.EventRecorder
 	projectID                string
 	region                   string
 	localZone                string   // The zone in which we are running
@@ -113,7 +125,7 @@ type GCECloud struct {
 	nodeInstancePrefix       string      // If non-"", an advisory prefix for all nodes in the cluster
 	useMetadataServer        bool
 	operationPollRateLimiter flowcontrol.RateLimiter
-	manager                  ServiceManager
+	manager                  diskServiceManager
 	// sharedResourceLock is used to serialize GCE operations that may mutate shared state to
 	// prevent inconsistencies. For example, load balancers manipulation methods will take the
 	// lock to prevent shared resources from being prematurely deleted while the operation is
@@ -124,24 +136,6 @@ type GCECloud struct {
 	// the corresponding api is enabled.
 	// If not enabled, it should return error.
 	AlphaFeatureGate *AlphaFeatureGate
-}
-
-type ServiceManager interface {
-	// Creates a new persistent disk on GCE with the given disk spec.
-	CreateDisk(project string, zone string, disk *compute.Disk) (*compute.Operation, error)
-
-	// Gets the persistent disk from GCE with the given diskName.
-	GetDisk(project string, zone string, diskName string) (*compute.Disk, error)
-
-	// Deletes the persistent disk from GCE with the given diskName.
-	DeleteDisk(project string, zone string, disk string) (*compute.Operation, error)
-
-	// Waits until GCE reports the given operation in the given zone as done.
-	WaitForZoneOp(op *compute.Operation, zone string, mc *metricContext) error
-}
-
-type GCEServiceManager struct {
-	gce *GCECloud
 }
 
 type ConfigGlobal struct {
@@ -197,6 +191,10 @@ type CloudConfig struct {
 	UseMetadataServer  bool
 	AlphaFeatureGate   *AlphaFeatureGate
 }
+
+// kmsPluginRegisterOnce prevents the cloudprovider from registering its KMS plugin
+// more than once in the KMS plugin registry.
+var kmsPluginRegisterOnce sync.Once
 
 func init() {
 	cloudprovider.RegisterCloudProvider(
@@ -397,23 +395,8 @@ func CreateGCECloud(config *CloudConfig) (*GCECloud, error) {
 		return nil, err
 	}
 
-	// config.ProjectID may be the id or project number
-	// In gce_routes.go, the generated networkURL is compared with a URL within a route
-	// therefore, we need to make sure the URL is constructed with the string ID.
-	projID, err := getProjectID(service, config.ProjectID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get project %v, err: %v", config.ProjectID, err)
-	}
-
-	// config.NetworkProjectID may be the id or project number. In order to compare project ID
-	// to network project ID to determine XPN status, we need to verify both are actual IDs.
-	netProjID := projID
-	if config.NetworkProjectID != config.ProjectID {
-		netProjID, err = getProjectID(service, config.NetworkProjectID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get network project %v, err: %v", config.NetworkProjectID, err)
-		}
-	}
+	// ProjectID and.NetworkProjectID may be project number or name.
+	projID, netProjID := tryConvertToProjectNames(config.ProjectID, config.NetworkProjectID, service)
 
 	onXPN := projID != netProjID
 
@@ -475,14 +458,58 @@ func CreateGCECloud(config *CloudConfig) (*GCECloud, error) {
 		AlphaFeatureGate:         config.AlphaFeatureGate,
 	}
 
-	gce.manager = &GCEServiceManager{gce}
+	gce.manager = &gceServiceManager{gce}
+
+	// Registering the KMS plugin only the first time.
+	kmsPluginRegisterOnce.Do(func() {
+		// Register the Google Cloud KMS based service in the KMS plugin registry.
+		encryptionconfig.KMSPluginRegistry.Register(KMSServiceName, func(config io.Reader) (envelope.Service, error) {
+			return gce.getGCPCloudKMSService(config)
+		})
+	})
+
 	return gce, nil
+}
+
+func tryConvertToProjectNames(configProject, configNetworkProject string, service *compute.Service) (projID, netProjID string) {
+	projID = configProject
+	if isProjectNumber(projID) {
+		projName, err := getProjectID(service, projID)
+		if err != nil {
+			glog.Warningf("Failed to retrieve project %v while trying to retrieve its name. err %v", projID, err)
+		} else {
+			projID = projName
+		}
+	}
+
+	netProjID = projID
+	if configNetworkProject != configProject {
+		netProjID = configNetworkProject
+	}
+	if isProjectNumber(netProjID) {
+		netProjName, err := getProjectID(service, netProjID)
+		if err != nil {
+			glog.Warningf("Failed to retrieve network project %v while trying to retrieve its name. err %v", netProjID, err)
+		} else {
+			netProjID = netProjName
+		}
+	}
+
+	return projID, netProjID
 }
 
 // Initialize takes in a clientBuilder and spawns a goroutine for watching the clusterid configmap.
 // This must be called before utilizing the funcs of gce.ClusterID
 func (gce *GCECloud) Initialize(clientBuilder controller.ControllerClientBuilder) {
 	gce.clientBuilder = clientBuilder
+	gce.client = clientBuilder.ClientOrDie("cloud-provider")
+
+	if gce.OnXPN() {
+		gce.eventBroadcaster = record.NewBroadcaster()
+		gce.eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: v1core.New(gce.client.Core().RESTClient()).Events("")})
+		gce.eventRecorder = gce.eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "gce-cloudprovider"})
+	}
+
 	go gce.watchClusterID()
 }
 
@@ -562,6 +589,13 @@ func (gce *GCECloud) ScrubDNS(nameservers, searches []string) (nsOut, srchOut []
 // HasClusterID returns true if the cluster has a clusterID
 func (gce *GCECloud) HasClusterID() bool {
 	return true
+}
+
+// Project IDs cannot have a digit for the first characeter. If the id contains a digit,
+// then it must be a project number.
+func isProjectNumber(idOrNumber string) bool {
+	_, err := strconv.ParseUint(idOrNumber, 10, 64)
+	return err == nil
 }
 
 // GCECloud implements cloudprovider.Interface.
@@ -681,30 +715,20 @@ func newOauthClient(tokenSource oauth2.TokenSource) (*http.Client, error) {
 	return oauth2.NewClient(oauth2.NoContext, tokenSource), nil
 }
 
-func (manager *GCEServiceManager) CreateDisk(
-	project string,
-	zone string,
-	disk *compute.Disk) (*compute.Operation, error) {
+func (manager *gceServiceManager) getProjectsAPIEndpoint() string {
+	projectsApiEndpoint := gceComputeAPIEndpoint + "projects/"
+	if manager.gce.service != nil {
+		projectsApiEndpoint = manager.gce.service.BasePath
+	}
 
-	return manager.gce.service.Disks.Insert(project, zone, disk).Do()
+	return projectsApiEndpoint
 }
 
-func (manager *GCEServiceManager) GetDisk(
-	project string,
-	zone string,
-	diskName string) (*compute.Disk, error) {
+func (manager *gceServiceManager) getProjectsAPIEndpointAlpha() string {
+	projectsApiEndpoint := gceComputeAPIEndpointAlpha + "projects/"
+	if manager.gce.service != nil {
+		projectsApiEndpoint = manager.gce.serviceAlpha.BasePath
+	}
 
-	return manager.gce.service.Disks.Get(project, zone, diskName).Do()
-}
-
-func (manager *GCEServiceManager) DeleteDisk(
-	project string,
-	zone string,
-	diskName string) (*compute.Operation, error) {
-
-	return manager.gce.service.Disks.Delete(project, zone, diskName).Do()
-}
-
-func (manager *GCEServiceManager) WaitForZoneOp(op *compute.Operation, zone string, mc *metricContext) error {
-	return manager.gce.waitForZoneOp(op, zone, mc)
+	return projectsApiEndpoint
 }

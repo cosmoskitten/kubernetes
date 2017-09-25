@@ -60,11 +60,13 @@ type KeystoneAuthenticationOptions struct {
 }
 
 type OIDCAuthenticationOptions struct {
-	CAFile        string
-	ClientID      string
-	IssuerURL     string
-	UsernameClaim string
-	GroupsClaim   string
+	CAFile         string
+	ClientID       string
+	IssuerURL      string
+	UsernameClaim  string
+	UsernamePrefix string
+	GroupsClaim    string
+	GroupsPrefix   string
 }
 
 type PasswordFileAuthenticationOptions struct {
@@ -178,10 +180,6 @@ func (s *BuiltInAuthenticationOptions) AddFlags(fs *pflag.FlagSet) {
 	}
 
 	if s.BootstrapToken != nil {
-		fs.BoolVar(&s.BootstrapToken.Enable, "experimental-bootstrap-token-auth", s.BootstrapToken.Enable, ""+
-			"Deprecated (use --enable-bootstrap-token-auth).")
-		fs.MarkDeprecated("experimental-bootstrap-token-auth", "use --enable-bootstrap-token-auth instead.")
-
 		fs.BoolVar(&s.BootstrapToken.Enable, "enable-bootstrap-token-auth", s.BootstrapToken.Enable, ""+
 			"Enable to allow secrets of type 'bootstrap.kubernetes.io/token' in the 'kube-system' "+
 			"namespace to be used for TLS bootstrapping authentication.")
@@ -217,10 +215,20 @@ func (s *BuiltInAuthenticationOptions) AddFlags(fs *pflag.FlagSet) {
 			"is not guaranteed to be unique and immutable. This flag is experimental, please see "+
 			"the authentication documentation for further details.")
 
+		fs.StringVar(&s.OIDC.UsernamePrefix, "oidc-username-prefix", "", ""+
+			"If provided, all usernames will be prefixed with this value. If not provided, "+
+			"username claims other than 'email' are prefixed by the issuer URL to avoid "+
+			"clashes. To skip any prefixing, provide the value '-'.")
+
 		fs.StringVar(&s.OIDC.GroupsClaim, "oidc-groups-claim", "", ""+
 			"If provided, the name of a custom OpenID Connect claim for specifying user groups. "+
 			"The claim value is expected to be a string or array of strings. This flag is experimental, "+
 			"please see the authentication documentation for further details.")
+
+		fs.StringVar(&s.OIDC.GroupsPrefix, "oidc-groups-prefix", "", ""+
+			"If provided, all groups will be prefixed with this value to prevent conflicts with "+
+			"other authentication strategies.")
+
 	}
 
 	if s.PasswordFile != nil {

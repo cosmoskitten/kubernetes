@@ -195,14 +195,9 @@ func ValidateInitializers(initializers *metav1.Initializers, fldPath *field.Path
 		return allErrs
 	}
 	for i, initializer := range initializers.Pending {
-		for _, msg := range validation.IsQualifiedName(initializer.Name) {
-			allErrs = append(allErrs, field.Invalid(fldPath.Child("pending").Index(i), initializer.Name, msg))
-		}
+		allErrs = append(allErrs, validation.IsFullyQualifiedName(fldPath.Child("pending").Index(i).Child("name"), initializer.Name)...)
 	}
 	allErrs = append(allErrs, validateInitializersResult(initializers.Result, fldPath.Child("result"))...)
-	if len(initializers.Pending) == 0 && initializers.Result == nil {
-		allErrs = append(allErrs, field.Invalid(fldPath.Child("pending"), nil, "must be non-empty when result is not set"))
-	}
 	return allErrs
 }
 

@@ -239,7 +239,8 @@ __custom_func() {
     * services (aka 'svc')
     * statefulsets
     * storageclasses
-    `
+
+`
 )
 
 var (
@@ -285,7 +286,8 @@ func NewKubectlCommand(f cmdutil.Factory, in io.Reader, out, err io.Writer) *cob
 				NewCmdCreate(f, out, err),
 				NewCmdExposeService(f, out),
 				NewCmdRun(f, in, out, err),
-				set.NewCmdSet(f, out, err),
+				set.NewCmdSet(f, in, out, err),
+				deprecatedAlias("run-container", NewCmdRun(f, in, out, err)),
 			},
 		},
 		{

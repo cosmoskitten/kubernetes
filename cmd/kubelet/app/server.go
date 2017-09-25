@@ -44,6 +44,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/server/healthz"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	"k8s.io/apiserver/pkg/util/flag"
 	clientgoclientset "k8s.io/client-go/kubernetes"
 	clientset "k8s.io/client-go/kubernetes"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -151,22 +152,23 @@ func UnsecuredDependencies(s *options.KubeletServer) (*kubelet.Dependencies, err
 	}
 
 	return &kubelet.Dependencies{
-		Auth:               nil, // default does not enforce auth[nz]
-		CAdvisorInterface:  nil, // cadvisor.New launches background processes (bg http.ListenAndServe, and some bg cleaners), not set here
-		Cloud:              nil, // cloud provider might start background processes
-		ContainerManager:   nil,
-		DockerClient:       dockerClient,
-		KubeClient:         nil,
-		ExternalKubeClient: nil,
-		EventClient:        nil,
-		Mounter:            mounter,
-		NetworkPlugins:     ProbeNetworkPlugins(s.NetworkPluginDir, s.CNIConfDir, s.CNIBinDir),
-		OOMAdjuster:        oom.NewOOMAdjuster(),
-		OSInterface:        kubecontainer.RealOS{},
-		Writer:             writer,
-		VolumePlugins:      ProbeVolumePlugins(s.VolumePluginDir),
-		TLSOptions:         tlsOptions,
-	}, nil
+		Auth:                nil, // default does not enforce auth[nz]
+		CAdvisorInterface:   nil, // cadvisor.New launches background processes (bg http.ListenAndServe, and some bg cleaners), not set here
+		Cloud:               nil, // cloud provider might start background processes
+		ContainerManager:    nil,
+		DockerClient:        dockerClient,
+		KubeClient:          nil,
+		HeartbeatClient:     nil,
+		ExternalKubeClient:  nil,
+		EventClient:         nil,
+		Mounter:             mounter,
+		NetworkPlugins:      ProbeNetworkPlugins(s.NetworkPluginDir, s.CNIConfDir, s.CNIBinDir),
+		OOMAdjuster:         oom.NewOOMAdjuster(),
+		OSInterface:         kubecontainer.RealOS{},
+		Writer:              writer,
+		VolumePlugins:       ProbeVolumePlugins(),
+		DynamicPluginProber: GetDynamicPluginProber(s.VolumePluginDir),
+		TLSOptions:          tlsOptions}, nil
 }
 
 // Run runs the specified KubeletServer with the given Dependencies. This should never exit.
@@ -283,6 +285,10 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies) (err error) {
 		}
 	}
 
+	if s.CloudProvider == kubeletconfigv1alpha1.AutoDetectCloudProvider {
+		glog.Warning("--cloud-provider=auto-detect is deprecated. The desired cloud provider should be set explicitly")
+	}
+
 	if kubeDeps.Cloud == nil {
 		if !cloudprovider.IsExternal(s.CloudProvider) && s.CloudProvider != kubeletconfigv1alpha1.AutoDetectCloudProvider {
 			cloud, err := cloudprovider.InitCloudProvider(s.CloudProvider, s.CloudConfigFile)
@@ -314,18 +320,20 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies) (err error) {
 		kubeDeps.KubeClient = nil
 		kubeDeps.ExternalKubeClient = nil
 		kubeDeps.EventClient = nil
+		kubeDeps.HeartbeatClient = nil
 		glog.Warningf("standalone mode, no API client")
-	} else if kubeDeps.KubeClient == nil || kubeDeps.ExternalKubeClient == nil || kubeDeps.EventClient == nil {
+	} else if kubeDeps.KubeClient == nil || kubeDeps.ExternalKubeClient == nil || kubeDeps.EventClient == nil || kubeDeps.HeartbeatClient == nil {
 		// initialize clients if not standalone mode and any of the clients are not provided
 		var kubeClient clientset.Interface
 		var eventClient v1core.EventsGetter
+		var heartbeatClient v1core.CoreV1Interface
 		var externalKubeClient clientgoclientset.Interface
 
 		clientConfig, err := CreateAPIServerClientConfig(s)
 
 		var clientCertificateManager certificate.Manager
 		if err == nil {
-			if utilfeature.DefaultFeatureGate.Enabled(features.RotateKubeletClientCertificate) {
+			if s.RotateCertificates && utilfeature.DefaultFeatureGate.Enabled(features.RotateKubeletClientCertificate) {
 				clientCertificateManager, err = certificate.NewKubeletClientCertificateManager(s.CertDirectory, nodeName, clientConfig.CertData, clientConfig.KeyData, clientConfig.CertFile, clientConfig.KeyFile)
 				if err != nil {
 					return err
@@ -347,16 +355,24 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies) (err error) {
 			if err != nil {
 				glog.Warningf("New kubeClient from clientConfig error: %v", err)
 			}
+
 			// make a separate client for events
 			eventClientConfig := *clientConfig
 			eventClientConfig.QPS = float32(s.EventRecordQPS)
 			eventClientConfig.Burst = int(s.EventBurst)
-			tmpClient, err := clientgoclientset.NewForConfig(&eventClientConfig)
+			eventClient, err = v1core.NewForConfig(&eventClientConfig)
 			if err != nil {
 				glog.Warningf("Failed to create API Server client for Events: %v", err)
 			}
-			eventClient = tmpClient.CoreV1()
 
+			// make a separate client for heartbeat with throttling disabled and a timeout attached
+			heartbeatClientConfig := *clientConfig
+			heartbeatClientConfig.Timeout = s.KubeletConfiguration.NodeStatusUpdateFrequency.Duration
+			heartbeatClientConfig.QPS = float32(-1)
+			heartbeatClient, err = v1core.NewForConfig(&heartbeatClientConfig)
+			if err != nil {
+				glog.Warningf("Failed to create API Server client for heartbeat: %v", err)
+			}
 		} else {
 			switch {
 			case s.RequireKubeConfig:
@@ -368,6 +384,9 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies) (err error) {
 
 		kubeDeps.KubeClient = kubeClient
 		kubeDeps.ExternalKubeClient = externalKubeClient
+		if heartbeatClient != nil {
+			kubeDeps.HeartbeatClient = heartbeatClient
+		}
 		if eventClient != nil {
 			kubeDeps.EventClient = eventClient
 		}
@@ -388,7 +407,8 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies) (err error) {
 	}
 
 	if kubeDeps.CAdvisorInterface == nil {
-		kubeDeps.CAdvisorInterface, err = cadvisor.New(s.Address, uint(s.CAdvisorPort), s.ContainerRuntime, s.RootDirectory)
+		imageFsInfoProvider := cadvisor.NewImageFsInfoProvider(s.ContainerRuntime, s.RemoteRuntimeEndpoint)
+		kubeDeps.CAdvisorInterface, err = cadvisor.New(s.Address, uint(s.CAdvisorPort), imageFsInfoProvider, s.RootDirectory)
 		if err != nil {
 			return err
 		}
@@ -422,6 +442,9 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies) (err error) {
 		if err != nil {
 			return err
 		}
+
+		devicePluginEnabled := utilfeature.DefaultFeatureGate.Enabled(features.DevicePlugins)
+
 		kubeDeps.ContainerManager, err = cm.NewContainerManager(
 			kubeDeps.Mounter,
 			kubeDeps.CAdvisorInterface,
@@ -442,9 +465,12 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies) (err error) {
 					SystemReserved:           systemReserved,
 					HardEvictionThresholds:   hardEvictionThresholds,
 				},
-				ExperimentalQOSReserved: *experimentalQOSReserved,
+				ExperimentalQOSReserved:               *experimentalQOSReserved,
+				ExperimentalCPUManagerPolicy:          s.CPUManagerPolicy,
+				ExperimentalCPUManagerReconcilePeriod: s.CPUManagerReconcilePeriod.Duration,
 			},
 			s.FailSwapOn,
+			devicePluginEnabled,
 			kubeDeps.Recorder)
 
 		if err != nil {
@@ -762,29 +788,29 @@ func parseResourceList(m kubeletconfiginternal.ConfigurationMap) (v1.ResourceLis
 }
 
 // BootstrapKubeletConfigController constructs and bootstrap a configuration controller
-func BootstrapKubeletConfigController(
-	flags *options.KubeletFlags,
-	defaultConfig *kubeletconfiginternal.KubeletConfiguration) (*kubeletconfiginternal.KubeletConfiguration, *kubeletconfig.Controller, error) {
+func BootstrapKubeletConfigController(defaultConfig *kubeletconfiginternal.KubeletConfiguration,
+	initConfigDirFlag flag.StringFlag,
+	dynamicConfigDirFlag flag.StringFlag) (*kubeletconfiginternal.KubeletConfiguration, *kubeletconfig.Controller, error) {
 	var err error
 	// Alpha Dynamic Configuration Implementation; this section only loads config from disk, it does not contact the API server
 	// compute absolute paths based on current working dir
 	initConfigDir := ""
-	if flags.InitConfigDir.Provided() {
-		initConfigDir, err = filepath.Abs(flags.InitConfigDir.Value())
+	if utilfeature.DefaultFeatureGate.Enabled(features.KubeletConfigFile) && initConfigDirFlag.Provided() {
+		initConfigDir, err = filepath.Abs(initConfigDirFlag.Value())
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to get absolute path for --init-config-dir")
 		}
 	}
 	dynamicConfigDir := ""
-	if flags.DynamicConfigDir.Provided() {
-		dynamicConfigDir, err = filepath.Abs(flags.DynamicConfigDir.Value())
+	if utilfeature.DefaultFeatureGate.Enabled(features.DynamicKubeletConfig) && dynamicConfigDirFlag.Provided() {
+		dynamicConfigDir, err = filepath.Abs(dynamicConfigDirFlag.Value())
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to get absolute path for --dynamic-config-dir")
 		}
 	}
 
 	// get the latest KubeletConfiguration checkpoint from disk, or load the init or default config if no valid checkpoints exist
-	kubeletConfigController, err := kubeletconfig.NewController(initConfigDir, dynamicConfigDir, defaultConfig)
+	kubeletConfigController, err := kubeletconfig.NewController(defaultConfig, initConfigDir, dynamicConfigDir)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to construct controller, error: %v", err)
 	}

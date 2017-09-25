@@ -63,6 +63,10 @@ const (
 	FlagMatchBinaryVersion = "match-server-version"
 )
 
+var (
+	FlagHTTPCacheDir = "cache-dir"
+)
+
 // Factory provides abstractions that allow the Kubectl command to be extended across multiple types
 // of resources and different API sets.
 // The rings are here for a reason.  In order for composers to be able to provide alternative factory implementations
@@ -82,13 +86,17 @@ type Factory interface {
 type DiscoveryClientFactory interface {
 	// Returns a discovery client
 	DiscoveryClient() (discovery.CachedDiscoveryInterface, error)
+
+	// BindFlags adds any discovery flags that are common to all kubectl sub commands.
+	BindFlags(flags *pflag.FlagSet)
 }
 
 // ClientAccessFactory holds the first level of factory methods.
 // Generally provides discovery, negotiation, and no-dep calls.
 // TODO The polymorphic calls probably deserve their own interface.
 type ClientAccessFactory interface {
-	DiscoveryClientFactory
+	// Returns a discovery client
+	DiscoveryClient() (discovery.CachedDiscoveryInterface, error)
 
 	// ClientSet gives you back an internal, generated clientset
 	ClientSet() (internalclientset.Interface, error)
@@ -229,7 +237,7 @@ type ObjectMappingFactory interface {
 	// SwaggerSchema returns the schema declaration for the provided group version kind.
 	SwaggerSchema(schema.GroupVersionKind) (*swagger.ApiDeclaration, error)
 	// OpenAPISchema returns the schema openapi schema definiton
-	OpenAPISchema(cacheDir string) (openapi.Resources, error)
+	OpenAPISchema() (openapi.Resources, error)
 }
 
 // BuilderFactory holds the second level of factory methods.  These functions depend upon ObjectMappingFactory and ClientAccessFactory methods.
@@ -248,9 +256,7 @@ type BuilderFactory interface {
 	// PrintObject prints an api object given command line flags to modify the output format
 	PrintObject(cmd *cobra.Command, isLocal bool, mapper meta.RESTMapper, obj runtime.Object, out io.Writer) error
 	// One stop shopping for a Builder
-	NewBuilder(allowRemoteCalls bool) *resource.Builder
-	// Resource builder for working with unstructured objects
-	NewUnstructuredBuilder(allowRemoteCalls bool) (*resource.Builder, error)
+	NewBuilder() *resource.Builder
 	// PluginLoader provides the implementation to be used to load cli plugins.
 	PluginLoader() plugins.PluginLoader
 	// PluginRunner provides the implementation to be used to run cli plugins.

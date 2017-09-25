@@ -32,6 +32,7 @@ import (
 	kapi "k8s.io/kubernetes/pkg/api"
 	kubeoptions "k8s.io/kubernetes/pkg/kubeapiserver/options"
 	kubeletclient "k8s.io/kubernetes/pkg/kubelet/client"
+	"k8s.io/kubernetes/pkg/master/reconcilers"
 )
 
 func TestAddFlags(t *testing.T) {
@@ -44,6 +45,7 @@ func TestAddFlags(t *testing.T) {
 		"--admission-control-config-file=/admission-control-config",
 		"--advertise-address=192.168.10.10",
 		"--allow-privileged=false",
+		"--alpha-endpoint-reconciler-type=" + string(reconcilers.MasterCountReconcilerType),
 		"--anonymous-auth=false",
 		"--apiserver-count=5",
 		"--audit-log-maxage=11",
@@ -81,20 +83,23 @@ func TestAddFlags(t *testing.T) {
 		"--kubelet-certificate-authority=/var/run/kubernetes/caserver.crt",
 		"--proxy-client-cert-file=/var/run/kubernetes/proxy.crt",
 		"--proxy-client-key-file=/var/run/kubernetes/proxy.key",
+		"--request-timeout=2m",
 		"--storage-backend=etcd2",
 	}
 	f.Parse(args)
 
 	// This is a snapshot of expected options parsed by args.
 	expected := &ServerRunOptions{
-		ServiceNodePortRange: DefaultServiceNodePortRange,
-		MasterCount:          5,
-		AllowPrivileged:      false,
+		ServiceNodePortRange:   DefaultServiceNodePortRange,
+		MasterCount:            5,
+		EndpointReconcilerType: string(reconcilers.MasterCountReconcilerType),
+		AllowPrivileged:        false,
 		GenericServerRunOptions: &apiserveroptions.ServerRunOptions{
 			AdvertiseAddress:            net.ParseIP("192.168.10.10"),
 			CorsAllowedOriginList:       []string{"10.10.10.100", "10.10.10.200"},
 			MaxRequestsInFlight:         400,
 			MaxMutatingRequestsInFlight: 200,
+			RequestTimeout:              time.Duration(2) * time.Minute,
 			MinRequestTimeout:           1800,
 		},
 		Admission: &apiserveroptions.AdmissionOptions{

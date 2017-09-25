@@ -27,9 +27,9 @@ import (
 	"time"
 
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
-	autoscalingv2alpha1 "k8s.io/api/autoscaling/v2alpha1"
+	autoscalingv2beta1 "k8s.io/api/autoscaling/v2beta1"
 	batchv1 "k8s.io/api/batch/v1"
-	batchv2alpha1 "k8s.io/api/batch/v2alpha1"
+	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	certificatesv1beta1 "k8s.io/api/certificates/v1beta1"
 	apiv1 "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
@@ -62,16 +62,12 @@ import (
 const (
 	loadBalancerWidth = 16
 
-	// LabelNodeRoleMaster specifies that a node is a master
+	// labelNodeRolePrefix is a label prefix for node roles
 	// It's copied over to here until it's merged in core: https://github.com/kubernetes/kubernetes/pull/39112
-	LabelNodeRoleMaster = "node-role.kubernetes.io/master"
+	labelNodeRolePrefix = "node-role.kubernetes.io/"
 
-	// NodeLabelRole specifies the role of a node
-	NodeLabelRole = "kubernetes.io/role"
-
-	// NodeLabelKubeadmAlphaRole is a label that kubeadm applies to a Node as a hint that it has a particular purpose.
-	// Use of NodeLabelRole is preferred.
-	NodeLabelKubeadmAlphaRole = "kubeadm.alpha.kubernetes.io/role"
+	// nodeLabelRole specifies the role of a node
+	nodeLabelRole = "kubernetes.io/role"
 )
 
 // AddHandlers adds print handlers for default Kubernetes types dealing with internal versions.
@@ -164,10 +160,10 @@ func AddHandlers(h printers.PrintHandler) {
 
 	cronJobColumnDefinitions := []metav1alpha1.TableColumnDefinition{
 		{Name: "Name", Type: "string", Format: "name", Description: metav1.ObjectMeta{}.SwaggerDoc()["name"]},
-		{Name: "Schedule", Type: "string", Description: batchv2alpha1.CronJobSpec{}.SwaggerDoc()["schedule"]},
-		{Name: "Suspend", Type: "boolean", Description: batchv2alpha1.CronJobSpec{}.SwaggerDoc()["suspend"]},
-		{Name: "Active", Type: "integer", Description: batchv2alpha1.CronJobStatus{}.SwaggerDoc()["active"]},
-		{Name: "Last Schedule", Type: "string", Description: batchv2alpha1.CronJobStatus{}.SwaggerDoc()["lastScheduleTime"]},
+		{Name: "Schedule", Type: "string", Description: batchv1beta1.CronJobSpec{}.SwaggerDoc()["schedule"]},
+		{Name: "Suspend", Type: "boolean", Description: batchv1beta1.CronJobSpec{}.SwaggerDoc()["suspend"]},
+		{Name: "Active", Type: "integer", Description: batchv1beta1.CronJobStatus{}.SwaggerDoc()["active"]},
+		{Name: "Last Schedule", Type: "string", Description: batchv1beta1.CronJobStatus{}.SwaggerDoc()["lastScheduleTime"]},
 		{Name: "Age", Type: "string", Description: metav1.ObjectMeta{}.SwaggerDoc()["creationTimestamp"]},
 		{Name: "Containers", Type: "string", Priority: 1, Description: "Names of each container in the template."},
 		{Name: "Images", Type: "string", Priority: 1, Description: "Images referenced by each container in the template."},
@@ -221,6 +217,7 @@ func AddHandlers(h printers.PrintHandler) {
 	nodeColumnDefinitions := []metav1alpha1.TableColumnDefinition{
 		{Name: "Name", Type: "string", Format: "name", Description: metav1.ObjectMeta{}.SwaggerDoc()["name"]},
 		{Name: "Status", Type: "string", Description: "The status of the node"},
+		{Name: "Roles", Type: "string", Description: "The roles of the node"},
 		{Name: "Age", Type: "string", Description: metav1.ObjectMeta{}.SwaggerDoc()["creationTimestamp"]},
 		{Name: "Version", Type: "string", Description: apiv1.NodeSystemInfo{}.SwaggerDoc()["kubeletVersion"]},
 		{Name: "External-IP", Type: "string", Priority: 1, Description: apiv1.NodeStatus{}.SwaggerDoc()["addresses"]},
@@ -289,6 +286,7 @@ func AddHandlers(h printers.PrintHandler) {
 	persistentVolumeClaimColumnDefinitions := []metav1alpha1.TableColumnDefinition{
 		{Name: "Name", Type: "string", Format: "name", Description: metav1.ObjectMeta{}.SwaggerDoc()["name"]},
 		{Name: "Status", Type: "string", Description: apiv1.PersistentVolumeClaimStatus{}.SwaggerDoc()["phase"]},
+		{Name: "Volume", Type: "string", Description: apiv1.PersistentVolumeSpec{}.SwaggerDoc()["volumeName"]},
 		{Name: "Capacity", Type: "string", Description: apiv1.PersistentVolumeClaimStatus{}.SwaggerDoc()["capacity"]},
 		{Name: "Access Modes", Type: "string", Description: apiv1.PersistentVolumeClaimStatus{}.SwaggerDoc()["accessModes"]},
 		{Name: "StorageClass", Type: "string", Description: "StorageClass of the pvc"},
@@ -331,11 +329,11 @@ func AddHandlers(h printers.PrintHandler) {
 
 	horizontalPodAutoscalerColumnDefinitions := []metav1alpha1.TableColumnDefinition{
 		{Name: "Name", Type: "string", Format: "name", Description: metav1.ObjectMeta{}.SwaggerDoc()["name"]},
-		{Name: "Reference", Type: "string", Description: autoscalingv2alpha1.HorizontalPodAutoscalerSpec{}.SwaggerDoc()["scaleTargetRef"]},
-		{Name: "Targets", Type: "string", Description: autoscalingv2alpha1.HorizontalPodAutoscalerSpec{}.SwaggerDoc()["metrics"]},
-		{Name: "MinPods", Type: "string", Description: autoscalingv2alpha1.HorizontalPodAutoscalerSpec{}.SwaggerDoc()["minReplicas"]},
-		{Name: "MaxPods", Type: "string", Description: autoscalingv2alpha1.HorizontalPodAutoscalerSpec{}.SwaggerDoc()["maxReplicas"]},
-		{Name: "Replicas", Type: "string", Description: autoscalingv2alpha1.HorizontalPodAutoscalerStatus{}.SwaggerDoc()["currentReplicas"]},
+		{Name: "Reference", Type: "string", Description: autoscalingv2beta1.HorizontalPodAutoscalerSpec{}.SwaggerDoc()["scaleTargetRef"]},
+		{Name: "Targets", Type: "string", Description: autoscalingv2beta1.HorizontalPodAutoscalerSpec{}.SwaggerDoc()["metrics"]},
+		{Name: "MinPods", Type: "string", Description: autoscalingv2beta1.HorizontalPodAutoscalerSpec{}.SwaggerDoc()["minReplicas"]},
+		{Name: "MaxPods", Type: "string", Description: autoscalingv2beta1.HorizontalPodAutoscalerSpec{}.SwaggerDoc()["maxReplicas"]},
+		{Name: "Replicas", Type: "string", Description: autoscalingv2beta1.HorizontalPodAutoscalerStatus{}.SwaggerDoc()["currentReplicas"]},
 		{Name: "Age", Type: "string", Description: metav1.ObjectMeta{}.SwaggerDoc()["creationTimestamp"]},
 	}
 	h.TableHandler(horizontalPodAutoscalerColumnDefinitions, printHorizontalPodAutoscaler)
@@ -413,6 +411,7 @@ func AddHandlers(h printers.PrintHandler) {
 	storageClassColumnDefinitions := []metav1alpha1.TableColumnDefinition{
 		{Name: "Name", Type: "string", Format: "name", Description: metav1.ObjectMeta{}.SwaggerDoc()["name"]},
 		{Name: "Provisioner", Type: "string", Description: storagev1.StorageClass{}.SwaggerDoc()["provisioner"]},
+		{Name: "Age", Type: "string", Description: metav1.ObjectMeta{}.SwaggerDoc()["creationTimestamp"]},
 	}
 
 	h.TableHandler(storageClassColumnDefinitions, printStorageClass)
@@ -819,10 +818,10 @@ func printCronJob(obj *batch.CronJob, options printers.PrintOptions) ([]metav1al
 
 	lastScheduleTime := "<none>"
 	if obj.Status.LastScheduleTime != nil {
-		lastScheduleTime = obj.Status.LastScheduleTime.Time.Format(time.RFC1123Z)
+		lastScheduleTime = translateTimestamp(*obj.Status.LastScheduleTime)
 	}
 
-	row.Cells = append(row.Cells, obj.Name, obj.Spec.Schedule, printBoolPtr(obj.Spec.Suspend), len(obj.Status.Active), lastScheduleTime)
+	row.Cells = append(row.Cells, obj.Name, obj.Spec.Schedule, printBoolPtr(obj.Spec.Suspend), len(obj.Status.Active), lastScheduleTime, translateTimestamp(obj.CreationTimestamp))
 	if options.Wide {
 		names, images := layoutContainerCells(obj.Spec.JobTemplate.Spec.Template.Spec.Containers)
 		row.Cells = append(row.Cells, names, images, metav1.FormatLabelSelector(obj.Spec.JobTemplate.Spec.Selector))
@@ -1167,12 +1166,13 @@ func printNode(obj *api.Node, options printers.PrintOptions) ([]metav1alpha1.Tab
 	if obj.Spec.Unschedulable {
 		status = append(status, "SchedulingDisabled")
 	}
-	role := findNodeRole(obj)
-	if role != "" {
-		status = append(status, role)
+
+	roles := strings.Join(findNodeRoles(obj), ",")
+	if len(roles) == 0 {
+		roles = "<none>"
 	}
 
-	row.Cells = append(row.Cells, obj.Name, strings.Join(status, ","), translateTimestamp(obj.CreationTimestamp), obj.Status.NodeInfo.KubeletVersion)
+	row.Cells = append(row.Cells, obj.Name, strings.Join(status, ","), roles, translateTimestamp(obj.CreationTimestamp), obj.Status.NodeInfo.KubeletVersion)
 	if options.Wide {
 		osImage, kernelVersion, crVersion := obj.Status.NodeInfo.OSImage, obj.Status.NodeInfo.KernelVersion, obj.Status.NodeInfo.ContainerRuntimeVersion
 		if osImage == "" {
@@ -1201,22 +1201,24 @@ func getNodeExternalIP(node *api.Node) string {
 	return "<none>"
 }
 
-// findNodeRole returns the role of a given node, or "" if none found.
-// The role is determined by looking in order for:
-// * a node-role.kubernetes.io/master label
-// * a kubernetes.io/role label
-// * a kubeadm.alpha.kubernetes.io/role label
-func findNodeRole(node *api.Node) string {
-	if _, ok := node.Labels[LabelNodeRoleMaster]; ok {
-		return "Master"
+// findNodeRoles returns the roles of a given node.
+// The roles are determined by looking for:
+// * a node-role.kubernetes.io/<role>="" label
+// * a kubernetes.io/role="<role>" label
+func findNodeRoles(node *api.Node) []string {
+	roles := sets.NewString()
+	for k, v := range node.Labels {
+		switch {
+		case strings.HasPrefix(k, labelNodeRolePrefix):
+			if role := strings.TrimPrefix(k, labelNodeRolePrefix); len(role) > 0 {
+				roles.Insert(role)
+			}
+
+		case k == nodeLabelRole && v != "":
+			roles.Insert(v)
+		}
 	}
-	if role := node.Labels[NodeLabelRole]; role != "" {
-		return strings.Title(role)
-	}
-	if role := node.Labels[NodeLabelKubeadmAlphaRole]; role != "" {
-		return strings.Title(role)
-	}
-	return ""
+	return roles.List()
 }
 
 func printNodeList(list *api.NodeList, options printers.PrintOptions) ([]metav1alpha1.TableRow, error) {
@@ -1706,7 +1708,7 @@ func printStorageClass(obj *storage.StorageClass, options printers.PrintOptions)
 		name += " (default)"
 	}
 	provtype := obj.Provisioner
-	row.Cells = append(row.Cells, name, provtype)
+	row.Cells = append(row.Cells, name, provtype, translateTimestamp(obj.CreationTimestamp))
 
 	return []metav1alpha1.TableRow{row}, nil
 }

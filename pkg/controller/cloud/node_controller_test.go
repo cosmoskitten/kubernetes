@@ -17,6 +17,8 @@ limitations under the License.
 package cloud
 
 import (
+	"errors"
+	"reflect"
 	"testing"
 	"time"
 
@@ -38,6 +40,119 @@ import (
 	kubeletapis "k8s.io/kubernetes/pkg/kubelet/apis"
 	"k8s.io/kubernetes/plugin/pkg/scheduler/algorithm"
 )
+
+func TestEnsureNodeExistsByProviderIDOrNodeName(t *testing.T) {
+
+	testCases := []struct {
+		testName           string
+		node               *v1.Node
+		expectedCalls      []string
+		existsByNodeName   bool
+		existsByProviderID bool
+		nodeNameErr        error
+		providerIDErr      error
+	}{
+		{
+			testName:           "node exists by provider id",
+			existsByProviderID: true,
+			providerIDErr:      nil,
+			existsByNodeName:   false,
+			nodeNameErr:        errors.New("unimplemented"),
+			expectedCalls:      []string{"instance-exists-by-provider-id"},
+			node: &v1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node0",
+				},
+				Spec: v1.NodeSpec{
+					ProviderID: "node0",
+				},
+			},
+		},
+		{
+			testName:           "does not exist by provider id",
+			existsByProviderID: false,
+			providerIDErr:      nil,
+			existsByNodeName:   false,
+			nodeNameErr:        errors.New("unimplemented"),
+			expectedCalls:      []string{"instance-exists-by-provider-id"},
+			node: &v1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node0",
+				},
+				Spec: v1.NodeSpec{
+					ProviderID: "node0",
+				},
+			},
+		},
+		{
+			testName:           "node exists by node name",
+			existsByProviderID: false,
+			providerIDErr:      errors.New("unimplemented"),
+			existsByNodeName:   true,
+			nodeNameErr:        nil,
+			expectedCalls:      []string{"instance-exists-by-provider-id", "external-id"},
+			node: &v1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node0",
+				},
+				Spec: v1.NodeSpec{
+					ProviderID: "node0",
+				},
+			},
+		},
+		{
+			testName:           "does not exist by node name",
+			existsByProviderID: false,
+			providerIDErr:      errors.New("unimplemented"),
+			existsByNodeName:   false,
+			nodeNameErr:        cloudprovider.InstanceNotFound,
+			expectedCalls:      []string{"instance-exists-by-provider-id", "external-id"},
+			node: &v1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node0",
+				},
+				Spec: v1.NodeSpec{
+					ProviderID: "node0",
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.testName, func(t *testing.T) {
+			fc := &fakecloud.FakeCloud{
+				Exists:             tc.existsByNodeName,
+				ExistsByProviderID: tc.existsByProviderID,
+				Err:                tc.nodeNameErr,
+				ErrByProviderID:    tc.providerIDErr,
+			}
+
+			instances, _ := fc.Instances()
+			exists, err := ensureNodeExistsByProviderIDOrExternalID(instances, tc.node)
+			if err != nil {
+				t.Error(err)
+			}
+
+			if !reflect.DeepEqual(fc.Calls, tc.expectedCalls) {
+				t.Errorf("expected cloud provider methods `%v` to be called but `%v` was called ", tc.expectedCalls, fc.Calls)
+			}
+
+			if tc.existsByProviderID && tc.existsByProviderID != exists {
+				t.Errorf("expected exist by provider id to be `%t` but got `%t`", tc.existsByProviderID, exists)
+			}
+
+			if tc.existsByNodeName && tc.existsByNodeName != exists {
+				t.Errorf("expected exist by node name to be `%t` but got `%t`", tc.existsByNodeName, exists)
+			}
+
+			if !tc.existsByNodeName && !tc.existsByProviderID && exists {
+				t.Error("node is not supposed to exist")
+			}
+
+		})
+	}
+
+}
 
 // This test checks that the node is deleted when kubelet stops reporting
 // and cloud provider says node is gone
@@ -105,11 +220,14 @@ func TestNodeDeleted(t *testing.T) {
 
 	eventBroadcaster := record.NewBroadcaster()
 	cloudNodeController := &CloudNodeController{
-		kubeClient:                fnh,
-		nodeInformer:              factory.Core().V1().Nodes(),
-		cloud:                     &fakecloud.FakeCloud{Err: cloudprovider.InstanceNotFound},
+		kubeClient:   fnh,
+		nodeInformer: factory.Core().V1().Nodes(),
+		cloud: &fakecloud.FakeCloud{
+			ExistsByProviderID: false,
+			Err:                nil,
+		},
 		nodeMonitorPeriod:         1 * time.Second,
-		recorder:                  eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "cloud-controller-manager"}),
+		recorder:                  eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "cloud-node-controller"}),
 		nodeStatusUpdateFrequency: 1 * time.Second,
 	}
 	eventBroadcaster.StartLogging(glog.Infof)
@@ -189,7 +307,7 @@ func TestNodeInitialized(t *testing.T) {
 		nodeInformer:              factory.Core().V1().Nodes(),
 		cloud:                     fakeCloud,
 		nodeMonitorPeriod:         1 * time.Second,
-		recorder:                  eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "cloud-controller-manager"}),
+		recorder:                  eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "cloud-node-controller"}),
 		nodeStatusUpdateFrequency: 1 * time.Second,
 	}
 	eventBroadcaster.StartLogging(glog.Infof)
@@ -260,7 +378,7 @@ func TestNodeIgnored(t *testing.T) {
 		nodeInformer:      factory.Core().V1().Nodes(),
 		cloud:             fakeCloud,
 		nodeMonitorPeriod: 5 * time.Second,
-		recorder:          eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "cloud-controller-manager"}),
+		recorder:          eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "cloud-node-controller"}),
 	}
 	eventBroadcaster.StartLogging(glog.Infof)
 
@@ -337,7 +455,7 @@ func TestGCECondition(t *testing.T) {
 		nodeInformer:      factory.Core().V1().Nodes(),
 		cloud:             fakeCloud,
 		nodeMonitorPeriod: 1 * time.Second,
-		recorder:          eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "cloud-controller-manager"}),
+		recorder:          eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "cloud-node-controller"}),
 	}
 	eventBroadcaster.StartLogging(glog.Infof)
 
@@ -433,7 +551,7 @@ func TestZoneInitialized(t *testing.T) {
 		nodeInformer:      factory.Core().V1().Nodes(),
 		cloud:             fakeCloud,
 		nodeMonitorPeriod: 5 * time.Second,
-		recorder:          eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "cloud-controller-manager"}),
+		recorder:          eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "cloud-node-controller"}),
 	}
 	eventBroadcaster.StartLogging(glog.Infof)
 
@@ -520,7 +638,8 @@ func TestNodeAddresses(t *testing.T) {
 			FailureDomain: "us-west-1a",
 			Region:        "us-west",
 		},
-		Err: nil,
+		ExistsByProviderID: true,
+		Err:                nil,
 	}
 
 	eventBroadcaster := record.NewBroadcaster()
@@ -530,7 +649,7 @@ func TestNodeAddresses(t *testing.T) {
 		cloud:                     fakeCloud,
 		nodeMonitorPeriod:         5 * time.Second,
 		nodeStatusUpdateFrequency: 1 * time.Second,
-		recorder:                  eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "cloud-controller-manager"}),
+		recorder:                  eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "cloud-node-controller"}),
 	}
 	eventBroadcaster.StartLogging(glog.Infof)
 
@@ -639,7 +758,8 @@ func TestNodeProvidedIPAddresses(t *testing.T) {
 			FailureDomain: "us-west-1a",
 			Region:        "us-west",
 		},
-		Err: nil,
+		ExistsByProviderID: true,
+		Err:                nil,
 	}
 
 	eventBroadcaster := record.NewBroadcaster()
@@ -649,7 +769,7 @@ func TestNodeProvidedIPAddresses(t *testing.T) {
 		cloud:                     fakeCloud,
 		nodeMonitorPeriod:         5 * time.Second,
 		nodeStatusUpdateFrequency: 1 * time.Second,
-		recorder:                  eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "cloud-controller-manager"}),
+		recorder:                  eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "cloud-node-controller"}),
 	}
 	eventBroadcaster.StartLogging(glog.Infof)
 
@@ -877,7 +997,7 @@ func TestNodeProviderID(t *testing.T) {
 		cloud:                     fakeCloud,
 		nodeMonitorPeriod:         5 * time.Second,
 		nodeStatusUpdateFrequency: 1 * time.Second,
-		recorder:                  eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "cloud-controller-manager"}),
+		recorder:                  eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "cloud-node-controller"}),
 	}
 	eventBroadcaster.StartLogging(glog.Infof)
 
@@ -965,7 +1085,7 @@ func TestNodeProviderIDAlreadySet(t *testing.T) {
 		cloud:                     fakeCloud,
 		nodeMonitorPeriod:         5 * time.Second,
 		nodeStatusUpdateFrequency: 1 * time.Second,
-		recorder:                  eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "cloud-controller-manager"}),
+		recorder:                  eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "cloud-node-controller"}),
 	}
 	eventBroadcaster.StartLogging(glog.Infof)
 

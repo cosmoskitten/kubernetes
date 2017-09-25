@@ -125,17 +125,13 @@ func RunCreate(f cmdutil.Factory, cmd *cobra.Command, out, errOut io.Writer, opt
 		return err
 	}
 
-	mapper, _, err := f.UnstructuredObject()
+	mapper, typer, err := f.UnstructuredObject()
 	if err != nil {
 		return err
 	}
 
-	builder, err := f.NewUnstructuredBuilder(true)
-	if err != nil {
-		return err
-	}
-
-	r := builder.
+	r := f.NewBuilder().
+		Unstructured(f.UnstructuredClientForMapping, mapper, typer).
 		Schema(schema).
 		ContinueOnError().
 		NamespaceParam(cmdNamespace).DefaultNamespace().
@@ -209,7 +205,7 @@ func RunEditOnCreate(f cmdutil.Factory, out, errOut io.Writer, cmd *cobra.Comman
 		ChangeCause:        f.Command(cmd, false),
 		Include3rdParty:    cmdutil.GetFlagBool(cmd, "include-extended-apis"),
 	}
-	err := editOptions.Complete(f, out, errOut, []string{})
+	err := editOptions.Complete(f, out, errOut, []string{}, cmd)
 	if err != nil {
 		return err
 	}
@@ -291,7 +287,7 @@ func RunCreateSubcommand(f cmdutil.Factory, cmd *cobra.Command, out io.Writer, o
 	}
 
 	if useShortOutput := options.OutputFormat == "name"; useShortOutput || len(options.OutputFormat) == 0 {
-		cmdutil.PrintSuccess(mapper, useShortOutput, out, mapping.Resource, options.Name, options.DryRun, "created")
+		cmdutil.PrintSuccess(mapper, useShortOutput, out, mapping.Resource, info.Name, options.DryRun, "created")
 		return nil
 	}
 

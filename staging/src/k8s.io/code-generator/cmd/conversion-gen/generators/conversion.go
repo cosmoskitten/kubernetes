@@ -29,8 +29,6 @@ import (
 	"k8s.io/gengo/namer"
 	"k8s.io/gengo/types"
 
-	"reflect"
-
 	"github.com/golang/glog"
 )
 
@@ -286,10 +284,6 @@ func Packages(context *generator.Context, arguments *args.GeneratorArgs) generat
 			}
 			return pkg
 		}
-		fqPkgPath := pkg.Path
-		if strings.Contains(pkg.SourcePath, "/vendor/") {
-			fqPkgPath = filepath.Join("k8s.io", "kubernetes", "vendor", pkg.Path)
-		}
 		for i := range peerPkgs {
 			peerPkgs[i] = vendorless(peerPkgs[i])
 		}
@@ -305,10 +299,24 @@ func Packages(context *generator.Context, arguments *args.GeneratorArgs) generat
 			unsafeEquality = noEquality{}
 		}
 
+		path := pkg.Path
+		// if the source path is within a /vendor/ directory (for example,
+		// k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/apis/meta/v1), allow
+		// generation to output to the proper relative path (under vendor).
+		// Otherwise, the generator will create the file in the wrong location
+		// in the output directory.
+		// TODO: build a more fundamental concept in gengo for dealing with modifications
+		// to vendored packages.
+		if strings.HasPrefix(pkg.SourcePath, arguments.OutputBase) {
+			expandedPath := strings.TrimPrefix(pkg.SourcePath, arguments.OutputBase)
+			if strings.Contains(expandedPath, "/vendor/") {
+				path = expandedPath
+			}
+		}
 		packages = append(packages,
 			&generator.DefaultPackage{
 				PackageName: filepath.Base(pkg.Path),
-				PackagePath: fqPkgPath,
+				PackagePath: path,
 				HeaderText:  header,
 				GeneratorFunc: func(c *generator.Context) (generators []generator.Generator) {
 					return []generator.Generator{
@@ -792,15 +800,6 @@ func (g *genConversion) doStruct(inType, outType *types.Type, sw *generator.Snip
 			outMemberType = &copied
 		}
 
-		// Determine if our destination field is a slice that should be output when empty.
-		// If it is, ensure a nil source slice converts to a zero-length destination slice.
-		// See http://issue.k8s.io/43203
-		persistEmptySlice := false
-		if outMemberType.Kind == types.Slice {
-			jsonTag := reflect.StructTag(outMember.Tags).Get("json")
-			persistEmptySlice = len(jsonTag) > 0 && !strings.Contains(jsonTag, ",omitempty")
-		}
-
 		args := argsFromType(inMemberType, outMemberType).With("name", inMember.Name)
 
 		// try a direct memory copy for any type that has exactly equivalent values
@@ -816,15 +815,7 @@ func (g *genConversion) doStruct(inType, outType *types.Type, sw *generator.Snip
 				sw.Do("out.$.name$ = *(*$.outType|raw$)($.Pointer|raw$(&in.$.name$))\n", args)
 				continue
 			case types.Slice:
-				if persistEmptySlice {
-					sw.Do("if in.$.name$ == nil {\n", args)
-					sw.Do("out.$.name$ = make($.outType|raw$, 0)\n", args)
-					sw.Do("} else {\n", nil)
-					sw.Do("out.$.name$ = *(*$.outType|raw$)($.Pointer|raw$(&in.$.name$))\n", args)
-					sw.Do("}\n", nil)
-				} else {
-					sw.Do("out.$.name$ = *(*$.outType|raw$)($.Pointer|raw$(&in.$.name$))\n", args)
-				}
+				sw.Do("out.$.name$ = *(*$.outType|raw$)($.Pointer|raw$(&in.$.name$))\n", args)
 				continue
 			}
 		}
@@ -874,11 +865,7 @@ func (g *genConversion) doStruct(inType, outType *types.Type, sw *generator.Snip
 			sw.Do("in, out := &in.$.name$, &out.$.name$\n", args)
 			g.generateFor(inMemberType, outMemberType, sw)
 			sw.Do("} else {\n", nil)
-			if persistEmptySlice {
-				sw.Do("out.$.name$ = make($.outType|raw$, 0)\n", args)
-			} else {
-				sw.Do("out.$.name$ = nil\n", args)
-			}
+			sw.Do("out.$.name$ = nil\n", args)
 			sw.Do("}\n", nil)
 		case types.Struct:
 			if g.isDirectlyAssignable(inMemberType, outMemberType) {

@@ -26,6 +26,7 @@ import (
 	core "k8s.io/client-go/testing"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/fake"
+	"k8s.io/kubernetes/pkg/master/reconcilers"
 )
 
 func TestReconcileEndpoints(t *testing.T) {
@@ -377,7 +378,7 @@ func TestReconcileEndpoints(t *testing.T) {
 		if test.endpoints != nil {
 			fakeClient = fake.NewSimpleClientset(test.endpoints)
 		}
-		reconciler := NewMasterCountEndpointReconciler(test.additionalMasters+1, fakeClient.Core())
+		reconciler := reconcilers.NewMasterCountEndpointReconciler(test.additionalMasters+1, fakeClient.Core())
 		err := reconciler.ReconcileEndpoints(test.serviceName, net.ParseIP(test.ip), test.endpointPorts, true)
 		if err != nil {
 			t.Errorf("case %q: unexpected error: %v", test.testName, err)
@@ -495,7 +496,7 @@ func TestReconcileEndpoints(t *testing.T) {
 		if test.endpoints != nil {
 			fakeClient = fake.NewSimpleClientset(test.endpoints)
 		}
-		reconciler := NewMasterCountEndpointReconciler(test.additionalMasters+1, fakeClient.Core())
+		reconciler := reconcilers.NewMasterCountEndpointReconciler(test.additionalMasters+1, fakeClient.Core())
 		err := reconciler.ReconcileEndpoints(test.serviceName, net.ParseIP(test.ip), test.endpointPorts, false)
 		if err != nil {
 			t.Errorf("case %q: unexpected error: %v", test.testName, err)
@@ -546,7 +547,6 @@ func TestCreateOrUpdateMasterService(t *testing.T) {
 	om := func(name string) metav1.ObjectMeta {
 		return metav1.ObjectMeta{Namespace: ns, Name: name}
 	}
-	timeoutSeconds := api.DefaultClientIPServiceAffinitySeconds
 
 	create_tests := []struct {
 		testName     string
@@ -571,12 +571,7 @@ func TestCreateOrUpdateMasterService(t *testing.T) {
 					Selector:        nil,
 					ClusterIP:       "1.2.3.4",
 					SessionAffinity: api.ServiceAffinityClientIP,
-					SessionAffinityConfig: &api.SessionAffinityConfig{
-						ClientIP: &api.ClientIPConfig{
-							TimeoutSeconds: &timeoutSeconds,
-						},
-					},
-					Type: api.ServiceTypeClusterIP,
+					Type:            api.ServiceTypeClusterIP,
 				},
 			},
 		},
@@ -631,12 +626,7 @@ func TestCreateOrUpdateMasterService(t *testing.T) {
 					Selector:        nil,
 					ClusterIP:       "1.2.3.4",
 					SessionAffinity: api.ServiceAffinityClientIP,
-					SessionAffinityConfig: &api.SessionAffinityConfig{
-						ClientIP: &api.ClientIPConfig{
-							TimeoutSeconds: &timeoutSeconds,
-						},
-					},
-					Type: api.ServiceTypeClusterIP,
+					Type:            api.ServiceTypeClusterIP,
 				},
 			},
 			expectUpdate: &api.Service{
@@ -648,12 +638,7 @@ func TestCreateOrUpdateMasterService(t *testing.T) {
 					Selector:        nil,
 					ClusterIP:       "1.2.3.4",
 					SessionAffinity: api.ServiceAffinityClientIP,
-					SessionAffinityConfig: &api.SessionAffinityConfig{
-						ClientIP: &api.ClientIPConfig{
-							TimeoutSeconds: &timeoutSeconds,
-						},
-					},
-					Type: api.ServiceTypeClusterIP,
+					Type:            api.ServiceTypeClusterIP,
 				},
 			},
 		},
@@ -674,12 +659,7 @@ func TestCreateOrUpdateMasterService(t *testing.T) {
 					Selector:        nil,
 					ClusterIP:       "1.2.3.4",
 					SessionAffinity: api.ServiceAffinityClientIP,
-					SessionAffinityConfig: &api.SessionAffinityConfig{
-						ClientIP: &api.ClientIPConfig{
-							TimeoutSeconds: &timeoutSeconds,
-						},
-					},
-					Type: api.ServiceTypeClusterIP,
+					Type:            api.ServiceTypeClusterIP,
 				},
 			},
 			expectUpdate: &api.Service{
@@ -692,12 +672,7 @@ func TestCreateOrUpdateMasterService(t *testing.T) {
 					Selector:        nil,
 					ClusterIP:       "1.2.3.4",
 					SessionAffinity: api.ServiceAffinityClientIP,
-					SessionAffinityConfig: &api.SessionAffinityConfig{
-						ClientIP: &api.ClientIPConfig{
-							TimeoutSeconds: &timeoutSeconds,
-						},
-					},
-					Type: api.ServiceTypeClusterIP,
+					Type:            api.ServiceTypeClusterIP,
 				},
 			},
 		},
@@ -717,12 +692,7 @@ func TestCreateOrUpdateMasterService(t *testing.T) {
 					Selector:        nil,
 					ClusterIP:       "1.2.3.4",
 					SessionAffinity: api.ServiceAffinityClientIP,
-					SessionAffinityConfig: &api.SessionAffinityConfig{
-						ClientIP: &api.ClientIPConfig{
-							TimeoutSeconds: &timeoutSeconds,
-						},
-					},
-					Type: api.ServiceTypeClusterIP,
+					Type:            api.ServiceTypeClusterIP,
 				},
 			},
 			expectUpdate: &api.Service{
@@ -734,12 +704,7 @@ func TestCreateOrUpdateMasterService(t *testing.T) {
 					Selector:        nil,
 					ClusterIP:       "1.2.3.4",
 					SessionAffinity: api.ServiceAffinityClientIP,
-					SessionAffinityConfig: &api.SessionAffinityConfig{
-						ClientIP: &api.ClientIPConfig{
-							TimeoutSeconds: &timeoutSeconds,
-						},
-					},
-					Type: api.ServiceTypeClusterIP,
+					Type:            api.ServiceTypeClusterIP,
 				},
 			},
 		},
@@ -759,12 +724,7 @@ func TestCreateOrUpdateMasterService(t *testing.T) {
 					Selector:        nil,
 					ClusterIP:       "1.2.3.4",
 					SessionAffinity: api.ServiceAffinityClientIP,
-					SessionAffinityConfig: &api.SessionAffinityConfig{
-						ClientIP: &api.ClientIPConfig{
-							TimeoutSeconds: &timeoutSeconds,
-						},
-					},
-					Type: api.ServiceTypeClusterIP,
+					Type:            api.ServiceTypeClusterIP,
 				},
 			},
 			expectUpdate: &api.Service{
@@ -776,12 +736,7 @@ func TestCreateOrUpdateMasterService(t *testing.T) {
 					Selector:        nil,
 					ClusterIP:       "1.2.3.4",
 					SessionAffinity: api.ServiceAffinityClientIP,
-					SessionAffinityConfig: &api.SessionAffinityConfig{
-						ClientIP: &api.ClientIPConfig{
-							TimeoutSeconds: &timeoutSeconds,
-						},
-					},
-					Type: api.ServiceTypeClusterIP,
+					Type:            api.ServiceTypeClusterIP,
 				},
 			},
 		},
@@ -801,12 +756,7 @@ func TestCreateOrUpdateMasterService(t *testing.T) {
 					Selector:        nil,
 					ClusterIP:       "1.2.3.4",
 					SessionAffinity: api.ServiceAffinityClientIP,
-					SessionAffinityConfig: &api.SessionAffinityConfig{
-						ClientIP: &api.ClientIPConfig{
-							TimeoutSeconds: &timeoutSeconds,
-						},
-					},
-					Type: api.ServiceTypeClusterIP,
+					Type:            api.ServiceTypeClusterIP,
 				},
 			},
 			expectUpdate: &api.Service{
@@ -818,12 +768,7 @@ func TestCreateOrUpdateMasterService(t *testing.T) {
 					Selector:        nil,
 					ClusterIP:       "1.2.3.4",
 					SessionAffinity: api.ServiceAffinityClientIP,
-					SessionAffinityConfig: &api.SessionAffinityConfig{
-						ClientIP: &api.ClientIPConfig{
-							TimeoutSeconds: &timeoutSeconds,
-						},
-					},
-					Type: api.ServiceTypeClusterIP,
+					Type:            api.ServiceTypeClusterIP,
 				},
 			},
 		},
@@ -843,12 +788,7 @@ func TestCreateOrUpdateMasterService(t *testing.T) {
 					Selector:        nil,
 					ClusterIP:       "1.2.3.4",
 					SessionAffinity: api.ServiceAffinityClientIP,
-					SessionAffinityConfig: &api.SessionAffinityConfig{
-						ClientIP: &api.ClientIPConfig{
-							TimeoutSeconds: &timeoutSeconds,
-						},
-					},
-					Type: api.ServiceTypeClusterIP,
+					Type:            api.ServiceTypeClusterIP,
 				},
 			},
 			expectUpdate: &api.Service{
@@ -860,12 +800,7 @@ func TestCreateOrUpdateMasterService(t *testing.T) {
 					Selector:        nil,
 					ClusterIP:       "1.2.3.4",
 					SessionAffinity: api.ServiceAffinityClientIP,
-					SessionAffinityConfig: &api.SessionAffinityConfig{
-						ClientIP: &api.ClientIPConfig{
-							TimeoutSeconds: &timeoutSeconds,
-						},
-					},
-					Type: api.ServiceTypeClusterIP,
+					Type:            api.ServiceTypeClusterIP,
 				},
 			},
 		},
@@ -885,12 +820,7 @@ func TestCreateOrUpdateMasterService(t *testing.T) {
 					Selector:        nil,
 					ClusterIP:       "1.2.3.4",
 					SessionAffinity: api.ServiceAffinityClientIP,
-					SessionAffinityConfig: &api.SessionAffinityConfig{
-						ClientIP: &api.ClientIPConfig{
-							TimeoutSeconds: &timeoutSeconds,
-						},
-					},
-					Type: api.ServiceTypeNodePort,
+					Type:            api.ServiceTypeNodePort,
 				},
 			},
 			expectUpdate: &api.Service{
@@ -902,12 +832,7 @@ func TestCreateOrUpdateMasterService(t *testing.T) {
 					Selector:        nil,
 					ClusterIP:       "1.2.3.4",
 					SessionAffinity: api.ServiceAffinityClientIP,
-					SessionAffinityConfig: &api.SessionAffinityConfig{
-						ClientIP: &api.ClientIPConfig{
-							TimeoutSeconds: &timeoutSeconds,
-						},
-					},
-					Type: api.ServiceTypeClusterIP,
+					Type:            api.ServiceTypeClusterIP,
 				},
 			},
 		},
@@ -927,12 +852,7 @@ func TestCreateOrUpdateMasterService(t *testing.T) {
 					Selector:        nil,
 					ClusterIP:       "1.2.3.4",
 					SessionAffinity: api.ServiceAffinityClientIP,
-					SessionAffinityConfig: &api.SessionAffinityConfig{
-						ClientIP: &api.ClientIPConfig{
-							TimeoutSeconds: &timeoutSeconds,
-						},
-					},
-					Type: api.ServiceTypeClusterIP,
+					Type:            api.ServiceTypeClusterIP,
 				},
 			},
 			expectUpdate: nil,
@@ -991,12 +911,7 @@ func TestCreateOrUpdateMasterService(t *testing.T) {
 					Selector:        nil,
 					ClusterIP:       "1.2.3.4",
 					SessionAffinity: api.ServiceAffinityClientIP,
-					SessionAffinityConfig: &api.SessionAffinityConfig{
-						ClientIP: &api.ClientIPConfig{
-							TimeoutSeconds: &timeoutSeconds,
-						},
-					},
-					Type: api.ServiceTypeClusterIP,
+					Type:            api.ServiceTypeClusterIP,
 				},
 			},
 			expectUpdate: nil,

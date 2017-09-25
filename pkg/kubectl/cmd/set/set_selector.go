@@ -89,13 +89,14 @@ func NewCmdSelector(f cmdutil.Factory, out io.Writer) *cobra.Command {
 		},
 	}
 	cmdutil.AddPrinterFlags(cmd)
-	cmd.Flags().Bool("all", false, "Select all resources in the namespace of the specified resource types")
+	cmd.Flags().Bool("all", false, "Select all resources, including uninitialized ones, in the namespace of the specified resource types")
 	cmd.Flags().Bool("local", false, "If true, set selector will NOT contact api-server but run locally.")
 	cmd.Flags().String("resource-version", "", "If non-empty, the selectors update will only succeed if this is the current resource-version for the object. Only valid when specifying a single resource.")
 	usage := "the resource to update the selectors"
 	cmdutil.AddFilenameOptionFlags(cmd, &options.fileOptions, usage)
 	cmdutil.AddDryRunFlag(cmd)
 	cmdutil.AddRecordFlag(cmd)
+	cmdutil.AddIncludeUninitializedFlag(cmd)
 
 	return cmd
 }
@@ -121,16 +122,27 @@ func (o *SelectorOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args [
 		return err
 	}
 
-	o.builder = f.NewBuilder(!o.local).
+	includeUninitialized := cmdutil.ShouldIncludeUninitialized(cmd, false)
+	o.builder = f.NewBuilder().
 		ContinueOnError().
 		NamespaceParam(cmdNamespace).DefaultNamespace().
 		FilenameParam(enforceNamespace, &o.fileOptions).
+		IncludeUninitialized(includeUninitialized).
 		Flatten()
 
 	if !o.local {
 		o.builder = o.builder.
 			ResourceTypeOrNameArgs(o.all, o.resources...).
 			Latest()
+	} else {
+		// if a --local flag was provided, and a resource was specified in the form
+		// <resource>/<name>, fail immediately as --local cannot query the api server
+		// for the specified resource.
+		if len(o.resources) > 0 {
+			return resource.LocalResourceError
+		}
+
+		o.builder = o.builder.Local(f.ClientForMapping)
 	}
 
 	o.PrintObject = func(obj runtime.Object) error {
