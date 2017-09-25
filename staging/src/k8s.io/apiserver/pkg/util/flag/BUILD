@@ -8,7 +8,10 @@ load(
 
 go_test(
     name = "go_default_test",
-    srcs = ["namedcertkey_flag_test.go"],
+    srcs = [
+        "map_string_bool_test.go",
+        "namedcertkey_flag_test.go",
+    ],
     library = ":go_default_library",
     deps = ["//vendor/github.com/spf13/pflag:go_default_library"],
 )
@@ -18,6 +21,7 @@ go_library(
     srcs = [
         "configuration_map.go",
         "flags.go",
+        "map_string_bool.go",
         "namedcertkey_flag.go",
         "string_flag.go",
         "tristate.go",

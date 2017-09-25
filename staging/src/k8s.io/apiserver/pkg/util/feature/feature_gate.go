@@ -76,6 +76,8 @@ type FeatureGate interface {
 	// Set parses and stores flag gates for known features
 	// from a string like feature1=true,feature2=false,...
 	Set(value string) error
+	// SetFromMap stores flag gates for known features from a map[string]bool or returns an error
+	SetFromMap(m map[string]bool) error
 	// Enabled returns true if the key is enabled.
 	Enabled(key Feature) bool
 	// Add adds features to the featureGate.
@@ -121,7 +123,7 @@ func NewFeatureGate() *featureGate {
 	return f
 }
 
-// Set Parses a string of the form "key1=value1,key2=value2,..." into a
+// Set parses a string of the form "key1=value1,key2=value2,..." into a
 // map[string]bool of known keys or returns an error.
 func (f *featureGate) Set(value string) error {
 	f.lock.Lock()
@@ -150,6 +152,28 @@ func (f *featureGate) Set(value string) error {
 		// Handle "special" features like "all alpha gates"
 		if fn, found := f.special[k]; found {
 			fn(f, boolValue)
+		}
+	}
+
+	glog.Infof("feature gates: %v", f.enabled)
+	return nil
+}
+
+// SetFromMap stores flag gates for known features from a map[string]bool or returns an error
+func (f *featureGate) SetFromMap(m map[string]bool) error {
+	f.lock.Lock()
+	defer f.lock.Unlock()
+
+	for k, v := range m {
+		k := Feature(k)
+		_, ok := f.known[k]
+		if !ok {
+			return fmt.Errorf("unrecognized key: %s", k)
+		}
+		f.enabled[k] = v
+		// Handle "special" features like "all alpha gates"
+		if fn, found := f.special[k]; found {
+			fn(f, v)
 		}
 	}
 
