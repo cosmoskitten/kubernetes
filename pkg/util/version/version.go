@@ -181,17 +181,23 @@ func (v *Version) String() string {
 // compareInternal returns -1 if v is less than other, 1 if it is greater than other, or 0
 // if they are equal
 func (v *Version) compareInternal(other *Version) int {
-	for i := range v.components {
+
+	vLen := len(v.components)
+	oLen := len(other.components)
+	for i := 0; i < vLen && i < oLen; i++ {
 		switch {
-		case i >= len(other.components):
-			if v.components[i] != 0 {
-				return 1
-			}
 		case other.components[i] < v.components[i]:
 			return 1
 		case other.components[i] > v.components[i]:
 			return -1
 		}
+	}
+	// If components are common but one has more items, it is bigger
+	switch {
+	case oLen < vLen && (vLen-oLen >= 2 || v.components[oLen] != 0):
+		return 1
+	case oLen > vLen && (oLen-vLen >= 2 || other.components[vLen] != 0):
+		return -1
 	}
 
 	if !v.semver || !other.semver {
@@ -209,10 +215,7 @@ func (v *Version) compareInternal(other *Version) int {
 
 	vPR := strings.Split(v.preRelease, ".")
 	oPR := strings.Split(other.preRelease, ".")
-	for i := range vPR {
-		if i >= len(oPR) {
-			return 1
-		}
+	for i := 0; i < len(vPR) && i < len(oPR); i++ {
 		vNum, err := strconv.ParseUint(vPR[i], 10, 0)
 		if err == nil {
 			oNum, err := strconv.ParseUint(oPR[i], 10, 0)
@@ -234,7 +237,46 @@ func (v *Version) compareInternal(other *Version) int {
 		}
 	}
 
+	switch {
+	case len(oPR) < len(vPR):
+		return 1
+	case len(oPR) > len(vPR):
+		return -1
+	}
+
 	return 0
+}
+
+// Basic comparison functions
+
+// EQ is true if v == ov
+func (v *Version) EQ(ov *Version) bool {
+	return v.compareInternal(ov) == 0
+}
+
+// NE is true if v != ov
+func (v *Version) NE(ov *Version) bool {
+	return v.compareInternal(ov) != 0
+}
+
+// LT is true if v < ov
+func (v *Version) LT(ov *Version) bool {
+	return v.compareInternal(ov) == -1
+}
+
+// LE is true if v <= ov
+func (v *Version) LE(ov *Version) bool {
+	return v.compareInternal(ov) <= 0
+}
+
+// GT is true if v > ov
+func (v *Version) GT(ov *Version) bool {
+	return v.compareInternal(ov) == 1
+}
+
+// GE is true if v >= ov
+func (v *Version) GE(ov *Version) bool {
+	return v.compareInternal(ov) >= 0
 }
 
 // AtLeast tests if a version is at least equal to a given minimum version. If both
