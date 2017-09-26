@@ -167,15 +167,6 @@ func (s *PodDisruptionBudgetV2Generator) StructuredGenerate() (runtime.Object, e
 		return nil, err
 	}
 
-	if len(s.MaxUnavailable) == 0 && len(s.MinAvailable) == 0 {
-		s.MinAvailable = "1"
-
-		// This behavior is intended for backward compatibility.
-		// TODO: remove in Kubernetes 1.8
-		fmt.Fprintln(os.Stderr, "Deprecated behavior in kubectl create pdb: Defaulting min-available to 1. "+
-			"Kubernetes 1.8 will remove this default, and one of min-available/max-available must be specified. ")
-	}
-
 	if len(s.MaxUnavailable) > 0 {
 		maxUnavailable := intstr.Parse(s.MaxUnavailable)
 		return &policy.PodDisruptionBudget{
