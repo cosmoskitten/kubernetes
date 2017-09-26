@@ -20,11 +20,16 @@ go_library(
 
 go_test(
     name = "go_default_test",
-    srcs = ["resources_test.go"],
+    srcs = [
+        "pod_test.go",
+        "resources_test.go",
+    ],
     library = ":go_default_library",
     deps = [
         "//vendor/k8s.io/api/core/v1:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/api/resource:go_default_library",
+        "//vendor/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
+        "//vendor/k8s.io/apimachinery/pkg/types:go_default_library",
     ],
 )
 
