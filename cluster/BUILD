@@ -32,6 +32,7 @@ pkg_tar(
     visibility = ["//visibility:private"],
     deps = [
         "//cluster/addons",
+        "//cluster/gce/addons",
         "//cluster/gce:gci-trusty-manifests",
         "//cluster/saltbase:gci-trusty-salt-manifests",
     ],
