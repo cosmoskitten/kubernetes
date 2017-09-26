@@ -106,9 +106,12 @@ func handleRootHealthz(checks ...HealthzChecker) http.HandlerFunc {
 		failed := false
 		var verboseOut bytes.Buffer
 		for _, check := range checks {
-			if check.Check(r) != nil {
+			err := check.Check(r)
+			if err != nil {
 				// don't include the error since this endpoint is public.  If someone wants more detail
 				// they should have explicit permission to the detailed checks.
+				// We should log the error anyway
+				glog.Errorf("Healthz check %v failed: %v", check.Name(), err)
 				fmt.Fprintf(&verboseOut, "[-]%v failed: reason withheld\n", check.Name())
 				failed = true
 			} else {
