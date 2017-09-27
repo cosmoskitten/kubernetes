@@ -168,15 +168,15 @@ func NewJoin(cfgPath string, args []string, cfg *kubeadmapi.NodeConfiguration, s
 	if cfgPath != "" {
 		b, err := ioutil.ReadFile(cfgPath)
 		if err != nil {
-			return nil, fmt.Errorf("unable to read config from %q [%v]", cfgPath, err)
+			return nil, fmt.Errorf("Unable to read config from %q [%v]", cfgPath, err)
 		}
 		if err := runtime.DecodeInto(api.Codecs.UniversalDecoder(), b, cfg); err != nil {
-			return nil, fmt.Errorf("unable to decode config from %q [%v]", cfgPath, err)
+			return nil, fmt.Errorf("Unable to decode config from %q [%v]", cfgPath, err)
 		}
 	}
 
 	if !skipPreFlight {
-		fmt.Println("[preflight] Running pre-flight checks")
+		fmt.Println("[preflight] Running pre-flight checks.")
 
 		// Then continue with the others...
 		if err := preflight.RunJoinNodeChecks(cfg); err != nil {
@@ -186,7 +186,7 @@ func NewJoin(cfgPath string, args []string, cfg *kubeadmapi.NodeConfiguration, s
 		// Try to start the kubelet service in case it's inactive
 		preflight.TryStartKubelet()
 	} else {
-		fmt.Println("[preflight] Skipping pre-flight checks")
+		fmt.Println("[preflight] Skipping pre-flight checks.")
 	}
 
 	return &Join{cfg: cfg}, nil
@@ -240,7 +240,7 @@ func (j *Join) Run(out io.Writer) error {
 	cluster := cfg.Contexts[cfg.CurrentContext].Cluster
 	err = certutil.WriteCert(j.cfg.CACertPath, cfg.Clusters[cluster].CertificateAuthorityData)
 	if err != nil {
-		return fmt.Errorf("couldn't save the CA certificate to disk: %v", err)
+		return fmt.Errorf("Couldn't save the CA certificate to disk: %v", err)
 	}
 
 	fmt.Fprintf(out, joinDoneMsgf)
