@@ -46,7 +46,7 @@ func NewCmdVersion(out io.Writer) *cobra.Command {
 			kubeadmutil.CheckErr(err)
 		},
 	}
-	cmd.Flags().StringP("output", "o", "", "output format, options available are yaml, json and short")
+	cmd.Flags().StringP("output", "o", "", "Output format; available options are 'yaml', 'json' and 'short'")
 	return cmd
 }
 
