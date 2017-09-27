@@ -465,9 +465,25 @@ func BuildGenericConfig(s *options.ServerRunOptions, proxyTransport *http.Transp
 		return nil, nil, nil, nil, nil, fmt.Errorf("failed to create admission plugin initializer: %v", err)
 	}
 
+	// Read client cert/key for plugins that need to make calls out
+	certBytes, keyBytes := []byte{}, []byte{}
+	if len(s.ProxyClientCertFile) > 0 && len(s.ProxyClientKeyFile) > 0 {
+		var err error
+		certBytes, err = ioutil.ReadFile(s.ProxyClientCertFile)
+		if err != nil {
+			return nil, nil, nil, nil, nil, fmt.Errorf("failed to read proxy client cert file from: %s, err: %v", s.ProxyClientCertFile, err)
+		}
+		keyBytes, err = ioutil.ReadFile(s.ProxyClientKeyFile)
+		if err != nil {
+			return nil, nil, nil, nil, nil, fmt.Errorf("failed to read proxy client key file from: %s, err: %v", s.ProxyClientKeyFile, err)
+		}
+	}
+
 	err = s.Admission.ApplyTo(
 		genericConfig,
 		versionedInformers,
+		certBytes,
+		keyBytes,
 		pluginInitializer)
 	if err != nil {
 		return nil, nil, nil, nil, nil, fmt.Errorf("failed to initialize admission: %v", err)
@@ -495,19 +511,6 @@ func BuildAdmissionPluginInitializer(s *options.ServerRunOptions, client interna
 	quotaRegistry := quotainstall.NewRegistry(nil, nil)
 
 	pluginInitializer := kubeapiserveradmission.NewPluginInitializer(client, externalClient, sharedInformers, apiAuthorizer, cloudConfig, restMapper, quotaRegistry)
-
-	// Read client cert/key for plugins that need to make calls out
-	if len(s.ProxyClientCertFile) > 0 && len(s.ProxyClientKeyFile) > 0 {
-		certBytes, err := ioutil.ReadFile(s.ProxyClientCertFile)
-		if err != nil {
-			return nil, err
-		}
-		keyBytes, err := ioutil.ReadFile(s.ProxyClientKeyFile)
-		if err != nil {
-			return nil, err
-		}
-		pluginInitializer = pluginInitializer.SetClientCert(certBytes, keyBytes)
-	}
 
 	pluginInitializer = pluginInitializer.SetServiceResolver(serviceResolver)
 	pluginInitializer = pluginInitializer.SetProxyTransport(proxyTransport)

@@ -38,6 +38,7 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/admission"
+	genericadmissioninit "k8s.io/apiserver/pkg/admission/initializer"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/kubernetes/pkg/api"
@@ -113,8 +114,8 @@ type GenericAdmissionWebhook struct {
 
 var (
 	_ = admissioninit.WantsServiceResolver(&GenericAdmissionWebhook{})
-	_ = admissioninit.WantsClientCert(&GenericAdmissionWebhook{})
-	_ = admissioninit.WantsExternalKubeClientSet(&GenericAdmissionWebhook{})
+	_ = genericadmissioninit.WantsClientCert(&GenericAdmissionWebhook{})
+	_ = genericadmissioninit.WantsExternalKubeClientSet(&GenericAdmissionWebhook{})
 )
 
 func (a *GenericAdmissionWebhook) SetProxyTransport(pt *http.Transport) {

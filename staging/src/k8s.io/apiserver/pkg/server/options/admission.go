@@ -62,9 +62,14 @@ func (a *AdmissionOptions) AddFlags(fs *pflag.FlagSet) {
 // the method lazily initializes a generic plugin that is appended to the list of pluginInitializers
 // note this method uses:
 //  genericconfig.LoopbackClientConfig
-//  genericconfig.SharedInformerFactory
 //  genericconfig.Authorizer
-func (a *AdmissionOptions) ApplyTo(c *server.Config, informers informers.SharedInformerFactory, pluginInitializers ...admission.PluginInitializer) error {
+func (a *AdmissionOptions) ApplyTo(
+	c *server.Config,
+	informers informers.SharedInformerFactory,
+	proxyClientCert []byte,
+	proxyClientKey []byte,
+	pluginInitializers ...admission.PluginInitializer,
+) error {
 	pluginsConfigProvider, err := admission.ReadAdmissionConfiguration(a.PluginNames, a.ConfigFile)
 	if err != nil {
 		return fmt.Errorf("failed to read plugin config: %v", err)
@@ -74,7 +79,7 @@ func (a *AdmissionOptions) ApplyTo(c *server.Config, informers informers.SharedI
 	if err != nil {
 		return err
 	}
-	genericInitializer, err := initializer.New(clientset, informers, c.Authorizer)
+	genericInitializer, err := initializer.New(clientset, informers, c.Authorizer, proxyClientCert, proxyClientKey)
 	if err != nil {
 		return err
 	}
