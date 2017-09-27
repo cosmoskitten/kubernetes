@@ -143,7 +143,7 @@ func TestConfigDirCleaner(t *testing.T) {
 		// Create a temporary directory for our fake config dir:
 		tmpDir, err := ioutil.TempDir("", "kubeadm-reset-test")
 		if err != nil {
-			t.Errorf("Unable to create temp directory: %s", err)
+			t.Errorf("Unable to create temporary directory: %s", err)
 		}
 		defer os.RemoveAll(tmpDir)
 
