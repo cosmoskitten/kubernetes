@@ -105,7 +105,11 @@ func TestLogEventsLegacy(t *testing.T) {
 	} {
 		var buf bytes.Buffer
 		backend := NewBackend(&buf, FormatLegacy, auditv1beta1.SchemeGroupVersion)
+		stopCh := make(chan struct{})
+		backend.Run(stopCh)
 		backend.ProcessEvents(test.event)
+		backend.Shutdown()
+		time.Sleep(1 * time.Second)
 		match, err := regexp.MatchString(test.expected, buf.String())
 		if err != nil {
 			t.Errorf("Unexpected error matching line %v", err)
@@ -160,7 +164,12 @@ func TestLogEventsJson(t *testing.T) {
 	} {
 		var buf bytes.Buffer
 		backend := NewBackend(&buf, FormatJson, auditv1beta1.SchemeGroupVersion)
+		stopCh := make(chan struct{})
+		backend.Run(stopCh)
 		backend.ProcessEvents(event)
+		backend.Shutdown()
+		time.Sleep(1 * time.Second)
+
 		// decode events back and compare with the original one.
 		result := &auditinternal.Event{}
 		decoder := audit.Codecs.UniversalDecoder(auditv1beta1.SchemeGroupVersion)
@@ -173,3 +182,4 @@ func TestLogEventsJson(t *testing.T) {
 		}
 	}
 }
+
