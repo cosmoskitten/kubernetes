@@ -145,4 +145,3 @@ func (b *backend) Run(stopCh <-chan struct{}) error {
 func (b *backend) Shutdown() {
 	close(b.buffer)
 }
-
