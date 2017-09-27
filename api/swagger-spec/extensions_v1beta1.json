@@ -9979,6 +9979,7 @@
     "id": "v1beta1.PodSecurityPolicySpec",
     "description": "Pod Security Policy Spec defines the policy enforced.",
     "required": [
+     "allowedFlexVolumes",
      "seLinux",
      "runAsUser",
      "supplementalGroups",
@@ -10016,6 +10017,13 @@
        "$ref": "v1beta1.FSType"
       },
       "description": "volumes is a white list of allowed volume plugins.  Empty indicates that all plugins may be used."
+     },
+     "allowedFlexVolumes": {
+      "type": "array",
+      "items": {
+       "$ref": "v1beta1.AllowedFlexVolume"
+      },
+      "description": "AllowedFlexVolumes is a whitelist of allowed Flexvolumes.  Empty or nil indicates that all Flexvolumes may be used.  This parameter is effective only when the usage of the Flexvolumes is allowed in the \"Volumes\" field."
      },
      "hostNetwork": {
       "type": "boolean",
@@ -10076,6 +10084,16 @@
    "v1beta1.FSType": {
     "id": "v1beta1.FSType",
     "properties": {}
+   },
+   "v1beta1.AllowedFlexVolume": {
+    "id": "v1beta1.AllowedFlexVolume",
+    "description": "AllowedFlexVolume represents a single Flexvolume that is allowed to be used.",
+    "properties": {
+     "driver": {
+      "type": "string",
+      "description": "Driver is the name of the Flexvolume driver."
+     }
+    }
    },
    "v1beta1.HostPortRange": {
     "id": "v1beta1.HostPortRange",

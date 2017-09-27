@@ -36,6 +36,15 @@ func (APIVersion) SwaggerDoc() map[string]string {
 	return map_APIVersion
 }
 
+var map_AllowedFlexVolume = map[string]string{
+	"":       "AllowedFlexVolume represents a single Flexvolume that is allowed to be used.",
+	"driver": "Driver is the name of the Flexvolume driver.",
+}
+
+func (AllowedFlexVolume) SwaggerDoc() map[string]string {
+	return map_AllowedFlexVolume
+}
+
 var map_AllowedHostPath = map[string]string{
 	"":           "defines the host volume conditions that will be enabled by a policy for pods to use. It requires the path prefix to be defined.",
 	"pathPrefix": "is the path prefix that the host volume must match. It does not support `*`. Trailing slashes are trimmed when validating the path prefix with a host path.\n\nExamples: `/foo` would allow `/foo`, `/foo/` and `/foo/bar` `/foo` would not allow `/food` or `/etc/foo`",
@@ -448,6 +457,7 @@ var map_PodSecurityPolicySpec = map[string]string{
 	"requiredDropCapabilities":        "RequiredDropCapabilities are the capabilities that will be dropped from the container.  These are required to be dropped and cannot be added.",
 	"allowedCapabilities":             "AllowedCapabilities is a list of capabilities that can be requested to add to the container. Capabilities in this field may be added at the pod author's discretion. You must not list a capability in both AllowedCapabilities and RequiredDropCapabilities.",
 	"volumes":                         "volumes is a white list of allowed volume plugins.  Empty indicates that all plugins may be used.",
+	"allowedFlexVolumes":              "AllowedFlexVolumes is a whitelist of allowed Flexvolumes.  Empty or nil indicates that all Flexvolumes may be used.  This parameter is effective only when the usage of the Flexvolumes is allowed in the \"Volumes\" field.",
 	"hostNetwork":                     "hostNetwork determines if the policy allows the use of HostNetwork in the pod spec.",
 	"hostPorts":                       "hostPorts determines which host port ranges are allowed to be exposed.",
 	"hostPID":                         "hostPID determines if the policy allows the use of HostPID in the pod spec.",
