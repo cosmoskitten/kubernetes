@@ -28,14 +28,14 @@ import (
 
 func assertExists(t *testing.T, path string) {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		t.Errorf("file/dir does not exist error: %s", err)
-		t.Errorf("file/dir does not exist: %s", path)
+		t.Errorf("File/directory does not exist; error: %s", err)
+		t.Errorf("File/directory does not exist: %s", path)
 	}
 }
 
 func assertNotExists(t *testing.T, path string) {
 	if _, err := os.Stat(path); err == nil {
-		t.Errorf("file/dir exists: %s", path)
+		t.Errorf("File/directory exists: %s", path)
 	}
 }
 
@@ -44,7 +44,7 @@ func assertDirEmpty(t *testing.T, path string) {
 	dac := preflight.DirAvailableCheck{Path: path}
 	_, errors := dac.Check()
 	if len(errors) != 0 {
-		t.Errorf("directory not empty: [%v]", errors)
+		t.Errorf("Directory not empty: [%v]", errors)
 	}
 }
 
