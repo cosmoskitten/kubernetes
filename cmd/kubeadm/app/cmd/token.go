@@ -256,7 +256,7 @@ func RunListTokens(out io.Writer, errW io.Writer, client clientset.Interface) er
 
 	secrets, err := client.CoreV1().Secrets(metav1.NamespaceSystem).List(listOptions)
 	if err != nil {
-		return fmt.Errorf("failed to list bootstrap tokens [%v]", err)
+		return fmt.Errorf("Failed to list bootstrap tokens [%v]", err)
 	}
 
 	w := tabwriter.NewWriter(out, 10, 4, 3, ' ', 0)
@@ -264,19 +264,19 @@ func RunListTokens(out io.Writer, errW io.Writer, client clientset.Interface) er
 	for _, secret := range secrets.Items {
 		tokenID := getSecretString(&secret, bootstrapapi.BootstrapTokenIDKey)
 		if len(tokenID) == 0 {
-			fmt.Fprintf(errW, "bootstrap token has no token-id data: %s\n", secret.Name)
+			fmt.Fprintf(errW, "Bootstrap token has no token-id data: %s\n", secret.Name)
 			continue
 		}
 
 		// enforce the right naming convention
 		if secret.Name != fmt.Sprintf("%s%s", bootstrapapi.BootstrapTokenSecretPrefix, tokenID) {
-			fmt.Fprintf(errW, "bootstrap token name is not of the form '%s(token-id)': %s\n", bootstrapapi.BootstrapTokenSecretPrefix, secret.Name)
+			fmt.Fprintf(errW, "Bootstrap token name is not of the form '%s(token-id)': %s\n", bootstrapapi.BootstrapTokenSecretPrefix, secret.Name)
 			continue
 		}
 
 		tokenSecret := getSecretString(&secret, bootstrapapi.BootstrapTokenSecretKey)
 		if len(tokenSecret) == 0 {
-			fmt.Fprintf(errW, "bootstrap token has no token-secret data: %s\n", secret.Name)
+			fmt.Fprintf(errW, "Bootstrap token has no token-secret data: %s\n", secret.Name)
 			continue
 		}
 		td := &kubeadmapi.TokenDiscovery{ID: tokenID, Secret: tokenSecret}
@@ -289,7 +289,7 @@ func RunListTokens(out io.Writer, errW io.Writer, client clientset.Interface) er
 		if len(secretExpiration) > 0 {
 			expireTime, err := time.Parse(time.RFC3339, secretExpiration)
 			if err != nil {
-				fmt.Fprintf(errW, "can't parse expiration time of bootstrap token %s\n", secret.Name)
+				fmt.Fprintf(errW, "Can't parse expiration time of bootstrap token %s\n", secret.Name)
 				continue
 			}
 			ttl = printers.ShortHumanDuration(expireTime.Sub(time.Now()))
@@ -335,15 +335,15 @@ func RunDeleteToken(out io.Writer, client clientset.Interface, tokenIDOrToken st
 	tokenID := tokenIDOrToken
 	if err := tokenutil.ParseTokenID(tokenIDOrToken); err != nil {
 		if tokenID, _, err = tokenutil.ParseToken(tokenIDOrToken); err != nil {
-			return fmt.Errorf("given token or token id %q didn't match pattern [%q] or [%q]", tokenIDOrToken, tokenutil.TokenIDRegexpString, tokenutil.TokenRegexpString)
+			return fmt.Errorf("Given token or token id %q didn't match pattern [%q] or [%q]", tokenIDOrToken, tokenutil.TokenIDRegexpString, tokenutil.TokenRegexpString)
 		}
 	}
 
 	tokenSecretName := fmt.Sprintf("%s%s", bootstrapapi.BootstrapTokenSecretPrefix, tokenID)
 	if err := client.CoreV1().Secrets(metav1.NamespaceSystem).Delete(tokenSecretName, nil); err != nil {
-		return fmt.Errorf("failed to delete bootstrap token [%v]", err)
+		return fmt.Errorf("Failed to delete bootstrap token [%v]", err)
 	}
-	fmt.Fprintf(out, "bootstrap token with id %q deleted\n", tokenID)
+	fmt.Fprintf(out, "Bootstrap token with id %q deleted\n", tokenID)
 	return nil
 }
 
