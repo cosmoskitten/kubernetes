@@ -50,6 +50,11 @@ const (
 )
 
 func init() {
+	Install()
+}
+
+// Install installs default algorithms to factory.
+func Install() {
 	// Register functions that extract metadata used by predicates and priorities computations.
 	factory.RegisterPredicateMetadataProducerFactory(
 		func(args factory.PluginFactoryArgs) algorithm.PredicateMetadataProducer {
@@ -192,6 +197,8 @@ func defaultPredicates() sets.String {
 	)
 
 	if utilfeature.DefaultFeatureGate.Enabled(features.TaintNodesByCondition) {
+		// Remove "CheckNodeCondition" predicate
+		factory.RemoveFitPredicate("CheckNodeCondition")
 		// Fit is determined based on whether a pod can tolerate all of the node's taints
 		predSet.Insert(factory.RegisterMandatoryFitPredicate("PodToleratesNodeTaints", predicates.PodToleratesNodeTaints))
 		glog.Warningf("TaintNodesByCondition is enabled, PodToleratesNodeTaints predicate is mandatory")

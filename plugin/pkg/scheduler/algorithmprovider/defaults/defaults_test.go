@@ -17,10 +17,11 @@ limitations under the License.
 package defaults
 
 import (
-	"k8s.io/apimachinery/pkg/util/sets"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"os"
 	"testing"
+
+	"k8s.io/apimachinery/pkg/util/sets"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 )
 
 func TestGetMaxVols(t *testing.T) {

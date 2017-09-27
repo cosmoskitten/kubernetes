@@ -17,6 +17,11 @@ limitations under the License.
 package algorithmprovider
 
 import (
-	// Import defaults of algorithmprovider for initialization.
-	_ "k8s.io/kubernetes/plugin/pkg/scheduler/algorithmprovider/defaults"
+	"k8s.io/kubernetes/plugin/pkg/scheduler/algorithmprovider/defaults"
 )
+
+// Install installs all algorithm providers.
+func Install() {
+	// Install default algorithm provider.
+	defaults.Install()
+}
