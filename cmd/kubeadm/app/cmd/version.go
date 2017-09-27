@@ -50,7 +50,7 @@ func NewCmdVersion(out io.Writer) *cobra.Command {
 	return cmd
 }
 
-// RunVersion provides the version information of kubeadm in format depending on an arguments
+// RunVersion provides the version information of kubeadm in format depending on arguments
 // specified in cobra.Command.
 func RunVersion(out io.Writer, cmd *cobra.Command) error {
 	clientVersion := version.Get()
