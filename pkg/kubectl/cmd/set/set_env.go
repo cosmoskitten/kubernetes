@@ -381,7 +381,8 @@ func (o *EnvOptions) RunEnv(f cmdutil.Factory) error {
 		})
 
 		if err == nil {
-			return runtime.Encode(o.Encoder, info.Object)
+			versionedEncoder := api.Codecs.EncoderForVersion(o.Encoder, info.Mapping.GroupVersionKind.GroupVersion())
+			return runtime.Encode(versionedEncoder, info.Object)
 		}
 		return nil, err
 	})

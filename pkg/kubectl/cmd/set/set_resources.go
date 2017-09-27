@@ -216,7 +216,8 @@ func (o *ResourcesOptions) Run() error {
 			return nil
 		})
 		if transformed && err == nil {
-			return runtime.Encode(o.Encoder, info.Object)
+			versionedEncoder := api.Codecs.EncoderForVersion(o.Encoder, info.Mapping.GroupVersionKind.GroupVersion())
+			return runtime.Encode(versionedEncoder, info.Object)
 		}
 		return nil, err
 	})
