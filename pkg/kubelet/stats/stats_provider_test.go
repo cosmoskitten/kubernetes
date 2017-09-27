@@ -70,7 +70,6 @@ func TestGetCgroupStats(t *testing.T) {
 	const (
 		cgroupName        = "test-cgroup-name"
 		rootFsInfoSeed    = 1000
-		imageFsInfoSeed   = 2000
 		containerInfoSeed = 3000
 	)
 	var (
@@ -82,14 +81,12 @@ func TestGetCgroupStats(t *testing.T) {
 		options = cadvisorapiv2.RequestOptions{IdType: cadvisorapiv2.TypeName, Count: 2, Recursive: false}
 
 		rootFsInfo       = getTestFsInfo(rootFsInfoSeed)
-		imageFsInfo      = getTestFsInfo(imageFsInfoSeed)
 		containerInfo    = getTestContainerInfo(containerInfoSeed, "test-pod", "test-ns", "test-container")
 		containerInfoMap = map[string]cadvisorapiv2.ContainerInfo{cgroupName: containerInfo}
 	)
 
 	mockCadvisor.
 		On("RootFsInfo").Return(rootFsInfo, nil).
-		On("ImagesFsInfo").Return(imageFsInfo, nil).
 		On("ContainerInfoV2", cgroupName, options).Return(containerInfoMap, nil)
 
 	provider := newStatsProvider(mockCadvisor, mockPodManager, mockRuntimeCache, fakeContainerStatsProvider{})
@@ -98,7 +95,7 @@ func TestGetCgroupStats(t *testing.T) {
 
 	checkCPUStats(t, "", containerInfoSeed, cs.CPU)
 	checkMemoryStats(t, "", containerInfoSeed, containerInfo, cs.Memory)
-	checkFsStats(t, "", imageFsInfoSeed, cs.Rootfs)
+	checkFsStats(t, "", rootFsInfoSeed, cs.Rootfs)
 	checkFsStats(t, "", rootFsInfoSeed, cs.Logs)
 	checkNetworkStats(t, "", containerInfoSeed, ns)
 
@@ -570,11 +567,12 @@ func (o *fakeResourceAnalyzer) GetPodVolumeStats(uid types.UID) (serverstats.Pod
 }
 
 type fakeContainerStatsProvider struct {
+	fakeImageFsStats *statsapi.FsStats
 }
 
 func (p fakeContainerStatsProvider) ListPodStats() ([]statsapi.PodStats, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 func (p fakeContainerStatsProvider) ImageFsStats() (*statsapi.FsStats, error) {
-	return nil, fmt.Errorf("not implemented")
+	return p.fakeImageFsStats, nil
 }

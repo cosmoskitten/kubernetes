@@ -70,9 +70,9 @@ func (p *cadvisorStatsProvider) ListPodStats() ([]statsapi.PodStats, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get rootFs info: %v", err)
 	}
-	imageFsInfo, err := p.cadvisor.ImagesFsInfo()
+	imageFsStats, err := p.ImageFsStats()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get imageFs info: %v", err)
+		return nil, fmt.Errorf("failed to get imageFs stats: %v", err)
 	}
 
 	infos, err := p.cadvisor.ContainerInfoV2("/", cadvisorapiv2.RequestOptions{
@@ -125,7 +125,7 @@ func (p *cadvisorStatsProvider) ListPodStats() ([]statsapi.PodStats, error) {
 			podStats.Network = cadvisorInfoToNetworkStats("pod:"+ref.Namespace+"_"+ref.Name, &cinfo)
 			podStats.StartTime = metav1.NewTime(cinfo.Spec.CreationTime)
 		} else {
-			podStats.Containers = append(podStats.Containers, *cadvisorInfoToContainerStats(containerName, &cinfo, &rootFsInfo, &imageFsInfo))
+			podStats.Containers = append(podStats.Containers, *cadvisorInfoToContainerStats(containerName, &cinfo, &rootFsInfo, imageFsStats))
 		}
 	}
 

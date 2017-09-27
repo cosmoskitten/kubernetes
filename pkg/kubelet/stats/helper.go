@@ -32,7 +32,7 @@ import (
 
 // cadvisorInfoToContainerStats returns the statsapi.ContainerStats converted
 // from the container and filesystem info.
-func cadvisorInfoToContainerStats(name string, info *cadvisorapiv2.ContainerInfo, rootFs, imageFs *cadvisorapiv2.FsInfo) *statsapi.ContainerStats {
+func cadvisorInfoToContainerStats(name string, info *cadvisorapiv2.ContainerInfo, rootFs *cadvisorapiv2.FsInfo, imageFs *statsapi.FsStats) *statsapi.ContainerStats {
 	result := &statsapi.ContainerStats{
 		StartTime: metav1.NewTime(info.Spec.CreationTime),
 		Name:      name,
@@ -88,13 +88,28 @@ func cadvisorInfoToContainerStats(name string, info *cadvisorapiv2.ContainerInfo
 		result.Logs.InodesUsed = &logsInodesUsed
 	}
 
-	// The container rootFs lives on the imageFs devices (which may not be the node root fs)
-	result.Rootfs = &statsapi.FsStats{
-		Time:           metav1.NewTime(cstat.Timestamp),
-		AvailableBytes: &imageFs.Available,
-		CapacityBytes:  &imageFs.Capacity,
-		InodesFree:     imageFs.InodesFree,
-		Inodes:         imageFs.Inodes,
+	if imageFs != nil {
+		// The container rootFs lives on the imageFs devices (which may not be the node root fs)
+		result.Rootfs = &statsapi.FsStats{
+			Time:           imageFs.Time,
+			AvailableBytes: imageFs.AvailableBytes,
+			CapacityBytes:  imageFs.CapacityBytes,
+			InodesFree:     imageFs.InodesFree,
+			Inodes:         imageFs.Inodes,
+		}
+		if result.Rootfs.Time.After(cstat.Timestamp) {
+			// Use older timestamp as the timestamp.
+			result.Rootfs.Time = metav1.NewTime(cstat.Timestamp)
+		}
+	} else {
+		// The container is not in imageFs.
+		result.Rootfs = &statsapi.FsStats{
+			Time:           metav1.NewTime(cstat.Timestamp),
+			AvailableBytes: &rootFs.Available,
+			CapacityBytes:  &rootFs.Capacity,
+			InodesFree:     rootFs.InodesFree,
+			Inodes:         rootFs.Inodes,
+		}
 	}
 
 	cfs := cstat.Filesystem

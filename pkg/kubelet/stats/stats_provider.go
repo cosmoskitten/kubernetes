@@ -96,11 +96,8 @@ func (p *StatsProvider) GetCgroupStats(cgroupName string) (*statsapi.ContainerSt
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get rootFs info: %v", err)
 	}
-	imageFsInfo, err := p.cadvisor.ImagesFsInfo()
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get imageFs info: %v", err)
-	}
-	s := cadvisorInfoToContainerStats(cgroupName, info, &rootFsInfo, &imageFsInfo)
+	// Imagefs doesn't make sense for raw container.
+	s := cadvisorInfoToContainerStats(cgroupName, info, &rootFsInfo, nil)
 	n := cadvisorInfoToNetworkStats(cgroupName, info)
 	return s, n, nil
 }
