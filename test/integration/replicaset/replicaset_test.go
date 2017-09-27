@@ -19,17 +19,17 @@ package replicaset
 import (
 	"fmt"
 	"net/http/httptest"
-	//"reflect"
-	//"strings"
+	"reflect"
+	"strings"
 	"testing"
 	"time"
 
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	//"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
-	//"k8s.io/apimachinery/pkg/util/uuid"
+	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/informers"
 	clientset "k8s.io/client-go/kubernetes"
@@ -184,7 +184,7 @@ func waitToObservePods(t *testing.T, podInformer cache.SharedIndexInformer, podN
 		t.Fatalf("Error encountered when waiting for podInformer to observe the pods: %v", err)
 	}
 }
-/*
+
 func TestAdoption(t *testing.T) {
 	boolPtr := func(b bool) *bool { return &b }
 	testCases := []struct {
@@ -278,7 +278,7 @@ func TestAdoption(t *testing.T) {
 		close(stopCh)
 	}
 }
-*/
+
 func createRSsPods(t *testing.T, clientSet clientset.Interface, rss []*v1beta1.ReplicaSet, pods []*v1.Pod) ([]*v1beta1.ReplicaSet, []*v1.Pod) {
 	ns := rss[0].Namespace
 	rsClient := clientSet.Extensions().ReplicaSets(ns)
@@ -316,7 +316,7 @@ func waitRSStable(t *testing.T, clientSet clientset.Interface, rs *v1beta1.Repli
 		t.Fatalf("Failed to verify .Status.Replicas is equal to .Spec.Replicas for rs %s: %v", rs.Name, err)
 	}
 }
-/*
+
 // selectors are IMMUTABLE for all API versions except extensions/v1beta1
 func TestRSSelectorImmutability(t *testing.T) {
 	s, closeFn, clientSet := rmSimpleSetup(t)
@@ -356,7 +356,7 @@ func TestRSSelectorImmutability(t *testing.T) {
 		t.Errorf("error message does not match, expected type: %s, expected detail: %s, got: %s", expectedErrType, expectedErrDetail, err.Error())
 	}
 }
-*/
+
 // Update .Spec.Replicas to replicas and verify .Status.Replicas is changed accordingly
 func scaleRS(t *testing.T, c clientset.Interface, rs *v1beta1.ReplicaSet, replicas int32) {
 	rsClient := c.Extensions().ReplicaSets(rs.Namespace)
@@ -412,7 +412,7 @@ func getPods(t *testing.T, podClient typedv1.PodInterface, labelMap map[string]s
 	}
 	return pods
 }
-/*
+
 func TestReplicaSetBasics(t *testing.T) {
 	s, closeFn, rm, informers, c := rmSetup(t)
 	defer closeFn()
@@ -442,7 +442,7 @@ func TestReplicaSetBasics(t *testing.T) {
 	}
 
 	// Add an annotation to pod template to test rs's status does update without replicas change
-	rs.Annotations = map[string]string{"test":"annotation"}
+	rs.Annotations = map[string]string{"test": "annotation"}
 	newRS, err := rsClient.Update(rs)
 	if err != nil {
 		t.Fatalf("failed to update rs %s: %v", rs.Name, err)
@@ -471,10 +471,10 @@ func TestReplicaSetBasics(t *testing.T) {
 	deletePod(t, podClient, deletingPod, func(pod *v1.Pod) error {
 		// big GracePeriodSeconds to simulate a non-nil DeletionTimestamp
 		// in integration test environment, this pod will be deleted
-		// immediately regardless how big GracePeriodSeconds is 
+		// immediately regardless how big GracePeriodSeconds is
 		gracePeriodSeconds := int64(1000000)
 		return c.Core().Pods(ns.Name).Delete(pod.Name, &metav1.DeleteOptions{
-		 	GracePeriodSeconds: &gracePeriodSeconds,
+			GracePeriodSeconds: &gracePeriodSeconds,
 		})
 	})
 
@@ -507,7 +507,7 @@ func TestReplicaSetBasics(t *testing.T) {
 		return true, nil
 	}); err != nil {
 		t.Fatalf("Failed to verify no pod created to replace failed pod and a pod created to replace deleting pod: %v", err)
-	}	
+	}
 }
 
 func TestOverlappingRSs(t *testing.T) {
@@ -594,7 +594,7 @@ func TestPodOrphaningAndAdoptionWhenLabelsChange(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("Failed to verify ControllerRef for the pod %s is nil: %v", pod.Name, err)
 	}
-	
+
 	// Adoption: RS should add ControllerRef to a pod when the pod's labels change to match its labels
 	updatePod(t, podClient, pod, func(pod *v1.Pod) { pod.Labels = labelMap })
 	if err := wait.PollImmediate(interval, timeout, func() (bool, error) {
@@ -653,7 +653,7 @@ func testPodControllerRefPatch(t *testing.T, c clientset.Interface, pod *v1.Pod,
 	}); err != nil {
 		t.Fatalf("Failed to update .OwnerReferences for pod %s: %v", pod.Name, err)
 	}
-	
+
 	if err := wait.PollImmediate(interval, timeout, func() (bool, error) {
 		newPod, err := podClient.Get(pod.Name, metav1.GetOptions{})
 		if err != nil {
@@ -663,7 +663,7 @@ func testPodControllerRefPatch(t *testing.T, c clientset.Interface, pod *v1.Pod,
 	}); err != nil {
 		t.Fatalf("Failed to verify ControllerRef for the pod %s is not nil: %v", pod.Name, err)
 	}
-	
+
 	newPod, err := podClient.Get(pod.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Failed to obtain pod %s: %v", pod.Name, err)
@@ -715,7 +715,7 @@ func TestGeneralPodAdoption(t *testing.T) {
 	ownerReference = metav1.OwnerReference{UID: rs.UID, APIVersion: "extensions/v1beta1", Kind: "ReplicaSet", Name: rs.Name, Controller: &falseVar}
 	testPodControllerRefPatch(t, c, pod, &ownerReference, rs, 1)
 }
-*/
+
 func markPodsRunningAndReady(t *testing.T, clientSet clientset.Interface, pods *v1.PodList, ns string) {
 	replicas := int32(len(pods.Items))
 	var readyPods int32
@@ -731,7 +731,7 @@ func markPodsRunningAndReady(t *testing.T, clientSet clientset.Interface, pods *
 			condition := &v1.PodCondition{
 				Type:               v1.PodReady,
 				Status:             v1.ConditionTrue,
-				LastTransitionTime: metav1.Now(),
+				LastTransitionTime: metav1.Time{Time: time.Now().Add(time.Duration(-2e10 * i))},
 			}
 			podutil.UpdatePodCondition(&pod.Status, condition)
 			_, err := clientSet.Core().Pods(ns).UpdateStatus(pod)
@@ -783,7 +783,7 @@ func TestReadyAndAvailableReplicas(t *testing.T) {
 	defer framework.DeleteTestingNamespace(ns, s, t)
 
 	labelMap := map[string]string{"foo": "bar"}
-	rs := newRS("rs", ns.Name, 3)
+	rs := newRS("rs", ns.Name, 2)
 	rs.Spec.Selector.MatchLabels = labelMap
 	rs.Spec.Template.Labels = labelMap
 
@@ -800,60 +800,41 @@ func TestReadyAndAvailableReplicas(t *testing.T) {
 
 	podClient := c.Core().Pods(ns.Name)
 	pods := getPods(t, podClient, labelMap)
-	if len(pods.Items) != 3 {
-		t.Fatalf("len(pods) = %d, want %d", len(pods.Items), 3)
+	if len(pods.Items) != 2 {
+		t.Fatalf("len(pods) = %d, want %d", len(pods.Items), 2)
 	}
 
-	// Mark only N - 1 pods running and ready
-	podNum := int32(len(pods.Items))
-	lastPod := pods.Items[podNum - 1]
-	pods.Items = pods.Items[:podNum-1]
-	markPodsRunningAndReady(t, c, pods, ns.Name)
-	waitPodsReady(t, c, podNum, rs)
-
-	rsClient := c.Extensions().ReplicaSets(ns.Name)
-	rs, err := rsClient.Get(rs.Name, metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("Failed to obtain rs %s: %v", rs.Name, err)
-	}
+	// First verify no pod is available
 	if rs.Status.AvailableReplicas != 0 {
 		t.Fatalf("Unexpected .Status.AvailableReplicas: Expected 0, saw %d", rs.Status.AvailableReplicas)
 	}
 
-	// Update .spec.minReadySeconds to zero to ensure N - 1 pods become available eventually
-	updateRS(t, rsClient, rs, func(rs *v1beta1.ReplicaSet) { rs.Spec.MinReadySeconds = 0 })
-	// Verify only N - 1 pods are available
-	if err := wait.PollImmediate(interval, timeout, func() (bool, error) {
-		newRS, err := rsClient.Get(rs.Name, metav1.GetOptions{})
-		if err != nil {
-			return false, err
-		}
-		return newRS.Status.AvailableReplicas == podNum, nil
-	}); err != nil {
-		t.Fatalf("Unexpected .Status.AvailableReplicas: Expected %d, saw %d", podNum, rs.Status.AvailableReplicas)
+	// Mark all pods running and ready
+	// First pod's LastTransitionTime is now, while second pod's is 20 seconds ago
+	markPodsRunningAndReady(t, c, pods, ns.Name)
+	waitPodsReady(t, c, int32(len(pods.Items)), rs)
+
+	// Update .spec.minReadySeconds to 20 to ensure only second pod is available
+	rsClient := c.Extensions().ReplicaSets(ns.Name)
+	updateRS(t, rsClient, rs, func(rs *v1beta1.ReplicaSet) { rs.Spec.MinReadySeconds = 15 })
+
+	rs, err := rsClient.Get(rs.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Failed to obtain rs %s: %v", rs.Name, err)
 	}
 
-	// Mark the last pod running and ready
-	pods.Items = append(pods.Items, lastPod)
-	podNum = int32(len(pods.Items))
-	markPodsRunningAndReady(t, c, pods, ns.Name)
-	waitPodsReady(t, c, podNum, rs)
-
-	// Update .spec.minReadySeconds to a large number to ensure last pod does not become available shortly
-	updateRS(t, rsClient, rs, func(rs *v1beta1.ReplicaSet) { rs.Spec.MinReadySeconds = 100000 })
-
+	// Verify only one (second) pod is available
 	if err := wait.PollImmediate(interval, timeout, func() (bool, error) {
 		newRS, err := rsClient.Get(rs.Name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
-		// verify only N - 1 pods still are available
-		return newRS.Status.AvailableReplicas == podNum - 1, nil
+		return newRS.Status.AvailableReplicas == 1, nil
 	}); err != nil {
-		t.Fatalf("Unexpected .Status.AvailableReplicas: Expected %d, saw %d", podNum - 1, rs.Status.AvailableReplicas)
+		t.Fatalf("Unexpected .Status.AvailableReplicas: Expected 1, saw %d", rs.Status.AvailableReplicas)
 	}
 }
-/*
+
 func testScalingUsingScaleSubresource(t *testing.T, c clientset.Interface, rs *v1beta1.ReplicaSet, replicas int32) {
 	ns := rs.Namespace
 	rsClient := c.Extensions().ReplicaSets(ns)
@@ -869,8 +850,8 @@ func testScalingUsingScaleSubresource(t *testing.T, c clientset.Interface, rs *v
 	}
 	if scale.Spec.Replicas != *newRS.Spec.Replicas {
 		t.Fatalf("Scale subresource for rs %s does not match .Spec.Replicas: expected %d, got %d", rs.Name, newRS.Spec.Replicas, scale.Spec.Replicas)
-	}	
-	
+	}
+
 	if err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		scale, err := scaleClient.Get(kind, rs.Name)
 		if err != nil {
@@ -945,4 +926,3 @@ func TestExtraPodsAdoptionAndDeletion(t *testing.T) {
 		t.Fatalf("Failed to verify ControllerRef for the pod %s is not nil: %v", pod.Name, err)
 	}
 }
-*/
