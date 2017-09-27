@@ -276,7 +276,7 @@ func (i *Init) Run(out io.Writer) error {
 
 	k8sVersion, err := version.ParseSemantic(i.cfg.KubernetesVersion)
 	if err != nil {
-		return fmt.Errorf("Couldn't parse kubernetes version %q: %v", i.cfg.KubernetesVersion, err)
+		return fmt.Errorf("Could not parse Kubernetes version %q: %v", i.cfg.KubernetesVersion, err)
 	}
 
 	// Get directories to write files to; can be faked if we're dry-running
