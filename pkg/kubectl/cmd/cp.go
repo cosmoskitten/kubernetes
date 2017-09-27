@@ -18,6 +18,7 @@ package cmd
 
 import (
 	"archive/tar"
+	"bytes"
 	"errors"
 	"io"
 	"io/ioutil"
@@ -136,10 +137,33 @@ func runCopy(f cmdutil.Factory, cmd *cobra.Command, out, cmderr io.Writer, args 
 func copyToPod(f cmdutil.Factory, cmd *cobra.Command, stdout, stderr io.Writer, src, dest fileSpec) error {
 	reader, writer := io.Pipe()
 
-	// if destination path ends in a "/", assume destination is a directory
-	// and copy source path inside destination directory
+	// strip trailing slash (if any)
 	if string(dest.File[len(dest.File)-1]) == "/" {
-		dest.File = dest.File + path.Base(src.File)
+		dest.File = dest.File[:len(dest.File)-1]
+	}
+
+	// Check if destination path exists in the pod.
+	// If path exists and is a directory, copy the
+	// specified source _inside_ of that directory.
+	// If path does not exist, or is a file, continue.
+	checkOpts := &ExecOptions{
+		StreamOptions: StreamOptions{
+			In:  reader,
+			Out: bytes.NewBuffer([]byte{}),
+			Err: bytes.NewBuffer([]byte{}),
+
+			Namespace: dest.PodNamespace,
+			PodName:   dest.PodName,
+		},
+
+		Command:  []string{"test", "-d", dest.File},
+		Executor: &DefaultRemoteExecutor{},
+	}
+	err := execute(f, cmd, checkOpts)
+	if err == nil {
+		// If no error, dest.File was found to be a directory.
+		// Copy specified src into it
+		dest.File = dest.File + "/" + path.Base(src.File)
 	}
 
 	go func() {
