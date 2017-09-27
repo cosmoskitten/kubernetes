@@ -67,6 +67,8 @@ type AuditLogOptions struct {
 	MaxBackups int
 	MaxSize    int
 	Format     string
+	// Defaults to buffer mode.
+	Mode string
 }
 
 // AuditWebhookOptions control the webhook configuration for audit events.
@@ -82,7 +84,7 @@ type AuditWebhookOptions struct {
 func NewAuditOptions() *AuditOptions {
 	return &AuditOptions{
 		WebhookOptions: AuditWebhookOptions{Mode: pluginwebhook.ModeBatch},
-		LogOptions:     AuditLogOptions{Format: pluginlog.FormatJson},
+		LogOptions:     AuditLogOptions{Format: pluginlog.FormatJson, Mode: pluginlog.ModeBuffered},
 	}
 }
 
@@ -210,6 +212,11 @@ func (o *AuditLogOptions) AddFlags(fs *pflag.FlagSet) {
 		"Format of saved audits. \"legacy\" indicates 1-line text format for each event."+
 			" \"json\" indicates structured json format. Requires the 'AdvancedAuditing' feature"+
 			" gate. Known formats are "+strings.Join(pluginlog.AllowedFormats, ",")+".")
+	fs.StringVar(&o.Mode, "audit-log-mode", o.Mode,
+		"Strategy for sending audit events. Buffered indicates events firstly enqueue,"+
+			" and then are asynchronously processed by several goroutines. Blocking indicates"+
+			" events are synchronously written to log. Known modes are "+
+			strings.Join(pluginlog.AllowedModes, ",")+".")
 }
 
 func (o *AuditLogOptions) getWriter() io.Writer {
@@ -231,7 +238,11 @@ func (o *AuditLogOptions) getWriter() io.Writer {
 
 func (o *AuditLogOptions) advancedApplyTo(c *server.Config) error {
 	if w := o.getWriter(); w != nil {
-		c.AuditBackend = appendBackend(c.AuditBackend, pluginlog.NewBackend(w, o.Format, auditv1beta1.SchemeGroupVersion))
+		log, err := pluginlog.NewBackend(w, o.Format, o.Mode, auditv1beta1.SchemeGroupVersion)
+		if err != nil {
+			return fmt.Errorf("initializing audit log: %v", err)
+		}
+		c.AuditBackend = appendBackend(c.AuditBackend, log)
 	}
 	return nil
 }
