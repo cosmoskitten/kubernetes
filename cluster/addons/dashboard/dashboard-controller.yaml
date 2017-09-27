@@ -3,7 +3,8 @@ kind: Secret
 metadata:
   labels:
     k8s-app: kubernetes-dashboard
-    addonmanager.kubernetes.io/mode: Reconcile
+    # It has to be 'EnsureExists' to allow editing this secret.
+    addonmanager.kubernetes.io/mode: EnsureExists
   name: kubernetes-dashboard-certs
   namespace: kube-system
 type: Opaque
@@ -15,7 +16,6 @@ metadata:
   namespace: kube-system
   labels:
     k8s-app: kubernetes-dashboard
-    kubernetes.io/cluster-service: "true"
     addonmanager.kubernetes.io/mode: Reconcile
 spec:
   replicas: 1
