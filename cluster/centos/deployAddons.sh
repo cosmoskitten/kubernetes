@@ -47,20 +47,10 @@ function deploy_dns {
 }
 
 function deploy_dashboard {
-    if ${KUBECTL} get rc -l k8s-app=kubernetes-dashboard --namespace=kube-system | grep kubernetes-dashboard-v &> /dev/null; then
-        echo "Kubernetes Dashboard replicationController already exists"
-    else
-        echo "Creating Kubernetes Dashboard replicationController"
-        ${KUBECTL} create -f ${KUBE_ROOT}/cluster/addons/dashboard/dashboard-controller.yaml
-    fi
-
-    if ${KUBECTL} get service/kubernetes-dashboard --namespace=kube-system &> /dev/null; then
-        echo "Kubernetes Dashboard service already exists"
-    else
-        echo "Creating Kubernetes Dashboard service"
-        ${KUBECTL} create -f ${KUBE_ROOT}/cluster/addons/dashboard/dashboard-service.yaml
-    fi
-
+    echo "Deploying Kubernetes Dashboard"
+    ${KUBECTL} apply -f ${KUBE_ROOT}/cluster/addons/dashboard/dashboard-rbac.yaml
+    ${KUBECTL} apply -f ${KUBE_ROOT}/cluster/addons/dashboard/dashboard-controller.yaml
+    ${KUBECTL} apply -f ${KUBE_ROOT}/cluster/addons/dashboard/dashboard-service.yaml
   echo
 }
 
