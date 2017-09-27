@@ -134,21 +134,13 @@ func runCopy(f cmdutil.Factory, cmd *cobra.Command, out, cmderr io.Writer, args 
 	return cmdutil.UsageErrorf(cmd, "One of src or dest must be a remote file specification")
 }
 
-func copyToPod(f cmdutil.Factory, cmd *cobra.Command, stdout, stderr io.Writer, src, dest fileSpec) error {
-	reader, writer := io.Pipe()
-
-	// strip trailing slash (if any)
-	if string(dest.File[len(dest.File)-1]) == "/" {
-		dest.File = dest.File[:len(dest.File)-1]
-	}
-
-	// Check if destination path exists in the pod.
-	// If path exists and is a directory, copy the
-	// specified source _inside_ of that directory.
-	// If path does not exist, or is a file, continue.
-	checkOpts := &ExecOptions{
+// checkDestinationIsDir receives a destination fileSpec and
+// determines if the provided destination path exists on the
+// pod. If the destination path does not exist or is _not_ a
+// directory, an error is returned with the exit code received.
+func checkDestinationIsDir(dest fileSpec, f cmdutil.Factory, cmd *cobra.Command) error {
+	options := &ExecOptions{
 		StreamOptions: StreamOptions{
-			In:  reader,
 			Out: bytes.NewBuffer([]byte{}),
 			Err: bytes.NewBuffer([]byte{}),
 
@@ -159,8 +151,19 @@ func copyToPod(f cmdutil.Factory, cmd *cobra.Command, stdout, stderr io.Writer, 
 		Command:  []string{"test", "-d", dest.File},
 		Executor: &DefaultRemoteExecutor{},
 	}
-	err := execute(f, cmd, checkOpts)
-	if err == nil {
+
+	return execute(f, cmd, options)
+}
+
+func copyToPod(f cmdutil.Factory, cmd *cobra.Command, stdout, stderr io.Writer, src, dest fileSpec) error {
+	reader, writer := io.Pipe()
+
+	// strip trailing slash (if any)
+	if string(dest.File[len(dest.File)-1]) == "/" {
+		dest.File = dest.File[:len(dest.File)-1]
+	}
+
+	if err := checkDestinationIsDir(dest, f, cmd); err == nil {
 		// If no error, dest.File was found to be a directory.
 		// Copy specified src into it
 		dest.File = dest.File + "/" + path.Base(src.File)

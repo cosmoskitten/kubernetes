@@ -211,7 +211,7 @@ func TestTarDestinationName(t *testing.T) {
 			data: "bazblahfoo",
 		},
 		{
-			name: "some/other/directory",
+			name: "some/other/directory/",
 			data: "with more data here",
 		},
 		{
