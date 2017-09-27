@@ -218,10 +218,10 @@ func NewInit(cfgPath string, cfg *kubeadmapi.MasterConfiguration, skipPreFlight,
 	if cfgPath != "" {
 		b, err := ioutil.ReadFile(cfgPath)
 		if err != nil {
-			return nil, fmt.Errorf("unable to read config from %q [%v]", cfgPath, err)
+			return nil, fmt.Errorf("Unable to read config from %q [%v]", cfgPath, err)
 		}
 		if err := runtime.DecodeInto(api.Codecs.UniversalDecoder(), b, cfg); err != nil {
-			return nil, fmt.Errorf("unable to decode config from %q [%v]", cfgPath, err)
+			return nil, fmt.Errorf("Unable to decode config from %q [%v]", cfgPath, err)
 		}
 	}
 
@@ -241,7 +241,7 @@ func NewInit(cfgPath string, cfg *kubeadmapi.MasterConfiguration, skipPreFlight,
 	}
 
 	if !skipPreFlight {
-		fmt.Println("[preflight] Running pre-flight checks")
+		fmt.Println("[preflight] Running pre-flight checks.")
 
 		if err := preflight.RunInitMasterChecks(cfg); err != nil {
 			return nil, err
@@ -250,7 +250,7 @@ func NewInit(cfgPath string, cfg *kubeadmapi.MasterConfiguration, skipPreFlight,
 		// Try to start the kubelet service in case it's inactive
 		preflight.TryStartKubelet()
 	} else {
-		fmt.Println("[preflight] Skipping pre-flight checks")
+		fmt.Println("[preflight] Skipping pre-flight checks.")
 	}
 
 	return &Init{cfg: cfg, skipTokenPrint: skipTokenPrint, dryRun: dryRun}, nil
@@ -276,7 +276,7 @@ func (i *Init) Run(out io.Writer) error {
 
 	k8sVersion, err := version.ParseSemantic(i.cfg.KubernetesVersion)
 	if err != nil {
-		return fmt.Errorf("couldn't parse kubernetes version %q: %v", i.cfg.KubernetesVersion, err)
+		return fmt.Errorf("Couldn't parse kubernetes version %q: %v", i.cfg.KubernetesVersion, err)
 	}
 
 	// Get directories to write files to; can be faked if we're dry-running
@@ -348,7 +348,7 @@ func (i *Init) Run(out io.Writer) error {
 
 		kubeletFailTempl.Execute(out, ctx)
 
-		return fmt.Errorf("couldn't initialize a Kubernetes cluster")
+		return fmt.Errorf("Couldn't initialize a Kubernetes cluster")
 	}
 
 	// Upload currently used configuration to the cluster
@@ -456,7 +456,7 @@ func getDirectoriesToUse(dryRun bool, defaultPkiDir string) (string, string, str
 	if dryRun {
 		dryRunDir, err := ioutil.TempDir("", "kubeadm-init-dryrun")
 		if err != nil {
-			return "", "", "", fmt.Errorf("couldn't create a temporary directory: %v", err)
+			return "", "", "", fmt.Errorf("Couldn't create a temporary directory: %v", err)
 		}
 		// Use the same temp dir for all
 		return dryRunDir, dryRunDir, dryRunDir, nil
@@ -500,7 +500,7 @@ func getWaiter(dryRun bool, client clientset.Interface) apiclient.Waiter {
 func waitForAPIAndKubelet(waiter apiclient.Waiter) error {
 	errorChan := make(chan error)
 
-	fmt.Printf("[init] Waiting for the kubelet to boot up the control plane as Static Pods from directory %q\n", kubeadmconstants.GetStaticPodDirectory())
+	fmt.Printf("[init] Waiting for the kubelet to boot up the control plane as Static Pods from directory %q.\n", kubeadmconstants.GetStaticPodDirectory())
 	fmt.Println("[init] This often takes around a minute; or longer if the control plane images have to be pulled.")
 
 	go func(errC chan error, waiter apiclient.Waiter) {
