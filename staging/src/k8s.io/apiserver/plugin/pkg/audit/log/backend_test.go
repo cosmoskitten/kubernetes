@@ -54,7 +54,7 @@ func init() {
 }
 
 func TestLogEventsLegacy(t *testing.T) {
-	for _, test := range []struct {
+	cases := []struct {
 		event    *auditinternal.Event
 		expected string
 	}{
@@ -102,9 +102,32 @@ func TestLogEventsLegacy(t *testing.T) {
 			},
 			`[\d\:\-\.\+TZ]+ AUDIT: id="[\w-]+" stage="" ip="<unknown>" method="" user="<none>" groups="<none>" as="<self>" asgroups="<lookup>" namespace="<none>" uri="" response="<deferred>"`,
 		},
-	} {
+	}
+
+	// Buffered backend test
+	for _, test := range cases {
 		var buf bytes.Buffer
-		backend := NewBackend(&buf, FormatLegacy, auditv1beta1.SchemeGroupVersion)
+		backendIf, _ := NewBackend(&buf, FormatLegacy, ModeBuffered, auditv1beta1.SchemeGroupVersion)
+		b := backendIf.(*bufferedBackend)
+		b.wg.Add(1)
+		backendIf.ProcessEvents(test.event)
+		go backendIf.Shutdown()
+		b.worker()
+
+		match, err := regexp.MatchString(test.expected, buf.String())
+		if err != nil {
+			t.Errorf("Unexpected error matching line %v", err)
+			continue
+		}
+		if !match {
+			t.Errorf("Unexpected line of audit: %s", buf.String())
+		}
+	}
+
+	// Blocking backend test
+	for _, test := range cases {
+		var buf bytes.Buffer
+		backend, err := NewBackend(&buf, FormatLegacy, ModeBlocking, auditv1beta1.SchemeGroupVersion)
 		backend.ProcessEvents(test.event)
 		match, err := regexp.MatchString(test.expected, buf.String())
 		if err != nil {
@@ -118,7 +141,7 @@ func TestLogEventsLegacy(t *testing.T) {
 }
 
 func TestLogEventsJson(t *testing.T) {
-	for _, event := range []*auditinternal.Event{
+	cases := []*auditinternal.Event{
 		{
 			AuditID: types.UID(uuid.NewRandom().String()),
 		},
@@ -157,10 +180,117 @@ func TestLogEventsJson(t *testing.T) {
 				Subresource: "bar",
 			},
 		},
-	} {
+	}
+
+	// Buffered backend test
+	for _, event := range cases {
 		var buf bytes.Buffer
-		backend := NewBackend(&buf, FormatJson, auditv1beta1.SchemeGroupVersion)
+		backendIf, _ := NewBackend(&buf, FormatJson, ModeBuffered, auditv1beta1.SchemeGroupVersion)
+		b := backendIf.(*bufferedBackend)
+		b.wg.Add(1)
+		backendIf.ProcessEvents(event)
+		go backendIf.Shutdown()
+		b.worker()
+
+		// decode events back and compare with the original one.
+		result := &auditinternal.Event{}
+		decoder := audit.Codecs.UniversalDecoder(auditv1beta1.SchemeGroupVersion)
+		if err := runtime.DecodeInto(decoder, buf.Bytes(), result); err != nil {
+			t.Errorf("failed decoding buf: %s", buf.String())
+			continue
+		}
+		if !reflect.DeepEqual(event, result) {
+			t.Errorf("The result event should be the same with the original one, \noriginal: \n%#v\n result: \n%#v", event, result)
+		}
+	}
+
+	// Blocking backend test
+	for _, event := range cases {
+		var buf bytes.Buffer
+		backend, _ := NewBackend(&buf, FormatJson, ModeBlocking, auditv1beta1.SchemeGroupVersion)
 		backend.ProcessEvents(event)
+		// decode events back and compare with the original one.
+		result := &auditinternal.Event{}
+		decoder := audit.Codecs.UniversalDecoder(auditv1beta1.SchemeGroupVersion)
+		if err := runtime.DecodeInto(decoder, buf.Bytes(), result); err != nil {
+			t.Errorf("failed decoding buf: %s", buf.String())
+			continue
+		}
+		if !reflect.DeepEqual(event, result) {
+			t.Errorf("The result event should be the same with the original one, \noriginal: \n%#v\n result: \n%#v", event, result)
+		}
+	}
+}
+
+func TestLogEventsBuffer(t *testing.T) {
+	cases := []*auditinternal.Event{
+		{
+			AuditID: types.UID(uuid.NewRandom().String()),
+		},
+		{
+			ResponseStatus: &metav1.Status{
+				Code: 200,
+			},
+			RequestURI: "/apis/rbac.authorization.k8s.io/v1/roles",
+			SourceIPs: []string{
+				"127.0.0.1",
+			},
+			// When encoding to json format, the nanosecond part of timestamp is
+			// lost and it will become zero when we decode event back, so we rounding
+			// timestamp down to a multiple of second.
+			Timestamp: metav1.NewTime(time.Now().Truncate(time.Second)),
+			AuditID:   types.UID(uuid.NewRandom().String()),
+			Stage:     auditinternal.StageRequestReceived,
+			Verb:      "get",
+			User: auditinternal.UserInfo{
+				Username: "admin",
+				Groups: []string{
+					"system:masters",
+					"system:authenticated",
+				},
+			},
+			ObjectRef: &auditinternal.ObjectReference{
+				Namespace: "default",
+			},
+		},
+		{
+			AuditID: types.UID(uuid.NewRandom().String()),
+			Level:   auditinternal.LevelMetadata,
+			ObjectRef: &auditinternal.ObjectReference{
+				Resource:    "foo",
+				APIVersion:  "v1",
+				Subresource: "bar",
+			},
+		},
+	}
+
+	// Buffered mode: 1.channel shutdown 2.ProcessEvents 3.worker receive event
+	for _, event := range cases {
+		var buf bytes.Buffer
+		backendIf, _ := NewBackend(&buf, FormatJson, ModeBuffered, auditv1beta1.SchemeGroupVersion)
+		b := backendIf.(*bufferedBackend)
+		b.wg.Add(1)
+		go func(events ...*auditinternal.Event) {
+			backendIf.Shutdown()
+			backendIf.ProcessEvents(events...)
+			//no event can be acquired by worker, so buf is empty
+			if len(buf.Bytes()) > 0 {
+				t.Errorf("shutdown buffer evenets should be discarded")
+			}
+		}(event)
+		b.worker()
+	}
+
+	// Buffered mode: 1.ProcessEvents 2.worker receive event 3.channel shutdown
+	for _, event := range cases {
+		var buf bytes.Buffer
+		backendIf, _ := NewBackend(&buf, FormatJson, ModeBuffered, auditv1beta1.SchemeGroupVersion)
+		b := backendIf.(*bufferedBackend)
+		b.wg.Add(1)
+		backendIf.ProcessEvents(event)
+		go backendIf.Shutdown()
+		b.worker()
+
 		// decode events back and compare with the original one.
 		result := &auditinternal.Event{}
 		decoder := audit.Codecs.UniversalDecoder(auditv1beta1.SchemeGroupVersion)
