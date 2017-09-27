@@ -176,11 +176,14 @@ func (m *manager) AddContainer(p *v1.Pod, c *v1.Container, containerID string) e
 	cpus := m.state.GetCPUSetOrDefault(containerID)
 	m.Unlock()
 
-	err = m.updateContainerCPUSet(containerID, cpus)
-	if err != nil {
-		glog.Errorf("[cpumanager] AddContainer error: %v", err)
-		return err
+	if !cpus.IsEmpty() {
+		err = m.updateContainerCPUSet(containerID, cpus)
+		if err != nil {
+			glog.Errorf("[cpumanager] AddContainer error: %v", err)
+			return err
+		}
 	}
+
 	return nil
 }
 
