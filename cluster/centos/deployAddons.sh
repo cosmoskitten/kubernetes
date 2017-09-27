@@ -47,11 +47,13 @@ function deploy_dns {
 }
 
 function deploy_dashboard {
-    echo "Deploying Kubernetes Dashboard"
-    ${KUBECTL} apply -f ${KUBE_ROOT}/cluster/addons/dashboard/dashboard-secret.yaml
-    ${KUBECTL} apply -f ${KUBE_ROOT}/cluster/addons/dashboard/dashboard-rbac.yaml
-    ${KUBECTL} apply -f ${KUBE_ROOT}/cluster/addons/dashboard/dashboard-controller.yaml
-    ${KUBECTL} apply -f ${KUBE_ROOT}/cluster/addons/dashboard/dashboard-service.yaml
+  echo "Deploying Kubernetes Dashboard"
+
+  ${KUBECTL} apply -f ${KUBE_ROOT}/cluster/addons/dashboard/dashboard-secret.yaml
+  ${KUBECTL} apply -f ${KUBE_ROOT}/cluster/addons/dashboard/dashboard-rbac.yaml
+  ${KUBECTL} apply -f ${KUBE_ROOT}/cluster/addons/dashboard/dashboard-controller.yaml
+  ${KUBECTL} apply -f ${KUBE_ROOT}/cluster/addons/dashboard/dashboard-service.yaml
+
   echo
 }
 
