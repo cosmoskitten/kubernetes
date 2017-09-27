@@ -225,7 +225,7 @@ func (o *ImageOptions) Run() error {
 			return nil
 		})
 		if transformed && err == nil {
-			return runtime.Encode(o.Encoder, info.Object)
+			return runtime.Encode(o.Encoder, info.VersionedObject)
 		}
 		return nil, err
 	})
