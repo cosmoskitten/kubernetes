@@ -659,7 +659,7 @@ func ValidatePodSecurityPolicySpec(spec *extensions.PodSecurityPolicySpec, fldPa
 	allErrs = append(allErrs, validatePSPSELinux(fldPath.Child("seLinux"), &spec.SELinux)...)
 	allErrs = append(allErrs, validatePSPSupplementalGroup(fldPath.Child("supplementalGroups"), &spec.SupplementalGroups)...)
 	allErrs = append(allErrs, validatePSPFSGroup(fldPath.Child("fsGroup"), &spec.FSGroup)...)
-	allErrs = append(allErrs, validatePodSecurityPolicyVolumes(fldPath, spec.Volumes)...)
+	allErrs = append(allErrs, validatePodSecurityPolicyVolumes(fldPath, spec.Volumes, spec.AllowedFlexVolumes)...)
 	if len(spec.RequiredDropCapabilities) > 0 && hasCap(extensions.AllowAllCapabilities, spec.AllowedCapabilities) {
 		allErrs = append(allErrs, field.Invalid(field.NewPath("requiredDropCapabilities"), spec.RequiredDropCapabilities,
 			"must be empty when all capabilities are allowed by a wildcard"))
@@ -805,17 +805,33 @@ func validatePSPSupplementalGroup(fldPath *field.Path, groupOptions *extensions.
 }
 
 // validatePodSecurityPolicyVolumes validates the volume fields of PodSecurityPolicy.
-func validatePodSecurityPolicyVolumes(fldPath *field.Path, volumes []extensions.FSType) field.ErrorList {
+func validatePodSecurityPolicyVolumes(fldPath *field.Path, volumes []extensions.FSType, flexVolumes []extensions.AllowedFlexVolume) field.ErrorList {
 	allErrs := field.ErrorList{}
+	allowsFlexVolumes := false
 	allowed := psputil.GetAllFSTypesAsSet()
 	// add in the * value since that is a pseudo type that is not included by default
 	allowed.Insert(string(extensions.All))
 	for _, v := range volumes {
+		if v == extensions.FlexVolume || v == extensions.All {
+			allowsFlexVolumes = true
+		}
 		if !allowed.Has(string(v)) {
 			allErrs = append(allErrs, field.NotSupported(fldPath.Child("volumes"), v, allowed.List()))
 		}
 	}
-
+	if len(flexVolumes) > 0 {
+		if allowsFlexVolumes {
+			for idx, fv := range flexVolumes {
+				if len(fv.Driver) == 0 {
+					allErrs = append(allErrs, field.Required(field.NewPath("allowedFlexVolumes").Index(idx).Child("driver"),
+						"must specify a driver"))
+				}
+			}
+		} else {
+			allErrs = append(allErrs, field.Invalid(field.NewPath("allowedFlexVolumes"), allowsFlexVolumes,
+				"volumes does not include 'flexVolume' or '*', so no flex volumes are allowed"))
+		}
+	}
 	return allErrs
 }
 

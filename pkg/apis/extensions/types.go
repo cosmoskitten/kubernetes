@@ -905,6 +905,11 @@ type PodSecurityPolicySpec struct {
 	// may be used.
 	// +optional
 	Volumes []FSType
+	// AllowedFlexVolumes is a whitelist of allowed Flexvolumes.  Empty or nil indicates that all
+	// Flexvolumes may be used.  This parameter is effective only when the usage of the Flexvolumes
+	// is allowed in the "Volumes" field.
+	// +optional
+	AllowedFlexVolumes []AllowedFlexVolume
 	// HostNetwork determines if the policy allows the use of HostNetwork in the pod spec.
 	// +optional
 	HostNetwork bool
@@ -1004,6 +1009,12 @@ var (
 	ScaleIO               FSType = "scaleIO"
 	All                   FSType = "*"
 )
+
+// AllowedFlexVolume represents a single Flexvolume that is allowed to be used.
+type AllowedFlexVolume struct {
+	// Driver is the name of the Flexvolume driver.
+	Driver string
+}
 
 // SELinuxStrategyOptions defines the strategy type and any options used to create the strategy.
 type SELinuxStrategyOptions struct {
