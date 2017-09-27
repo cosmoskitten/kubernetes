@@ -1724,6 +1724,19 @@ func TestEBSVolumeCountConflicts(t *testing.T) {
 	emptyPod := &v1.Pod{
 		Spec: v1.PodSpec{},
 	}
+	unboundPVCPod := &v1.Pod{
+		Spec: v1.PodSpec{
+			Volumes: []v1.Volume{
+				{
+					VolumeSource: v1.VolumeSource{
+						PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
+							ClaimName: "unboundPVC",
+						},
+					},
+				},
+			},
+		},
+	}
 
 	tests := []struct {
 		newPod       *v1.Pod
@@ -1823,6 +1836,20 @@ func TestEBSVolumeCountConflicts(t *testing.T) {
 			fits:         true,
 			test:         "pod with missing PV is counted towards the PV limit",
 		},
+		{
+			newPod:       ebsPVCPod,
+			existingPods: []*v1.Pod{oneVolPod, unboundPVCPod},
+			maxVols:      2,
+			fits:         false,
+			test:         "pod with unbound PVC is counted towards the PV limit",
+		},
+		{
+			newPod:       ebsPVCPod,
+			existingPods: []*v1.Pod{oneVolPod, unboundPVCPod},
+			maxVols:      3,
+			fits:         true,
+			test:         "pod with unbound PVC is counted towards the PV limit",
+		},
 	}
 
 	pvInfo := FakePersistentVolumeInfo{
@@ -1854,6 +1881,10 @@ func TestEBSVolumeCountConflicts(t *testing.T) {
 		{
 			ObjectMeta: metav1.ObjectMeta{Name: "pvcWithDeletedPV"},
 			Spec:       v1.PersistentVolumeClaimSpec{VolumeName: "pvcWithDeletedPV"},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: "unboundPVC"},
+			Spec:       v1.PersistentVolumeClaimSpec{VolumeName: ""},
 		},
 	}
 

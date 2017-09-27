@@ -218,7 +218,7 @@ func (c *MaxPDVolumeCountChecker) filterVolumes(volumes []v1.Volume, namespace s
 				return fmt.Errorf("PersistentVolumeClaim had no name")
 			}
 			pvc, err := c.pvcInfo.GetPersistentVolumeClaimInfo(namespace, pvcName)
-			if err != nil {
+			if err != nil || pvc == nil {
 				// if the PVC is not found, log the error and count the PV towards the PV limit
 				// generate a random volume ID since its required for de-dup
 				glog.V(4).Infof("Unable to look up PVC info for %s/%s, assuming PVC matches predicate when counting limits: %v", namespace, pvcName, err)
@@ -228,17 +228,21 @@ func (c *MaxPDVolumeCountChecker) filterVolumes(volumes []v1.Volume, namespace s
 				return nil
 			}
 
-			if pvc == nil {
-				return fmt.Errorf("PersistentVolumeClaim not found: %q", pvcName)
-			}
-
 			pvName := pvc.Spec.VolumeName
 			if pvName == "" {
-				return fmt.Errorf("PersistentVolumeClaim is not bound: %q", pvcName)
+				// PVC is not bound. It was either deleted and created again or
+				// it was forcefuly unbound by admin. The pod can still use the
+				// original PV where it was bound to -> log the error and count
+				// the PV towards the PV limit
+				glog.V(4).Infof("PVC %s/%s is not bound, assuming PVC matches predicate when counting limits", namespace, pvcName)
+				source := rand.NewSource(time.Now().UnixNano())
+				generatedID := "unboundPVC" + strconv.Itoa(rand.New(source).Intn(1000000))
+				filteredVolumes[generatedID] = true
+				return nil
 			}
 
 			pv, err := c.pvInfo.GetPersistentVolumeInfo(pvName)
-			if err != nil {
+			if err != nil || pv == nil {
 				// if the PV is not found, log the error
 				// and count the PV towards the PV limit
 				// generate a random volume ID since it is required for de-dup
@@ -247,10 +251,6 @@ func (c *MaxPDVolumeCountChecker) filterVolumes(volumes []v1.Volume, namespace s
 				generatedID := "missingPV" + strconv.Itoa(rand.New(source).Intn(1000000))
 				filteredVolumes[generatedID] = true
 				return nil
-			}
-
-			if pv == nil {
-				return fmt.Errorf("PersistentVolume not found: %q", pvName)
 			}
 
 			if id, ok := c.filter.FilterPersistentVolume(pv); ok {
