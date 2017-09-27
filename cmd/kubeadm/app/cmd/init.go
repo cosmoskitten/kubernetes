@@ -303,7 +303,7 @@ func (i *Init) Run(out io.Writer) error {
 		}
 
 	} else {
-		fmt.Println("[externalca] No ca.key detected, but all other certificates are available, so using external CA mode.  Will not generate certs or kubeconfig.")
+		fmt.Println("[externalca] The file 'ca.key' was not found, yet all other certificates are present. Using external CA mode -  certificates or kubeconfig will not be generated.")
 	}
 
 	// Temporarily set cfg.CertificatesDir to the "real value" when writing controlplane manifests
