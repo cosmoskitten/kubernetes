@@ -1352,6 +1352,7 @@ function start-kube-apiserver {
   local audit_policy_config_volume=""
   local audit_webhook_config_mount=""
   local audit_webhook_config_volume=""
+  # Basic audit is deprecated and soon will be removed.
   if [[ "${ENABLE_APISERVER_BASIC_AUDIT:-}" == "true" ]]; then
     # We currently only support enabling with a fixed path and with built-in log
     # rotation "disabled" (large value) so it behaves like kube-apiserver.log.
@@ -1365,6 +1366,12 @@ function start-kube-apiserver {
     # grows at 10MiB/s (~30K QPS), it will rotate after ~6 years if apiserver
     # never restarts. Please manually restart apiserver before this time.
     params+=" --audit-log-maxsize=2000000000"
+    # Disable AdvancedAuditing enabled by default
+    if [[ -z "${FEATURE_GATES:-}" ]]; then
+      FEATURE_GATES="AdvancedAuditing=false"
+    else
+      FEATURE_GATES="${FEATURE_GATES},AdvancedAuditing=false"
+    fi
   elif [[ "${ENABLE_APISERVER_ADVANCED_AUDIT:-}" == "true" ]]; then
     local -r audit_policy_file="/etc/audit_policy.config"
     params+=" --audit-policy-file=${audit_policy_file}"
