@@ -23,15 +23,20 @@ import (
 	"testing"
 	"time"
 
+	"math/rand"
+
 	"k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/api/testing/fuzzer"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/diff"
 	"k8s.io/kubernetes/pkg/api"
+	kapitesting "k8s.io/kubernetes/pkg/api/testing"
 	k8s_api_v1 "k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/apis/extensions"
+	utilpointer "k8s.io/kubernetes/pkg/util/pointer"
 )
 
 func TestPodLogOptions(t *testing.T) {
@@ -227,59 +232,84 @@ func TestResourceListConversion(t *testing.T) {
 
 func TestReplicationControllerConversion(t *testing.T) {
 	// If we start with a RC, we should always have round-trip fidelity.
-	replicas := int32(1)
-	in := &v1.ReplicationController{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "name",
-			Namespace: "namespace",
-		},
-		Spec: v1.ReplicationControllerSpec{
-			Replicas:        &replicas,
-			MinReadySeconds: 32,
-			Selector:        map[string]string{"foo": "bar", "bar": "foo"},
-			Template: &v1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{"foo": "bar", "bar": "foo"},
-				},
-				Spec: v1.PodSpec{
-					Containers: []v1.Container{
-						{
-							Name:  "container",
-							Image: "image",
+	inputs := []*v1.ReplicationController{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "name",
+				Namespace: "namespace",
+			},
+			Spec: v1.ReplicationControllerSpec{
+				Replicas:        utilpointer.Int32Ptr(1),
+				MinReadySeconds: 32,
+				Selector:        map[string]string{"foo": "bar", "bar": "foo"},
+				Template: &v1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{
+						Labels: map[string]string{"foo": "bar", "bar": "foo"},
+					},
+					Spec: v1.PodSpec{
+						Containers: []v1.Container{
+							{
+								Name:  "container",
+								Image: "image",
+							},
 						},
 					},
 				},
 			},
-		},
-		Status: v1.ReplicationControllerStatus{
-			Replicas:             1,
-			FullyLabeledReplicas: 2,
-			ReadyReplicas:        3,
-			AvailableReplicas:    4,
-			ObservedGeneration:   5,
-			Conditions: []v1.ReplicationControllerCondition{
-				{
-					Type:               v1.ReplicationControllerReplicaFailure,
-					Status:             v1.ConditionTrue,
-					LastTransitionTime: metav1.NewTime(time.Unix(123456789, 0)),
-					Reason:             "Reason",
-					Message:            "Message",
+			Status: v1.ReplicationControllerStatus{
+				Replicas:             1,
+				FullyLabeledReplicas: 2,
+				ReadyReplicas:        3,
+				AvailableReplicas:    4,
+				ObservedGeneration:   5,
+				Conditions: []v1.ReplicationControllerCondition{
+					{
+						Type:               v1.ReplicationControllerReplicaFailure,
+						Status:             v1.ConditionTrue,
+						LastTransitionTime: metav1.NewTime(time.Unix(123456789, 0)),
+						Reason:             "Reason",
+						Message:            "Message",
+					},
 				},
 			},
 		},
 	}
-	in = roundTrip(t, in).(*v1.ReplicationController)
-	rs := &extensions.ReplicaSet{}
-	if err := k8s_api_v1.Convert_v1_ReplicationController_to_extensions_ReplicaSet(in, rs, nil); err != nil {
-		t.Fatalf("can't convert RC to RS: %v", err)
+
+	// Add some fuzzed RCs.
+	apiObjectFuzzer := fuzzer.FuzzerFor(kapitesting.FuzzerFuncs, rand.NewSource(152), api.Codecs)
+	for i := 0; i < 10; i++ {
+		rc := &v1.ReplicationController{}
+		apiObjectFuzzer.Fuzz(rc)
+		rc.Spec.Template = &v1.PodTemplateSpec{}
+		apiObjectFuzzer.Fuzz(rc.Spec.Template)
+		for j := 0; j < 3; j++ {
+			cond := &v1.ReplicationControllerCondition{}
+			apiObjectFuzzer.Fuzz(cond)
+			rc.Status.Conditions = append(rc.Status.Conditions, *cond)
+		}
+		inputs = append(inputs, rc)
 	}
-	out := &v1.ReplicationController{}
-	if err := k8s_api_v1.Convert_extensions_ReplicaSet_to_v1_ReplicationController(rs, out, nil); err != nil {
-		t.Fatalf("can't convert RS to RC: %v", err)
+
+	// Round-trip the input RCs before converting to RS.
+	for i := range inputs {
+		inputs[i] = roundTrip(t, inputs[i]).(*v1.ReplicationController)
 	}
-	if !apiequality.Semantic.DeepEqual(in, out) {
-		instr, _ := json.MarshalIndent(in, "", "  ")
-		outstr, _ := json.MarshalIndent(out, "", "  ")
-		t.Errorf("RC-RS conversion round-trip failed:\nin:\n%s\nout:\n%s", instr, outstr)
+
+	for _, in := range inputs {
+		rs := &extensions.ReplicaSet{}
+		if err := k8s_api_v1.Convert_v1_ReplicationController_to_extensions_ReplicaSet(in, rs, nil); err != nil {
+			t.Errorf("can't convert RC to RS: %v", err)
+			continue
+		}
+		out := &v1.ReplicationController{}
+		if err := k8s_api_v1.Convert_extensions_ReplicaSet_to_v1_ReplicationController(rs, out, nil); err != nil {
+			t.Errorf("can't convert RS to RC: %v", err)
+			continue
+		}
+		if !apiequality.Semantic.DeepEqual(in, out) {
+			instr, _ := json.MarshalIndent(in, "", "  ")
+			outstr, _ := json.MarshalIndent(out, "", "  ")
+			t.Errorf("RC-RS conversion round-trip failed:\nin:\n%s\nout:\n%s", instr, outstr)
+		}
 	}
 }

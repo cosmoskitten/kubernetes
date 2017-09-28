@@ -91,3 +91,12 @@ filegroup(
     srcs = ["generated.proto"],
     visibility = ["//visibility:public"],
 )
+
+go_test(
+    name = "go_default_xtest",
+    srcs = ["conversion_test.go"],
+    deps = [
+        "//vendor/k8s.io/apimachinery/pkg/api/equality:go_default_library",
+        "//vendor/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
+    ],
+)
