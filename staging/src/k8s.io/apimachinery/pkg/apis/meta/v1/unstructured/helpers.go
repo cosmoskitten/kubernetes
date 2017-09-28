@@ -29,11 +29,22 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/json"
+
+	"github.com/golang/glog"
 )
 
-// NestedField returns the value of a nested field.
+// NestedField returns a deep copy of the value of a nested field.
 // false is returned if the value is missing.
+// nil, true is returned for a nil field.
 func NestedField(obj map[string]interface{}, fields ...string) (interface{}, bool) {
+	val, ok := nestedFieldNoCopy(obj, fields...)
+	if !ok {
+		return nil, false
+	}
+	return unstructured.DeepCopyJSONValue(val), true
+}
+
+func nestedFieldNoCopy(obj map[string]interface{}, fields ...string) (interface{}, bool) {
 	var val interface{} = obj
 	for _, field := range fields {
 		if m, ok := val.(map[string]interface{}); ok {
@@ -42,6 +53,7 @@ func NestedField(obj map[string]interface{}, fields ...string) (interface{}, boo
 				return nil, false
 			}
 		} else {
+			glog.Warningf("NestedField(): expected map[string]interface{}, got %T while getting field %q in %s", val, field, fields)
 			return nil, false
 		}
 	}
@@ -51,7 +63,7 @@ func NestedField(obj map[string]interface{}, fields ...string) (interface{}, boo
 // NestedString returns the string value of a nested field.
 // Returns false if value is not found or is not a string.
 func NestedString(obj map[string]interface{}, fields ...string) (string, bool) {
-	val, ok := NestedField(obj, fields...)
+	val, ok := nestedFieldNoCopy(obj, fields...)
 	if !ok {
 		return "", false
 	}
@@ -62,7 +74,7 @@ func NestedString(obj map[string]interface{}, fields ...string) (string, bool) {
 // NestedBool returns the bool value of a nested field.
 // Returns false if value is not found or is not a bool.
 func NestedBool(obj map[string]interface{}, fields ...string) (bool, bool) {
-	val, ok := NestedField(obj, fields...)
+	val, ok := nestedFieldNoCopy(obj, fields...)
 	if !ok {
 		return false, false
 	}
@@ -73,7 +85,7 @@ func NestedBool(obj map[string]interface{}, fields ...string) (bool, bool) {
 // NestedFloat64 returns the bool value of a nested field.
 // Returns false if value is not found or is not a float64.
 func NestedFloat64(obj map[string]interface{}, fields ...string) (float64, bool) {
-	val, ok := NestedField(obj, fields...)
+	val, ok := nestedFieldNoCopy(obj, fields...)
 	if !ok {
 		return 0, false
 	}
@@ -84,7 +96,7 @@ func NestedFloat64(obj map[string]interface{}, fields ...string) (float64, bool)
 // NestedInt64 returns the int64 value of a nested field.
 // Returns false if value is not found or is not an int64.
 func NestedInt64(obj map[string]interface{}, fields ...string) (int64, bool) {
-	val, ok := NestedField(obj, fields...)
+	val, ok := nestedFieldNoCopy(obj, fields...)
 	if !ok {
 		return 0, false
 	}
@@ -92,10 +104,10 @@ func NestedInt64(obj map[string]interface{}, fields ...string) (int64, bool) {
 	return i, ok
 }
 
-// NestedStringSlice returns the []string value of a nested field.
-// Returns false if value is not found or is not a []interface{}.
+// NestedStringSlice returns a copy of []string value of a nested field.
+// Returns false if value is not found, is not a []interface{} or contains non-string items in the slice.
 func NestedStringSlice(obj map[string]interface{}, fields ...string) ([]string, bool) {
-	val, ok := NestedField(obj, fields...)
+	val, ok := nestedFieldNoCopy(obj, fields...)
 	if !ok {
 		return nil, false
 	}
@@ -113,25 +125,23 @@ func NestedStringSlice(obj map[string]interface{}, fields ...string) ([]string, 
 	return nil, false
 }
 
-// NestedSlice returns the []interface{} value of a nested field.
+// NestedSlice returns a deep copy of []interface{} value of a nested field.
 // Returns false if value is not found or is not a []interface{}.
 func NestedSlice(obj map[string]interface{}, fields ...string) ([]interface{}, bool) {
-	val, ok := NestedField(obj, fields...)
+	val, ok := nestedFieldNoCopy(obj, fields...)
 	if !ok {
 		return nil, false
 	}
-	if m, ok := val.([]interface{}); ok {
-		slice := make([]interface{}, len(m))
-		copy(slice, m)
-		return slice, true
+	if _, ok := val.([]interface{}); ok {
+		return unstructured.DeepCopyJSONValue(val).([]interface{}), true
 	}
 	return nil, false
 }
 
-// NestedStringMap returns the map[string]string value of a nested field.
-// Returns false if value is not found or is not a map[string]interface{}.
+// NestedStringMap returns a copy of map[string]string value of a nested field.
+// Returns false if value is not found, is not a map[string]interface{} or contains non-string values in the map.
 func NestedStringMap(obj map[string]interface{}, fields ...string) (map[string]string, bool) {
-	val, ok := NestedField(obj, fields...)
+	val, ok := nestedFieldNoCopy(obj, fields...)
 	if !ok {
 		return nil, false
 	}
@@ -149,43 +159,26 @@ func NestedStringMap(obj map[string]interface{}, fields ...string) (map[string]s
 	return nil, false
 }
 
-// NestedMap returns the map[string]interface{} value of a nested field.
+// NestedMap returns a deep copy of map[string]interface{} value of a nested field.
 // Returns false if value is not found or is not a map[string]interface{}.
 func NestedMap(obj map[string]interface{}, fields ...string) (map[string]interface{}, bool) {
-	val, ok := NestedField(obj, fields...)
+	val, ok := nestedFieldNoCopy(obj, fields...)
 	if !ok {
 		return nil, false
 	}
 	if m, ok := val.(map[string]interface{}); ok {
-		nMap := make(map[string]interface{}, len(m))
-		for k, v := range m {
-			nMap[k] = v
-		}
-		return nMap, true
+		return unstructured.DeepCopyJSON(m), true
 	}
 	return nil, false
 }
 
-func assertValueType(val interface{}) {
-	switch x := val.(type) {
-	case map[string]interface{}:
-		for _, v := range x {
-			assertValueType(v)
-		}
-	case []interface{}:
-		for _, v := range x {
-			assertValueType(v)
-		}
-	case string, int64, bool, float64, nil, gojson.Number:
-	default:
-		panic(fmt.Errorf("invalid value type: %T", val))
-	}
-}
-
-// SetNestedField sets the value of a nested field.
+// SetNestedField sets the value of a nested field to a deep copy of the value provided.
 // Returns false if value cannot be set because one of the nesting levels is not a map[string]interface{}.
 func SetNestedField(obj map[string]interface{}, value interface{}, fields ...string) bool {
-	assertValueType(value)
+	return setNestedFieldNoCopy(obj, unstructured.DeepCopyJSONValue(value), fields...)
+}
+
+func setNestedFieldNoCopy(obj map[string]interface{}, value interface{}, fields ...string) bool {
 	m := obj
 	for _, field := range fields[:len(fields)-1] {
 		if val, ok := m[field]; ok {
@@ -207,39 +200,33 @@ func SetNestedField(obj map[string]interface{}, value interface{}, fields ...str
 // SetNestedStringSlice sets the string slice value of a nested field.
 // Returns false if value cannot be set because one of the nesting levels is not a map[string]interface{}.
 func SetNestedStringSlice(obj map[string]interface{}, value []string, fields ...string) bool {
-	m := make([]interface{}, 0, len(value))
+	m := make([]interface{}, 0, len(value)) // convert []string into []interface{}
 	for _, v := range value {
 		m = append(m, v)
 	}
-	return SetNestedField(obj, m, fields...)
+	return setNestedFieldNoCopy(obj, m, fields...)
 }
 
 // SetNestedSlice sets the slice value of a nested field.
 // Returns false if value cannot be set because one of the nesting levels is not a map[string]interface{}.
 func SetNestedSlice(obj map[string]interface{}, value []interface{}, fields ...string) bool {
-	m := make([]interface{}, len(value))
-	copy(m, value)
-	return SetNestedField(obj, m, fields...)
+	return SetNestedField(obj, value, fields...)
 }
 
 // SetNestedStringMap sets the map[string]string value of a nested field.
 // Returns false if value cannot be set because one of the nesting levels is not a map[string]interface{}.
 func SetNestedStringMap(obj map[string]interface{}, value map[string]string, fields ...string) bool {
-	m := make(map[string]interface{}, len(value))
+	m := make(map[string]interface{}, len(value)) // convert map[string]string into map[string]interface{}
 	for k, v := range value {
 		m[k] = v
 	}
-	return SetNestedField(obj, m, fields...)
+	return setNestedFieldNoCopy(obj, m, fields...)
 }
 
 // SetNestedMap sets the map[string]interface{} value of a nested field.
 // Returns false if value cannot be set because one of the nesting levels is not a map[string]interface{}.
 func SetNestedMap(obj map[string]interface{}, value map[string]interface{}, fields ...string) bool {
-	m := make(map[string]interface{}, len(value))
-	for k, v := range value {
-		m[k] = v
-	}
-	return SetNestedField(obj, m, fields...)
+	return SetNestedField(obj, value, fields...)
 }
 
 // RemoveNestedField removes the nested field from the obj.
@@ -426,7 +413,7 @@ func (s unstructuredJSONScheme) decodeToList(data []byte, list *UnstructuredList
 	itemKind := strings.TrimSuffix(listKind, "List")
 
 	delete(list.Object, "items")
-	list.Items = nil
+	list.Items = make([]Unstructured, 0, len(dList.Items))
 	for _, i := range dList.Items {
 		unstruct := &Unstructured{}
 		if err := s.decodeToUnstructured([]byte(i), unstruct); err != nil {

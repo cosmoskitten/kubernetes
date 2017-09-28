@@ -19,6 +19,8 @@ package unstructured
 import (
 	"testing"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -49,9 +51,14 @@ func TestNilDeletionTimestamp(t *testing.T) {
 	if del != nil {
 		t.Errorf("unexpected non-nil deletion timestamp: %v", del)
 	}
+	_, ok := u.Object["metadata"]
+	assert.False(t, ok)
+
+	now := metav1.Now()
+	u.SetDeletionTimestamp(&now)
+	assert.Equal(t, now.Unix(), u.GetDeletionTimestamp().Unix())
+	u.SetDeletionTimestamp(nil)
 	metadata := u.Object["metadata"].(map[string]interface{})
-	deletionTimestamp := metadata["deletionTimestamp"]
-	if deletionTimestamp != nil {
-		t.Errorf("unexpected deletion timestamp field: %q", deletionTimestamp)
-	}
+	_, ok = metadata["deletionTimestamp"]
+	assert.False(t, ok)
 }

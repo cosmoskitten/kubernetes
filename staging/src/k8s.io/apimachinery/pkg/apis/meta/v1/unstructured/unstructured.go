@@ -20,6 +20,8 @@ import (
 	"bytes"
 	"fmt"
 
+	"github.com/golang/glog"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/conversion/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -150,6 +152,7 @@ func (u *Unstructured) GetOwnerReferences() []metav1.OwnerReference {
 	for _, obj := range original {
 		o, ok := obj.(map[string]interface{})
 		if !ok {
+			glog.Warningf("GetOwnerReferences(): expected map[string]interface{}, got %T", obj)
 			return nil
 		}
 		ret = append(ret, extractOwnerReference(o))
@@ -339,6 +342,7 @@ func (u *Unstructured) GetInitializers() *metav1.Initializers {
 	}
 	obj, ok := field.(map[string]interface{})
 	if !ok {
+		glog.Warningf("GetInitializers(): expected map[string]interface{}, got %T", field)
 		return nil
 	}
 	out := &metav1.Initializers{}
@@ -349,9 +353,6 @@ func (u *Unstructured) GetInitializers() *metav1.Initializers {
 }
 
 func (u *Unstructured) SetInitializers(initializers *metav1.Initializers) {
-	if u.Object == nil {
-		u.Object = make(map[string]interface{})
-	}
 	if initializers == nil {
 		RemoveNestedField(u.Object, "metadata", "initializers")
 		return
@@ -360,7 +361,7 @@ func (u *Unstructured) SetInitializers(initializers *metav1.Initializers) {
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("unable to retrieve initializers for object: %v", err))
 	}
-	SetNestedField(u.Object, out, "metadata", "initializers")
+	u.setNestedField(out, "metadata", "initializers")
 }
 
 func (u *Unstructured) GetFinalizers() []string {

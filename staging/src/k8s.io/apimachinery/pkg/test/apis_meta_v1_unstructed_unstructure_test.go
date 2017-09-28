@@ -84,6 +84,7 @@ func TestDecode(t *testing.T) {
 			json: []byte(`{"apiVersion": "test", "kind": "test_list", "items": []}`),
 			want: &unstructured.UnstructuredList{
 				Object: map[string]interface{}{"apiVersion": "test", "kind": "test_list"},
+				Items:  []unstructured.Unstructured{},
 			},
 		},
 		{
