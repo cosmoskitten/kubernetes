@@ -214,6 +214,9 @@ var (
 
 	// MinimumKubeletVersion specifies the minimum version of kubelet which kubeadm supports
 	MinimumKubeletVersion = version.MustParseSemantic("v1.8.0-beta.0")
+
+	// MinimumUnstableVersion specifies the earliest version of the upcoming major release
+	MinimumUnstableVersion = version.MustParseSemantic("v1.9.0-alpha.1")
 )
 
 // GetStaticPodDirectory returns the location on the disk where the Static Pod should be present
