@@ -66,7 +66,7 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/cadvisor"
 	"k8s.io/kubernetes/pkg/kubelet/certificate"
 	"k8s.io/kubernetes/pkg/kubelet/certificate/bootstrap"
-	"k8s.io/kubernetes/pkg/kubelet/cm"
+	cmcontainermanager "k8s.io/kubernetes/pkg/kubelet/cm/containermanager"
 	"k8s.io/kubernetes/pkg/kubelet/config"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
 	"k8s.io/kubernetes/pkg/kubelet/dockershim"
@@ -440,7 +440,7 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies) (err error) {
 				return err
 			}
 		}
-		experimentalQOSReserved, err := cm.ParseQOSReserved(s.ExperimentalQOSReserved)
+		experimentalQOSReserved, err := cmcontainermanager.ParseQOSReserved(s.ExperimentalQOSReserved)
 		if err != nil {
 			return err
 		}
