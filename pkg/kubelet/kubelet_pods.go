@@ -52,6 +52,7 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/cm"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
 	"k8s.io/kubernetes/pkg/kubelet/envvars"
+	"k8s.io/kubernetes/pkg/kubelet/eviction"
 	"k8s.io/kubernetes/pkg/kubelet/images"
 	"k8s.io/kubernetes/pkg/kubelet/server/portforward"
 	remotecommandserver "k8s.io/kubernetes/pkg/kubelet/server/remotecommand"
@@ -741,6 +742,32 @@ func (kl *Kubelet) podIsTerminated(pod *v1.Pod) bool {
 		status = pod.Status
 	}
 	return status.Phase == v1.PodFailed || status.Phase == v1.PodSucceeded || (pod.DeletionTimestamp != nil && notRunning(status.ContainerStatuses))
+}
+
+// IsPodTerminated returns trus if the pod with the provided UID is in a terminated state ("Failed" or "Succeeded")
+// or if the pod has been deleted or removed
+func (kl *Kubelet) IsPodTerminated(uid types.UID) bool {
+	pod, podFound := kl.podManager.GetPodByUID(uid)
+	if !podFound {
+		return true
+	}
+	return kl.podIsTerminated(pod)
+}
+
+// IsPodDeleted returns true if the pod is deleted.  For the pod to be deleted, either:
+// 1. The pod object is deleted
+// 2. The pod's status is evicted
+// 3. The pod's deletion timestamp is set, and containers are not running
+func (kl *Kubelet) IsPodDeleted(uid types.UID) bool {
+	pod, podFound := kl.podManager.GetPodByUID(uid)
+	if !podFound {
+		return true
+	}
+	status, statusFound := kl.statusManager.GetPodStatus(pod.UID)
+	if !statusFound {
+		status = pod.Status
+	}
+	return eviction.PodIsEvicted(status) || (pod.DeletionTimestamp != nil && notRunning(status.ContainerStatuses))
 }
 
 // PodResourcesAreReclaimed returns true if all required node-level resources that a pod was consuming have
