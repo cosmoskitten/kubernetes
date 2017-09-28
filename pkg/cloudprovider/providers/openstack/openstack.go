@@ -101,7 +101,8 @@ type RouterOpts struct {
 }
 
 type MetadataOpts struct {
-	SearchOrder string `gcfg:"search-order"`
+	SearchOrder    string        `gcfg:"search-order"`
+	RequestTimeout time.Duration `gcfg:"request-timeout"`
 }
 
 // OpenStack is an implementation of cloud provider Interface for OpenStack.
@@ -290,6 +291,7 @@ func newOpenStack(cfg Config) (*OpenStack, error) {
 		return nil, err
 	}
 
+	provider.HTTPClient.Timeout = cfg.Metadata.RequestTimeout
 	os := OpenStack{
 		provider:     provider,
 		region:       cfg.Global.Region,
