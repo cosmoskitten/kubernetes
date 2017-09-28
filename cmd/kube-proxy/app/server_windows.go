@@ -161,10 +161,13 @@ func NewProxyServer(config *componentconfig.KubeProxyConfiguration, cleanupAndEx
 
 func getProxyMode(proxyMode string, kcompat winkernel.KernelCompatTester) string {
 	if proxyMode == proxyModeUserspace {
-		return proxyModeUserspace
-	} else if proxyMode == proxyModeKernelspace {
+		return proxyModeUsersapce
+	}
+	if proxyMode == proxyModeKernelspace {
 		return tryWinKernelSpaceProxy(kcompat)
 	}
+
+	glog.Warningf("Flag proxy-mode=%q unknown, assuming userspace proxier", proxyMode)
 	return proxyModeUserspace
 }
 
@@ -175,7 +178,7 @@ func tryWinKernelSpaceProxy(kcompat winkernel.KernelCompatTester) string {
 	// guaranteed false on error, error only necessary for debugging
 	useWinKerelProxy, err := winkernel.CanUseWinKernelProxier(kcompat)
 	if err != nil {
-		glog.Errorf("Can't determine whether to use windows kernel proxy, using userspace proxier: %v", err)
+		glog.Errorf("Can't determine whether to use windows kernel proxier, using userspace proxier: %v", err)
 		return proxyModeUserspace
 	}
 	if useWinKerelProxy {

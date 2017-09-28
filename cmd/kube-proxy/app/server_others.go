@@ -247,20 +247,19 @@ func getProxyMode(proxyMode string, iptver iptables.IPTablesVersioner, kcompat i
 	if proxyMode == proxyModeUserspace {
 		return proxyModeUserspace
 	}
-
-	if len(proxyMode) > 0 && proxyMode == proxyModeIPTables {
+	if proxyMode == proxyModeIPTables {
 		return tryIPTablesProxy(iptver, kcompat)
 	}
-
-	if utilfeature.DefaultFeatureGate.Enabled(features.SupportIPVSProxyMode) {
-		if proxyMode == proxyModeIPVS {
+	if proxyMode == proxyModeIPVS {
+		if utilfeature.DefaultFeatureGate.Enabled(features.SupportIPVSProxyMode) {
 			return tryIPVSProxy(iptver, kcompat)
 		} else {
 			glog.Warningf("Can't use ipvs proxier, trying iptables proxier")
 			return tryIPTablesProxy(iptver, kcompat)
 		}
 	}
-	glog.Warningf("Flag proxy-mode=%q unknown, assuming iptables proxy", proxyMode)
+
+	glog.Warningf("Flag proxy-mode=%q unknown, assuming iptables proxier", proxyMode)
 	return tryIPTablesProxy(iptver, kcompat)
 }
 
@@ -269,8 +268,8 @@ func tryIPVSProxy(iptver iptables.IPTablesVersioner, kcompat iptables.KernelComp
 	// IPVS Proxier relies on iptables
 	useIPVSProxy, err := ipvs.CanUseIPVSProxier()
 	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("can't determine whether to use ipvs proxy, using userspace proxier: %v", err))
-		return proxyModeUserspace
+		utilruntime.HandleError(fmt.Errorf("can't determine whether to use ipvs proxier, trying iptables proxier: %v", err))
+		return tryIPTablesProxy(iptver, kcompat)
 	}
 	if useIPVSProxy {
 		return proxyModeIPVS
@@ -287,13 +286,13 @@ func tryIPTablesProxy(iptver iptables.IPTablesVersioner, kcompat iptables.Kernel
 	// guaranteed false on error, error only necessary for debugging
 	useIPTablesProxy, err := iptables.CanUseIPTablesProxier(iptver, kcompat)
 	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("can't determine whether to use iptables proxy, using userspace proxier: %v", err))
+		utilruntime.HandleError(fmt.Errorf("can't determine whether to use iptables proxier, using userspace proxier: %v", err))
 		return proxyModeUserspace
 	}
 	if useIPTablesProxy {
 		return proxyModeIPTables
 	}
 	// Fallback.
-	glog.V(1).Infof("Can't use iptables proxy, using userspace proxier")
+	glog.V(1).Infof("Can't use iptables proxier, using userspace proxier")
 	return proxyModeUserspace
 }
