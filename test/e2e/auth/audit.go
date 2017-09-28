@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-	"time"
 
 	apiv1 "k8s.io/api/core/v1"
 	extensions "k8s.io/api/extensions/v1beta1"
@@ -86,7 +85,7 @@ var _ = SIGDescribe("Advanced Audit [Feature:Audit]", func() {
 		f.PodClient().CreateSync(pod)
 		_, err := f.PodClient().Get(pod.Name, metav1.GetOptions{})
 		framework.ExpectNoError(err, "failed to get audit-pod")
-		_, err = f.PodClient().Watch(watchOptions)
+		podChan, err := f.PodClient().Watch(watchOptions)
 		framework.ExpectNoError(err, "failed to create watch for pods")
 		_, err = f.PodClient().List(metav1.ListOptions{})
 		framework.ExpectNoError(err, "failed to list pods")
@@ -96,7 +95,7 @@ var _ = SIGDescribe("Advanced Audit [Feature:Audit]", func() {
 		framework.ExpectNoError(err, "failed to create audit-deployment")
 		_, err = f.ClientSet.Extensions().Deployments(f.Namespace.Name).Get(d.Name, metav1.GetOptions{})
 		framework.ExpectNoError(err, "failed to get audit-deployment")
-		_, err = f.ClientSet.Extensions().Deployments(f.Namespace.Name).Watch(watchOptions)
+		deploymentChan, err := f.ClientSet.Extensions().Deployments(f.Namespace.Name).Watch(watchOptions)
 		framework.ExpectNoError(err, "failed to create watch for deployments")
 		_, err = f.ClientSet.Extensions().Deployments(f.Namespace.Name).List(metav1.ListOptions{})
 		framework.ExpectNoError(err, "failed to create list deployments")
@@ -107,10 +106,10 @@ var _ = SIGDescribe("Advanced Audit [Feature:Audit]", func() {
 		framework.ExpectNoError(err, "failed to create audit-secret")
 		_, err = f.ClientSet.Core().Secrets(f.Namespace.Name).Get(secret.Name, metav1.GetOptions{})
 		framework.ExpectNoError(err, "failed to get audit-secret")
+		secretChan, err := f.ClientSet.Core().Secrets(f.Namespace.Name).Watch(watchOptions)
+		framework.ExpectNoError(err, "failed to create watch for secrets")
 		_, err = f.ClientSet.Core().Secrets(f.Namespace.Name).List(metav1.ListOptions{})
 		framework.ExpectNoError(err, "failed to list secrets")
-		_, err = f.ClientSet.Core().Secrets(f.Namespace.Name).Watch(watchOptions)
-		framework.ExpectNoError(err, "failed to create watch for secrets")
 		err = f.ClientSet.Core().Secrets(f.Namespace.Name).Delete(secret.Name, &metav1.DeleteOptions{})
 		framework.ExpectNoError(err, "failed to delete audit-secret")
 
@@ -118,10 +117,10 @@ var _ = SIGDescribe("Advanced Audit [Feature:Audit]", func() {
 		framework.ExpectNoError(err, "failed to create audit-configmap")
 		_, err = f.ClientSet.Core().ConfigMaps(f.Namespace.Name).Get(configMap.Name, metav1.GetOptions{})
 		framework.ExpectNoError(err, "failed to get audit-configmap")
+		configMapChan, err := f.ClientSet.Core().ConfigMaps(f.Namespace.Name).Watch(watchOptions)
+		framework.ExpectNoError(err, "failed to create watch for config maps")
 		_, err = f.ClientSet.Core().ConfigMaps(f.Namespace.Name).List(metav1.ListOptions{})
 		framework.ExpectNoError(err, "failed to list config maps")
-		_, err = f.ClientSet.Core().ConfigMaps(f.Namespace.Name).Watch(watchOptions)
-		framework.ExpectNoError(err, "failed to create watch for config maps")
 		err = f.ClientSet.Core().ConfigMaps(f.Namespace.Name).Delete(configMap.Name, &metav1.DeleteOptions{})
 		framework.ExpectNoError(err, "failed to delete audit-configmap")
 
@@ -166,8 +165,15 @@ var _ = SIGDescribe("Advanced Audit [Feature:Audit]", func() {
 		expectedEvents = append(expectedEvents, customResourceEvents("create", *crd)...)
 		expectedEvents = append(expectedEvents, customResourceEvents("delete", *crd)...)
 
-		// Sleep for watches to timeout.
-		time.Sleep(3 * watchTimeout * time.Second)
+		// Wait for channels to close, which means watches timeout.
+		for range podChan.ResultChan() {
+		}
+		for range deploymentChan.ResultChan() {
+		}
+		for range secretChan.ResultChan() {
+		}
+		for range configMapChan.ResultChan() {
+		}
 
 		expectAuditLines(f, expectedEvents)
 	})
