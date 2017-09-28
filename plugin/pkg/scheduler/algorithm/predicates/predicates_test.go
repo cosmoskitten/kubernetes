@@ -659,6 +659,41 @@ func TestPodFitsHostPorts(t *testing.T) {
 			fits: false,
 			test: "first tcp port conflict",
 		},
+		{
+			pod: newPod("m1", "TCP/0.0.0.0/8001"),
+			nodeInfo: schedulercache.NewNodeInfo(
+				newPod("m1", "TCP/127.0.0.1/8001")),
+			fits: false,
+			test: "first tcp port conflict due to 0.0.0.0 hostIP",
+		},
+		{
+			pod: newPod("m1", "TCP/10.0.10.10/8001", "TCP/0.0.0.0/8001"),
+			nodeInfo: schedulercache.NewNodeInfo(
+				newPod("m1", "TCP/127.0.0.1/8001")),
+			fits: false,
+			test: "TCP hostPort conflict due to 0.0.0.0 hostIP",
+		},
+		{
+			pod: newPod("m1", "TCP/127.0.0.1/8001"),
+			nodeInfo: schedulercache.NewNodeInfo(
+				newPod("m1", "TCP/0.0.0.0/8001")),
+			fits: false,
+			test: "second tcp port conflict to 0.0.0.0 hostIP",
+		},
+		{
+			pod: newPod("m1", "UDP/127.0.0.1/8001"),
+			nodeInfo: schedulercache.NewNodeInfo(
+				newPod("m1", "TCP/0.0.0.0/8001")),
+			fits: true,
+			test: "second different protocol",
+		},
+		{
+			pod: newPod("m1", "UDP/127.0.0.1/8001"),
+			nodeInfo: schedulercache.NewNodeInfo(
+				newPod("m1", "TCP/0.0.0.0/8001", "UDP/0.0.0.0/8001")),
+			fits: false,
+			test: "UDP hostPort conflict due to 0.0.0.0 hostIP",
+		},
 	}
 	expectedFailureReasons := []algorithm.PredicateFailureReason{ErrPodNotFitsHostPorts}
 
@@ -696,10 +731,10 @@ func TestGetUsedPorts(t *testing.T) {
 		},
 		{
 			[]*v1.Pod{
-				newPod("m1", "TCP/127.0.0.1/9090"),
-				newPod("m2", "TCP/127.0.0.1/9091"),
+				newPod("m1", "TCP/0.0.0.0/9090"),
+				newPod("m2", "UDP/127.0.0.1/9091"),
 			},
-			map[string]bool{"TCP/127.0.0.1/9090": true, "TCP/127.0.0.1/9091": true},
+			map[string]bool{"TCP/0.0.0.0/9090": true, "UDP/127.0.0.1/9091": true},
 		},
 	}
 

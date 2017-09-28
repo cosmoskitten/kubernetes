@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"math/rand"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -855,6 +856,49 @@ func PodFitsHostPorts(pod *v1.Pod, meta algorithm.PredicateMetadata, nodeInfo *s
 	}
 
 	existingPorts := nodeInfo.UsedPorts()
+
+	for existingPort := range existingPorts {
+		portInfoSlice := strings.Split(existingPort, "/")
+		existingHostIP := portInfoSlice[1]
+		existingHostPort, _ := strconv.Atoi(portInfoSlice[2])
+		existingProtocol := v1.Protocol(portInfoSlice[0])
+
+		if existingHostIP == "0.0.0.0" {
+			// loop through all the want hostPort to see if there exists a conflict
+			for wantPort := range wantPorts {
+				wantPortInfoSlice := strings.Split(wantPort, "/")
+				wantHostPort, _ := strconv.Atoi(wantPortInfoSlice[2])
+				wantProtocol := v1.Protocol(wantPortInfoSlice[0])
+				// if there already exists one hostPort whose hostIP is 0.0.0.0, then the other want hostport (which has the same protocol and port) will not not fit
+				if wantHostPort == existingHostPort && wantProtocol == existingProtocol {
+					return false, []algorithm.PredicateFailureReason{ErrPodNotFitsHostPorts}, nil
+				}
+			}
+		}
+	}
+
+	for wantPort := range wantPorts {
+		portInfoSlice := strings.Split(wantPort, "/")
+		wantHostIP := portInfoSlice[1]
+		wantHostPort, _ := strconv.Atoi(portInfoSlice[2])
+		wantProtocol := v1.Protocol(portInfoSlice[0])
+
+		if wantHostIP == "0.0.0.0" {
+			// loop through all the existing hostPort to see if there exists a conflict
+			for existingPort := range existingPorts {
+				portInfoSlice := strings.Split(existingPort, "/")
+				existingHostPort, _ := strconv.Atoi(portInfoSlice[2])
+				existingProtocol := v1.Protocol(portInfoSlice[0])
+
+				// if there already exists one hostPort whose hostIP may be 127.0.0.1, then a hostPort (which wants 0.0.0.0 hostIP and has the same protocol and port) will not fit
+				if wantHostPort == existingHostPort && wantProtocol == existingProtocol {
+					return false, []algorithm.PredicateFailureReason{ErrPodNotFitsHostPorts}, nil
+				}
+			}
+		}
+	}
+
+	// general check hostPort conflict procedure for hostIP is not 0.0.0.0
 	for wport := range wantPorts {
 		if wport != "" && existingPorts[wport] {
 			return false, []algorithm.PredicateFailureReason{ErrPodNotFitsHostPorts}, nil
