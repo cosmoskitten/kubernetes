@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-	"time"
 
 	apiv1 "k8s.io/api/core/v1"
 	extensions "k8s.io/api/extensions/v1beta1"
@@ -38,8 +37,8 @@ import (
 )
 
 const (
-	watchTimeout = 1
-	user         = "kubecfg"
+	watchTestTimeout  = 1
+	auditTestUser = "kubecfg"
 )
 
 var _ = SIGDescribe("Advanced Audit [Feature:Audit]", func() {
@@ -81,12 +80,12 @@ var _ = SIGDescribe("Advanced Audit [Feature:Audit]", func() {
 			},
 		}
 
-		watchOptions := metav1.ListOptions{TimeoutSeconds: intToPointer(watchTimeout)}
+		watchOptions := metav1.ListOptions{TimeoutSeconds: intToPointer(watchTestTimeout)}
 
 		f.PodClient().CreateSync(pod)
 		_, err := f.PodClient().Get(pod.Name, metav1.GetOptions{})
 		framework.ExpectNoError(err, "failed to get audit-pod")
-		_, err = f.PodClient().Watch(watchOptions)
+		podChan, err := f.PodClient().Watch(watchOptions)
 		framework.ExpectNoError(err, "failed to create watch for pods")
 		_, err = f.PodClient().List(metav1.ListOptions{})
 		framework.ExpectNoError(err, "failed to list pods")
@@ -96,7 +95,7 @@ var _ = SIGDescribe("Advanced Audit [Feature:Audit]", func() {
 		framework.ExpectNoError(err, "failed to create audit-deployment")
 		_, err = f.ClientSet.Extensions().Deployments(f.Namespace.Name).Get(d.Name, metav1.GetOptions{})
 		framework.ExpectNoError(err, "failed to get audit-deployment")
-		_, err = f.ClientSet.Extensions().Deployments(f.Namespace.Name).Watch(watchOptions)
+		deploymentChan, err := f.ClientSet.Extensions().Deployments(f.Namespace.Name).Watch(watchOptions)
 		framework.ExpectNoError(err, "failed to create watch for deployments")
 		_, err = f.ClientSet.Extensions().Deployments(f.Namespace.Name).List(metav1.ListOptions{})
 		framework.ExpectNoError(err, "failed to create list deployments")
@@ -107,10 +106,10 @@ var _ = SIGDescribe("Advanced Audit [Feature:Audit]", func() {
 		framework.ExpectNoError(err, "failed to create audit-secret")
 		_, err = f.ClientSet.Core().Secrets(f.Namespace.Name).Get(secret.Name, metav1.GetOptions{})
 		framework.ExpectNoError(err, "failed to get audit-secret")
+		secretChan, err := f.ClientSet.Core().Secrets(f.Namespace.Name).Watch(watchOptions)
+		framework.ExpectNoError(err, "failed to create watch for secrets")
 		_, err = f.ClientSet.Core().Secrets(f.Namespace.Name).List(metav1.ListOptions{})
 		framework.ExpectNoError(err, "failed to list secrets")
-		_, err = f.ClientSet.Core().Secrets(f.Namespace.Name).Watch(watchOptions)
-		framework.ExpectNoError(err, "failed to create watch for secrets")
 		err = f.ClientSet.Core().Secrets(f.Namespace.Name).Delete(secret.Name, &metav1.DeleteOptions{})
 		framework.ExpectNoError(err, "failed to delete audit-secret")
 
@@ -118,10 +117,10 @@ var _ = SIGDescribe("Advanced Audit [Feature:Audit]", func() {
 		framework.ExpectNoError(err, "failed to create audit-configmap")
 		_, err = f.ClientSet.Core().ConfigMaps(f.Namespace.Name).Get(configMap.Name, metav1.GetOptions{})
 		framework.ExpectNoError(err, "failed to get audit-configmap")
+		configMapChan, err := f.ClientSet.Core().ConfigMaps(f.Namespace.Name).Watch(watchOptions)
+		framework.ExpectNoError(err, "failed to create watch for config maps")
 		_, err = f.ClientSet.Core().ConfigMaps(f.Namespace.Name).List(metav1.ListOptions{})
 		framework.ExpectNoError(err, "failed to list config maps")
-		_, err = f.ClientSet.Core().ConfigMaps(f.Namespace.Name).Watch(watchOptions)
-		framework.ExpectNoError(err, "failed to create watch for config maps")
 		err = f.ClientSet.Core().ConfigMaps(f.Namespace.Name).Delete(configMap.Name, &metav1.DeleteOptions{})
 		framework.ExpectNoError(err, "failed to delete audit-configmap")
 
@@ -166,8 +165,15 @@ var _ = SIGDescribe("Advanced Audit [Feature:Audit]", func() {
 		expectedEvents = append(expectedEvents, customResourceEvents("create", *crd)...)
 		expectedEvents = append(expectedEvents, customResourceEvents("delete", *crd)...)
 
-		// Sleep for watches to timeout.
-		time.Sleep(3 * watchTimeout * time.Second)
+		// Wait for channels to close, which means watches timeout.
+		for range podChan.ResultChan() {
+		}
+		for range deploymentChan.ResultChan() {
+		}
+		for range secretChan.ResultChan() {
+		}
+		for range configMapChan.ResultChan() {
+		}
 
 		expectAuditLines(f, expectedEvents)
 	})
@@ -258,7 +264,7 @@ func customResourceEvents(method string, crd apiextensionsv1beta1.CustomResource
 		requestURI:     "/apis/apiextensions.k8s.io/v1beta1/customresourcedefinitions",
 		verb:           method,
 		code:           code(method),
-		user:           user,
+		user:           auditTestUser,
 		resource:       "customresourcedefinitions",
 		requestObject:  true,
 		responseObject: true,
@@ -269,7 +275,7 @@ func customResourceEvents(method string, crd apiextensionsv1beta1.CustomResource
 		requestURI:     fmt.Sprintf("/apis/%s/v1beta1/%s", namespace, name),
 		verb:           method,
 		code:           code(method),
-		user:           user,
+		user:           auditTestUser,
 		resource:       name,
 		requestObject:  false,
 		responseObject: false,
@@ -290,7 +296,7 @@ func commonExpectedEvents(resource string, namespace string, method string, reso
 			requestURI:     uriString(resource, namespace, method, resourceName),
 			verb:           method,
 			code:           code(method),
-			user:           user,
+			user:           auditTestUser,
 			resource:       resource,
 			namespace:      namespace,
 			requestObject:  containsRequestBody(resource, method),
@@ -345,10 +351,10 @@ func watchExpectedEvents(resource string, namespace string) []auditEvent {
 	responseStarted := auditEvent{
 		level:          level(resource, ""),
 		stage:          v1beta1.StageResponseStarted,
-		requestURI:     fmt.Sprintf("%s/namespaces/%s/%s?timeoutSeconds=%d&watch=true", api(resource), namespace, resource, watchTimeout),
+		requestURI:     fmt.Sprintf("%s/namespaces/%s/%s?timeoutSeconds=%d&watch=true", api(resource), namespace, resource, watchTestTimeout),
 		verb:           "watch",
 		code:           200,
-		user:           user,
+		user:           auditTestUser,
 		resource:       resource,
 		namespace:      namespace,
 		requestObject:  false,
