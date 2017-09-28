@@ -181,7 +181,6 @@ func (p *podTolerationsPlugin) Admit(a admission.Attributes) error {
 
 	pod.Spec.Tolerations = finalTolerations
 	return nil
-
 }
 
 func NewPodTolerationsPlugin(pluginConfig *pluginapi.Configuration) *podTolerationsPlugin {
@@ -199,7 +198,6 @@ func (p *podTolerationsPlugin) SetInternalKubeInformerFactory(f informers.Shared
 	namespaceInformer := f.Core().InternalVersion().Namespaces()
 	p.namespaceLister = namespaceInformer.Lister()
 	p.SetReadyFunc(namespaceInformer.Informer().HasSynced)
-
 }
 
 func (p *podTolerationsPlugin) Validate() error {
