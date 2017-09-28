@@ -118,31 +118,15 @@ func TestGetNodeBootstrapTokenAuthGroup(t *testing.T) {
 		k8sVersion, expected string
 	}{
 		{
-			k8sVersion: "v1.7.0",
-			expected:   "system:bootstrappers",
-		},
-		{
-			k8sVersion: "v1.7.8",
-			expected:   "system:bootstrappers",
-		},
-		{
-			k8sVersion: "v1.8.0-alpha.3",
-			expected:   "system:bootstrappers",
-		},
-		{
-			k8sVersion: "v1.8.0-beta.0",
-			expected:   "system:bootstrappers:kubeadm:default-node-token",
-		},
-		{
-			k8sVersion: "v1.8.0-rc.1",
-			expected:   "system:bootstrappers:kubeadm:default-node-token",
-		},
-		{
 			k8sVersion: "v1.8.0",
 			expected:   "system:bootstrappers:kubeadm:default-node-token",
 		},
 		{
 			k8sVersion: "v1.8.9",
+			expected:   "system:bootstrappers:kubeadm:default-node-token",
+		},
+		{
+			k8sVersion: "v1.9.0-alpha.0",
 			expected:   "system:bootstrappers:kubeadm:default-node-token",
 		},
 	}

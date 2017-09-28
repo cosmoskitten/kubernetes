@@ -166,11 +166,8 @@ const (
 	// KubeConfigVolumeName specifies the name for the Volume that is used for injecting the kubeconfig to talk securely to the api server for a control plane component if applicable
 	KubeConfigVolumeName = "kubeconfig"
 
-	// V17NodeBootstrapTokenAuthGroup specifies which group a Node Bootstrap Token should be authenticated in, in v1.7
-	V17NodeBootstrapTokenAuthGroup = "system:bootstrappers"
-
-	// V18NodeBootstrapTokenAuthGroup specifies which group a Node Bootstrap Token should be authenticated in, in v1.8
-	V18NodeBootstrapTokenAuthGroup = "system:bootstrappers:kubeadm:default-node-token"
+	// NodeBootstrapTokenAuthGroup specifies which group a Node Bootstrap Token should be authenticated in
+	NodeBootstrapTokenAuthGroup = "system:bootstrappers:kubeadm:default-node-token"
 
 	// DefaultCIImageRepository points to image registry where CI uploads images from ci-cross build job
 	DefaultCIImageRepository = "gcr.io/kubernetes-ci-images"
@@ -202,15 +199,11 @@ var (
 	MasterComponents = []string{KubeAPIServer, KubeControllerManager, KubeScheduler}
 
 	// MinimumControlPlaneVersion specifies the minimum control plane version kubeadm can deploy
-	MinimumControlPlaneVersion = version.MustParseSemantic("v1.7.0")
+	MinimumControlPlaneVersion = version.MustParseSemantic("v1.8.0")
 
 	// MinimumCSRAutoApprovalClusterRolesVersion defines whether kubeadm can rely on the built-in CSR approval ClusterRole or not (note, the binding is always created by kubeadm!)
 	// TODO: Remove this when the v1.9 cycle starts and we bump the minimum supported version to v1.8.0
 	MinimumCSRAutoApprovalClusterRolesVersion = version.MustParseSemantic("v1.8.0-alpha.3")
-
-	// UseEnableBootstrapTokenAuthFlagVersion defines the first version where the API server supports the --enable-bootstrap-token-auth flag instead of the old and deprecated flag.
-	// TODO: Remove this when the v1.9 cycle starts and we bump the minimum supported version to v1.8.0
-	UseEnableBootstrapTokenAuthFlagVersion = version.MustParseSemantic("v1.8.0-beta.0")
 
 	// MinimumKubeletVersion specifies the minimum version of kubelet which kubeadm supports
 	MinimumKubeletVersion = version.MustParseSemantic("v1.8.0-beta.0")
@@ -252,8 +245,5 @@ func CreateTempDirForKubeadm(dirName string) (string, error) {
 
 // GetNodeBootstrapTokenAuthGroup gets the bootstrap token auth group conditionally based on version
 func GetNodeBootstrapTokenAuthGroup(k8sVersion *version.Version) string {
-	if k8sVersion.AtLeast(UseEnableBootstrapTokenAuthFlagVersion) {
-		return V18NodeBootstrapTokenAuthGroup
-	}
-	return V17NodeBootstrapTokenAuthGroup
+	return NodeBootstrapTokenAuthGroup
 }
