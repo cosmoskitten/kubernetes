@@ -210,6 +210,8 @@ func NewServer(
 		if enableContentionProfiling {
 			goruntime.SetBlockProfileRate(1)
 		}
+	} else {
+		server.InstallDebuggingDisabledHandlers()
 	}
 	return server
 }
@@ -414,6 +416,20 @@ func (s *Server) InstallDebuggingHandlers(criHandler http.Handler) {
 
 	if criHandler != nil {
 		s.restfulCont.Handle("/cri/", criHandler)
+	}
+}
+
+// InstallDebuggingDisabledHandlers registers the HTTP request patterns that provide better error message
+func (s *Server) InstallDebuggingDisabledHandlers() {
+	glog.Infof("Adding debug disabled handlers to kubelet server.")
+
+	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "Server endpoints for log collection and local running of containers and commands are disabled.", http.StatusMethodNotAllowed)
+	})
+
+	paths := []string{"/run/", "/exec/", "/attach/", "/portForward/", "/containerLogs/", "/runningpods/"}
+	for _, p := range paths {
+		s.restfulCont.Handle(p, h)
 	}
 }
 
