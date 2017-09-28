@@ -75,38 +75,41 @@ func NewCmdCp(f cmdutil.Factory, cmdOut, cmdErr io.Writer) *cobra.Command {
 }
 
 type fileSpec struct {
-	PodNamespace string
-	PodName      string
-	File         string
+	PodNamespace    string
+	PodName         string
+	File            string
+	LocalFileExists bool // indicates if File exists in local filesystem
 }
 
 var errFileSpecDoesntMatchFormat = errors.New("Filespec must match the canonical format: [[namespace/]pod:]file/path")
 
 func extractFileSpec(arg string) (fileSpec, error) {
-	pieces := strings.Split(arg, ":")
-	if len(pieces) == 1 {
-		return fileSpec{File: arg}, nil
-	}
-	if len(pieces) != 2 {
-		// FIXME Kubernetes can't copy files that contain a ':'
-		// character.
-		return fileSpec{}, errFileSpecDoesntMatchFormat
-	}
-	file := pieces[1]
 
-	pieces = strings.Split(pieces[0], "/")
-	if len(pieces) == 1 {
-		return fileSpec{
-			PodName: pieces[0],
-			File:    file,
-		}, nil
-	}
-	if len(pieces) == 2 {
-		return fileSpec{
-			PodNamespace: pieces[0],
-			PodName:      pieces[1],
-			File:         file,
-		}, nil
+	if pathExists(arg) {
+		return fileSpec{File: arg, LocalFileExists: true}, nil
+	} else {
+		if i := strings.Index(arg, ":"); i == -1 {
+			return fileSpec{File: arg}, nil
+		} else if i == 0 {
+			return fileSpec{}, errFileSpecDoesntMatchFormat
+		} else {
+			file := arg[i+1:]
+			pod := arg[:i]
+			pieces := strings.Split(pod, "/")
+			if len(pieces) == 1 {
+				return fileSpec{
+					PodName: pieces[0],
+					File:    file,
+				}, nil
+			}
+			if len(pieces) == 2 {
+				return fileSpec{
+					PodNamespace: pieces[0],
+					PodName:      pieces[1],
+					File:         file,
+				}, nil
+			}
+		}
 	}
 
 	return fileSpec{}, errFileSpecDoesntMatchFormat
@@ -124,10 +127,20 @@ func runCopy(f cmdutil.Factory, cmd *cobra.Command, out, cmderr io.Writer, args 
 	if err != nil {
 		return err
 	}
-	if len(srcSpec.PodName) != 0 {
+
+	srcPodNameLen := len(srcSpec.PodName)
+	destPodNameLen := len(destSpec.PodName)
+	if srcPodNameLen != 0 && destPodNameLen != 0 {
+		if srcSpec.LocalFileExists {
+			return copyToPod(f, cmd, out, cmderr, srcSpec, destSpec)
+		}
+		return cmdutil.UsageErrorf(cmd, "both src and dest look like remote file specification and src doesn't exist in local filesystem")
+	}
+
+	if srcPodNameLen != 0 {
 		return copyFromPod(f, cmd, cmderr, srcSpec, destSpec)
 	}
-	if len(destSpec.PodName) != 0 {
+	if destPodNameLen != 0 {
 		return copyToPod(f, cmd, out, cmderr, srcSpec, destSpec)
 	}
 	return cmdutil.UsageErrorf(cmd, "One of src or dest must be a remote file specification")
@@ -311,4 +324,12 @@ func execute(f cmdutil.Factory, cmd *cobra.Command, options *ExecOptions) error 
 		return err
 	}
 	return nil
+}
+
+// pathExists checks if a path exists in local filesystem.
+func pathExists(path string) bool {
+	if _, err := os.Stat(path); err != nil {
+		return false
+	}
+	return true
 }

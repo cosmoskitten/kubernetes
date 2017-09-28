@@ -49,7 +49,7 @@ func TestExtractFileSpec(t *testing.T) {
 			expectedFile: "/some/file",
 		},
 		{
-			spec:      "some:bad:spec",
+			spec:      ":file:not:exist:in:local:filesystem",
 			expectErr: true,
 		},
 	}
