@@ -17,6 +17,7 @@ limitations under the License.
 package admission
 
 import (
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apiserver/pkg/authentication/user"
@@ -57,6 +58,13 @@ func (record *attributesRecord) GetNamespace() string {
 }
 
 func (record *attributesRecord) GetName() string {
+	// On create, get name from new object if unset in admission
+	if len(record.name) == 0 && record.GetOperation() == Create {
+		metadata, err := meta.Accessor(record.GetObject())
+		if err == nil {
+			return metadata.GetName()
+		}
+	}
 	return record.name
 }
 

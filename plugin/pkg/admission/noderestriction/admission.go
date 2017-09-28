@@ -254,11 +254,6 @@ func (c *nodePlugin) admitNode(nodeName string, a admission.Attributes) error {
 		if node.Spec.ConfigSource != nil {
 			return admission.NewForbidden(a, fmt.Errorf("cannot create with non-nil configSource"))
 		}
-
-		// On create, get name from new object if unset in admission
-		if len(requestedName) == 0 {
-			requestedName = node.Name
-		}
 	}
 	if requestedName != nodeName {
 		return admission.NewForbidden(a, fmt.Errorf("node %q cannot modify node %q", nodeName, requestedName))
