@@ -403,7 +403,19 @@ func (n *NodeInfo) updateUsedPorts(pod *v1.Pod, used bool) {
 			// "0" is explicitly ignored in PodFitsHostPorts,
 			// which is the only function that uses this value.
 			if podPort.HostPort != 0 {
-				str := fmt.Sprintf("%s/%s/%d", podPort.Protocol, podPort.HostIP, podPort.HostPort)
+				// user does not explicitly set protocol, default is tcp
+				portProtocol := podPort.Protocol
+				if podPort.Protocol == "" {
+					portProtocol = v1.ProtocolTCP
+				}
+
+				// user does not explicitly set hostIP, default is 0.0.0.0
+				portHostIP := podPort.HostIP
+				if podPort.HostIP == "" {
+					portHostIP = "0.0.0.0"
+				}
+
+				str := fmt.Sprintf("%s/%s/%d", portProtocol, portHostIP, podPort.HostPort)
 				n.usedPorts[str] = used
 			}
 		}
