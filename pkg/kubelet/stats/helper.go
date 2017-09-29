@@ -74,6 +74,13 @@ func cadvisorInfoToContainerStats(name string, info *cadvisorapiv2.ContainerInfo
 		}
 	}
 
+	result.UserDefinedMetrics = cadvisorInfoToUserDefinedMetrics(info)
+
+	// Skip filesystem stats if rootFs and imageFs stats are not passed in.
+	if rootFs == nil || imageFs == nil {
+		return result
+	}
+
 	// The container logs live on the node rootfs device
 	result.Logs = &statsapi.FsStats{
 		Time:           metav1.NewTime(cstat.Timestamp),
@@ -113,7 +120,6 @@ func cadvisorInfoToContainerStats(name string, info *cadvisorapiv2.ContainerInfo
 		}
 	}
 
-	result.UserDefinedMetrics = cadvisorInfoToUserDefinedMetrics(info)
 	return result
 }
 
