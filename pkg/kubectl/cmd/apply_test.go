@@ -483,6 +483,7 @@ func TestApplyObjectOutput(t *testing.T) {
 	cmd := NewCmdApply("kubectl", f, buf, errBuf)
 	cmd.Flags().Set("filename", filenameRC)
 	cmd.Flags().Set("output", "yaml")
+	cmd.Flags().Set("ignore-changed-failure", "true")
 	cmd.Run(cmd, []string{})
 
 	if !strings.Contains(buf.String(), "name: test-rc") {
@@ -537,6 +538,7 @@ func TestApplyRetry(t *testing.T) {
 	cmd := NewCmdApply("kubectl", f, buf, errBuf)
 	cmd.Flags().Set("filename", filenameRC)
 	cmd.Flags().Set("output", "name")
+	cmd.Flags().Set("ignore-changed-failure", "true")
 	cmd.Run(cmd, []string{})
 
 	if !retry || getCount != 2 {
@@ -582,6 +584,7 @@ func TestApplyNonExistObject(t *testing.T) {
 	cmd := NewCmdApply("kubectl", f, buf, errBuf)
 	cmd.Flags().Set("filename", filenameRC)
 	cmd.Flags().Set("output", "name")
+	cmd.Flags().Set("ignore-changed-failure", "true")
 	cmd.Run(cmd, []string{})
 
 	// uses the name from the file, not the response
@@ -644,6 +647,7 @@ func testApplyMultipleObjects(t *testing.T, asList bool) {
 		cmd.Flags().Set("filename", filenameRC)
 		cmd.Flags().Set("filename", filenameSVC)
 	}
+	cmd.Flags().Set("ignore-changed-failure", "true")
 	cmd.Flags().Set("output", "name")
 
 	cmd.Run(cmd, []string{})
@@ -733,7 +737,7 @@ func TestApplyNULLPreservation(t *testing.T) {
 	cmd := NewCmdApply("kubectl", f, buf, errBuf)
 	cmd.Flags().Set("filename", filenameDeployObjClientside)
 	cmd.Flags().Set("output", "name")
-
+	cmd.Flags().Set("ignore-changed-failure", "true")
 	cmd.Run(cmd, []string{})
 
 	expected := "deployment/" + deploymentName + "\n"
@@ -793,6 +797,7 @@ func TestUnstructuredApply(t *testing.T) {
 	cmd := NewCmdApply("kubectl", f, buf, errBuf)
 	cmd.Flags().Set("filename", filenameWidgetClientside)
 	cmd.Flags().Set("output", "name")
+	cmd.Flags().Set("ignore-changed-failure", "true")
 	cmd.Run(cmd, []string{})
 
 	expected := "widget/" + name + "\n"
@@ -880,6 +885,7 @@ func TestUnstructuredIdempotentApply(t *testing.T) {
 	cmd := NewCmdApply("kubectl", f, buf, errBuf)
 	cmd.Flags().Set("filename", filenameWidgetClientside)
 	cmd.Flags().Set("output", "name")
+	cmd.Flags().Set("ignore-changed-failure", "true")
 	cmd.Run(cmd, []string{})
 
 	expected := "widget/widget\n"
@@ -1101,6 +1107,7 @@ func TestForceApply(t *testing.T) {
 	cmd.Flags().Set("filename", filenameRC)
 	cmd.Flags().Set("output", "name")
 	cmd.Flags().Set("force", "true")
+	cmd.Flags().Set("ignore-changed-failure", "true")
 	cmd.Run(cmd, []string{})
 
 	for method, exp := range expected {
