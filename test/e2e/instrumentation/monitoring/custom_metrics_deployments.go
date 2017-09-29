@@ -24,13 +24,15 @@ import (
 )
 
 var (
-	CustomMetricName = "foo-metric"
-	UnusedMetricName = "unused-metric"
-	MetricValue1     = int64(448)
-	MetricValue2     = int64(446)
+	CustomMetricName  = "foo-metric"
+	UnusedMetricName  = "unused-metric"
+	CustomMetricValue = int64(448)
+	UnusedMetricValue = int64(446)
 )
 
-func SDExporterDeployment(name string, replicas int32, metricValue int64) *extensions.Deployment {
+// StackdriverExporterDeployment is a Deployment of simple application that exports a metric of
+// fixed value to Stackdriver in a loop.
+func StackdriverExporterDeployment(name string, replicas int32, metricValue int64) *extensions.Deployment {
 	return &extensions.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -46,18 +48,33 @@ func SDExporterDeployment(name string, replicas int32, metricValue int64) *exten
 						"name": name,
 					},
 				},
-				Spec: sdExporterPodSpec(CustomMetricName, metricValue),
+				Spec: stackdriverExporterPodSpec(CustomMetricName, metricValue),
 			},
 			Replicas: &replicas,
 		},
 	}
 }
 
-func sdExporterPodSpec(metricName string, metricValue int64) corev1.PodSpec {
+// StackdriverExporterPod is a Pod of simple application that exports a metric of fixed value to
+// Stackdriver in a loop.
+func StackdriverExporterPod(podName, podLabel, metricName string, metricValue int64) *corev1.Pod {
+	return &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      podName,
+			Namespace: "default",
+			Labels: map[string]string{
+				"name": podLabel,
+			},
+		},
+		Spec: stackdriverExporterPodSpec(metricName, metricValue),
+	}
+}
+
+func stackdriverExporterPodSpec(metricName string, metricValue int64) corev1.PodSpec {
 	return corev1.PodSpec{
 		Containers: []corev1.Container{
 			{
-				Name:            "sd-exporter",
+				Name:            "stackdriver-exporter",
 				Image:           "gcr.io/google-containers/sd-dummy-exporter:v0.1.0",
 				ImagePullPolicy: corev1.PullPolicy("Always"),
 				Command:         []string{"/sd_dummy_exporter", "--pod-id=$(POD_ID)", "--metric-name=" + metricName, fmt.Sprintf("--metric-value=%v", metricValue)},
@@ -74,18 +91,5 @@ func sdExporterPodSpec(metricName string, metricValue int64) corev1.PodSpec {
 				Ports: []corev1.ContainerPort{{ContainerPort: 80}},
 			},
 		},
-	}
-}
-
-func SDExporterPod(podName, podLabel, metricName string, metricValue int64) *corev1.Pod {
-	return &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      podName,
-			Namespace: "default",
-			Labels: map[string]string{
-				"name": podLabel,
-			},
-		},
-		Spec: sdExporterPodSpec(metricName, metricValue),
 	}
 }

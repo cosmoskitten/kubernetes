@@ -68,7 +68,7 @@ func testAdapter(f *framework.Framework, kubeClient clientset.Interface, customM
 	ctx := context.Background()
 	client, err := google.DefaultClient(ctx, gcm.CloudPlatformScope)
 
-	// Hack for running tests locally
+	// Hack for running tests locally, needed to authenticate in Stackdriver
 	// If this is your use case, create application default credentials:
 	// $ gcloud auth application-default login
 	// and uncomment following lines (comment out the two lines above):
@@ -104,11 +104,13 @@ func testAdapter(f *framework.Framework, kubeClient clientset.Interface, customM
 	// Run application that exports the metric
 	err = createSDExporterPod(kubeClient)
 	if err != nil {
-		framework.Failf("Failed to create sd-exporter pod: %s", err)
+		framework.Failf("Failed to create stackdriver-exporter pod: %s", err)
 	}
 	defer cleanupSDExporterPod(kubeClient)
 
 	// Wait a short amount of time to create a pod and export some metrics
+	// TODO: add some events to wait for instead of fixed amount of time
+	//       i.e. pod creation, first time series exported
 	time.Sleep(60 * time.Second)
 
 	// Verify responses from Custom Metrics API
@@ -121,14 +123,14 @@ func testAdapter(f *framework.Framework, kubeClient clientset.Interface, customM
 			framework.Failf("Unexpected metric %s. Only metric %s should be supported", resource.Name, CustomMetricName)
 		}
 	}
-	value, err := customMetricsClient.NamespacedMetrics("default").GetForObject(schema.GroupKind{Group: "", Kind: "Pod"}, "sd-exporter-1", CustomMetricName)
+	value, err := customMetricsClient.NamespacedMetrics("default").GetForObject(schema.GroupKind{Group: "", Kind: "Pod"}, "stackdriver-exporter-1", CustomMetricName)
 	if err != nil {
 		framework.Failf("Failed query: %s", err)
 	}
-	if value.Value.Value() != MetricValue1 {
-		framework.Failf("Unexpected metric value for metric %s: expected %v but received %v", CustomMetricName, MetricValue1, value.Value)
+	if value.Value.Value() != CustomMetricValue {
+		framework.Failf("Unexpected metric value for metric %s: expected %v but received %v", CustomMetricName, CustomMetricValue, value.Value)
 	}
-	filter, err := labels.NewRequirement("name", selection.Equals, []string{"sd-exporter"})
+	filter, err := labels.NewRequirement("name", selection.Equals, []string{"stackdriver-exporter"})
 	if err != nil {
 		framework.Failf("Couldn't create a label filter")
 	}
@@ -140,8 +142,8 @@ func testAdapter(f *framework.Framework, kubeClient clientset.Interface, customM
 		framework.Failf("Expected results for exactly 2 pods, but %v results received", len(values.Items))
 	}
 	for _, value := range values.Items {
-		if (value.DescribedObject.Name == "sd-exporter-1" && value.Value.Value() != MetricValue1) ||
-			(value.DescribedObject.Name == "sd-exporter-2" && value.Value.Value() != MetricValue2) {
+		if (value.DescribedObject.Name == "stackdriver-exporter-1" && value.Value.Value() != CustomMetricValue) ||
+			(value.DescribedObject.Name == "stackdriver-exporter-2" && value.Value.Value() != UnusedMetricValue) {
 			framework.Failf("Unexpected metric value for metric %s and pod %s: %v", CustomMetricName, value.DescribedObject.Name, value.Value.Value())
 		}
 	}
@@ -169,11 +171,11 @@ func createDescriptors(service *gcm.Service, projectId string) error {
 }
 
 func createSDExporterPod(cs clientset.Interface) error {
-	_, err := cs.Core().Pods("default").Create(SDExporterPod("sd-exporter-1", "sd-exporter", CustomMetricName, MetricValue1))
+	_, err := cs.Core().Pods("default").Create(StackdriverExporterPod("stackdriver-exporter-1", "stackdriver-exporter", CustomMetricName, CustomMetricValue))
 	if err != nil {
 		return err
 	}
-	_, err = cs.Core().Pods("default").Create(SDExporterPod("sd-exporter-2", "sd-exporter", UnusedMetricName, MetricValue2))
+	_, err = cs.Core().Pods("default").Create(StackdriverExporterPod("stackdriver-exporter-2", "stackdriver-exporter", UnusedMetricName, UnusedMetricValue))
 	return err
 }
 
@@ -183,14 +185,27 @@ func createAdapter() error {
 	return err
 }
 
+// TODO: Cleanup time series as well
 func cleanupDescriptors(service *gcm.Service, projectId string) {
-	_, _ = service.Projects.MetricDescriptors.Delete(fmt.Sprintf("projects/%s/metricDescriptors/custom.googleapis.com/%s", projectId, CustomMetricName)).Do()
-	_, _ = service.Projects.MetricDescriptors.Delete(fmt.Sprintf("projects/%s/metricDescriptors/custom.googleapis.com/%s", projectId, UnusedMetricName)).Do()
+	_, err := service.Projects.MetricDescriptors.Delete(fmt.Sprintf("projects/%s/metricDescriptors/custom.googleapis.com/%s", projectId, CustomMetricName)).Do()
+	if err != nil {
+		framework.Logf("Failed to delete descriptor for metric '%s': %v", CustomMetricName, err)
+	}
+	_, err = service.Projects.MetricDescriptors.Delete(fmt.Sprintf("projects/%s/metricDescriptors/custom.googleapis.com/%s", projectId, UnusedMetricName)).Do()
+	if err != nil {
+		framework.Logf("Failed to delete descriptor for metric '%s': %v", CustomMetricName, err)
+	}
 }
 
 func cleanupSDExporterPod(cs clientset.Interface) {
-	_ = cs.Core().Pods("default").Delete("sd-exporter-1", &metav1.DeleteOptions{})
-	_ = cs.Core().Pods("default").Delete("sd-exporter-2", &metav1.DeleteOptions{})
+	err := cs.Core().Pods("default").Delete("stackdriver-exporter-1", &metav1.DeleteOptions{})
+	if err != nil {
+		framework.Logf("Failed to delete stackdriver-exporter-1 pod: %v", err)
+	}
+	err = cs.Core().Pods("default").Delete("stackdriver-exporter-2", &metav1.DeleteOptions{})
+	if err != nil {
+		framework.Logf("Failed to delete stackdriver-exporter-2 pod: %v", err)
+	}
 }
 
 func cleanupAdapter() error {

@@ -53,7 +53,7 @@ func testHPA(f *framework.Framework, kubeClient clientset.Interface) {
 	ctx := context.Background()
 	client, err := google.DefaultClient(ctx, gcm.CloudPlatformScope)
 
-	// Hack for running tests locally
+	// Hack for running tests locally, needed to authenticate in Stackdriver
 	// If this is your use case, create application default credentials:
 	// $ gcloud auth application-default login
 	// and uncomment following lines:
@@ -89,7 +89,7 @@ func testHPA(f *framework.Framework, kubeClient clientset.Interface) {
 	// Run application that exports the metric
 	err = createDeploymentsToScale(kubeClient)
 	if err != nil {
-		framework.Failf("Failed to create sd-exporter pod: %v", err)
+		framework.Failf("Failed to create stackdriver-exporter pod: %v", err)
 	}
 	defer cleanupDeploymentsToScale(kubeClient)
 
@@ -104,15 +104,17 @@ func testHPA(f *framework.Framework, kubeClient clientset.Interface) {
 	}
 
 	// Wait a for HPA to scale down targets
+	// TODO: wait for the deployments to reach the expected numbers of replicas instead of fixed
+	//       amount of time
 	time.Sleep(240 * time.Second)
 
 	// Verify that the deployments were scaled down to the minimum value
-	sdExporterDeployment, err := kubeClient.Extensions().Deployments("default").Get("sd-exporter-deployment", metav1.GetOptions{})
+	sdExporterDeployment, err := kubeClient.Extensions().Deployments("default").Get("stackdriver-exporter-deployment", metav1.GetOptions{})
 	if err != nil {
-		framework.Failf("Failed to retrieve info about 'sd-exporter-deployment'")
+		framework.Failf("Failed to retrieve info about 'stackdriver-exporter-deployment'")
 	}
 	if *sdExporterDeployment.Spec.Replicas != 1 {
-		framework.Failf("Unexpected number of replicas for 'sd-exporter-deployment'. Expected 1, but received %v", *sdExporterDeployment.Spec.Replicas)
+		framework.Failf("Unexpected number of replicas for 'stackdriver-exporter-deployment'. Expected 1, but received %v", *sdExporterDeployment.Spec.Replicas)
 	}
 	dummyDeployment, err := kubeClient.Extensions().Deployments("default").Get("dummy-deployment", metav1.GetOptions{})
 	if err != nil {
@@ -126,21 +128,21 @@ func testHPA(f *framework.Framework, kubeClient clientset.Interface) {
 }
 
 func createDeploymentsToScale(cs clientset.Interface) error {
-	_, err := cs.Extensions().Deployments("default").Create(SDExporterDeployment("sd-exporter-deployment", 2, 100))
+	_, err := cs.Extensions().Deployments("default").Create(StackdriverExporterDeployment("stackdriver-exporter-deployment", 2, 100))
 	if err != nil {
 		return err
 	}
-	_, err = cs.Core().Pods("default").Create(SDExporterPod("sd-exporter-pod", "sd-exporter-pod", CustomMetricName, 100))
+	_, err = cs.Core().Pods("default").Create(StackdriverExporterPod("stackdriver-exporter-pod", "stackdriver-exporter-pod", CustomMetricName, 100))
 	if err != nil {
 		return err
 	}
-	_, err = cs.Extensions().Deployments("default").Create(SDExporterDeployment("dummy-deployment", 2, 100))
+	_, err = cs.Extensions().Deployments("default").Create(StackdriverExporterDeployment("dummy-deployment", 2, 100))
 	return err
 }
 
 func cleanupDeploymentsToScale(cs clientset.Interface) {
-	_ = cs.Extensions().Deployments("default").Delete("sd-exporter-deployment", &metav1.DeleteOptions{})
-	_ = cs.Core().Pods("default").Delete("sd-exporter-pod", &metav1.DeleteOptions{})
+	_ = cs.Extensions().Deployments("default").Delete("stackdriver-exporter-deployment", &metav1.DeleteOptions{})
+	_ = cs.Core().Pods("default").Delete("stackdriver-exporter-pod", &metav1.DeleteOptions{})
 	_ = cs.Extensions().Deployments("default").Delete("dummy-deployment", &metav1.DeleteOptions{})
 }
 
@@ -164,7 +166,7 @@ func createPodsHPA(cs clientset.Interface) error {
 			ScaleTargetRef: autoscaling.CrossVersionObjectReference{
 				APIVersion: "extensions/v1beta1",
 				Kind:       "Deployment",
-				Name:       "sd-exporter-deployment",
+				Name:       "stackdriver-exporter-deployment",
 			},
 		},
 	})
@@ -185,7 +187,7 @@ func createObjectHPA(cs clientset.Interface) error {
 						MetricName: CustomMetricName,
 						Target: autoscaling.CrossVersionObjectReference{
 							Kind: "Pod",
-							Name: "sd-exporter-pod",
+							Name: "stackdriver-exporter-pod",
 						},
 						TargetValue: *resource.NewQuantity(200, resource.DecimalSI),
 					},
