@@ -20,6 +20,7 @@ go_library(
     name = "go_default_library",
     srcs = ["ssh.go"],
     deps = [
+        "//pkg/cloudprovider:go_default_library",
         "//pkg/ssh:go_default_library",
         "//pkg/util/file:go_default_library",
         "//vendor/github.com/golang/glog:go_default_library",
