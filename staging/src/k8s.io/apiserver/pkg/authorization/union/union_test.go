@@ -30,14 +30,14 @@ type mockAuthzHandler struct {
 	err          error
 }
 
-func (mock *mockAuthzHandler) Authorize(a authorizer.Attributes) (bool, string, error) {
+func (mock *mockAuthzHandler) Authorize(a authorizer.Attributes) (authorizer.Decision, string, error) {
 	if mock.err != nil {
-		return false, "", mock.err
+		return authorizer.DecisionNoOpinion, "", mock.err
 	}
 	if !mock.isAuthorized {
-		return false, "", nil
+		return authorizer.DecisionNoOpinion, "", nil
 	}
-	return true, "", nil
+	return authorizer.DecisionAllow, "", nil
 }
 
 func TestAuthorizationSecondPasses(t *testing.T) {
@@ -46,7 +46,7 @@ func TestAuthorizationSecondPasses(t *testing.T) {
 	authzHandler := New(handler1, handler2)
 
 	authorized, _, _ := authzHandler.Authorize(nil)
-	if !authorized {
+	if authorized == authorizer.DecisionDeny {
 		t.Errorf("Unexpected authorization failure")
 	}
 }
@@ -57,7 +57,7 @@ func TestAuthorizationFirstPasses(t *testing.T) {
 	authzHandler := New(handler1, handler2)
 
 	authorized, _, _ := authzHandler.Authorize(nil)
-	if !authorized {
+	if authorized == authorizer.DecisionDeny {
 		t.Errorf("Unexpected authorization failure")
 	}
 }
@@ -68,7 +68,7 @@ func TestAuthorizationNonePasses(t *testing.T) {
 	authzHandler := New(handler1, handler2)
 
 	authorized, _, _ := authzHandler.Authorize(nil)
-	if authorized {
+	if authorized == authorizer.DecisionAllow {
 		t.Errorf("Expected failed authorization")
 	}
 }
