@@ -52,7 +52,7 @@ func labelMap() map[string]string {
 	return map[string]string{"foo": "bar"}
 }
 
-func newRS(name, namespace string, replicas int, labelMap map[string]string) *v1beta1.ReplicaSet {
+func newRS(name, namespace string, replicas int) *v1beta1.ReplicaSet {
 	replicasCopy := int32(replicas)
 	return &v1beta1.ReplicaSet{
 		TypeMeta: metav1.TypeMeta{
@@ -65,12 +65,12 @@ func newRS(name, namespace string, replicas int, labelMap map[string]string) *v1
 		},
 		Spec: v1beta1.ReplicaSetSpec{
 			Selector: &metav1.LabelSelector{
-				MatchLabels: labelMap,
+				MatchLabels: labelMap(),
 			},
 			Replicas: &replicasCopy,
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: labelMap,
+					Labels: labelMap(),
 				},
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{
@@ -194,7 +194,12 @@ func waitToObservePods(t *testing.T, podInformer cache.SharedIndexInformer, podN
 }
 
 func createRSsPods(t *testing.T, clientSet clientset.Interface, rss []*v1beta1.ReplicaSet, pods []*v1.Pod) ([]*v1beta1.ReplicaSet, []*v1.Pod) {
-	ns := rss[0].Namespace
+	var ns string
+	if len(rss) != 0 {
+		ns = rss[0].Namespace
+	} else {
+		ns = pods[0].Namespace
+	}
 	rsClient := clientSet.Extensions().ReplicaSets(ns)
 	podClient := clientSet.Core().Pods(ns)
 	var createdRSs []*v1beta1.ReplicaSet
@@ -477,7 +482,7 @@ func TestAdoption(t *testing.T) {
 		rsClient := clientSet.Extensions().ReplicaSets(ns.Name)
 		podClient := clientSet.Core().Pods(ns.Name)
 		const rsName = "rs"
-		rs, err := rsClient.Create(newRS(rsName, ns.Name, 1, labelMap()))
+		rs, err := rsClient.Create(newRS(rsName, ns.Name, 1))
 		if err != nil {
 			t.Fatalf("Failed to create replica set: %v", err)
 		}
@@ -514,7 +519,7 @@ func TestRSSelectorImmutability(t *testing.T) {
 	defer closeFn()
 	ns := framework.CreateTestingNamespace("rs-selector-immutability", s, t)
 	defer framework.DeleteTestingNamespace(ns, s, t)
-	rs := newRS("rs", ns.Name, 0, labelMap())
+	rs := newRS("rs", ns.Name, 0)
 	createRSsPods(t, clientSet, []*v1beta1.ReplicaSet{rs}, []*v1.Pod{})
 
 	// test to ensure extensions/v1beta1 selector is mutable
@@ -555,7 +560,7 @@ func TestSpecReplicasChange(t *testing.T) {
 	defer framework.DeleteTestingNamespace(ns, s, t)
 	defer close(runControllerAndInformers(rm, informers))
 
-	rs := newRS("rs", ns.Name, 2, labelMap())
+	rs := newRS("rs", ns.Name, 2)
 	rss, _ := createRSsPods(t, c, []*v1beta1.ReplicaSet{rs}, []*v1.Pod{})
 	rs = rss[0]
 	waitRSStable(t, c, rs)
@@ -597,15 +602,14 @@ func TestDeletingAndFailedPods(t *testing.T) {
 	defer framework.DeleteTestingNamespace(ns, s, t)
 	defer close(runControllerAndInformers(rm, informers))
 
-	labelMap := labelMap()
-	rs := newRS("rs", ns.Name, 2, labelMap)
+	rs := newRS("rs", ns.Name, 2)
 	rss, _ := createRSsPods(t, c, []*v1beta1.ReplicaSet{rs}, []*v1.Pod{})
 	rs = rss[0]
 	waitRSStable(t, c, rs)
 
 	// Verify RS creates 2 pods
 	podClient := c.Core().Pods(ns.Name)
-	pods := getPods(t, podClient, labelMap)
+	pods := getPods(t, podClient, labelMap())
 	if len(pods.Items) != 2 {
 		t.Fatalf("len(pods) = %d, want 2", len(pods.Items))
 	}
@@ -628,7 +632,7 @@ func TestDeletingAndFailedPods(t *testing.T) {
 
 	// Pool until 2 new pods have been created to replace deleting and failed pods
 	if err := wait.PollImmediate(interval, timeout, func() (bool, error) {
-		pods = getPods(t, podClient, labelMap)
+		pods = getPods(t, podClient, labelMap())
 		return len(pods.Items) == 4, nil
 	}); err != nil {
 		t.Fatalf("Failed to verify 2 new pods have been created (expected 4 pods): %v", err)
@@ -663,17 +667,16 @@ func TestOverlappingRSs(t *testing.T) {
 	defer close(runControllerAndInformers(rm, informers))
 
 	// Create 2 RSs with identical selectors
-	labelMap := labelMap()
 	for i := 0; i < 2; i++ {
 		// One RS has 1 replica, and another has 2 replicas
-		rs := newRS(fmt.Sprintf("rs-%d", i+1), ns.Name, i+1, labelMap)
+		rs := newRS(fmt.Sprintf("rs-%d", i+1), ns.Name, i+1)
 		rss, _ := createRSsPods(t, c, []*v1beta1.ReplicaSet{rs}, []*v1.Pod{})
 		waitRSStable(t, c, rss[0])
 	}
 
 	// Expect 3 total Pods to be created
 	podClient := c.Core().Pods(ns.Name)
-	pods := getPods(t, podClient, labelMap)
+	pods := getPods(t, podClient, labelMap())
 	if len(pods.Items) != 3 {
 		t.Errorf("len(pods) = %d, want 3", len(pods.Items))
 	}
@@ -697,15 +700,14 @@ func TestPodOrphaningAndAdoptionWhenLabelsChange(t *testing.T) {
 	defer framework.DeleteTestingNamespace(ns, s, t)
 	defer close(runControllerAndInformers(rm, informers))
 
-	labelMap := labelMap()
-	rs := newRS("rs", ns.Name, 1, labelMap)
+	rs := newRS("rs", ns.Name, 1)
 	rss, _ := createRSsPods(t, c, []*v1beta1.ReplicaSet{rs}, []*v1.Pod{})
 	rs = rss[0]
 	waitRSStable(t, c, rs)
 
 	// Orphaning: RS should remove OwnerReference from a pod when the pod's labels change to not match its labels
 	podClient := c.Core().Pods(ns.Name)
-	pods := getPods(t, podClient, labelMap)
+	pods := getPods(t, podClient, labelMap())
 	if len(pods.Items) != 1 {
 		t.Fatalf("len(pods) = %d, want 1", len(pods.Items))
 	}
@@ -732,7 +734,7 @@ func TestPodOrphaningAndAdoptionWhenLabelsChange(t *testing.T) {
 
 	// Adoption: RS should add ControllerRef to a pod when the pod's labels change to match its labels
 	updatePod(t, podClient, pod, func(pod *v1.Pod) {
-		pod.Labels = labelMap
+		pod.Labels = labelMap()
 	})
 	if err := wait.PollImmediate(interval, timeout, func() (bool, error) {
 		newPod, err := podClient.Get(pod.Name, metav1.GetOptions{})
@@ -740,7 +742,7 @@ func TestPodOrphaningAndAdoptionWhenLabelsChange(t *testing.T) {
 			// If the pod is not found, it means the RS picks the pod for deletion (it is extra)
 			// Verify there is only one pod in namespace and it has ControllerRef to the RS
 			if errors.IsNotFound(err) {
-				pods := getPods(t, podClient, labelMap)
+				pods := getPods(t, podClient, labelMap())
 				if len(pods.Items) != 1 {
 					return false, fmt.Errorf("Expected 1 pod in current namespace, got %d", len(pods.Items))
 				}
@@ -774,14 +776,13 @@ func TestGeneralPodAdoption(t *testing.T) {
 	defer framework.DeleteTestingNamespace(ns, s, t)
 	defer close(runControllerAndInformers(rm, informers))
 
-	labelMap := labelMap()
-	rs := newRS("rs", ns.Name, 1, labelMap)
+	rs := newRS("rs", ns.Name, 1)
 	rss, _ := createRSsPods(t, c, []*v1beta1.ReplicaSet{rs}, []*v1.Pod{})
 	rs = rss[0]
 	waitRSStable(t, c, rs)
 
 	podClient := c.Core().Pods(ns.Name)
-	pods := getPods(t, podClient, labelMap)
+	pods := getPods(t, podClient, labelMap())
 	if len(pods.Items) != 1 {
 		t.Fatalf("len(pods) = %d, want 1", len(pods.Items))
 	}
@@ -806,8 +807,7 @@ func TestReadyAndAvailableReplicas(t *testing.T) {
 	defer framework.DeleteTestingNamespace(ns, s, t)
 	defer close(runControllerAndInformers(rm, informers))
 
-	labelMap := labelMap()
-	rs := newRS("rs", ns.Name, 2, labelMap)
+	rs := newRS("rs", ns.Name, 2)
 	rs.Spec.MinReadySeconds = 5
 	rss, _ := createRSsPods(t, c, []*v1beta1.ReplicaSet{rs}, []*v1.Pod{})
 	rs = rss[0]
@@ -819,7 +819,7 @@ func TestReadyAndAvailableReplicas(t *testing.T) {
 	}
 
 	podClient := c.Core().Pods(ns.Name)
-	pods := getPods(t, podClient, labelMap)
+	pods := getPods(t, podClient, labelMap())
 	if len(pods.Items) != 2 {
 		t.Fatalf("len(pods) = %d, want 2", len(pods.Items))
 	}
@@ -855,7 +855,7 @@ func TestRSScaleSubresource(t *testing.T) {
 	defer framework.DeleteTestingNamespace(ns, s, t)
 	defer close(runControllerAndInformers(rm, informers))
 
-	rs := newRS("rs", ns.Name, 1, labelMap())
+	rs := newRS("rs", ns.Name, 1)
 	rss, _ := createRSsPods(t, c, []*v1beta1.ReplicaSet{rs}, []*v1.Pod{})
 	rs = rss[0]
 	waitRSStable(t, c, rs)
@@ -873,15 +873,14 @@ func TestExtraPodsAdoptionAndDeletion(t *testing.T) {
 	defer framework.DeleteTestingNamespace(ns, s, t)
 	defer close(runControllerAndInformers(rm, informers))
 
-	labelMap := labelMap()
-	rs := newRS("rs", ns.Name, 2, labelMap)
+	rs := newRS("rs", ns.Name, 2)
 	rss, _ := createRSsPods(t, c, []*v1beta1.ReplicaSet{rs}, []*v1.Pod{})
 	rs = rss[0]
 	waitRSStable(t, c, rs)
 
 	// Create another pod that the RS wants to adopt
 	pod := newMatchingPod("extra-pod", ns.Name)
-	pod.Labels = labelMap
+	pod.Labels = labelMap()
 	podClient := c.Core().Pods(ns.Name)
 	_, err := podClient.Create(pod)
 	if err != nil {
@@ -889,7 +888,7 @@ func TestExtraPodsAdoptionAndDeletion(t *testing.T) {
 	}
 
 	// Verify there are 3 pods
-	pods := getPods(t, podClient, labelMap)
+	pods := getPods(t, podClient, labelMap())
 	if len(pods.Items) != 3 {
 		t.Fatalf("len(pods) = %d, want 3", len(pods.Items))
 	}
@@ -898,7 +897,7 @@ func TestExtraPodsAdoptionAndDeletion(t *testing.T) {
 	// all pods within namespace matches .spec.replicas of the RS (2 in this case)
 	if err := wait.PollImmediate(interval, timeout, func() (bool, error) {
 		// All pods have labelMap as their labels
-		pods = getPods(t, podClient, labelMap)
+		pods = getPods(t, podClient, labelMap())
 		return int32(len(pods.Items)) == *rs.Spec.Replicas, nil
 	}); err != nil {
 		t.Fatalf("Failed to verify number of all pods within current namespace matches .spec.replicas of rs %s: %v", rs.Name, err)
@@ -912,9 +911,8 @@ func TestFullyLabeledReplicas(t *testing.T) {
 	defer framework.DeleteTestingNamespace(ns, s, t)
 	defer close(runControllerAndInformers(rm, informers))
 
-	labelMap := labelMap()
 	extraLabelMap := map[string]string{"foo": "bar", "extraKey": "extraValue"}
-	rs := newRS("rs", ns.Name, 2, labelMap)
+	rs := newRS("rs", ns.Name, 2)
 	rss, _ := createRSsPods(t, c, []*v1beta1.ReplicaSet{rs}, []*v1.Pod{})
 	rs = rss[0]
 	waitRSStable(t, c, rs)
@@ -927,7 +925,7 @@ func TestFullyLabeledReplicas(t *testing.T) {
 
 	// Set one of the pods to have extra labels
 	podClient := c.Core().Pods(ns.Name)
-	pods := getPods(t, podClient, labelMap)
+	pods := getPods(t, podClient, labelMap())
 	if len(pods.Items) != 2 {
 		t.Fatalf("len(pods) = %d, want 2", len(pods.Items))
 	}
