@@ -28,8 +28,8 @@ import (
 // TestAuthorizer is a testing struct for testing that fulfills the authorizer interface.
 type TestAuthorizer struct{}
 
-func (t *TestAuthorizer) Authorize(a authorizer.Attributes) (authorized bool, reason string, err error) {
-	return false, "", nil
+func (t *TestAuthorizer) Authorize(a authorizer.Attributes) (authorized authorizer.Decision, reason string, err error) {
+	return authorizer.DecisionNoOpinion, "", nil
 }
 
 var _ authorizer.Authorizer = &TestAuthorizer{}

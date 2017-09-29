@@ -119,9 +119,9 @@ func TestAuthorizer(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			ok, _, _ := authz.Authorize(tc.attrs)
-			if ok != tc.expect {
-				t.Errorf("expected %v, got %v", tc.expect, ok)
+			decision, _, _ := authz.Authorize(tc.attrs)
+			if (decision == authorizer.DecisionAllow) != tc.expect {
+				t.Errorf("expected %v, got %v", tc.expect, decision)
 			}
 		})
 	}
@@ -186,13 +186,13 @@ func TestAuthorizerSharedResources(t *testing.T) {
 	}
 
 	for i, tc := range testcases {
-		ok, _, err := authz.Authorize(authorizer.AttributesRecord{User: tc.User, ResourceRequest: true, Verb: "get", Resource: "secrets", Namespace: "ns1", Name: tc.Secret})
+		decision, _, err := authz.Authorize(authorizer.AttributesRecord{User: tc.User, ResourceRequest: true, Verb: "get", Resource: "secrets", Namespace: "ns1", Name: tc.Secret})
 		if err != nil {
 			t.Errorf("%d: unexpected error: %v", i, err)
 			continue
 		}
-		if ok != tc.ExpectAllowed {
-			t.Errorf("%d: expected %v, got %v", i, tc.ExpectAllowed, ok)
+		if (decision == authorizer.DecisionAllow) != tc.ExpectAllowed {
+			t.Errorf("%d: expected %v, got %v", i, tc.ExpectAllowed, decision)
 		}
 	}
 }
@@ -349,9 +349,9 @@ func BenchmarkAuthorization(b *testing.B) {
 	for _, tc := range tests {
 		b.Run(tc.name, func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
-				ok, _, _ := authz.Authorize(tc.attrs)
-				if ok != tc.expect {
-					b.Errorf("expected %v, got %v", tc.expect, ok)
+				decision, _, _ := authz.Authorize(tc.attrs)
+				if (decision == authorizer.DecisionAllow) != tc.expect {
+					b.Errorf("expected %v, got %v", tc.expect, decision)
 				}
 			}
 		})

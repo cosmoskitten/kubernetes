@@ -133,11 +133,11 @@ func TestAuthorizeV0(t *testing.T) {
 
 			ResourceRequest: len(tc.NS) > 0 || len(tc.Resource) > 0,
 		}
-		authorized, _, _ := a.Authorize(attr)
-		if tc.ExpectAllow != authorized {
+		decision, _, _ := a.Authorize(attr)
+		if tc.ExpectAllow != (decision == authorizer.DecisionAllow) {
 			t.Logf("tc: %v -> attr %v", tc, attr)
 			t.Errorf("%d: Expected allowed=%v but actually allowed=%v\n\t%v",
-				i, tc.ExpectAllow, authorized, tc)
+				i, tc.ExpectAllow, decision, tc)
 		}
 	}
 }
@@ -451,10 +451,10 @@ func TestAuthorizeV1beta1(t *testing.T) {
 			Path:            tc.Path,
 		}
 		// t.Logf("tc %2v: %v -> attr %v", i, tc, attr)
-		authorized, _, _ := a.Authorize(attr)
-		if tc.ExpectAllow != authorized {
+		decision, _, _ := a.Authorize(attr)
+		if tc.ExpectAllow != (decision == authorizer.DecisionAllow) {
 			t.Errorf("%d: Expected allowed=%v but actually allowed=%v, for case %+v & %+v",
-				i, tc.ExpectAllow, authorized, tc, attr)
+				i, tc.ExpectAllow, decision, tc, attr)
 		}
 	}
 }
