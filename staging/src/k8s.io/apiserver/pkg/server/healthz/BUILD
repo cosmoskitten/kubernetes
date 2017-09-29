@@ -18,7 +18,10 @@ go_library(
         "doc.go",
         "healthz.go",
     ],
-    deps = ["//vendor/github.com/golang/glog:go_default_library"],
+    deps = [
+        "//vendor/github.com/golang/glog:go_default_library",
+        "//vendor/k8s.io/apimachinery/pkg/util/runtime:go_default_library",
+    ],
 )
 
 filegroup(
