@@ -33,6 +33,12 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
+const (
+	stackdriverExporterDeployment = "stackdriver-exporter-deployment"
+	dummyDeploymentName           = "dummy-deployment"
+	stackdriverExporterPod        = "stackdriver-exporter-pod"
+)
+
 var _ = instrumentation.SIGDescribe("Stackdriver Monitoring", func() {
 	BeforeEach(func() {
 		framework.SkipUnlessProviderIs("gce", "gke")
@@ -53,7 +59,7 @@ func testHPA(f *framework.Framework, kubeClient clientset.Interface) {
 	ctx := context.Background()
 	client, err := google.DefaultClient(ctx, gcm.CloudPlatformScope)
 
-	// Hack for running tests locally
+	// Hack for running tests locally, needed to authenticate in Stackdriver
 	// If this is your use case, create application default credentials:
 	// $ gcloud auth application-default login
 	// and uncomment following lines:
@@ -71,8 +77,6 @@ func testHPA(f *framework.Framework, kubeClient clientset.Interface) {
 		framework.Failf("Failed to create gcm service, %v", err)
 	}
 
-	framework.ExpectNoError(err)
-
 	// Set up a cluster: create a custom metric and set up k8s-sd adapter
 	err = createDescriptors(gcmService, projectId)
 	if err != nil {
@@ -87,68 +91,69 @@ func testHPA(f *framework.Framework, kubeClient clientset.Interface) {
 	defer cleanupAdapter()
 
 	// Run application that exports the metric
-	err = createDeploymentsToScale(kubeClient)
+	err = createDeploymentsToScale(f, kubeClient)
 	if err != nil {
-		framework.Failf("Failed to create sd-exporter pod: %v", err)
+		framework.Failf("Failed to create stackdriver-exporter pod: %v", err)
 	}
-	defer cleanupDeploymentsToScale(kubeClient)
+	defer cleanupDeploymentsToScale(f, kubeClient)
 
 	// Autoscale the deployments
-	err = createPodsHPA(kubeClient)
+	err = createPodsHPA(f, kubeClient)
 	if err != nil {
 		framework.Failf("Failed to create 'Pods' HPA: %v", err)
 	}
-	err = createObjectHPA(kubeClient)
+	err = createObjectHPA(f, kubeClient)
 	if err != nil {
 		framework.Failf("Failed to create 'Objects' HPA: %v", err)
 	}
 
 	// Wait a for HPA to scale down targets
+	// TODO: wait for the deployments to reach the expected numbers of replicas instead of fixed
+	//       amount of time
 	time.Sleep(240 * time.Second)
 
 	// Verify that the deployments were scaled down to the minimum value
-	sdExporterDeployment, err := kubeClient.Extensions().Deployments("default").Get("sd-exporter-deployment", metav1.GetOptions{})
+	sdExporterDeployment, err := kubeClient.Extensions().Deployments(f.Namespace.ObjectMeta.Name).Get(stackdriverExporterDeployment, metav1.GetOptions{})
 	if err != nil {
-		framework.Failf("Failed to retrieve info about 'sd-exporter-deployment'")
+		framework.Failf("Failed to retrieve info about " + stackdriverExporterDeployment)
 	}
 	if *sdExporterDeployment.Spec.Replicas != 1 {
-		framework.Failf("Unexpected number of replicas for 'sd-exporter-deployment'. Expected 1, but received %v", *sdExporterDeployment.Spec.Replicas)
+		framework.Failf("Unexpected number of replicas for %s. Expected 1, but received %v", stackdriverExporterDeployment, *sdExporterDeployment.Spec.Replicas)
 	}
-	dummyDeployment, err := kubeClient.Extensions().Deployments("default").Get("dummy-deployment", metav1.GetOptions{})
+	dummyDeployment, err := kubeClient.Extensions().Deployments(f.Namespace.ObjectMeta.Name).Get(dummyDeploymentName, metav1.GetOptions{})
 	if err != nil {
-		framework.Failf("Failed to retrieve info about 'dummy-deployment'")
+		framework.Failf("Failed to retrieve info about " + dummyDeploymentName)
 	}
 	if *sdExporterDeployment.Spec.Replicas != 1 {
-		framework.Failf("Unexpected number of replicas for 'dummy-deployment'. Expected 1, but received %v", *dummyDeployment.Spec.Replicas)
+		framework.Failf("Unexpected number of replicas for %s. Expected 1, but received %v", dummyDeploymentName, *dummyDeployment.Spec.Replicas)
 	}
-
-	framework.ExpectNoError(err)
 }
 
-func createDeploymentsToScale(cs clientset.Interface) error {
-	_, err := cs.Extensions().Deployments("default").Create(SDExporterDeployment("sd-exporter-deployment", 2, 100))
+func createDeploymentsToScale(f *framework.Framework, cs clientset.Interface) error {
+	_, err := cs.Extensions().Deployments(f.Namespace.ObjectMeta.Name).Create(StackdriverExporterDeployment(stackdriverExporterDeployment, 2, 100))
 	if err != nil {
 		return err
 	}
-	_, err = cs.Core().Pods("default").Create(SDExporterPod("sd-exporter-pod", "sd-exporter-pod", CustomMetricName, 100))
+	_, err = cs.Core().Pods(f.Namespace.ObjectMeta.Name).Create(StackdriverExporterPod(stackdriverExporterPod, stackdriverExporterPod, CustomMetricName, 100))
 	if err != nil {
 		return err
 	}
-	_, err = cs.Extensions().Deployments("default").Create(SDExporterDeployment("dummy-deployment", 2, 100))
+	_, err = cs.Extensions().Deployments(f.Namespace.ObjectMeta.Name).Create(StackdriverExporterDeployment(dummyDeploymentName, 2, 100))
 	return err
 }
 
-func cleanupDeploymentsToScale(cs clientset.Interface) {
-	_ = cs.Extensions().Deployments("default").Delete("sd-exporter-deployment", &metav1.DeleteOptions{})
-	_ = cs.Core().Pods("default").Delete("sd-exporter-pod", &metav1.DeleteOptions{})
-	_ = cs.Extensions().Deployments("default").Delete("dummy-deployment", &metav1.DeleteOptions{})
+func cleanupDeploymentsToScale(f *framework.Framework, cs clientset.Interface) {
+	_ = cs.Extensions().Deployments(f.Namespace.ObjectMeta.Name).Delete(stackdriverExporterDeployment, &metav1.DeleteOptions{})
+	_ = cs.Core().Pods(f.Namespace.ObjectMeta.Name).Delete(stackdriverExporterPod, &metav1.DeleteOptions{})
+	_ = cs.Extensions().Deployments(f.Namespace.ObjectMeta.Name).Delete(dummyDeploymentName, &metav1.DeleteOptions{})
 }
 
-func createPodsHPA(cs clientset.Interface) error {
-	_, err := cs.AutoscalingV2beta1().HorizontalPodAutoscalers("default").Create(&autoscaling.HorizontalPodAutoscaler{
+func createPodsHPA(f *framework.Framework, cs clientset.Interface) error {
+	var minReplicas int32 = 1
+	_, err := cs.AutoscalingV2beta1().HorizontalPodAutoscalers(f.Namespace.ObjectMeta.Name).Create(&autoscaling.HorizontalPodAutoscaler{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "custom-metrics-pods-hpa",
-			Namespace: "default",
+			Namespace: f.Namespace.ObjectMeta.Name,
 		},
 		Spec: autoscaling.HorizontalPodAutoscalerSpec{
 			Metrics: []autoscaling.MetricSpec{
@@ -160,22 +165,24 @@ func createPodsHPA(cs clientset.Interface) error {
 					},
 				},
 			},
-			MaxReplicas: 3, // default min is 1
+			MaxReplicas: 3,
+			MinReplicas: &minReplicas,
 			ScaleTargetRef: autoscaling.CrossVersionObjectReference{
 				APIVersion: "extensions/v1beta1",
 				Kind:       "Deployment",
-				Name:       "sd-exporter-deployment",
+				Name:       stackdriverExporterDeployment,
 			},
 		},
 	})
 	return err
 }
 
-func createObjectHPA(cs clientset.Interface) error {
-	_, err := cs.AutoscalingV2beta1().HorizontalPodAutoscalers("default").Create(&autoscaling.HorizontalPodAutoscaler{
+func createObjectHPA(f *framework.Framework, cs clientset.Interface) error {
+	var minReplicas int32 = 1
+	_, err := cs.AutoscalingV2beta1().HorizontalPodAutoscalers(f.Namespace.ObjectMeta.Name).Create(&autoscaling.HorizontalPodAutoscaler{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "custom-metrics-objects-hpa",
-			Namespace: "default",
+			Namespace: f.Namespace.ObjectMeta.Name,
 		},
 		Spec: autoscaling.HorizontalPodAutoscalerSpec{
 			Metrics: []autoscaling.MetricSpec{
@@ -185,17 +192,18 @@ func createObjectHPA(cs clientset.Interface) error {
 						MetricName: CustomMetricName,
 						Target: autoscaling.CrossVersionObjectReference{
 							Kind: "Pod",
-							Name: "sd-exporter-pod",
+							Name: stackdriverExporterPod,
 						},
 						TargetValue: *resource.NewQuantity(200, resource.DecimalSI),
 					},
 				},
 			},
-			MaxReplicas: 3, // default min is 1
+			MaxReplicas: 3,
+			MinReplicas: &minReplicas,
 			ScaleTargetRef: autoscaling.CrossVersionObjectReference{
 				APIVersion: "extensions/v1beta1",
 				Kind:       "Deployment",
-				Name:       "dummy-deployment",
+				Name:       dummyDeploymentName,
 			},
 		},
 	})

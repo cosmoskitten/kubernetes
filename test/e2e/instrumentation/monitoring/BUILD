@@ -9,9 +9,9 @@ go_library(
     name = "go_default_library",
     srcs = [
         "cadvisor.go",
+        "custom_metrics_autoscaling.go",
         "custom_metrics_deployments.go",
         "custom_metrics_stackdriver.go",
-        "custom_metrics_autoscaling.go",
         "influxdb.go",
         "metrics_grabber.go",
         "stackdriver.go",
