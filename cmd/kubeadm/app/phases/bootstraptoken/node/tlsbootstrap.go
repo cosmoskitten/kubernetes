@@ -40,6 +40,8 @@ const (
 	CSRAutoApprovalClusterRoleName = "system:certificates.k8s.io:certificatesigningrequests:nodeclient"
 	// NodeAutoApproveBootstrapClusterRoleBinding defines the name of the ClusterRoleBinding that makes the csrapprover approve node CSRs
 	NodeAutoApproveBootstrapClusterRoleBinding = "kubeadm:node-autoapprove-bootstrap"
+	// NodeAutoApproveCertificateRotationClusterRoleBinding defines name of the ClusterRoleBinding that makes the csrapprover approve node auto rotated CSRs
+	NodeAutoApproveCertificateRotationClusterRoleBinding = "kubeadm:node-autoapprove-certificate-rotation"
 )
 
 // AllowBootstrapTokensToPostCSRs creates RBAC rules in a way the makes Node Bootstrap Tokens able to post CSRs
@@ -84,6 +86,30 @@ func AutoApproveNodeBootstrapTokens(client clientset.Interface, k8sVersion *vers
 			{
 				Kind: "Group",
 				Name: constants.GetNodeBootstrapTokenAuthGroup(k8sVersion),
+			},
+		},
+	})
+}
+
+// AutoApproveNodeCertificateRotation creates RBAC rules in a way that makes Node certificate rotation CSR auto-approved by the csrapprover controller
+func AutoApproveNodeCertificateRotation(client clientset.Interface) error {
+
+	fmt.Println("[bootstraptoken] Configured RBAC rules to allow the csrapprover controller automatically approve CSRs from a Node certificate rotation")
+
+	// Always create this kubeadm-specific binding though
+	return apiclient.CreateOrUpdateClusterRoleBinding(client, &rbac.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: NodeAutoApproveCertificateRotationClusterRoleBinding,
+		},
+		RoleRef: rbac.RoleRef{
+			APIGroup: rbac.GroupName,
+			Kind:     "ClusterRole",
+			Name:     CSRAutoApprovalClusterRoleName,
+		},
+		Subjects: []rbac.Subject{
+			{
+				Kind: "Group",
+				Name: constants.NodesGroup,
 			},
 		},
 	})
