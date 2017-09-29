@@ -57,10 +57,10 @@ func (r *REST) Create(ctx genericapirequest.Context, obj runtime.Object, include
 	}
 
 	authorizationAttributes := authorizationutil.AuthorizationAttributesFrom(localSubjectAccessReview.Spec)
-	allowed, reason, evaluationErr := r.authorizer.Authorize(authorizationAttributes)
+	decision, reason, evaluationErr := r.authorizer.Authorize(authorizationAttributes)
 
 	localSubjectAccessReview.Status = authorizationapi.SubjectAccessReviewStatus{
-		Allowed: allowed,
+		Allowed: (decision == authorizer.DecisionAllow),
 		Reason:  reason,
 	}
 	if evaluationErr != nil {

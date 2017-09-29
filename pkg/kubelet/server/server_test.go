@@ -183,7 +183,7 @@ func (_ *fakeKubelet) GetCgroupStats(cgroupName string) (*statsapi.ContainerStat
 type fakeAuth struct {
 	authenticateFunc func(*http.Request) (user.Info, bool, error)
 	attributesFunc   func(user.Info, *http.Request) authorizer.Attributes
-	authorizeFunc    func(authorizer.Attributes) (authorized bool, reason string, err error)
+	authorizeFunc    func(authorizer.Attributes) (authorized authorizer.Decision, reason string, err error)
 }
 
 func (f *fakeAuth) AuthenticateRequest(req *http.Request) (user.Info, bool, error) {
@@ -192,7 +192,7 @@ func (f *fakeAuth) AuthenticateRequest(req *http.Request) (user.Info, bool, erro
 func (f *fakeAuth) GetRequestAttributes(u user.Info, req *http.Request) authorizer.Attributes {
 	return f.attributesFunc(u, req)
 }
-func (f *fakeAuth) Authorize(a authorizer.Attributes) (authorized bool, reason string, err error) {
+func (f *fakeAuth) Authorize(a authorizer.Attributes) (authorized authorizer.Decision, reason string, err error) {
 	return f.authorizeFunc(a)
 }
 
@@ -228,8 +228,8 @@ func newServerTest() *serverTestFramework {
 		attributesFunc: func(u user.Info, req *http.Request) authorizer.Attributes {
 			return &authorizer.AttributesRecord{User: u}
 		},
-		authorizeFunc: func(a authorizer.Attributes) (authorized bool, reason string, err error) {
-			return true, "", nil
+		authorizeFunc: func(a authorizer.Attributes) (decision authorizer.Decision, reason string, err error) {
+			return authorizer.DecisionAllow, "", nil
 		},
 	}
 	fw.criHandler = &utiltesting.FakeHandler{
@@ -684,12 +684,12 @@ Otherwise, add it to the expected list of paths that map to the "proxy" subresou
 			}
 			return attributesGetter.GetRequestAttributes(u, req)
 		}
-		fw.fakeAuth.authorizeFunc = func(a authorizer.Attributes) (authorized bool, reason string, err error) {
+		fw.fakeAuth.authorizeFunc = func(a authorizer.Attributes) (decision authorizer.Decision, reason string, err error) {
 			calledAuthorize = true
 			if a != expectedAttributes {
 				t.Fatalf("%s: expected attributes\n\t%#v\ngot\n\t%#v", tc.Path, expectedAttributes, a)
 			}
-			return false, "", nil
+			return authorizer.DecisionNoOpinion, "", nil
 		}
 
 		req, err := http.NewRequest(tc.Method, fw.testHTTPServer.URL+tc.Path, nil)
@@ -743,9 +743,9 @@ func TestAuthenticationError(t *testing.T) {
 		calledAttributes = true
 		return expectedAttributes
 	}
-	fw.fakeAuth.authorizeFunc = func(a authorizer.Attributes) (authorized bool, reason string, err error) {
+	fw.fakeAuth.authorizeFunc = func(a authorizer.Attributes) (decision authorizer.Decision, reason string, err error) {
 		calledAuthorize = true
-		return false, "", errors.New("Failed")
+		return authorizer.DecisionNoOpinion, "", errors.New("Failed")
 	}
 
 	assertHealthFails(t, fw.testHTTPServer.URL+"/healthz", http.StatusInternalServerError)
@@ -781,9 +781,9 @@ func TestAuthenticationFailure(t *testing.T) {
 		calledAttributes = true
 		return expectedAttributes
 	}
-	fw.fakeAuth.authorizeFunc = func(a authorizer.Attributes) (authorized bool, reason string, err error) {
+	fw.fakeAuth.authorizeFunc = func(a authorizer.Attributes) (decision authorizer.Decision, reason string, err error) {
 		calledAuthorize = true
-		return false, "", nil
+		return authorizer.DecisionNoOpinion, "", nil
 	}
 
 	assertHealthFails(t, fw.testHTTPServer.URL+"/healthz", http.StatusUnauthorized)
@@ -819,9 +819,9 @@ func TestAuthorizationSuccess(t *testing.T) {
 		calledAttributes = true
 		return expectedAttributes
 	}
-	fw.fakeAuth.authorizeFunc = func(a authorizer.Attributes) (authorized bool, reason string, err error) {
+	fw.fakeAuth.authorizeFunc = func(a authorizer.Attributes) (decision authorizer.Decision, reason string, err error) {
 		calledAuthorize = true
-		return true, "", nil
+		return authorizer.DecisionAllow, "", nil
 	}
 
 	assertHealthIsOk(t, fw.testHTTPServer.URL+"/healthz")
