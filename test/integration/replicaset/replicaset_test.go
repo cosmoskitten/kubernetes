@@ -45,7 +45,7 @@ import (
 
 const (
 	interval = 100 * time.Millisecond
-	timeout  = 7 * time.Second
+	timeout  = 60 * time.Second
 )
 
 func labelMap() map[string]string {
