@@ -1079,6 +1079,22 @@ run_kubectl_apply_tests() {
   # Clean up
   kubectl delete pods test-pod "${kube_flags[@]}"
 
+  ## kubectl apply --ignore-changed-failure=true
+  # Pre-Condition: no POD exists
+  kube::test::get_object_assert pods "{{range.items}}{{$id_field}}:{{end}}" ''
+  # Command: apply a pod "test-pod" (doesn't exist) should create this pod
+  kubectl apply -f hack/testdata/pod.yaml "${kube_flags[@]}"
+  # Post-Condition: pod "test-pod" is created
+  kube::test::get_object_assert 'pods test-pod' "{{${labels_field}.name}}" 'test-pod-label'
+  # apply with change should return 1
+  ! kubectl apply -f hack/testdata/pod-apply.yaml "${kube_flags[@]}"
+  # apply with change but --ignore-changed-failure=true return 0
+  kubectl apply -ignore-changed-failure=true -f hack/testdata/pod.yaml "${kube_flags[@]}"
+  # apply with no change should return 0
+  kubectl apply -f hack/testdata/pod.yaml "${kube_flags[@]}"
+  # Clean up
+  kubectl delete pods test-pod "${kube_flags[@]}"
+
   set +o nounset
   set +o errexit
 }
