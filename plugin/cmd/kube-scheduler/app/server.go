@@ -78,7 +78,7 @@ func Run(s *options.SchedulerServer) error {
 	podInformer := factory.NewPodInformer(kubecli, 0)
 
 	// Apply algorithms based on feature gates.
-	algorithmprovider.ApplyFeatures()
+	algorithmprovider.ApplyFeatureGates()
 
 	sched, err := CreateScheduler(
 		s,

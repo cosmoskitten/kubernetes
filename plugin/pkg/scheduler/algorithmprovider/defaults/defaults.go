@@ -193,8 +193,8 @@ func defaultPredicates() sets.String {
 	)
 }
 
-// ApplyFeatures applys algorithm by feature gates.
-func ApplyFeatures() {
+// ApplyFeatureGates applies algorithm by feature gates.
+func ApplyFeatureGates() {
 	predSet := defaultPredicates()
 
 	if utilfeature.DefaultFeatureGate.Enabled(features.TaintNodesByCondition) {

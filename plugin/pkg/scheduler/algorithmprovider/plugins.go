@@ -20,7 +20,7 @@ import (
 	"k8s.io/kubernetes/plugin/pkg/scheduler/algorithmprovider/defaults"
 )
 
-// ApplyFeatures applys algorithm by feature gates.
-func ApplyFeatures() {
-	defaults.ApplyFeatures()
+// ApplyFeatureGates applies algorithm by feature gates.
+func ApplyFeatureGates() {
+	defaults.ApplyFeatureGates()
 }
