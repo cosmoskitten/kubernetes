@@ -29,6 +29,7 @@ import (
 	"k8s.io/kubernetes/pkg/api"
 
 	cmdtesting "k8s.io/kubernetes/pkg/kubectl/cmd/testing"
+	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 )
 
 func TestCreateDaemonSet(t *testing.T) {
@@ -83,4 +84,34 @@ func TestCreateDaemonsetNoImage(t *testing.T) {
 	cmd.Flags().Set("output", "name")
 	err := CreateDaemonset(f, buf, cmd, []string{daeName})
 	assert.Error(t, err, "at least one image must be specified")
+}
+
+func TestCreateDaemonSetV1Beta2(t *testing.T) {
+	daeName := "jonny-dae"
+	f, tf, _, ns := cmdtesting.NewAPIFactory()
+	tf.Client = &fake.RESTClient{
+		APIRegistry:          api.Registry,
+		NegotiatedSerializer: ns,
+		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       ioutil.NopCloser(bytes.NewBuffer([]byte("{}"))),
+			}, nil
+		}),
+	}
+	tf.ClientConfig = &restclient.Config{}
+	tf.Printer = &testPrinter{}
+	tf.Namespace = "test"
+	buf := bytes.NewBuffer([]byte{})
+
+	cmd := NewCmdCreateDaemonset(f, buf)
+	cmd.Flags().Set("dry-run", "true")
+	cmd.Flags().Set("output", "name")
+	cmd.Flags().Set("image", "hollywood/jonny.depp:v2")
+	cmd.Flags().Set("generate", cmdutil.DaemonsetV1Beta2GeneratorName)
+	cmd.Run(cmd, []string{daeName})
+	expectedOutput := "daemonset/" + daeName + "\n"
+	if buf.String() != expectedOutput {
+		t.Errorf("expected output: %s, but got: %s", expectedOutput, buf.String())
+	}
 }

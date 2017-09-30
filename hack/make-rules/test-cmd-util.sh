@@ -533,7 +533,6 @@ run_pod_tests() {
   kubectl delete daemonset test-ds --namespace=test-kubectl-describe-pod
   kubectl delete namespace test-kubectl-describe-pod
 
-
   ### Create two PODs
   # Pre-condition: no POD exists
   create_and_use_new_namespace
