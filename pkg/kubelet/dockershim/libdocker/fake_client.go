@@ -372,9 +372,8 @@ func (f *FakeDockerClient) popError(op string) error {
 	if ok {
 		delete(f.Errors, op)
 		return err
-	} else {
-		return nil
 	}
+	return nil
 }
 
 // ListContainers is a test-spy implementation of Interface.ListContainers.
@@ -657,10 +656,10 @@ func (f *FakeDockerClient) PullImage(image string, auth dockertypes.AuthConfig, 
 			return ImageNotFoundError{ID: image}
 		}
 
-		authJson, _ := json.Marshal(auth)
+		authJSON, _ := json.Marshal(auth)
 		inspect := createImageInspectFromRef(image)
 		f.ImageInspects[image] = inspect
-		f.appendPulled(fmt.Sprintf("%s using %s", image, string(authJson)))
+		f.appendPulled(fmt.Sprintf("%s using %s", image, string(authJSON)))
 		f.Images = append(f.Images, *createImageFromImageInspect(*inspect))
 		f.ImagesPulled = append(f.ImagesPulled, image)
 	}
