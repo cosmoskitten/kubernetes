@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -49,14 +50,13 @@ func TestCreateDaemonSet(t *testing.T) {
 	tf.Printer = &testPrinter{}
 	tf.Namespace = "test"
 	buf := bytes.NewBuffer([]byte{})
-
-	cmd := NewCmdCreateDaemonset(f, buf)
+	cmd := NewCmdCreateDaemonset(f, buf, buf)
 	cmd.Flags().Set("dry-run", "true")
 	cmd.Flags().Set("output", "name")
 	cmd.Flags().Set("image", "hollywood/jonny.depp:v2")
 	cmd.Run(cmd, []string{daeName})
-	expectedOutput := "daemonset/" + daeName + "\n"
-	if buf.String() != expectedOutput {
+	expectedOutput := "daemonset/" + daeName
+	if !strings.Contains(buf.String(), expectedOutput) {
 		t.Errorf("expected output: %s, but got: %s", expectedOutput, buf.String())
 	}
 }
@@ -79,14 +79,14 @@ func TestCreateDaemonsetNoImage(t *testing.T) {
 	tf.Namespace = "test"
 
 	buf := bytes.NewBuffer([]byte{})
-	cmd := NewCmdCreateDaemonset(f, buf)
+	cmd := NewCmdCreateDaemonset(f, buf, buf)
 	cmd.Flags().Set("dry-run", "true")
 	cmd.Flags().Set("output", "name")
-	err := CreateDaemonset(f, buf, cmd, []string{daeName})
+	err := CreateDaemonset(f, buf, buf, cmd, []string{daeName})
 	assert.Error(t, err, "at least one image must be specified")
 }
 
-func TestCreateDaemonSetV1Beta2(t *testing.T) {
+func TestCreateDaemonSetExtensionsV1Beta1(t *testing.T) {
 	daeName := "jonny-dae"
 	f, tf, _, ns := cmdtesting.NewAPIFactory()
 	tf.Client = &fake.RESTClient{
@@ -104,11 +104,11 @@ func TestCreateDaemonSetV1Beta2(t *testing.T) {
 	tf.Namespace = "test"
 	buf := bytes.NewBuffer([]byte{})
 
-	cmd := NewCmdCreateDaemonset(f, buf)
+	cmd := NewCmdCreateDaemonset(f, buf, buf)
 	cmd.Flags().Set("dry-run", "true")
 	cmd.Flags().Set("output", "name")
 	cmd.Flags().Set("image", "hollywood/jonny.depp:v2")
-	cmd.Flags().Set("generate", cmdutil.DaemonsetAppsV1Beta2GeneratorName)
+	cmd.Flags().Set("generator", cmdutil.DaemonsetExtensionsV1Beta1GeneratorName)
 	cmd.Run(cmd, []string{daeName})
 	expectedOutput := "daemonset/" + daeName + "\n"
 	if buf.String() != expectedOutput {
