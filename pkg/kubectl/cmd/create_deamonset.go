@@ -17,6 +17,7 @@ limitations under the License.
 package cmd
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/spf13/cobra"
@@ -37,7 +38,7 @@ var (
 )
 
 // NewCmdCreateDaemonset is a command to create a new daemonset.
-func NewCmdCreateDaemonset(f cmdutil.Factory, cmdOut io.Writer) *cobra.Command {
+func NewCmdCreateDaemonset(f cmdutil.Factory, cmdOut, cmdErr io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "daemonset NAME --image=image [--dry-run]",
 		Aliases: []string{"ds"},
@@ -45,25 +46,41 @@ func NewCmdCreateDaemonset(f cmdutil.Factory, cmdOut io.Writer) *cobra.Command {
 		Long:    daemonsetLong,
 		Example: daemonsetExample,
 		Run: func(cmd *cobra.Command, args []string) {
-			cmdutil.CheckErr(CreateDaemonset(f, cmdOut, cmd, args))
+			cmdutil.CheckErr(CreateDaemonset(f, cmdOut, cmdErr, cmd, args))
 		},
 	}
 	cmdutil.AddApplyAnnotationFlags(cmd)
 	cmdutil.AddValidateFlags(cmd)
 	cmdutil.AddPrinterFlags(cmd)
-	cmdutil.AddGeneratorFlags(cmd, cmdutil.DaemonsetExtensionsV1Beta1GeneratorName)
+	cmdutil.AddGeneratorFlags(cmd, cmdutil.DaemonsetAppsV1Beta2GeneratorName)
 	cmd.Flags().StringSlice("image", []string{}, "Image name to run.")
 	cmd.MarkFlagRequired("image")
 	return cmd
 }
 
-func CreateDaemonset(f cmdutil.Factory, cmdOut io.Writer, cmd *cobra.Command, args []string) error {
+func CreateDaemonset(f cmdutil.Factory, cmdOut, cmdErr io.Writer, cmd *cobra.Command, args []string) error {
 	name, err := NameFromCommandArgs(cmd, args)
 	if err != nil {
 		return err
 	}
+	generatorName := cmdutil.GetFlagString(cmd, "generator")
+
+	clientset, err := f.ClientSet()
+	if err != nil {
+		return err
+	}
+	resourcesList, err := clientset.Discovery().ServerResources()
+	// ServerResources ignores errors for old servers do not expose discovery
+	if err != nil {
+		return fmt.Errorf("failed to discover supported resources: %v", err)
+	}
+
+	// It is possible we have to modify the user-provided generator name if
+	// the server does not have support for the requested generator.
+	generatorName = cmdutil.FallbackGeneratorNameIfNecessary(generatorName, resourcesList, cmdErr)
+
 	var generator kubectl.StructuredGenerator
-	switch generatorName := cmdutil.GetFlagString(cmd, "generator"); generatorName {
+	switch generatorName {
 	case cmdutil.DaemonsetExtensionsV1Beta1GeneratorName:
 		generator = &kubectl.DaemonSetGeneratorExtensionsV1Beta1{
 			BaseGenerator: kubectl.BaseGenerator{

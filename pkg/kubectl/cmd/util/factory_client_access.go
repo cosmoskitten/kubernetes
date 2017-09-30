@@ -594,6 +594,12 @@ func FallbackGeneratorNameIfNecessary(
 
 			return DeploymentBasicV1Beta1GeneratorName
 		}
+	case DaemonsetAppsV1Beta2GeneratorName:
+		if !Contains(resourcesList, batchv2alpha1.SchemeGroupVersion.WithResource("daemonsets")) {
+			warning(cmdErr, DaemonsetAppsV1Beta2GeneratorName, DaemonsetExtensionsV1Beta1GeneratorName)
+
+			return DaemonsetExtensionsV1Beta1GeneratorName
+		}
 	case CronJobV2Alpha1GeneratorName:
 		if !Contains(resourcesList, batchv2alpha1.SchemeGroupVersion.WithResource("cronjobs")) {
 			warning(cmdErr, CronJobV2Alpha1GeneratorName, JobV1GeneratorName)
