@@ -69,7 +69,6 @@ func (d *CachedDiscoveryClient) ServerResourcesForGroupVersion(groupVersion stri
 	if err == nil {
 		cachedResources := &metav1.APIResourceList{}
 		if err := runtime.DecodeInto(api.Codecs.UniversalDecoder(), cachedBytes, cachedResources); err == nil {
-			glog.V(6).Infof("returning cached discovery info from %v", filename)
 			return cachedResources, nil
 		}
 	}
@@ -116,7 +115,6 @@ func (d *CachedDiscoveryClient) ServerGroups() (*metav1.APIGroupList, error) {
 	if err == nil {
 		cachedGroups := &metav1.APIGroupList{}
 		if err := runtime.DecodeInto(api.Codecs.UniversalDecoder(), cachedBytes, cachedGroups); err == nil {
-			glog.V(6).Infof("returning cached discovery info from %v", filename)
 			return cachedGroups, nil
 		}
 	}
