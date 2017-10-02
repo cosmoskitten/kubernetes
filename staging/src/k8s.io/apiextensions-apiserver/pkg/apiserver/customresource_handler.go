@@ -359,7 +359,7 @@ func (r *crdHandler) getServingInfoFor(crd *apiextensions.CustomResourceDefiniti
 		ParameterCodec: parameterCodec,
 
 		Creater:         creator,
-		Convertor:       unstructured.UnstructuredObjectConverter{},
+		Convertor:       crdObjectConverter{UnstructuredObjectConverter: unstructured.UnstructuredObjectConverter{}},
 		Defaulter:       unstructuredDefaulter{parameterScheme},
 		Copier:          UnstructuredCopier{},
 		Typer:           typer,
@@ -388,6 +388,16 @@ func (r *crdHandler) getServingInfoFor(crd *apiextensions.CustomResourceDefiniti
 	storageMap2[crd.UID] = ret
 	r.customStorage.Store(storageMap2)
 	return ret, nil
+}
+
+// crdObjectConverter is a converter that supports field selectors for CRDs.
+type crdObjectConverter struct {
+	unstructured.UnstructuredObjectConverter
+}
+
+func (crdObjectConverter) ConvertFieldLabel(version, kind, label, value string) (string, string, error) {
+	// Just return the passed-in label and value, as CRDs only support a single version currently.
+	return label, value, nil
 }
 
 func (c *crdHandler) updateCustomResourceDefinition(oldObj, _ interface{}) {
