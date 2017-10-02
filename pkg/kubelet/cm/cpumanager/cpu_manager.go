@@ -23,7 +23,6 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	cadvisorapi "github.com/google/cadvisor/info/v1"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 
@@ -86,8 +85,6 @@ type manager struct {
 	// and the containerID of their containers
 	podStatusProvider status.PodStatusProvider
 
-	machineInfo *cadvisorapi.MachineInfo
-
 	nodeAllocatableReservation v1.ResourceList
 }
 
@@ -97,7 +94,6 @@ var _ Manager = &manager{}
 func NewManager(
 	cpuPolicyName string,
 	reconcilePeriod time.Duration,
-	machineInfo *cadvisorapi.MachineInfo,
 	nodeAllocatableReservation v1.ResourceList,
 ) (Manager, error) {
 	var policy Policy
@@ -108,7 +104,7 @@ func NewManager(
 		policy = NewNonePolicy()
 
 	case PolicyStatic:
-		topo, err := topology.Discover(machineInfo)
+		topo, err := topology.Discover()
 		if err != nil {
 			return nil, err
 		}
@@ -141,10 +137,9 @@ func NewManager(
 	}
 
 	manager := &manager{
-		policy:                     policy,
-		reconcilePeriod:            reconcilePeriod,
-		state:                      state.NewMemoryState(),
-		machineInfo:                machineInfo,
+		policy:          policy,
+		reconcilePeriod: reconcilePeriod,
+		state:           state.NewMemoryState(),
 		nodeAllocatableReservation: nodeAllocatableReservation,
 	}
 	return manager, nil

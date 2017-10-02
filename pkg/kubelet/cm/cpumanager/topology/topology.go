@@ -18,8 +18,9 @@ package topology
 
 import (
 	"fmt"
+	"os/exec"
+	"strings"
 
-	cadvisorapi "github.com/google/cadvisor/info/v1"
 	"k8s.io/kubernetes/pkg/kubelet/cm/cpuset"
 )
 
@@ -137,33 +138,67 @@ func (d CPUDetails) CPUsInCore(id int) cpuset.CPUSet {
 	return b.Result()
 }
 
-// Discover returns CPUTopology based on cadvisor node info
-func Discover(machineInfo *cadvisorapi.MachineInfo) (*CPUTopology, error) {
-
-	if machineInfo.NumCores == 0 {
-		return nil, fmt.Errorf("could not detect number of cpus")
+// Discover returns CPUTopology based on lscpu output
+func Discover() (*CPUTopology, error) {
+	out, err := exec.Command("lscpu", "-p").Output()
+	if err != nil {
+		return nil, fmt.Errorf("could not execute %q", "lscpu -p")
 	}
 
-	CPUDetails := CPUDetails{}
+	topo, err := parseTopology(strings.TrimSpace(string(out)))
+	if err != nil {
+		return nil, fmt.Errorf("could not parse topology")
+	}
+	return topo, nil
+}
 
-	numCPUs := machineInfo.NumCores
-	numPhysicalCores := 0
-	for _, socket := range machineInfo.Topology {
-		numPhysicalCores += len(socket.Cores)
-		for _, core := range socket.Cores {
-			for _, cpu := range core.Threads {
-				CPUDetails[cpu] = CPUInfo{
-					CoreID:   core.Id,
-					SocketID: socket.Id,
-				}
-			}
+func parseTopology(topology string) (*CPUTopology, error) {
+	outLines := strings.Split(topology, "\n")
+	// lscpu -p output looks like:
+	// # comments
+	// # comments
+	// cpu,core,socket,node,,l1d,l1i,l2,l3
+	// cpu,core,socket,node,,l1d,l1i,l2,l3
+	CPUDetails := CPUDetails{}
+	sockets := make(map[int]struct{})
+	cores := make(map[int]struct{})
+
+	for _, line := range outLines {
+		// Skip informational header lines
+		if strings.HasPrefix(line, "#") {
+			continue
+		}
+		// Skip empty line
+		if len(line) == 0 {
+			continue
+		}
+
+		var cpu, core, socket int
+		n, err := fmt.Sscanf(line, "%d,%d,%d", &cpu, &core, &socket)
+		if n != 3 {
+			return nil, fmt.Errorf("expected to read 3 values but got %q", n)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("Sscanf failed")
+		}
+
+		sockets[socket] = struct{}{}
+		cores[core] = struct{}{}
+
+		CPUDetails[cpu] = CPUInfo{
+			CoreID:   core,
+			SocketID: socket,
 		}
 	}
 
+	if len(CPUDetails) == 0 {
+		return nil, fmt.Errorf("could not detect number of cpus")
+	}
+
 	return &CPUTopology{
-		NumCPUs:    numCPUs,
-		NumSockets: len(machineInfo.Topology),
-		NumCores:   numPhysicalCores,
+		NumCPUs:    len(CPUDetails),
+		NumSockets: len(sockets),
+		NumCores:   len(cores),
 		CPUDetails: CPUDetails,
 	}, nil
 }

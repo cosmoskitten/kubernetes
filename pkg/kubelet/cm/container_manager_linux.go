@@ -300,7 +300,6 @@ func NewContainerManager(mountUtil mount.Interface, cadvisorInterface cadvisor.I
 		cm.cpuManager, err = cpumanager.NewManager(
 			nodeConfig.ExperimentalCPUManagerPolicy,
 			nodeConfig.ExperimentalCPUManagerReconcilePeriod,
-			machineInfo,
 			cm.GetNodeAllocatableReservation(),
 		)
 		if err != nil {

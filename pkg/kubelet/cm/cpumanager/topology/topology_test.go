@@ -19,41 +19,37 @@ package topology
 import (
 	"reflect"
 	"testing"
-
-	cadvisorapi "github.com/google/cadvisor/info/v1"
 )
 
 func Test_Discover(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		args    *cadvisorapi.MachineInfo
+		args    string
 		want    *CPUTopology
 		wantErr bool
 	}{
 		{
-			name: "FailNumCores",
-			args: &cadvisorapi.MachineInfo{
-				NumCores: 0,
-			},
+			name:    "FailNumCores",
+			args:    "",
 			want:    &CPUTopology{},
 			wantErr: true,
 		},
 		{
 			name: "OneSocketHT",
-			args: &cadvisorapi.MachineInfo{
-				NumCores: 8,
-				Topology: []cadvisorapi.Node{
-					{Id: 0,
-						Cores: []cadvisorapi.Core{
-							{Id: 0, Threads: []int{0, 4}},
-							{Id: 1, Threads: []int{1, 5}},
-							{Id: 2, Threads: []int{2, 6}},
-							{Id: 3, Threads: []int{3, 7}},
-						},
-					},
-				},
-			},
+			args: "# The following is the parsable format, which can be fed to other\n" +
+				"# programs. Each different item in every column has an unique ID\n" +
+				"# starting from zero.\n" +
+				"# CPU,Core,Socket,Node,,L1d,L1i,L2,L3\n" +
+				"0,0,0,0,,0,0,0,0\n" +
+				"1,1,0,0,,1,1,1,0\n" +
+				"2,2,0,0,,2,2,2,0\n" +
+				"3,3,0,0,,3,3,3,0\n" +
+				"4,0,0,0,,0,0,0,0\n" +
+				"5,1,0,0,,1,1,1,0\n" +
+				"6,2,0,0,,2,2,2,0\n" +
+				"7,3,0,0,,3,3,3,0\n",
+
 			want: &CPUTopology{
 				NumCPUs:    8,
 				NumSockets: 1,
@@ -73,23 +69,14 @@ func Test_Discover(t *testing.T) {
 		},
 		{
 			name: "DualSocketNoHT",
-			args: &cadvisorapi.MachineInfo{
-				NumCores: 4,
-				Topology: []cadvisorapi.Node{
-					{Id: 0,
-						Cores: []cadvisorapi.Core{
-							{Id: 0, Threads: []int{0}},
-							{Id: 2, Threads: []int{2}},
-						},
-					},
-					{Id: 1,
-						Cores: []cadvisorapi.Core{
-							{Id: 1, Threads: []int{1}},
-							{Id: 3, Threads: []int{3}},
-						},
-					},
-				},
-			},
+			args: "# The following is the parsable format, which can be fed to other\n" +
+				"# programs. Each different item in every column has an unique ID\n" +
+				"# starting from zero.\n" +
+				"# CPU,Core,Socket,Node,,L1d,L1i,L2,L3\n" +
+				"0,0,0,0,,0,0,0,0\n" +
+				"1,1,1,0,,1,1,1,0\n" +
+				"2,2,0,0,,2,2,2,0\n" +
+				"3,3,1,0,,3,3,3,0\n",
 			want: &CPUTopology{
 				NumCPUs:    4,
 				NumSockets: 2,
@@ -106,7 +93,7 @@ func Test_Discover(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := Discover(tt.args)
+			got, err := parseTopology(tt.args)
 			if err != nil {
 				if tt.wantErr {
 					t.Logf("Discover() expected error = %v", err)
