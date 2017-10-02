@@ -18,7 +18,6 @@ package monitoring
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"golang.org/x/oauth2/google"
@@ -26,7 +25,6 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/kubernetes/test/e2e/framework"
 	instrumentation "k8s.io/kubernetes/test/e2e/instrumentation/common"
 
 	gcm "google.golang.org/api/monitoring/v3"
@@ -35,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/client-go/discovery"
 	kubeaggrcs "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
+	"k8s.io/kubernetes/test/e2e/framework"
 	customclient "k8s.io/metrics/pkg/client/custom_metrics"
 )
 
@@ -93,17 +92,17 @@ func testAdapter(f *framework.Framework, kubeClient clientset.Interface, customM
 	}
 
 	// Set up a cluster: create a custom metric and set up k8s-sd adapter
-	err = createDescriptors(gcmService, projectId)
+	err = CreateDescriptors(gcmService, projectId)
 	if err != nil {
 		framework.Failf("Failed to create metric descriptor: %s", err)
 	}
-	defer cleanupDescriptors(gcmService, projectId)
+	defer CleanupDescriptors(gcmService, projectId)
 
-	err = createAdapter()
+	err = CreateAdapter()
 	if err != nil {
 		framework.Failf("Failed to set up: %s", err)
 	}
-	defer cleanupAdapter()
+	defer CleanupAdapter()
 
 	// Run application that exports the metric
 	err = createSDExporterPods(f, kubeClient)
@@ -153,52 +152,6 @@ func testAdapter(f *framework.Framework, kubeClient clientset.Interface, customM
 	}
 }
 
-func createDescriptors(service *gcm.Service, projectId string) error {
-	_, err := service.Projects.MetricDescriptors.Create(fmt.Sprintf("projects/%s", projectId), &gcm.MetricDescriptor{
-		Name:       CustomMetricName,
-		ValueType:  "INT64",
-		Type:       "custom.googleapis.com/" + CustomMetricName,
-		MetricKind: "GAUGE",
-	}).Do()
-	if err != nil {
-		return err
-	}
-	_, err = service.Projects.MetricDescriptors.Create(fmt.Sprintf("projects/%s", projectId), &gcm.MetricDescriptor{
-		Name:       UnusedMetricName,
-		ValueType:  "INT64",
-		Type:       "custom.googleapis.com/" + UnusedMetricName,
-		MetricKind: "GAUGE",
-	}).Do()
-	return err
-}
-
-func createSDExporterPods(f *framework.Framework, cs clientset.Interface) error {
-	_, err := cs.Core().Pods(f.Namespace.ObjectMeta.Name).Create(StackdriverExporterPod(stackdriverExporterPod1, stackdriverExporterLabel, CustomMetricName, CustomMetricValue))
-	if err != nil {
-		return err
-	}
-	_, err = cs.Core().Pods(f.Namespace.ObjectMeta.Name).Create(StackdriverExporterPod(stackdriverExporterPod2, stackdriverExporterLabel, UnusedMetricName, UnusedMetricValue))
-	return err
-}
-
-func createAdapter() error {
-	stat, err := framework.RunKubectl("create", "-f", "https://raw.githubusercontent.com/GoogleCloudPlatform/k8s-stackdriver/master/custom-metrics-stackdriver-adapter/adapter-beta.yaml")
-	framework.Logf(stat)
-	return err
-}
-
-// TODO: Cleanup time series as well
-func cleanupDescriptors(service *gcm.Service, projectId string) {
-	_, err := service.Projects.MetricDescriptors.Delete(fmt.Sprintf("projects/%s/metricDescriptors/custom.googleapis.com/%s", projectId, CustomMetricName)).Do()
-	if err != nil {
-		framework.Logf("Failed to delete descriptor for metric '%s': %v", CustomMetricName, err)
-	}
-	_, err = service.Projects.MetricDescriptors.Delete(fmt.Sprintf("projects/%s/metricDescriptors/custom.googleapis.com/%s", projectId, UnusedMetricName)).Do()
-	if err != nil {
-		framework.Logf("Failed to delete descriptor for metric '%s': %v", CustomMetricName, err)
-	}
-}
-
 func cleanupSDExporterPod(f *framework.Framework, cs clientset.Interface) {
 	err := cs.Core().Pods(f.Namespace.ObjectMeta.Name).Delete(stackdriverExporterPod1, &metav1.DeleteOptions{})
 	if err != nil {
@@ -210,8 +163,11 @@ func cleanupSDExporterPod(f *framework.Framework, cs clientset.Interface) {
 	}
 }
 
-func cleanupAdapter() error {
-	stat, err := framework.RunKubectl("delete", "-f", "https://raw.githubusercontent.com/GoogleCloudPlatform/k8s-stackdriver/master/custom-metrics-stackdriver-adapter/adapter-beta.yaml")
-	framework.Logf(stat)
+func createSDExporterPods(f *framework.Framework, cs clientset.Interface) error {
+	_, err := cs.Core().Pods(f.Namespace.ObjectMeta.Name).Create(StackdriverExporterPod(stackdriverExporterPod1, stackdriverExporterLabel, CustomMetricName, CustomMetricValue))
+	if err != nil {
+		return err
+	}
+	_, err = cs.Core().Pods(f.Namespace.ObjectMeta.Name).Create(StackdriverExporterPod(stackdriverExporterPod2, stackdriverExporterLabel, UnusedMetricName, UnusedMetricValue))
 	return err
 }

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package monitoring
+package autoscaling
 
 import (
 	"context"
@@ -26,11 +26,11 @@ import (
 	. "github.com/onsi/ginkgo"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kubernetes/test/e2e/framework"
-	instrumentation "k8s.io/kubernetes/test/e2e/instrumentation/common"
 
 	gcm "google.golang.org/api/monitoring/v3"
-	autoscaling "k8s.io/api/autoscaling/v2beta1"
+	as "k8s.io/api/autoscaling/v2beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/kubernetes/test/e2e/instrumentation/monitoring"
 )
 
 const (
@@ -39,15 +39,15 @@ const (
 	stackdriverExporterPod        = "stackdriver-exporter-pod"
 )
 
-var _ = instrumentation.SIGDescribe("Stackdriver Monitoring", func() {
+var _ = SIGDescribe("[HPA] Horizontal pod autoscaling (scale resource: Custom Metrics from Stackdriver)", func() {
 	BeforeEach(func() {
 		framework.SkipUnlessProviderIs("gce", "gke")
 	})
 
-	f := framework.NewDefaultFramework("stackdriver-monitoring")
+	f := framework.NewDefaultFramework("horizontal-pod-autoscaling")
 	var kubeClient clientset.Interface
 
-	It("should autoscale with Custom Metrics from Stackdriver [Feature:StackdriverMonitoring]", func() {
+	It("should autoscale with Custom Metrics from Stackdriver [Feature:CustomMetricsAutoscaling]", func() {
 		kubeClient = f.ClientSet
 		testHPA(f, kubeClient)
 	})
@@ -78,17 +78,17 @@ func testHPA(f *framework.Framework, kubeClient clientset.Interface) {
 	}
 
 	// Set up a cluster: create a custom metric and set up k8s-sd adapter
-	err = createDescriptors(gcmService, projectId)
+	err = monitoring.CreateDescriptors(gcmService, projectId)
 	if err != nil {
 		framework.Failf("Failed to create metric descriptor: %v", err)
 	}
-	defer cleanupDescriptors(gcmService, projectId)
+	defer monitoring.CleanupDescriptors(gcmService, projectId)
 
-	err = createAdapter()
+	err = monitoring.CreateAdapter()
 	if err != nil {
 		framework.Failf("Failed to set up: %v", err)
 	}
-	defer cleanupAdapter()
+	defer monitoring.CleanupAdapter()
 
 	// Run application that exports the metric
 	err = createDeploymentsToScale(f, kubeClient)
@@ -130,15 +130,15 @@ func testHPA(f *framework.Framework, kubeClient clientset.Interface) {
 }
 
 func createDeploymentsToScale(f *framework.Framework, cs clientset.Interface) error {
-	_, err := cs.Extensions().Deployments(f.Namespace.ObjectMeta.Name).Create(StackdriverExporterDeployment(stackdriverExporterDeployment, 2, 100))
+	_, err := cs.Extensions().Deployments(f.Namespace.ObjectMeta.Name).Create(monitoring.StackdriverExporterDeployment(stackdriverExporterDeployment, 2, 100))
 	if err != nil {
 		return err
 	}
-	_, err = cs.Core().Pods(f.Namespace.ObjectMeta.Name).Create(StackdriverExporterPod(stackdriverExporterPod, stackdriverExporterPod, CustomMetricName, 100))
+	_, err = cs.Core().Pods(f.Namespace.ObjectMeta.Name).Create(monitoring.StackdriverExporterPod(stackdriverExporterPod, stackdriverExporterPod, monitoring.CustomMetricName, 100))
 	if err != nil {
 		return err
 	}
-	_, err = cs.Extensions().Deployments(f.Namespace.ObjectMeta.Name).Create(StackdriverExporterDeployment(dummyDeploymentName, 2, 100))
+	_, err = cs.Extensions().Deployments(f.Namespace.ObjectMeta.Name).Create(monitoring.StackdriverExporterDeployment(dummyDeploymentName, 2, 100))
 	return err
 }
 
@@ -150,24 +150,24 @@ func cleanupDeploymentsToScale(f *framework.Framework, cs clientset.Interface) {
 
 func createPodsHPA(f *framework.Framework, cs clientset.Interface) error {
 	var minReplicas int32 = 1
-	_, err := cs.AutoscalingV2beta1().HorizontalPodAutoscalers(f.Namespace.ObjectMeta.Name).Create(&autoscaling.HorizontalPodAutoscaler{
+	_, err := cs.AutoscalingV2beta1().HorizontalPodAutoscalers(f.Namespace.ObjectMeta.Name).Create(&as.HorizontalPodAutoscaler{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "custom-metrics-pods-hpa",
 			Namespace: f.Namespace.ObjectMeta.Name,
 		},
-		Spec: autoscaling.HorizontalPodAutoscalerSpec{
-			Metrics: []autoscaling.MetricSpec{
+		Spec: as.HorizontalPodAutoscalerSpec{
+			Metrics: []as.MetricSpec{
 				{
-					Type: autoscaling.PodsMetricSourceType,
-					Pods: &autoscaling.PodsMetricSource{
-						MetricName:         CustomMetricName,
+					Type: as.PodsMetricSourceType,
+					Pods: &as.PodsMetricSource{
+						MetricName:         monitoring.CustomMetricName,
 						TargetAverageValue: *resource.NewQuantity(200, resource.DecimalSI),
 					},
 				},
 			},
 			MaxReplicas: 3,
 			MinReplicas: &minReplicas,
-			ScaleTargetRef: autoscaling.CrossVersionObjectReference{
+			ScaleTargetRef: as.CrossVersionObjectReference{
 				APIVersion: "extensions/v1beta1",
 				Kind:       "Deployment",
 				Name:       stackdriverExporterDeployment,
@@ -179,18 +179,18 @@ func createPodsHPA(f *framework.Framework, cs clientset.Interface) error {
 
 func createObjectHPA(f *framework.Framework, cs clientset.Interface) error {
 	var minReplicas int32 = 1
-	_, err := cs.AutoscalingV2beta1().HorizontalPodAutoscalers(f.Namespace.ObjectMeta.Name).Create(&autoscaling.HorizontalPodAutoscaler{
+	_, err := cs.AutoscalingV2beta1().HorizontalPodAutoscalers(f.Namespace.ObjectMeta.Name).Create(&as.HorizontalPodAutoscaler{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "custom-metrics-objects-hpa",
 			Namespace: f.Namespace.ObjectMeta.Name,
 		},
-		Spec: autoscaling.HorizontalPodAutoscalerSpec{
-			Metrics: []autoscaling.MetricSpec{
+		Spec: as.HorizontalPodAutoscalerSpec{
+			Metrics: []as.MetricSpec{
 				{
-					Type: autoscaling.ObjectMetricSourceType,
-					Object: &autoscaling.ObjectMetricSource{
-						MetricName: CustomMetricName,
-						Target: autoscaling.CrossVersionObjectReference{
+					Type: as.ObjectMetricSourceType,
+					Object: &as.ObjectMetricSource{
+						MetricName: monitoring.CustomMetricName,
+						Target: as.CrossVersionObjectReference{
 							Kind: "Pod",
 							Name: stackdriverExporterPod,
 						},
@@ -200,7 +200,7 @@ func createObjectHPA(f *framework.Framework, cs clientset.Interface) error {
 			},
 			MaxReplicas: 3,
 			MinReplicas: &minReplicas,
-			ScaleTargetRef: autoscaling.CrossVersionObjectReference{
+			ScaleTargetRef: as.CrossVersionObjectReference{
 				APIVersion: "extensions/v1beta1",
 				Kind:       "Deployment",
 				Name:       dummyDeploymentName,

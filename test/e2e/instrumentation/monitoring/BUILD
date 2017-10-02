@@ -9,7 +9,6 @@ go_library(
     name = "go_default_library",
     srcs = [
         "cadvisor.go",
-        "custom_metrics_autoscaling.go",
         "custom_metrics_deployments.go",
         "custom_metrics_stackdriver.go",
         "influxdb.go",
@@ -26,10 +25,8 @@ go_library(
         "//vendor/github.com/onsi/gomega:go_default_library",
         "//vendor/golang.org/x/oauth2/google:go_default_library",
         "//vendor/google.golang.org/api/monitoring/v3:go_default_library",
-        "//vendor/k8s.io/api/autoscaling/v2beta1:go_default_library",
         "//vendor/k8s.io/api/core/v1:go_default_library",
         "//vendor/k8s.io/api/extensions/v1beta1:go_default_library",
-        "//vendor/k8s.io/apimachinery/pkg/api/resource:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/labels:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/runtime/schema:go_default_library",

@@ -18,9 +18,11 @@ package monitoring
 
 import (
 	"fmt"
+	gcm "google.golang.org/api/monitoring/v3"
 	corev1 "k8s.io/api/core/v1"
 	extensions "k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/kubernetes/test/e2e/framework"
 )
 
 var (
@@ -92,4 +94,51 @@ func stackdriverExporterPodSpec(metricName string, metricValue int64) corev1.Pod
 			},
 		},
 	}
+}
+
+// CreateAdapter creates Custom Metrics - Stackdriver adapter.
+func CreateAdapter() error {
+	stat, err := framework.RunKubectl("create", "-f", "https://raw.githubusercontent.com/GoogleCloudPlatform/k8s-stackdriver/master/custom-metrics-stackdriver-adapter/adapter-beta.yaml")
+	framework.Logf(stat)
+	return err
+}
+
+// CreateDescriptors creates descriptors for metrics: CustomMetricName and UnusedMetricName.
+func CreateDescriptors(service *gcm.Service, projectId string) error {
+	_, err := service.Projects.MetricDescriptors.Create(fmt.Sprintf("projects/%s", projectId), &gcm.MetricDescriptor{
+		Name:       CustomMetricName,
+		ValueType:  "INT64",
+		Type:       "custom.googleapis.com/" + CustomMetricName,
+		MetricKind: "GAUGE",
+	}).Do()
+	if err != nil {
+		return err
+	}
+	_, err = service.Projects.MetricDescriptors.Create(fmt.Sprintf("projects/%s", projectId), &gcm.MetricDescriptor{
+		Name:       UnusedMetricName,
+		ValueType:  "INT64",
+		Type:       "custom.googleapis.com/" + UnusedMetricName,
+		MetricKind: "GAUGE",
+	}).Do()
+	return err
+}
+
+// CleanupDescriptors deletes descriptors for metrics: CustomMetricName and UnusedMetricName.
+// TODO: Cleanup time series as well
+func CleanupDescriptors(service *gcm.Service, projectId string) {
+	_, err := service.Projects.MetricDescriptors.Delete(fmt.Sprintf("projects/%s/metricDescriptors/custom.googleapis.com/%s", projectId, CustomMetricName)).Do()
+	if err != nil {
+		framework.Logf("Failed to delete descriptor for metric '%s': %v", CustomMetricName, err)
+	}
+	_, err = service.Projects.MetricDescriptors.Delete(fmt.Sprintf("projects/%s/metricDescriptors/custom.googleapis.com/%s", projectId, UnusedMetricName)).Do()
+	if err != nil {
+		framework.Logf("Failed to delete descriptor for metric '%s': %v", CustomMetricName, err)
+	}
+}
+
+// CleanupAdapter deletes Custom Metrics - Stackdriver adapter deployments.
+func CleanupAdapter() error {
+	stat, err := framework.RunKubectl("delete", "-f", "https://raw.githubusercontent.com/GoogleCloudPlatform/k8s-stackdriver/master/custom-metrics-stackdriver-adapter/adapter-beta.yaml")
+	framework.Logf(stat)
+	return err
 }
