@@ -18,6 +18,8 @@ package options
 
 import (
 	"fmt"
+
+	"k8s.io/kubernetes/pkg/api"
 )
 
 // TODO: Longer term we should read this from some config store, rather than a flag.
@@ -45,6 +47,26 @@ func validateServiceNodePort(options *ServerRunOptions) []error {
 	return errors
 }
 
+// validateNodeAddressTypes validates node address types
+func validateNodeAddressTypes(options *ServerRunOptions) []error {
+	errors := []error{}
+	isValidAddressType := func(t string) bool {
+		for _, existingType := range api.AllNodeAddressTypes.Names() {
+			if t == existingType {
+				return true
+			}
+		}
+		return false
+	}
+
+	for _, addressType := range options.SSHPreferredAddressTypes {
+		if !isValidAddressType(addressType) {
+			errors = append(errors, fmt.Errorf("specified node address type %s is not valid", addressType))
+		}
+	}
+	return errors
+}
+
 // Validate checks ServerRunOptions and return a slice of found errors.
 func (options *ServerRunOptions) Validate() []error {
 	var errors []error
@@ -55,6 +77,9 @@ func (options *ServerRunOptions) Validate() []error {
 		errors = append(errors, errs...)
 	}
 	if errs := validateServiceNodePort(options); len(errs) > 0 {
+		errors = append(errors, errs...)
+	}
+	if errs := validateNodeAddressTypes(options); len(errs) > 0 {
 		errors = append(errors, errs...)
 	}
 	if errs := options.SecureServing.Validate(); len(errs) > 0 {
