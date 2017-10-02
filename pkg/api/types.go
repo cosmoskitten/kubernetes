@@ -3295,6 +3295,8 @@ type NodeCondition struct {
 
 type NodeAddressType string
 
+type NodeAddressTypes []NodeAddressType
+
 const (
 	NodeHostName    NodeAddressType = "Hostname"
 	NodeExternalIP  NodeAddressType = "ExternalIP"
@@ -3302,6 +3304,24 @@ const (
 	NodeExternalDNS NodeAddressType = "ExternalDNS"
 	NodeInternalDNS NodeAddressType = "InternalDNS"
 )
+
+// AllNodeAddressTypes exports all existing node address types
+var AllNodeAddressTypes = NodeAddressTypes{
+	NodeHostName,
+	NodeExternalIP,
+	NodeInternalIP,
+	NodeExternalDNS,
+	NodeInternalDNS,
+}
+
+// Names returns a slice of all the node address type names
+func (t NodeAddressTypes) Names() []string {
+	strs := make([]string, len(t))
+	for i, v := range t {
+		strs[i] = string(v)
+	}
+	return strs
+}
 
 type NodeAddress struct {
 	Type    NodeAddressType

@@ -165,7 +165,7 @@ func (s *ServerRunOptions) AddFlags(fs *pflag.FlagSet) {
 		"If non-empty, use secure SSH proxy to the nodes, using this user keyfile")
 
 	fs.StringSliceVar(&s.SSHPreferredAddressTypes, "ssh-preferred-address-types", s.SSHPreferredAddressTypes,
-		"List of the preferred NodeAddressTypes to use for SSH Proxy.")
+		"List of the preferred NodeAddressTypes to use for SSH proxy. Possible values: "+strings.Join(api.AllNodeAddressTypes.Names(), ", "))
 
 	fs.Int64Var(&s.MaxConnectionBytesPerSec, "max-connection-bytes-per-sec", s.MaxConnectionBytesPerSec, ""+
 		"If non-zero, throttle each user connection to this number of bytes/sec. "+
