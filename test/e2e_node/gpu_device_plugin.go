@@ -18,6 +18,7 @@ package e2e_node
 
 import (
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"time"
 
@@ -138,6 +139,9 @@ func newDecimalResourceList(name v1.ResourceName, quantity int64) v1.ResourceLis
 
 // TODO: Find a uniform way to deal with systemctl/initctl/service operations. #34494
 func restartKubelet(f *framework.Framework) {
+	beforeSocks, err := filepath.Glob("/var/lib/kubelet/device-plugins/nvidiaGPU*.sock")
+	Expect(err).NotTo(HaveOccurred())
+	Expect(len(beforeSocks)).NotTo(BeZero())
 	stdout, err := exec.Command("sudo", "systemctl", "list-units", "kubelet*", "--state=running").CombinedOutput()
 	framework.ExpectNoError(err)
 	regex := regexp.MustCompile("(kubelet-[0-9]+)")
@@ -146,19 +150,28 @@ func restartKubelet(f *framework.Framework) {
 	kube := matches[0]
 	framework.Logf("Get running kubelet with systemctl: %v, %v", string(stdout), kube)
 	stdout, err = exec.Command("sudo", "systemctl", "restart", kube).CombinedOutput()
-	if err == nil {
-		return
+	if err != nil {
+		framework.Failf("Failed to restart kubelet with systemctl: %v, %v", err, stdout)
 	}
-	framework.Failf("Failed to restart kubelet with systemctl: %v, %v", err, stdout)
+	Eventually(func() bool {
+		afterSocks, err := filepath.Glob("/var/lib/kubelet/device-plugins/nvidiaGPU*.sock")
+		if err != nil || len(afterSocks) < 1 {
+			return false
+		}
+		framework.Logf("beforeSock %s afterSock %s numberOfGpus %d", beforeSocks[0], afterSocks[0], framework.NumberOfNVIDIAGPUs(getLocalNode(f)))
+		return (afterSocks[0] != beforeSocks[0] && framework.NumberOfNVIDIAGPUs(getLocalNode(f)) > 0)
+	}, 5 * time.Minute, time.Second).Should(BeTrue())
 }
 
 func getDeviceId(f *framework.Framework, podName string, contName string, restartCount int32) string {
 	// Wait till pod has been restarted at least restartCount times.
 	Eventually(func() bool {
 		p, err := f.PodClient().Get(podName, metav1.GetOptions{})
-		framework.ExpectNoError(err)
+		if err != nil || len(p.Status.ContainerStatuses) < 1 {
+			return false
+		}
 		return p.Status.ContainerStatuses[0].RestartCount >= restartCount
-	}, time.Minute, time.Second).Should(BeTrue())
+	}, 5 * time.Minute, time.Second).Should(BeTrue())
 	logs, err := framework.GetPodLogs(f.ClientSet, f.Namespace.Name, podName, contName)
 	if err != nil {
 		framework.Failf("GetPodLogs for pod %q failed: %v", podName, err)
