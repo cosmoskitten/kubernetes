@@ -243,6 +243,12 @@ func checkVolumeSatisfyClaim(volume *v1.PersistentVolume, claim *v1.PersistentVo
 		return fmt.Errorf("Class of volume[%s] is not the same as claim[%v]", volume.Name, claimToClaimKey(claim))
 	}
 
+	requestedMode := v1helper.GetPersistentVolumeClaimVolumeMode(claim)
+	volumeMode := v1helper.GetPersistentVolumeVolumeMode(volume)
+	if volumeMode != requestedMode {
+		return fmt.Errorf("VolumeMode[%s] of volume[%s] is incompatible with VolumeMode[%s] of claim[%v]", volumeMode, volume.Name, requestedMode, claim.Name)
+	}
+
 	return nil
 }
 
