@@ -18,13 +18,17 @@ package topology
 
 import (
 	"fmt"
+	"sort"
 
+	"github.com/golang/glog"
 	cadvisorapi "github.com/google/cadvisor/info/v1"
 	"k8s.io/kubernetes/pkg/kubelet/cm/cpuset"
 )
 
 // CPUDetails is a map from CPU ID to Core ID and Socket ID.
 type CPUDetails map[int]CPUInfo
+
+const invalidID int = -1
 
 // CPUTopology contains details of node cpu, where :
 // CPU  - logical CPU, cadvisor - thread
@@ -145,15 +149,22 @@ func Discover(machineInfo *cadvisorapi.MachineInfo) (*CPUTopology, error) {
 	}
 
 	CPUDetails := CPUDetails{}
-
 	numCPUs := machineInfo.NumCores
 	numPhysicalCores := 0
+	var coreID int
+	var err error
+
 	for _, socket := range machineInfo.Topology {
 		numPhysicalCores += len(socket.Cores)
 		for _, core := range socket.Cores {
+			if coreID, err = getUniqueCoreID(core.Threads); err != nil {
+				glog.Errorf("could not get unique coreID for socket: %d core %d threads: %v",
+					socket.Id, core.Id, core.Threads)
+				return nil, err
+			}
 			for _, cpu := range core.Threads {
 				CPUDetails[cpu] = CPUInfo{
-					CoreID:   core.Id,
+					CoreID:   coreID,
 					SocketID: socket.Id,
 				}
 			}
@@ -166,4 +177,30 @@ func Discover(machineInfo *cadvisorapi.MachineInfo) (*CPUTopology, error) {
 		NumCores:   numPhysicalCores,
 		CPUDetails: CPUDetails,
 	}, nil
+}
+
+// getUniqueCoreID computes coreId as the lowest cpuID
+// for a given Threads []int slice. This will assure that coreID's are
+// platform unique (opposite to what cAdvisor reports - socket unique)
+func getUniqueCoreID(threads []int) (coreID int, err error) {
+	err = nil
+	if len(threads) == 0 {
+		return invalidID, fmt.Errorf("no cpus provided")
+	}
+
+	tmpThreads := make([]int, len(threads))
+	copy(tmpThreads, threads)
+	if !isSliceUnique(tmpThreads) {
+		return invalidID, fmt.Errorf("cpus provided are not unique")
+	}
+	sort.Ints(tmpThreads)
+	return tmpThreads[0], err
+}
+
+func isSliceUnique(slice []int) bool {
+	tmpMap := make(map[int]struct{})
+	for _, val := range slice {
+		tmpMap[val] = struct{}{}
+	}
+	return len(tmpMap) == len(slice)
 }

@@ -103,6 +103,42 @@ func Test_Discover(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "OneSocketHT fail",
+			args: &cadvisorapi.MachineInfo{
+				NumCores: 8,
+				Topology: []cadvisorapi.Node{
+					{Id: 0,
+						Cores: []cadvisorapi.Core{
+							{Id: 0, Threads: []int{0, 4}},
+							{Id: 1, Threads: []int{1, 5}},
+							{Id: 2, Threads: []int{2, 2}}, // Wrong case - should fail here
+							{Id: 3, Threads: []int{3, 7}},
+						},
+					},
+				},
+			},
+			want:    &CPUTopology{},
+			wantErr: true,
+		},
+		{
+			name: "OneSocketHT fail",
+			args: &cadvisorapi.MachineInfo{
+				NumCores: 8,
+				Topology: []cadvisorapi.Node{
+					{Id: 0,
+						Cores: []cadvisorapi.Core{
+							{Id: 0, Threads: []int{0, 4}},
+							{Id: 1, Threads: []int{1, 5}},
+							{Id: 2, Threads: []int{2, 6}},
+							{Id: 3, Threads: []int{}}, // Wrong case - should fail here
+						},
+					},
+				},
+			},
+			want:    &CPUTopology{},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
