@@ -30,6 +30,11 @@ limitations under the License.
 		DaemonSetSpec
 		DaemonSetStatus
 		DaemonSetUpdateStrategy
+		ReplicaSet
+		ReplicaSetCondition
+		ReplicaSetList
+		ReplicaSetSpec
+		ReplicaSetStatus
 		RollingUpdateDaemonSet
 */
 package v1
@@ -37,6 +42,8 @@ package v1
 import proto "github.com/gogo/protobuf/proto"
 import fmt "fmt"
 import math "math"
+
+import k8s_io_api_core_v1 "k8s.io/api/core/v1"
 
 import k8s_io_apimachinery_pkg_apis_meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -78,9 +85,29 @@ func (m *DaemonSetUpdateStrategy) Reset()                    { *m = DaemonSetUpd
 func (*DaemonSetUpdateStrategy) ProtoMessage()               {}
 func (*DaemonSetUpdateStrategy) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{4} }
 
+func (m *ReplicaSet) Reset()                    { *m = ReplicaSet{} }
+func (*ReplicaSet) ProtoMessage()               {}
+func (*ReplicaSet) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{5} }
+
+func (m *ReplicaSetCondition) Reset()                    { *m = ReplicaSetCondition{} }
+func (*ReplicaSetCondition) ProtoMessage()               {}
+func (*ReplicaSetCondition) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{6} }
+
+func (m *ReplicaSetList) Reset()                    { *m = ReplicaSetList{} }
+func (*ReplicaSetList) ProtoMessage()               {}
+func (*ReplicaSetList) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{7} }
+
+func (m *ReplicaSetSpec) Reset()                    { *m = ReplicaSetSpec{} }
+func (*ReplicaSetSpec) ProtoMessage()               {}
+func (*ReplicaSetSpec) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{8} }
+
+func (m *ReplicaSetStatus) Reset()                    { *m = ReplicaSetStatus{} }
+func (*ReplicaSetStatus) ProtoMessage()               {}
+func (*ReplicaSetStatus) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{9} }
+
 func (m *RollingUpdateDaemonSet) Reset()                    { *m = RollingUpdateDaemonSet{} }
 func (*RollingUpdateDaemonSet) ProtoMessage()               {}
-func (*RollingUpdateDaemonSet) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{5} }
+func (*RollingUpdateDaemonSet) Descriptor() ([]byte, []int) { return fileDescriptorGenerated, []int{10} }
 
 func init() {
 	proto.RegisterType((*DaemonSet)(nil), "k8s.io.api.apps.v1.DaemonSet")
@@ -88,6 +115,11 @@ func init() {
 	proto.RegisterType((*DaemonSetSpec)(nil), "k8s.io.api.apps.v1.DaemonSetSpec")
 	proto.RegisterType((*DaemonSetStatus)(nil), "k8s.io.api.apps.v1.DaemonSetStatus")
 	proto.RegisterType((*DaemonSetUpdateStrategy)(nil), "k8s.io.api.apps.v1.DaemonSetUpdateStrategy")
+	proto.RegisterType((*ReplicaSet)(nil), "k8s.io.api.apps.v1.ReplicaSet")
+	proto.RegisterType((*ReplicaSetCondition)(nil), "k8s.io.api.apps.v1.ReplicaSetCondition")
+	proto.RegisterType((*ReplicaSetList)(nil), "k8s.io.api.apps.v1.ReplicaSetList")
+	proto.RegisterType((*ReplicaSetSpec)(nil), "k8s.io.api.apps.v1.ReplicaSetSpec")
+	proto.RegisterType((*ReplicaSetStatus)(nil), "k8s.io.api.apps.v1.ReplicaSetStatus")
 	proto.RegisterType((*RollingUpdateDaemonSet)(nil), "k8s.io.api.apps.v1.RollingUpdateDaemonSet")
 }
 func (m *DaemonSet) Marshal() (dAtA []byte, err error) {
@@ -301,6 +333,217 @@ func (m *DaemonSetUpdateStrategy) MarshalTo(dAtA []byte) (int, error) {
 	return i, nil
 }
 
+func (m *ReplicaSet) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ReplicaSet) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	dAtA[i] = 0xa
+	i++
+	i = encodeVarintGenerated(dAtA, i, uint64(m.ObjectMeta.Size()))
+	n9, err := m.ObjectMeta.MarshalTo(dAtA[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n9
+	dAtA[i] = 0x12
+	i++
+	i = encodeVarintGenerated(dAtA, i, uint64(m.Spec.Size()))
+	n10, err := m.Spec.MarshalTo(dAtA[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n10
+	dAtA[i] = 0x1a
+	i++
+	i = encodeVarintGenerated(dAtA, i, uint64(m.Status.Size()))
+	n11, err := m.Status.MarshalTo(dAtA[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n11
+	return i, nil
+}
+
+func (m *ReplicaSetCondition) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ReplicaSetCondition) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	dAtA[i] = 0xa
+	i++
+	i = encodeVarintGenerated(dAtA, i, uint64(len(m.Type)))
+	i += copy(dAtA[i:], m.Type)
+	dAtA[i] = 0x12
+	i++
+	i = encodeVarintGenerated(dAtA, i, uint64(len(m.Status)))
+	i += copy(dAtA[i:], m.Status)
+	dAtA[i] = 0x1a
+	i++
+	i = encodeVarintGenerated(dAtA, i, uint64(m.LastTransitionTime.Size()))
+	n12, err := m.LastTransitionTime.MarshalTo(dAtA[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n12
+	dAtA[i] = 0x22
+	i++
+	i = encodeVarintGenerated(dAtA, i, uint64(len(m.Reason)))
+	i += copy(dAtA[i:], m.Reason)
+	dAtA[i] = 0x2a
+	i++
+	i = encodeVarintGenerated(dAtA, i, uint64(len(m.Message)))
+	i += copy(dAtA[i:], m.Message)
+	return i, nil
+}
+
+func (m *ReplicaSetList) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ReplicaSetList) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	dAtA[i] = 0xa
+	i++
+	i = encodeVarintGenerated(dAtA, i, uint64(m.ListMeta.Size()))
+	n13, err := m.ListMeta.MarshalTo(dAtA[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n13
+	if len(m.Items) > 0 {
+		for _, msg := range m.Items {
+			dAtA[i] = 0x12
+			i++
+			i = encodeVarintGenerated(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
+	return i, nil
+}
+
+func (m *ReplicaSetSpec) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ReplicaSetSpec) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Replicas != nil {
+		dAtA[i] = 0x8
+		i++
+		i = encodeVarintGenerated(dAtA, i, uint64(*m.Replicas))
+	}
+	if m.Selector != nil {
+		dAtA[i] = 0x12
+		i++
+		i = encodeVarintGenerated(dAtA, i, uint64(m.Selector.Size()))
+		n14, err := m.Selector.MarshalTo(dAtA[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n14
+	}
+	dAtA[i] = 0x1a
+	i++
+	i = encodeVarintGenerated(dAtA, i, uint64(m.Template.Size()))
+	n15, err := m.Template.MarshalTo(dAtA[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n15
+	dAtA[i] = 0x20
+	i++
+	i = encodeVarintGenerated(dAtA, i, uint64(m.MinReadySeconds))
+	return i, nil
+}
+
+func (m *ReplicaSetStatus) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ReplicaSetStatus) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	dAtA[i] = 0x8
+	i++
+	i = encodeVarintGenerated(dAtA, i, uint64(m.Replicas))
+	dAtA[i] = 0x10
+	i++
+	i = encodeVarintGenerated(dAtA, i, uint64(m.FullyLabeledReplicas))
+	dAtA[i] = 0x18
+	i++
+	i = encodeVarintGenerated(dAtA, i, uint64(m.ObservedGeneration))
+	dAtA[i] = 0x20
+	i++
+	i = encodeVarintGenerated(dAtA, i, uint64(m.ReadyReplicas))
+	dAtA[i] = 0x28
+	i++
+	i = encodeVarintGenerated(dAtA, i, uint64(m.AvailableReplicas))
+	if len(m.Conditions) > 0 {
+		for _, msg := range m.Conditions {
+			dAtA[i] = 0x32
+			i++
+			i = encodeVarintGenerated(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
+	return i, nil
+}
+
 func (m *RollingUpdateDaemonSet) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
@@ -320,11 +563,11 @@ func (m *RollingUpdateDaemonSet) MarshalTo(dAtA []byte) (int, error) {
 		dAtA[i] = 0xa
 		i++
 		i = encodeVarintGenerated(dAtA, i, uint64(m.MaxUnavailable.Size()))
-		n9, err := m.MaxUnavailable.MarshalTo(dAtA[i:])
+		n16, err := m.MaxUnavailable.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n9
+		i += n16
 	}
 	return i, nil
 }
@@ -429,6 +672,81 @@ func (m *DaemonSetUpdateStrategy) Size() (n int) {
 	return n
 }
 
+func (m *ReplicaSet) Size() (n int) {
+	var l int
+	_ = l
+	l = m.ObjectMeta.Size()
+	n += 1 + l + sovGenerated(uint64(l))
+	l = m.Spec.Size()
+	n += 1 + l + sovGenerated(uint64(l))
+	l = m.Status.Size()
+	n += 1 + l + sovGenerated(uint64(l))
+	return n
+}
+
+func (m *ReplicaSetCondition) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.Type)
+	n += 1 + l + sovGenerated(uint64(l))
+	l = len(m.Status)
+	n += 1 + l + sovGenerated(uint64(l))
+	l = m.LastTransitionTime.Size()
+	n += 1 + l + sovGenerated(uint64(l))
+	l = len(m.Reason)
+	n += 1 + l + sovGenerated(uint64(l))
+	l = len(m.Message)
+	n += 1 + l + sovGenerated(uint64(l))
+	return n
+}
+
+func (m *ReplicaSetList) Size() (n int) {
+	var l int
+	_ = l
+	l = m.ListMeta.Size()
+	n += 1 + l + sovGenerated(uint64(l))
+	if len(m.Items) > 0 {
+		for _, e := range m.Items {
+			l = e.Size()
+			n += 1 + l + sovGenerated(uint64(l))
+		}
+	}
+	return n
+}
+
+func (m *ReplicaSetSpec) Size() (n int) {
+	var l int
+	_ = l
+	if m.Replicas != nil {
+		n += 1 + sovGenerated(uint64(*m.Replicas))
+	}
+	if m.Selector != nil {
+		l = m.Selector.Size()
+		n += 1 + l + sovGenerated(uint64(l))
+	}
+	l = m.Template.Size()
+	n += 1 + l + sovGenerated(uint64(l))
+	n += 1 + sovGenerated(uint64(m.MinReadySeconds))
+	return n
+}
+
+func (m *ReplicaSetStatus) Size() (n int) {
+	var l int
+	_ = l
+	n += 1 + sovGenerated(uint64(m.Replicas))
+	n += 1 + sovGenerated(uint64(m.FullyLabeledReplicas))
+	n += 1 + sovGenerated(uint64(m.ObservedGeneration))
+	n += 1 + sovGenerated(uint64(m.ReadyReplicas))
+	n += 1 + sovGenerated(uint64(m.AvailableReplicas))
+	if len(m.Conditions) > 0 {
+		for _, e := range m.Conditions {
+			l = e.Size()
+			n += 1 + l + sovGenerated(uint64(l))
+		}
+	}
+	return n
+}
+
 func (m *RollingUpdateDaemonSet) Size() (n int) {
 	var l int
 	_ = l
@@ -514,6 +832,71 @@ func (this *DaemonSetUpdateStrategy) String() string {
 	s := strings.Join([]string{`&DaemonSetUpdateStrategy{`,
 		`Type:` + fmt.Sprintf("%v", this.Type) + `,`,
 		`RollingUpdate:` + strings.Replace(fmt.Sprintf("%v", this.RollingUpdate), "RollingUpdateDaemonSet", "RollingUpdateDaemonSet", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *ReplicaSet) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&ReplicaSet{`,
+		`ObjectMeta:` + strings.Replace(strings.Replace(this.ObjectMeta.String(), "ObjectMeta", "k8s_io_apimachinery_pkg_apis_meta_v1.ObjectMeta", 1), `&`, ``, 1) + `,`,
+		`Spec:` + strings.Replace(strings.Replace(this.Spec.String(), "ReplicaSetSpec", "ReplicaSetSpec", 1), `&`, ``, 1) + `,`,
+		`Status:` + strings.Replace(strings.Replace(this.Status.String(), "ReplicaSetStatus", "ReplicaSetStatus", 1), `&`, ``, 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *ReplicaSetCondition) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&ReplicaSetCondition{`,
+		`Type:` + fmt.Sprintf("%v", this.Type) + `,`,
+		`Status:` + fmt.Sprintf("%v", this.Status) + `,`,
+		`LastTransitionTime:` + strings.Replace(strings.Replace(this.LastTransitionTime.String(), "Time", "k8s_io_apimachinery_pkg_apis_meta_v1.Time", 1), `&`, ``, 1) + `,`,
+		`Reason:` + fmt.Sprintf("%v", this.Reason) + `,`,
+		`Message:` + fmt.Sprintf("%v", this.Message) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *ReplicaSetList) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&ReplicaSetList{`,
+		`ListMeta:` + strings.Replace(strings.Replace(this.ListMeta.String(), "ListMeta", "k8s_io_apimachinery_pkg_apis_meta_v1.ListMeta", 1), `&`, ``, 1) + `,`,
+		`Items:` + strings.Replace(strings.Replace(fmt.Sprintf("%v", this.Items), "ReplicaSet", "ReplicaSet", 1), `&`, ``, 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *ReplicaSetSpec) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&ReplicaSetSpec{`,
+		`Replicas:` + valueToStringGenerated(this.Replicas) + `,`,
+		`Selector:` + strings.Replace(fmt.Sprintf("%v", this.Selector), "LabelSelector", "k8s_io_apimachinery_pkg_apis_meta_v1.LabelSelector", 1) + `,`,
+		`Template:` + strings.Replace(strings.Replace(this.Template.String(), "PodTemplateSpec", "k8s_io_api_core_v1.PodTemplateSpec", 1), `&`, ``, 1) + `,`,
+		`MinReadySeconds:` + fmt.Sprintf("%v", this.MinReadySeconds) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *ReplicaSetStatus) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&ReplicaSetStatus{`,
+		`Replicas:` + fmt.Sprintf("%v", this.Replicas) + `,`,
+		`FullyLabeledReplicas:` + fmt.Sprintf("%v", this.FullyLabeledReplicas) + `,`,
+		`ObservedGeneration:` + fmt.Sprintf("%v", this.ObservedGeneration) + `,`,
+		`ReadyReplicas:` + fmt.Sprintf("%v", this.ReadyReplicas) + `,`,
+		`AvailableReplicas:` + fmt.Sprintf("%v", this.AvailableReplicas) + `,`,
+		`Conditions:` + strings.Replace(strings.Replace(fmt.Sprintf("%v", this.Conditions), "ReplicaSetCondition", "ReplicaSetCondition", 1), `&`, ``, 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1303,6 +1686,781 @@ func (m *DaemonSetUpdateStrategy) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
+func (m *ReplicaSet) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowGenerated
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ReplicaSet: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ReplicaSet: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ObjectMeta", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenerated
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.ObjectMeta.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Spec", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenerated
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.Spec.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Status", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenerated
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.Status.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipGenerated(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ReplicaSetCondition) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowGenerated
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ReplicaSetCondition: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ReplicaSetCondition: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Type", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenerated
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Type = ReplicaSetConditionType(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Status", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenerated
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Status = k8s_io_api_core_v1.ConditionStatus(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LastTransitionTime", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenerated
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.LastTransitionTime.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Reason", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenerated
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Reason = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Message", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenerated
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Message = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipGenerated(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ReplicaSetList) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowGenerated
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ReplicaSetList: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ReplicaSetList: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ListMeta", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenerated
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.ListMeta.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Items", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenerated
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Items = append(m.Items, ReplicaSet{})
+			if err := m.Items[len(m.Items)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipGenerated(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ReplicaSetSpec) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowGenerated
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ReplicaSetSpec: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ReplicaSetSpec: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Replicas", wireType)
+			}
+			var v int32
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenerated
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= (int32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.Replicas = &v
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Selector", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenerated
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Selector == nil {
+				m.Selector = &k8s_io_apimachinery_pkg_apis_meta_v1.LabelSelector{}
+			}
+			if err := m.Selector.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Template", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenerated
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.Template.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MinReadySeconds", wireType)
+			}
+			m.MinReadySeconds = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenerated
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.MinReadySeconds |= (int32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipGenerated(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ReplicaSetStatus) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowGenerated
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ReplicaSetStatus: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ReplicaSetStatus: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Replicas", wireType)
+			}
+			m.Replicas = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenerated
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Replicas |= (int32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field FullyLabeledReplicas", wireType)
+			}
+			m.FullyLabeledReplicas = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenerated
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.FullyLabeledReplicas |= (int32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ObservedGeneration", wireType)
+			}
+			m.ObservedGeneration = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenerated
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.ObservedGeneration |= (int64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ReadyReplicas", wireType)
+			}
+			m.ReadyReplicas = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenerated
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.ReadyReplicas |= (int32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 5:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field AvailableReplicas", wireType)
+			}
+			m.AvailableReplicas = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenerated
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.AvailableReplicas |= (int32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 6:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Conditions", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenerated
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Conditions = append(m.Conditions, ReplicaSetCondition{})
+			if err := m.Conditions[len(m.Conditions)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipGenerated(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
 func (m *RollingUpdateDaemonSet) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
@@ -1496,63 +2654,83 @@ func init() {
 }
 
 var fileDescriptorGenerated = []byte{
-	// 928 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x95, 0xcf, 0x73, 0xdb, 0x44,
-	0x14, 0xc7, 0xad, 0x38, 0x0e, 0xce, 0xa6, 0x71, 0xc8, 0xd2, 0x49, 0x45, 0x18, 0xe4, 0x60, 0x2e,
-	0x86, 0x0e, 0x12, 0x6e, 0x81, 0x61, 0xe0, 0xc0, 0x54, 0xe9, 0x4c, 0x29, 0x24, 0x0e, 0xac, 0x1b,
-	0x0e, 0x0c, 0xcc, 0xb0, 0x96, 0x1e, 0xce, 0x62, 0xfd, 0x1a, 0xed, 0xca, 0x83, 0x6f, 0x9c, 0x38,
-	0xf3, 0xa7, 0xc0, 0x5f, 0xd0, 0x6b, 0x8e, 0x3d, 0xf6, 0xe4, 0x21, 0xe6, 0xbf, 0xe0, 0x02, 0xb3,
-	0xab, 0x8d, 0x6d, 0xd9, 0x72, 0x9a, 0x9b, 0xf7, 0xbd, 0xef, 0xf7, 0xb3, 0x6f, 0xdf, 0x3e, 0xaf,
-	0xd0, 0xe7, 0xc3, 0x4f, 0xb9, 0xcd, 0x62, 0x67, 0x98, 0xf5, 0x21, 0x8d, 0x40, 0x00, 0x77, 0x46,
-	0x10, 0xf9, 0x71, 0xea, 0xe8, 0x04, 0x4d, 0x98, 0x43, 0x93, 0x84, 0x3b, 0xa3, 0x8e, 0x33, 0x80,
-	0x08, 0x52, 0x2a, 0xc0, 0xb7, 0x93, 0x34, 0x16, 0x31, 0xc6, 0xb9, 0xc6, 0xa6, 0x09, 0xb3, 0xa5,
-	0xc6, 0x1e, 0x75, 0x0e, 0x3f, 0x18, 0x30, 0x71, 0x91, 0xf5, 0x6d, 0x2f, 0x0e, 0x9d, 0x41, 0x3c,
-	0x88, 0x1d, 0x25, 0xed, 0x67, 0x3f, 0xab, 0x95, 0x5a, 0xa8, 0x5f, 0x39, 0xe2, 0xb0, 0xb5, 0xb0,
-	0x8d, 0x17, 0xa7, 0x50, 0xb2, 0xcd, 0xe1, 0x7b, 0x0b, 0x9a, 0x24, 0x0e, 0x98, 0x37, 0x76, 0x46,
-	0x9d, 0x3e, 0x08, 0xba, 0x2a, 0xfd, 0x68, 0x2e, 0x0d, 0xa9, 0x77, 0xc1, 0x22, 0x48, 0xc7, 0x4e,
-	0x32, 0x1c, 0xc8, 0x00, 0x77, 0x42, 0x10, 0xb4, 0x6c, 0x03, 0x67, 0x9d, 0x2b, 0xcd, 0x22, 0xc1,
-	0x42, 0x58, 0x31, 0x7c, 0xf2, 0x2a, 0x03, 0xf7, 0x2e, 0x20, 0xa4, 0x2b, 0xbe, 0x87, 0xeb, 0x7c,
-	0x99, 0x60, 0x81, 0xc3, 0x22, 0xc1, 0x45, 0xba, 0x6c, 0x6a, 0xfd, 0x67, 0xa0, 0xed, 0xc7, 0x14,
-	0xc2, 0x38, 0xea, 0x81, 0xc0, 0x3f, 0xa1, 0xba, 0x3c, 0x86, 0x4f, 0x05, 0x35, 0x8d, 0x23, 0xa3,
-	0xbd, 0xf3, 0xe0, 0x43, 0x7b, 0x7e, 0x0d, 0x33, 0xaa, 0x9d, 0x0c, 0x07, 0x32, 0xc0, 0x6d, 0xa9,
-	0xb6, 0x47, 0x1d, 0xfb, 0xac, 0xff, 0x0b, 0x78, 0xe2, 0x14, 0x04, 0x75, 0xf1, 0xe5, 0xa4, 0x59,
-	0x99, 0x4e, 0x9a, 0x68, 0x1e, 0x23, 0x33, 0x2a, 0x3e, 0x46, 0x9b, 0x3c, 0x01, 0xcf, 0xdc, 0x50,
-	0xf4, 0x77, 0xec, 0xd5, 0x4b, 0xb6, 0x67, 0xe5, 0xf4, 0x12, 0xf0, 0xdc, 0x3b, 0x1a, 0xb7, 0x29,
-	0x57, 0x44, 0x99, 0xf1, 0xd7, 0x68, 0x8b, 0x0b, 0x2a, 0x32, 0x6e, 0x56, 0x15, 0xe6, 0xdd, 0x9b,
-	0x31, 0x4a, 0xea, 0x36, 0x34, 0x68, 0x2b, 0x5f, 0x13, 0x8d, 0x68, 0xfd, 0x65, 0xa0, 0xdd, 0x99,
-	0xf6, 0x84, 0x71, 0x81, 0x7f, 0x58, 0xe9, 0x82, 0x7d, 0xbb, 0x2e, 0x48, 0xb7, 0xea, 0xc1, 0xeb,
-	0x7a, 0xaf, 0xfa, 0x75, 0x64, 0xa1, 0x03, 0x2e, 0xaa, 0x31, 0x01, 0x21, 0x37, 0x37, 0x8e, 0xaa,
-	0xed, 0x9d, 0x07, 0x6f, 0xdf, 0x58, 0xbb, 0xbb, 0xab, 0x49, 0xb5, 0xa7, 0xd2, 0x43, 0x72, 0x6b,
-	0xeb, 0x79, 0x75, 0xa1, 0x66, 0xd9, 0x18, 0xfc, 0x23, 0xaa, 0x73, 0x08, 0xc0, 0x13, 0x71, 0xaa,
-	0x6b, 0x7e, 0x78, 0xcb, 0x9a, 0x69, 0x1f, 0x82, 0x9e, 0xb6, 0xba, 0x77, 0x64, 0xd1, 0xd7, 0x2b,
-	0x32, 0x43, 0xe2, 0x6f, 0x51, 0x5d, 0x40, 0x98, 0x04, 0x54, 0x80, 0xbe, 0xba, 0x42, 0xcf, 0xe5,
-	0x9f, 0x4b, 0xc2, 0xbe, 0x89, 0xfd, 0x67, 0x5a, 0xa6, 0x2e, 0x6f, 0xd6, 0x87, 0xeb, 0x28, 0x99,
-	0x61, 0xf0, 0x10, 0x35, 0xb2, 0xc4, 0x97, 0x4a, 0x21, 0x07, 0x72, 0x30, 0xd6, 0x97, 0x79, 0xff,
-	0xc6, 0x86, 0x9c, 0x17, 0x2c, 0xee, 0x81, 0xde, 0xa0, 0x51, 0x8c, 0x93, 0x25, 0x34, 0x7e, 0x84,
-	0xf6, 0x42, 0x16, 0x11, 0xa0, 0xfe, 0xb8, 0x07, 0x5e, 0x1c, 0xf9, 0xdc, 0xdc, 0x3c, 0x32, 0xda,
-	0x35, 0xf7, 0x9e, 0x06, 0xec, 0x9d, 0x16, 0xd3, 0x64, 0x59, 0x8f, 0x4f, 0xd0, 0xdd, 0x14, 0x46,
-	0x8c, 0xb3, 0x38, 0xfa, 0x92, 0x71, 0x11, 0xa7, 0xe3, 0x13, 0x16, 0x32, 0x61, 0x6e, 0x29, 0x8e,
-	0x39, 0x9d, 0x34, 0xef, 0x92, 0x92, 0x3c, 0x29, 0x75, 0xb5, 0xfe, 0xac, 0xa1, 0xbd, 0xa5, 0x09,
-	0xc5, 0xdf, 0xa1, 0x03, 0x2f, 0x4b, 0x53, 0x88, 0x44, 0x37, 0x0b, 0xfb, 0x90, 0xf6, 0xbc, 0x0b,
-	0xf0, 0xb3, 0x00, 0x7c, 0x75, 0xa3, 0x35, 0xd7, 0xd2, 0xb5, 0x1e, 0x1c, 0x97, 0xaa, 0xc8, 0x1a,
-	0x37, 0xfe, 0x0a, 0xe1, 0x48, 0x85, 0x4e, 0x19, 0xe7, 0x33, 0xe6, 0x86, 0x62, 0x1e, 0x6a, 0x26,
-	0xee, 0xae, 0x28, 0x48, 0x89, 0x4b, 0xd6, 0xe8, 0x03, 0x67, 0x29, 0xf8, 0xcb, 0x35, 0x56, 0x8b,
-	0x35, 0x3e, 0x2e, 0x55, 0x91, 0x35, 0x6e, 0xfc, 0x31, 0xda, 0xc9, 0x77, 0x53, 0x3d, 0xd7, 0x97,
-	0xf3, 0x86, 0x86, 0xed, 0x74, 0xe7, 0x29, 0xb2, 0xa8, 0x93, 0x47, 0x8b, 0xfb, 0x1c, 0xd2, 0x11,
-	0xf8, 0x4f, 0xf2, 0x97, 0x8d, 0xc5, 0x91, 0x59, 0x3b, 0x32, 0xda, 0xd5, 0xf9, 0xd1, 0xce, 0x56,
-	0x14, 0xa4, 0xc4, 0x25, 0x8f, 0x96, 0x4f, 0xcd, 0xca, 0xd1, 0xb6, 0x8a, 0x47, 0x3b, 0x2f, 0x55,
-	0x91, 0x35, 0x6e, 0x39, 0x7b, 0x79, 0xc9, 0x8f, 0x46, 0x94, 0x05, 0xb4, 0x1f, 0x80, 0xf9, 0x5a,
-	0x71, 0xf6, 0xba, 0xc5, 0x34, 0x59, 0xd6, 0xe3, 0x27, 0x68, 0x3f, 0x0f, 0x9d, 0x47, 0x74, 0x06,
-	0xa9, 0x2b, 0xc8, 0x9b, 0x1a, 0xb2, 0xdf, 0x5d, 0x16, 0x90, 0x55, 0x0f, 0xfe, 0x0c, 0x35, 0xbc,
-	0x38, 0x08, 0xd4, 0x3c, 0x1e, 0xc7, 0x59, 0x24, 0xcc, 0x6d, 0x45, 0xc1, 0xf2, 0x3f, 0x74, 0x5c,
-	0xc8, 0x90, 0x25, 0x65, 0xeb, 0xb9, 0x81, 0xee, 0xad, 0xf9, 0x1f, 0xe2, 0x2f, 0xd0, 0xa6, 0x18,
-	0x27, 0xa0, 0x06, 0x75, 0xdb, 0xbd, 0x7f, 0xfd, 0x66, 0x3f, 0x1b, 0x27, 0xf0, 0xef, 0xa4, 0xf9,
-	0xd6, 0x1a, 0x9b, 0x4c, 0x13, 0x65, 0xc4, 0x1e, 0xda, 0x4d, 0xe5, 0x76, 0xd1, 0x20, 0x97, 0xe8,
-	0x57, 0xe6, 0xfd, 0xb2, 0xc7, 0x80, 0x2c, 0x0a, 0xe7, 0x4f, 0xe5, 0xfe, 0x74, 0xd2, 0xdc, 0x2d,
-	0xe4, 0x48, 0x91, 0xd9, 0xfa, 0xdd, 0x40, 0x07, 0xe5, 0x66, 0x1c, 0xa0, 0x46, 0x48, 0x7f, 0x5d,
-	0x6c, 0xef, 0xab, 0xbe, 0x7f, 0xf2, 0xab, 0x6a, 0xe7, 0x5f, 0x55, 0xfb, 0x69, 0x24, 0xce, 0xd2,
-	0x9e, 0x48, 0x59, 0x34, 0xc8, 0x5b, 0x79, 0x5a, 0x60, 0x91, 0x25, 0xb6, 0xdb, 0xbe, 0xbc, 0xb2,
-	0x2a, 0x2f, 0xae, 0xac, 0xca, 0xcb, 0x2b, 0xab, 0xf2, 0xdb, 0xd4, 0x32, 0x2e, 0xa7, 0x96, 0xf1,
-	0x62, 0x6a, 0x19, 0x2f, 0xa7, 0x96, 0xf1, 0xf7, 0xd4, 0x32, 0xfe, 0xf8, 0xc7, 0xaa, 0x7c, 0xbf,
-	0x31, 0xea, 0xfc, 0x1f, 0x00, 0x00, 0xff, 0xff, 0x89, 0x78, 0x09, 0x33, 0x43, 0x09, 0x00, 0x00,
+	// 1248 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xbc, 0x57, 0x4b, 0x73, 0x1b, 0x45,
+	0x10, 0xf6, 0x4a, 0x96, 0x63, 0x8f, 0x63, 0x39, 0x99, 0x18, 0x47, 0x18, 0x90, 0x8c, 0xa0, 0x88,
+	0x92, 0xc0, 0x2e, 0x4e, 0x02, 0x45, 0x91, 0x03, 0x95, 0x55, 0x8a, 0x10, 0xb0, 0x9d, 0x30, 0x4a,
+	0x38, 0xf0, 0xa8, 0x62, 0xb4, 0x3b, 0x91, 0x07, 0xef, 0xab, 0x76, 0x66, 0x55, 0xe8, 0x46, 0x71,
+	0xe0, 0xcc, 0x3f, 0x01, 0x8a, 0x1f, 0x90, 0xe2, 0x96, 0x63, 0x8e, 0x39, 0xa9, 0x88, 0x38, 0xf2,
+	0x0f, 0x72, 0x81, 0x9a, 0xd9, 0xd1, 0xae, 0xf6, 0x21, 0x25, 0xc5, 0x23, 0x37, 0x4d, 0xf7, 0xf7,
+	0x7d, 0xd3, 0xd3, 0xd3, 0xdb, 0x3d, 0x02, 0x57, 0x8f, 0xdf, 0x63, 0x3a, 0xf5, 0x8d, 0xe3, 0xa8,
+	0x4f, 0x42, 0x8f, 0x70, 0xc2, 0x8c, 0x21, 0xf1, 0x6c, 0x3f, 0x34, 0x94, 0x03, 0x07, 0xd4, 0xc0,
+	0x41, 0xc0, 0x8c, 0xe1, 0x9e, 0x31, 0x20, 0x1e, 0x09, 0x31, 0x27, 0xb6, 0x1e, 0x84, 0x3e, 0xf7,
+	0x21, 0x8c, 0x31, 0x3a, 0x0e, 0xa8, 0x2e, 0x30, 0xfa, 0x70, 0x6f, 0xe7, 0xad, 0x01, 0xe5, 0x47,
+	0x51, 0x5f, 0xb7, 0x7c, 0xd7, 0x18, 0xf8, 0x03, 0xdf, 0x90, 0xd0, 0x7e, 0x74, 0x4f, 0xae, 0xe4,
+	0x42, 0xfe, 0x8a, 0x25, 0x76, 0xda, 0x33, 0xdb, 0x58, 0x7e, 0x48, 0x4a, 0xb6, 0xd9, 0x39, 0x3f,
+	0x83, 0x09, 0x7c, 0x87, 0x5a, 0x23, 0x63, 0xb8, 0xd7, 0x27, 0x1c, 0x17, 0xa1, 0x57, 0x52, 0xa8,
+	0x8b, 0xad, 0x23, 0xea, 0x91, 0x70, 0x64, 0x04, 0xc7, 0x03, 0x61, 0x60, 0x86, 0x4b, 0x38, 0x2e,
+	0xdb, 0xc0, 0x98, 0xc7, 0x0a, 0x23, 0x8f, 0x53, 0x97, 0x14, 0x08, 0xef, 0x3e, 0x8d, 0xc0, 0xac,
+	0x23, 0xe2, 0xe2, 0x02, 0xef, 0xf2, 0x3c, 0x5e, 0xc4, 0xa9, 0x63, 0x50, 0x8f, 0x33, 0x1e, 0xe6,
+	0x49, 0xed, 0xbf, 0x34, 0xb0, 0x76, 0x1d, 0x13, 0xd7, 0xf7, 0x7a, 0x84, 0xc3, 0xaf, 0xc1, 0xaa,
+	0x38, 0x86, 0x8d, 0x39, 0x6e, 0x68, 0xbb, 0x5a, 0x67, 0xfd, 0xd2, 0xdb, 0x7a, 0x7a, 0x0d, 0x89,
+	0xaa, 0x1e, 0x1c, 0x0f, 0x84, 0x81, 0xe9, 0x02, 0xad, 0x0f, 0xf7, 0xf4, 0x5b, 0xfd, 0x6f, 0x88,
+	0xc5, 0x0f, 0x08, 0xc7, 0x26, 0x7c, 0x30, 0x6e, 0x2d, 0x4d, 0xc6, 0x2d, 0x90, 0xda, 0x50, 0xa2,
+	0x0a, 0xbb, 0x60, 0x99, 0x05, 0xc4, 0x6a, 0x54, 0xa4, 0xfa, 0xab, 0x7a, 0xf1, 0x92, 0xf5, 0x24,
+	0x9c, 0x5e, 0x40, 0x2c, 0xf3, 0xa4, 0x92, 0x5b, 0x16, 0x2b, 0x24, 0xc9, 0xf0, 0x13, 0xb0, 0xc2,
+	0x38, 0xe6, 0x11, 0x6b, 0x54, 0xa5, 0xcc, 0x6b, 0x8b, 0x65, 0x24, 0xd4, 0xac, 0x2b, 0xa1, 0x95,
+	0x78, 0x8d, 0x94, 0x44, 0xfb, 0x17, 0x0d, 0x6c, 0x24, 0xd8, 0x7d, 0xca, 0x38, 0xfc, 0xb2, 0x90,
+	0x05, 0xfd, 0xd9, 0xb2, 0x20, 0xd8, 0x32, 0x07, 0xa7, 0xd4, 0x5e, 0xab, 0x53, 0xcb, 0x4c, 0x06,
+	0x4c, 0x50, 0xa3, 0x9c, 0xb8, 0xac, 0x51, 0xd9, 0xad, 0x76, 0xd6, 0x2f, 0xbd, 0xb2, 0x30, 0x76,
+	0x73, 0x43, 0x29, 0xd5, 0x6e, 0x0a, 0x0e, 0x8a, 0xa9, 0xed, 0xfb, 0xd5, 0x99, 0x98, 0x45, 0x62,
+	0xe0, 0x57, 0x60, 0x95, 0x11, 0x87, 0x58, 0xdc, 0x0f, 0x55, 0xcc, 0x97, 0x9f, 0x31, 0x66, 0xdc,
+	0x27, 0x4e, 0x4f, 0x51, 0xcd, 0x93, 0x22, 0xe8, 0xe9, 0x0a, 0x25, 0x92, 0xf0, 0x53, 0xb0, 0xca,
+	0x89, 0x1b, 0x38, 0x98, 0x13, 0x75, 0x75, 0x99, 0x9c, 0x8b, 0x8f, 0x4b, 0x88, 0xdd, 0xf6, 0xed,
+	0x3b, 0x0a, 0x26, 0x2f, 0x2f, 0xc9, 0xc3, 0xd4, 0x8a, 0x12, 0x19, 0x78, 0x0c, 0xea, 0x51, 0x60,
+	0x0b, 0x24, 0x17, 0x05, 0x39, 0x18, 0xa9, 0xcb, 0xbc, 0xb8, 0x30, 0x21, 0x77, 0x33, 0x14, 0x73,
+	0x5b, 0x6d, 0x50, 0xcf, 0xda, 0x51, 0x4e, 0x1a, 0x5e, 0x03, 0x9b, 0x2e, 0xf5, 0x10, 0xc1, 0xf6,
+	0xa8, 0x47, 0x2c, 0xdf, 0xb3, 0x59, 0x63, 0x79, 0x57, 0xeb, 0xd4, 0xcc, 0xb3, 0x4a, 0x60, 0xf3,
+	0x20, 0xeb, 0x46, 0x79, 0x3c, 0xdc, 0x07, 0x5b, 0x21, 0x19, 0x52, 0x46, 0x7d, 0xef, 0x23, 0xca,
+	0xb8, 0x1f, 0x8e, 0xf6, 0xa9, 0x4b, 0x79, 0x63, 0x45, 0xea, 0x34, 0x26, 0xe3, 0xd6, 0x16, 0x2a,
+	0xf1, 0xa3, 0x52, 0x56, 0xfb, 0xe7, 0x1a, 0xd8, 0xcc, 0x55, 0x28, 0xfc, 0x0c, 0x6c, 0x5b, 0x51,
+	0x18, 0x12, 0x8f, 0x1f, 0x46, 0x6e, 0x9f, 0x84, 0x3d, 0xeb, 0x88, 0xd8, 0x91, 0x43, 0x6c, 0x79,
+	0xa3, 0x35, 0xb3, 0xa9, 0x62, 0xdd, 0xee, 0x96, 0xa2, 0xd0, 0x1c, 0x36, 0xfc, 0x18, 0x40, 0x4f,
+	0x9a, 0x0e, 0x28, 0x63, 0x89, 0x66, 0x45, 0x6a, 0xee, 0x28, 0x4d, 0x78, 0x58, 0x40, 0xa0, 0x12,
+	0x96, 0x88, 0xd1, 0x26, 0x8c, 0x86, 0xc4, 0xce, 0xc7, 0x58, 0xcd, 0xc6, 0x78, 0xbd, 0x14, 0x85,
+	0xe6, 0xb0, 0xe1, 0x3b, 0x60, 0x3d, 0xde, 0x4d, 0xe6, 0x5c, 0x5d, 0xce, 0x19, 0x25, 0xb6, 0x7e,
+	0x98, 0xba, 0xd0, 0x2c, 0x4e, 0x1c, 0xcd, 0xef, 0x33, 0x12, 0x0e, 0x89, 0x7d, 0x23, 0xee, 0x6c,
+	0xd4, 0xf7, 0x1a, 0xb5, 0x5d, 0xad, 0x53, 0x4d, 0x8f, 0x76, 0xab, 0x80, 0x40, 0x25, 0x2c, 0x71,
+	0xb4, 0xb8, 0x6a, 0x0a, 0x47, 0x5b, 0xc9, 0x1e, 0xed, 0x6e, 0x29, 0x0a, 0xcd, 0x61, 0x8b, 0xda,
+	0x8b, 0x43, 0xbe, 0x36, 0xc4, 0xd4, 0xc1, 0x7d, 0x87, 0x34, 0x4e, 0x64, 0x6b, 0xef, 0x30, 0xeb,
+	0x46, 0x79, 0x3c, 0xbc, 0x01, 0x4e, 0xc7, 0xa6, 0xbb, 0x1e, 0x4e, 0x44, 0x56, 0xa5, 0xc8, 0x8b,
+	0x4a, 0xe4, 0xf4, 0x61, 0x1e, 0x80, 0x8a, 0x1c, 0xf8, 0x3e, 0xa8, 0x5b, 0xbe, 0xe3, 0xc8, 0x7a,
+	0xec, 0xfa, 0x91, 0xc7, 0x1b, 0x6b, 0x52, 0x05, 0x8a, 0x6f, 0xa8, 0x9b, 0xf1, 0xa0, 0x1c, 0xb2,
+	0x7d, 0x5f, 0x03, 0x67, 0xe7, 0x7c, 0x87, 0xf0, 0x03, 0xb0, 0xcc, 0x47, 0x01, 0x91, 0x85, 0xba,
+	0x66, 0x5e, 0x9c, 0xf6, 0xec, 0x3b, 0xa3, 0x80, 0x3c, 0x19, 0xb7, 0x5e, 0x9a, 0x43, 0x13, 0x6e,
+	0x24, 0x89, 0xd0, 0x02, 0x1b, 0xa1, 0xd8, 0xce, 0x1b, 0xc4, 0x10, 0xd5, 0x65, 0x2e, 0x94, 0x35,
+	0x03, 0x34, 0x0b, 0x4c, 0x5b, 0xe5, 0xe9, 0xc9, 0xb8, 0xb5, 0x91, 0xf1, 0xa1, 0xac, 0x66, 0xfb,
+	0xfb, 0x0a, 0x00, 0x88, 0x04, 0x0e, 0xb5, 0xf0, 0xf3, 0x99, 0x76, 0xd7, 0x33, 0xd3, 0xae, 0x5d,
+	0x7a, 0x98, 0x24, 0x9e, 0xb9, 0xe3, 0x6e, 0x3f, 0x37, 0xee, 0x5e, 0x7f, 0x8a, 0xce, 0xe2, 0x79,
+	0xf7, 0x67, 0x05, 0x9c, 0x49, 0xc1, 0x5d, 0xdf, 0xb3, 0xa9, 0x2c, 0xff, 0xab, 0x99, 0x2b, 0x3c,
+	0x97, 0xbb, 0xc2, 0xb3, 0x25, 0x94, 0x99, 0xeb, 0x4b, 0x43, 0xac, 0x48, 0xfa, 0x95, 0xec, 0xe6,
+	0x4f, 0xc6, 0xad, 0x92, 0xb7, 0x98, 0x9e, 0x28, 0x65, 0x43, 0x84, 0x43, 0x00, 0x1d, 0xcc, 0xf8,
+	0x9d, 0x10, 0x7b, 0x2c, 0xde, 0x89, 0xba, 0x44, 0x1d, 0xfe, 0xc2, 0xb3, 0x5d, 0x91, 0x60, 0xa4,
+	0x1d, 0x60, 0xbf, 0xa0, 0x86, 0x4a, 0x76, 0x80, 0x6f, 0x80, 0x95, 0x90, 0x60, 0xe6, 0x7b, 0xb2,
+	0xff, 0xac, 0xa5, 0x29, 0x44, 0xd2, 0x8a, 0x94, 0x17, 0x9e, 0x07, 0x27, 0x5c, 0xc2, 0x18, 0x1e,
+	0x10, 0xd9, 0x6a, 0xd6, 0xcc, 0x4d, 0x05, 0x3c, 0x71, 0x10, 0x9b, 0xd1, 0xd4, 0xdf, 0xfe, 0x55,
+	0x03, 0xf5, 0x34, 0x75, 0xcf, 0xe1, 0x79, 0xd1, 0xcd, 0x3e, 0x2f, 0x9a, 0x8b, 0x6b, 0x65, 0xce,
+	0xfb, 0xe2, 0xa7, 0xca, 0x6c, 0xd4, 0xf2, 0x81, 0xd1, 0x01, 0xab, 0x61, 0x6c, 0x61, 0x6a, 0x1c,
+	0xc9, 0xb7, 0x82, 0x42, 0x31, 0x94, 0x78, 0x33, 0x4f, 0x91, 0xca, 0xff, 0xfb, 0x14, 0xa9, 0xfe,
+	0x37, 0x4f, 0x91, 0x7f, 0xff, 0x3a, 0x68, 0xff, 0x56, 0x05, 0xa7, 0xf2, 0x9f, 0x20, 0x7c, 0xb3,
+	0x90, 0xb3, 0x24, 0x8a, 0x92, 0xbc, 0xdd, 0x06, 0x5b, 0xf7, 0x22, 0xc7, 0x19, 0xc9, 0x34, 0x10,
+	0x7b, 0x8a, 0x50, 0x83, 0xfa, 0x65, 0xc5, 0xdc, 0xfa, 0xb0, 0x04, 0x83, 0x4a, 0x99, 0x73, 0xa6,
+	0x63, 0xf5, 0x1f, 0x4d, 0xc7, 0xab, 0x60, 0x23, 0x94, 0xf3, 0x77, 0x1a, 0x56, 0x9c, 0xa1, 0x17,
+	0x94, 0xcc, 0x06, 0x9a, 0x75, 0xa2, 0x2c, 0x56, 0xcc, 0xaf, 0x74, 0x2c, 0x4d, 0x05, 0x6a, 0xd9,
+	0xf9, 0x75, 0x2d, 0x0f, 0x40, 0x45, 0x0e, 0xfc, 0x02, 0x00, 0x6b, 0xda, 0x34, 0x58, 0x63, 0x45,
+	0x96, 0xf8, 0xb9, 0xc5, 0x25, 0x9e, 0x34, 0x99, 0xb4, 0x57, 0x27, 0x26, 0x86, 0x66, 0xe4, 0xda,
+	0x3f, 0x68, 0x60, 0xbb, 0x7c, 0xb6, 0x40, 0x07, 0xd4, 0x5d, 0xfc, 0xed, 0xec, 0xf4, 0x7d, 0xda,
+	0xc0, 0x10, 0x7f, 0xba, 0xf4, 0xf8, 0x4f, 0x97, 0x7e, 0xd3, 0xe3, 0xb7, 0xc2, 0x1e, 0x0f, 0xa9,
+	0x37, 0x88, 0x27, 0xed, 0x41, 0x46, 0x0b, 0xe5, 0xb4, 0xcd, 0xce, 0x83, 0xc7, 0xcd, 0xa5, 0x87,
+	0x8f, 0x9b, 0x4b, 0x8f, 0x1e, 0x37, 0x97, 0xbe, 0x9b, 0x34, 0xb5, 0x07, 0x93, 0xa6, 0xf6, 0x70,
+	0xd2, 0xd4, 0x1e, 0x4d, 0x9a, 0xda, 0xef, 0x93, 0xa6, 0xf6, 0xe3, 0x1f, 0xcd, 0xa5, 0xcf, 0x2b,
+	0xc3, 0xbd, 0xbf, 0x03, 0x00, 0x00, 0xff, 0xff, 0xde, 0x11, 0x54, 0xad, 0x62, 0x0f, 0x00, 0x00,
 }
