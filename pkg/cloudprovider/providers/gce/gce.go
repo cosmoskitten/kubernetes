@@ -114,6 +114,7 @@ type GCECloud struct {
 	localZone                string   // The zone in which we are running
 	managedZones             []string // List of zones we are spanning (for multi-AZ clusters, primarily when running on master)
 	networkURL               string
+	isLegacyNetwork          bool
 	subnetworkURL            string
 	secondaryRangeName       string
 	networkProjectID         string
@@ -402,6 +403,7 @@ func CreateGCECloud(config *CloudConfig) (*GCECloud, error) {
 
 	var networkURL string
 	var subnetURL string
+	var isLegacyNetwork bool
 
 	if config.NetworkName == "" && config.NetworkURL == "" {
 		// TODO: Stop using this call and return an error.
@@ -422,6 +424,22 @@ func CreateGCECloud(config *CloudConfig) (*GCECloud, error) {
 		subnetURL = config.SubnetworkURL
 	} else if config.SubnetworkName != "" {
 		subnetURL = gceSubnetworkURL(config.ApiEndpoint, netProjID, config.Region, config.SubnetworkName)
+	} else {
+		n, err := getNetwork(service, netProjID, lastComponent(networkURL))
+		if err != nil {
+			return nil, fmt.Errorf("could not retrieve network %v, err: %v", networkURL, err)
+		}
+
+		if len(n.IPv4Range) > 0 {
+			// If legacy network, accept missing subnet
+			isLegacyNetwork = true
+		} else if !n.AutoCreateSubnetworks {
+			// If manual network, fail because no subnet is specified
+			return nil, fmt.Errorf("no subnet specified in cloud provider config despite the network %q being manual.", networkURL)
+		} else {
+			// Find subnet if type is auto
+			subnetURL = findSubnetForRegion(n.Subnetworks, config.Region)
+		}
 	}
 
 	if len(config.ManagedZones) == 0 {
@@ -449,6 +467,7 @@ func CreateGCECloud(config *CloudConfig) (*GCECloud, error) {
 		localZone:                config.Zone,
 		managedZones:             config.ManagedZones,
 		networkURL:               networkURL,
+		isLegacyNetwork:          isLegacyNetwork,
 		subnetworkURL:            subnetURL,
 		secondaryRangeName:       config.SecondaryRangeName,
 		nodeTags:                 config.NodeTags,
@@ -572,6 +591,10 @@ func (gce *GCECloud) SubnetworkURL() string {
 	return gce.subnetworkURL
 }
 
+func (gce *GCECloud) IsLegacyNetwork() bool {
+	return gce.isLegacyNetwork
+}
+
 // Known-useless DNS search path.
 var uselessDNSSearchRE = regexp.MustCompile(`^[0-9]+.google.internal.$`)
 
@@ -615,7 +638,7 @@ func gceSubnetworkURL(apiEndpoint, project, region, subnetwork string) string {
 	return apiEndpoint + strings.Join([]string{"projects", project, "regions", region, "subnetworks", subnetwork}, "/")
 }
 
-// getProjectIDInURL parses typical full resource URLS and shorter URLS
+// getProjectIDInURL parses full resource URLS and shorter URLS
 // https://www.googleapis.com/compute/v1/projects/myproject/global/networks/mycustom
 // projects/myproject/global/networks/mycustom
 // All return "myproject"
@@ -627,6 +650,20 @@ func getProjectIDInURL(urlStr string) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("could not find project field in url: %v", urlStr)
+}
+
+// getRegionInURL parses full resource URLS and shorter URLS
+// https://www.googleapis.com/compute/v1/projects/myproject/regions/us-central1/subnetworks/a
+// projects/myproject/regions/us-central1/subnetworks/a
+// All return "us-central1"
+func getRegionInURL(urlStr string) (string, error) {
+	fields := strings.Split(urlStr, "/")
+	for i, v := range fields {
+		if v == "regions" && i < len(fields)-1 {
+			return fields[i+1], nil
+		}
+	}
+	return "", fmt.Errorf("could not find region field in url: %v", urlStr)
 }
 
 func getNetworkNameViaMetadata() (string, error) {
@@ -653,6 +690,11 @@ func getNetworkNameViaAPICall(svc *compute.Service, projectID string) (string, e
 	}
 
 	return networkList.Items[0].Name, nil
+}
+
+// getNetwork returns a GCP network
+func getNetwork(svc *compute.Service, networkProjectID, networkID string) (*compute.Network, error) {
+	return svc.Networks.Get(networkProjectID, networkID).Do()
 }
 
 // getProjectID returns the project's string ID given a project number or string
@@ -685,6 +727,15 @@ func getZonesForRegion(svc *compute.Service, projectID, region string) ([]string
 		}
 	}
 	return zones, nil
+}
+
+func findSubnetForRegion(subnetURLs []string, region string) string {
+	for _, url := range subnetURLs {
+		if thisRegion, err := getRegionInURL(url); err == nil && thisRegion == region {
+			return url
+		}
+	}
+	return ""
 }
 
 func newOauthClient(tokenSource oauth2.TokenSource) (*http.Client, error) {
