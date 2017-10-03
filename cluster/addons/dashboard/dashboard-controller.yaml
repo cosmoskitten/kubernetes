@@ -25,14 +25,7 @@ spec:
           mountPath: /certs
       containers:
       - name: kubernetes-dashboard
-        image: gcr.io/google_containers/kubernetes-dashboard-amd64:v1.7.0
-        resources:
-          limits:
-            cpu: 100m
-            memory: 300Mi
-          requests:
-            cpu: 100m
-            memory: 100Mi
+        image: gcr.io/google_containers/kubernetes-dashboard-amd64:v1.7.1
         ports:
         - containerPort: 9090
           protocol: TCP
