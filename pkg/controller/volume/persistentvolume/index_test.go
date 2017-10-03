@@ -23,6 +23,7 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/client-go/kubernetes/scheme"
 	ref "k8s.io/client-go/tools/reference"
 	"k8s.io/kubernetes/pkg/api/testapi"
@@ -37,6 +38,28 @@ func makePVC(size string, modfn func(*v1.PersistentVolumeClaim)) *v1.PersistentV
 		},
 		Spec: v1.PersistentVolumeClaimSpec{
 			AccessModes: []v1.PersistentVolumeAccessMode{v1.ReadOnlyMany, v1.ReadWriteOnce},
+			Resources: v1.ResourceRequirements{
+				Requests: v1.ResourceList{
+					v1.ResourceName(v1.ResourceStorage): resource.MustParse(size),
+				},
+			},
+		},
+	}
+	if modfn != nil {
+		modfn(&pvc)
+	}
+	return &pvc
+}
+
+func makeVolumeModePVC(size string, mode *v1.PersistentVolumeMode, modfn func(*v1.PersistentVolumeClaim)) *v1.PersistentVolumeClaim {
+	pvc := v1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "claim01",
+			Namespace: "myns",
+		},
+		Spec: v1.PersistentVolumeClaimSpec{
+			VolumeMode:  mode,
+			AccessModes: []v1.PersistentVolumeAccessMode{v1.ReadWriteOnce},
 			Resources: v1.ResourceRequirements{
 				Requests: v1.ResourceList{
 					v1.ResourceName(v1.ResourceStorage): resource.MustParse(size),
@@ -666,6 +689,152 @@ func testVolume(name, size string) *v1.PersistentVolume {
 			PersistentVolumeSource: v1.PersistentVolumeSource{HostPath: &v1.HostPathVolumeSource{}},
 			AccessModes:            []v1.PersistentVolumeAccessMode{v1.ReadWriteOnce},
 		},
+	}
+}
+
+func createVolumeModeBlockTestVolume() *v1.PersistentVolume {
+	blockMode := v1.PersistentVolumeBlock
+
+	return &v1.PersistentVolume{
+		ObjectMeta: metav1.ObjectMeta{
+			UID:  "local-1",
+			Name: "block",
+		},
+		Spec: v1.PersistentVolumeSpec{
+			Capacity: v1.ResourceList{
+				v1.ResourceName(v1.ResourceStorage): resource.MustParse("10G"),
+			},
+			PersistentVolumeSource: v1.PersistentVolumeSource{
+				Local: &v1.LocalVolumeSource{},
+			},
+			AccessModes: []v1.PersistentVolumeAccessMode{
+				v1.ReadWriteOnce,
+			},
+			VolumeMode: &blockMode,
+		},
+	}
+}
+
+func createVolumeModeFilesystemTestVolume() *v1.PersistentVolume {
+	filesystemMode := v1.PersistentVolumeFilesystem
+
+	return &v1.PersistentVolume{
+		ObjectMeta: metav1.ObjectMeta{
+			UID:  "local-1",
+			Name: "block",
+		},
+		Spec: v1.PersistentVolumeSpec{
+			Capacity: v1.ResourceList{
+				v1.ResourceName(v1.ResourceStorage): resource.MustParse("10G"),
+			},
+			PersistentVolumeSource: v1.PersistentVolumeSource{
+				Local: &v1.LocalVolumeSource{},
+			},
+			AccessModes: []v1.PersistentVolumeAccessMode{
+				v1.ReadWriteOnce,
+			},
+			VolumeMode: &filesystemMode,
+		},
+	}
+}
+
+func TestAlphaFilteringVolumeModes(t *testing.T) {
+	blockMode := v1.PersistentVolumeBlock
+	filesystemMode := v1.PersistentVolumeFilesystem
+
+	// Enable alpha feature BlockVolumeSupport
+	err := utilfeature.DefaultFeatureGate.Set("BlockVolumeSupport=true")
+	if err != nil {
+		t.Fatalf("Failed to enable feature gate for BlockVolumeSupport: %v", err)
+	}
+
+	pvBlock := createVolumeModeBlockTestVolume()
+	pvFile := createVolumeModeFilesystemTestVolume()
+	pvNoMode := testVolume("nomode-1", "8G")
+	pvcBlock := makeVolumeModePVC("8G", &blockMode, nil)
+	pvcFile := makeVolumeModePVC("8G", &filesystemMode, nil)
+	pvcNoMode := makeVolumeModePVC("8G", nil, nil)
+	volBlock := newPersistentVolumeOrderedIndex()
+	volBlock.store.Add(pvBlock)
+	volFile := newPersistentVolumeOrderedIndex()
+	volFile.store.Add(pvFile)
+	volNoMode := newPersistentVolumeOrderedIndex()
+	volNoMode.store.Add(pvNoMode)
+
+	// Non Matching Scenarios
+	// - pvNoMode AND pvcBlock
+	// - pvBlock AND pvcNoMode
+	// - pvBlock AND pvcFile
+	// - pvFile AND pvcBlock
+	volumeNoMode, err := volNoMode.findBestMatchForClaim(pvcBlock)
+	if err != nil {
+		t.Errorf("Unexpected error matching volume by claim: %v", err)
+	}
+	if volumeNoMode != nil {
+		t.Errorf("Expected not to match but received volume for scenario: %s", "NoMatch_pvNoMode_pvcBlock")
+	}
+	volumeBlock1, err := volBlock.findBestMatchForClaim(pvcNoMode)
+	if err != nil {
+		t.Errorf("Unexpected error matching volume by claim: %v", err)
+	}
+	if volumeBlock1 != nil {
+		t.Errorf("Expected not to match but received volume for scenario: %s", "NoMatch_pvBlock_pvcNoMode")
+	}
+	volumeBlock2, err := volBlock.findBestMatchForClaim(pvcFile)
+	if err != nil {
+		t.Errorf("Unexpected error matching volume by claim: %v", err)
+	}
+	if volumeBlock2 != nil {
+		t.Errorf("Expected not to match but received volume for scenario: %s", "NoMatch_pvBlock_pvcFile")
+	}
+	volumeFile, err := volFile.findBestMatchForClaim(pvcBlock)
+	if err != nil {
+		t.Errorf("Unexpected error matching volume by claim: %v", err)
+	}
+	if volumeFile != nil {
+		t.Errorf("Expected not to match but received volume for scenario: %s", "NoMatch_pvFile_pvcBlock")
+	}
+
+	// Matching Scenarios
+	// - pvNoMode AND pvcNoMode
+	// - pvNoMode AND pvcFile
+	// - pvBlock AND pvcBlock
+	// - pvFile AND pvcFile
+	// - pvFile AND pvcNoMode
+	volumeNoModeMatch, err := volNoMode.findBestMatchForClaim(pvcNoMode)
+	if err != nil {
+		t.Errorf("Unexpected error matching volume by claim: %v", err)
+	}
+	if volumeNoModeMatch == nil {
+		t.Errorf("Expected match but received nil volume for scenario: %s", "Match_pvNoMode_pvcNoMode")
+	}
+	volumeNoModeMatch2, err := volNoMode.findBestMatchForClaim(pvcFile)
+	if err != nil {
+		t.Errorf("Unexpected error matching volume by claim: %v", err)
+	}
+	if volumeNoModeMatch2 == nil {
+		t.Errorf("Expected match but received nil volume for scenario: %s", "Match_pvNoMode_pvcFile")
+	}
+	volumeBlockMatch, err := volBlock.findBestMatchForClaim(pvcBlock)
+	if err != nil {
+		t.Errorf("Unexpected error matching volume by claim: %v", err)
+	}
+	if volumeBlockMatch == nil {
+		t.Errorf("Expected match but received nil volume for scenario: %s", "Match_pvBlock_pvcBlock")
+	}
+	volumeFileMatch, err := volFile.findBestMatchForClaim(pvcFile)
+	if err != nil {
+		t.Errorf("Unexpected error matching volume by claim: %v", err)
+	}
+	if volumeFileMatch == nil {
+		t.Errorf("Expected match but received nil volume for scenario: %s", "Match_pvFile_pvcFile")
+	}
+	volumeFileMatch2, err := volFile.findBestMatchForClaim(pvcNoMode)
+	if err != nil {
+		t.Errorf("Unexpected error matching volume by claim: %v", err)
+	}
+	if volumeFileMatch2 == nil {
+		t.Errorf("Expected match but received nil volume for scenario: %s", "Match_pvFile_pvcNoMode")
 	}
 }
 
