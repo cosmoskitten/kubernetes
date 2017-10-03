@@ -33,6 +33,8 @@ func TestSync(t *testing.T) {
 		"foo": "true",
 		"bar": "false",
 	}
+	modeBlock := v1.PersistentVolumeBlock
+	modeFile := v1.PersistentVolumeFilesystem
 
 	tests := []controllerTest{
 		// [Unit test set 1] User did not care which PV they get.
@@ -516,6 +518,76 @@ func TestSync(t *testing.T) {
 			newClaimArray("claim13-5", "uid13-5", "1Gi", "", v1.ClaimPending, nil),
 			newClaimArray("claim13-5", "uid13-5", "1Gi", "volume13-5", v1.ClaimBound, nil, annBoundByController, annBindCompleted),
 			noevents, noerrors, testSyncClaim,
+		},
+
+		// PVC with VolumeMode
+		{
+			// syncVolume binds a requested block claim to a block volume
+			"14-1 - binding to volumeMode block",
+			withVolumeVolumeMode(&modeBlock, newVolumeArray("volume14-1", "10Gi", "", "", v1.VolumePending, v1.PersistentVolumeReclaimRetain, classEmpty)),
+			withVolumeVolumeMode(&modeBlock, newVolumeArray("volume14-1", "10Gi", "uid14-1", "claim14-1", v1.VolumeBound, v1.PersistentVolumeReclaimRetain, classEmpty, annBoundByController)),
+			withClaimVolumeMode(&modeBlock, newClaimArray("claim14-1", "uid14-1", "1Gi", "", v1.ClaimPending, nil)),
+			withClaimVolumeMode(&modeBlock, newClaimArray("claim14-1", "uid14-1", "1Gi", "volume14-1", v1.ClaimBound, nil)),
+			noevents, noerrors, testSyncClaim,
+		},
+		{
+			// syncVolume binds a requested filesystem claim to a filesystem volume
+			"14-2 - binding to volumeMode filesystem",
+			withVolumeVolumeMode(&modeFile, newVolumeArray("volume14-2", "10Gi", "", "", v1.VolumePending, v1.PersistentVolumeReclaimRetain, classEmpty)),
+			withVolumeVolumeMode(&modeFile, newVolumeArray("volume14-2", "10Gi", "uid14-2", "claim14-2", v1.VolumeBound, v1.PersistentVolumeReclaimRetain, classEmpty, annBoundByController)),
+			withClaimVolumeMode(&modeFile, newClaimArray("claim14-2", "uid14-1", "1Gi", "", v1.ClaimPending, nil)),
+			withClaimVolumeMode(&modeFile, newClaimArray("claim14-2", "uid14-2", "1Gi", "volume14-2", v1.ClaimBound, nil)),
+			noevents, noerrors, testSyncClaim,
+		},
+		{
+			// syncVolume binds an unspecified volumemode for claim to a specified filesystem volume
+			"14-3 - binding to volumeMode filesystem using default for claim",
+			withVolumeVolumeMode(&modeFile, newVolumeArray("volume14-3", "10Gi", "", "", v1.VolumePending, v1.PersistentVolumeReclaimRetain, classEmpty)),
+			withVolumeVolumeMode(&modeFile, newVolumeArray("volume14-3", "10Gi", "uid14-3", "claim14-3", v1.VolumeBound, v1.PersistentVolumeReclaimRetain, classEmpty, annBoundByController)),
+			withClaimVolumeMode(nil, newClaimArray("claim14-3", "uid14-3", "1Gi", "", v1.ClaimPending, nil)),
+			withClaimVolumeMode(nil, newClaimArray("claim14-3", "uid14-3", "1Gi", "volume14-3", v1.ClaimBound, nil)),
+			noevents, noerrors, testSyncClaim,
+		},
+		{
+			// syncVolume binds a requested filesystem claim to an unspecified volumeMode for volume
+			"14-4 - binding to unspecified volumeMode using requested filesystem for claim",
+			withVolumeVolumeMode(nil, newVolumeArray("volume14-4", "10Gi", "", "", v1.VolumePending, v1.PersistentVolumeReclaimRetain, classEmpty)),
+			withVolumeVolumeMode(nil, newVolumeArray("volume14-4", "10Gi", "uid14-4", "claim14-4", v1.VolumeBound, v1.PersistentVolumeReclaimRetain, classEmpty, annBoundByController)),
+			withClaimVolumeMode(&modeFile, newClaimArray("claim14-4", "uid14-4", "1Gi", "", v1.ClaimPending, nil)),
+			withClaimVolumeMode(&modeFile, newClaimArray("claim14-4", "uid14-4", "1Gi", "volume14-4", v1.ClaimBound, nil)),
+			noevents, noerrors, testSyncClaim,
+		},
+		{
+			// failed syncVolume do not bind when matching class but not matching volumeModes
+			"14-5 - do not bind when matching class but not volumeMode",
+			withVolumeVolumeMode(&modeFile, newVolumeArray("volume14-5", "10Gi", "", "", v1.VolumePending, v1.PersistentVolumeReclaimRetain, classGold)),
+			withVolumeVolumeMode(&modeFile, newVolumeArray("volume14-5", "10Gi", "", "", v1.VolumePending, v1.PersistentVolumeReclaimRetain, classGold)),
+			withClaimVolumeMode(&modeBlock, newClaimArray("claim14-5", "uid14-5", "1Gi", "", v1.ClaimPending, nil)),
+			withClaimVolumeMode(&modeBlock, newClaimArray("claim14-5", "uid14-5", "1Gi", "", v1.ClaimPending, nil)),
+			[]string{"Normal FailedBinding"},
+			noerrors, testSyncClaim,
+		},
+		{
+			// failed syncVolume do not bind when volumeModes do not match
+			// for example claim requests file but volume is block
+			"14-6-1 - do not bind when volumeModes do not match",
+			withVolumeVolumeMode(&modeBlock, newVolumeArray("volume14-6-1", "10Gi", "", "", v1.VolumePending, v1.PersistentVolumeReclaimRetain, classEmpty)),
+			withVolumeVolumeMode(&modeBlock, newVolumeArray("volume14-6-1", "10Gi", "", "", v1.VolumePending, v1.PersistentVolumeReclaimRetain, classEmpty)),
+			withClaimVolumeMode(&modeFile, newClaimArray("claim14-6-1", "uid14-6-1", "1Gi", "", v1.ClaimPending, nil)),
+			withClaimVolumeMode(&modeFile, newClaimArray("claim14-6-1", "uid14-6-1", "1Gi", "", v1.ClaimPending, nil)),
+			[]string{"Normal FailedBinding"},
+			noerrors, testSyncClaim,
+		},
+		{
+			// failed syncVolume do not bind when volumeModes do not match
+			// for example claim requests block but volume is unspecified (filesystem by default)
+			"14-6-2 - do not bind when volumeModes do not match, unspecified volume and requested block for claim",
+			withVolumeVolumeMode(nil, newVolumeArray("volume14-6-2", "10Gi", "", "", v1.VolumePending, v1.PersistentVolumeReclaimRetain, classEmpty)),
+			withVolumeVolumeMode(nil, newVolumeArray("volume14-6-2", "10Gi", "", "", v1.VolumePending, v1.PersistentVolumeReclaimRetain, classEmpty)),
+			withClaimVolumeMode(&modeBlock, newClaimArray("claim14-6-2", "uid14-6-2", "1Gi", "", v1.ClaimPending, nil)),
+			withClaimVolumeMode(&modeBlock, newClaimArray("claim14-6-2", "uid14-6-2", "1Gi", "", v1.ClaimPending, nil)),
+			[]string{"Normal FailedBinding"},
+			noerrors, testSyncClaim,
 		},
 	}
 	runSyncTests(t, tests, []*storage.StorageClass{})
