@@ -430,6 +430,7 @@ func CreateGCECloud(config *CloudConfig) (*GCECloud, error) {
 			return nil, fmt.Errorf("could not retrieve network %v, err: %v", networkURL, err)
 		}
 
+		// Legacy networks have a non-empty IPv4Range
 		if len(n.IPv4Range) > 0 {
 			// If legacy network, accept missing subnet
 			isLegacyNetwork = true
@@ -656,14 +657,14 @@ func getProjectIDInURL(urlStr string) (string, error) {
 // https://www.googleapis.com/compute/v1/projects/myproject/regions/us-central1/subnetworks/a
 // projects/myproject/regions/us-central1/subnetworks/a
 // All return "us-central1"
-func getRegionInURL(urlStr string) (string, error) {
+func getRegionInURL(urlStr string) string {
 	fields := strings.Split(urlStr, "/")
 	for i, v := range fields {
 		if v == "regions" && i < len(fields)-1 {
-			return fields[i+1], nil
+			return fields[i+1]
 		}
 	}
-	return "", fmt.Errorf("could not find region field in url: %v", urlStr)
+	return ""
 }
 
 func getNetworkNameViaMetadata() (string, error) {
@@ -731,7 +732,7 @@ func getZonesForRegion(svc *compute.Service, projectID, region string) ([]string
 
 func findSubnetForRegion(subnetURLs []string, region string) string {
 	for _, url := range subnetURLs {
-		if thisRegion, err := getRegionInURL(url); err == nil && thisRegion == region {
+		if thisRegion := getRegionInURL(url); thisRegion == region {
 			return url
 		}
 	}
