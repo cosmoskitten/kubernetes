@@ -92,6 +92,7 @@ func (pvIndex *persistentVolumeOrderedIndex) findByClaim(claim *v1.PersistentVol
 	var smallestVolumeQty resource.Quantity
 	requestedQty := claim.Spec.Resources.Requests[v1.ResourceName(v1.ResourceStorage)]
 	requestedClass := v1helper.GetPersistentVolumeClaimClass(claim)
+	requestedVolumeMode := v1helper.GetPersistentVolumeClaimVolumeMode(claim)
 
 	var selector labels.Selector
 	if claim.Spec.Selector != nil {
@@ -131,12 +132,17 @@ func (pvIndex *persistentVolumeOrderedIndex) findByClaim(claim *v1.PersistentVol
 			// - volumes bound to another claim
 			// - volumes whose labels don't match the claim's selector, if specified
 			// - volumes in Class that is not requested
+			// - volumeModes do not match (we default to Filesystem while we test these)
 			if volume.Spec.ClaimRef != nil {
 				continue
 			} else if selector != nil && !selector.Matches(labels.Set(volume.Labels)) {
 				continue
 			}
 			if v1helper.GetPersistentVolumeClass(volume) != requestedClass {
+				continue
+			}
+			pvVolumeMode := v1helper.GetPersistentVolumeVolumeMode(volume)
+			if pvVolumeMode != requestedVolumeMode {
 				continue
 			}
 
