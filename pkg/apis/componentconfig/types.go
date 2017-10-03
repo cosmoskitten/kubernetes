@@ -18,6 +18,7 @@ package componentconfig
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/kubernetes/pkg/api"
 )
 
 // ClientConnectionConfiguration contains details for constructing a client.
@@ -160,58 +161,115 @@ const (
 	ProxyModeIPTables  ProxyMode = "iptables"
 )
 
+// SchedulerPolicyConfigMapKey defines the key of the element in the
+// scheduler's policy ConfigMap that contains scheduler's policy config.
+const SchedulerPolicyConfigMapKey string = "policy.cfg"
+
+// SchedulerPolicySourceType define ways to obtain a scheduler Policy at
+// runtime.
+type SchedulerPolicySourceType string
+
+const (
+	// SchedulePolicySourceTypeFile means get a Policy from
+	// a SchedulerPolicyFileSource.
+	SchedulePolicySourceTypeFile SchedulerPolicySourceType = "file"
+	// SchedulerPolicySourceTypeConfigMap means get a Policy from a
+	// SchedulerPolicyConfigMapSource.
+	SchedulerPolicySourceTypeConfigMap SchedulerPolicySourceType = "configmap"
+)
+
+// SchedulerPolicySource configures a means to obtain a scheduler Policy. Given
+// a SchedulerPolicySourceType, the related source should be used. Sources are
+// mutually exclusive.
+type SchedulerPolicySource struct {
+	// Type is the policy source type.
+	Type SchedulerPolicySourceType
+	// File is a file policy source.
+	File *SchedulerPolicyFileSource
+	// ConfigMap is a config map policy source.
+	ConfigMap *SchedulerPolicyConfigMapSource
+}
+
+// SchedulerPolicyFileSource is a policy serialized to disk and accessed via
+// path.
+type SchedulerPolicyFileSource struct {
+	// Path is the location of a serialized policy.
+	Path string
+}
+
+// SchedulerPolicyConfigMapSource is a policy serialized into a config map value.
+type SchedulerPolicyConfigMapSource struct {
+	// Reference is a config map containing a seralized policy in the
+	// SchedulerPolicyConfigMapKey key.
+	Reference api.ObjectReference
+}
+
+// SchedulerAlgorithmSourceType defines the supported scheduler algorithm source
+// types.
+type SchedulerAlgorithmSourceType string
+
+const (
+	// SchedulerAlgorithmSourceProvider is a named algorithm provider plugin.
+	SchedulerAlgorithmSourceProvider SchedulerAlgorithmSourceType = "provider"
+	// SchedulerAlgorithmSourcePolicy is a policy based provider.
+	SchedulerAlgorithmSourcePolicy SchedulerAlgorithmSourceType = "policy"
+)
+
+type SchedulerAlgorithmSource struct {
+	Type SchedulerAlgorithmSourceType
+	// Policy is a policy based algorithm source.
+	Policy *SchedulerPolicySource
+	// Provider is the name of a scheduling algorithm provider to use.
+	Provider *string
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type KubeSchedulerConfiguration struct {
 	metav1.TypeMeta
 
-	// port is the port that the scheduler's http service runs on.
-	Port int32
-	// address is the IP address to serve on.
-	Address string
-	// algorithmProvider is the scheduling algorithm provider to use.
-	AlgorithmProvider string
-	// policyConfigFile is the filepath to the scheduler policy configuration.
-	PolicyConfigFile string
-	// enableProfiling enables profiling via web interface.
-	EnableProfiling bool
-	// enableContentionProfiling enables lock contention profiling, if enableProfiling is true.
-	EnableContentionProfiling bool
-	// contentType is contentType of requests sent to apiserver.
-	ContentType string
-	// kubeAPIQPS is the QPS to use while talking with kubernetes apiserver.
-	KubeAPIQPS float32
-	// kubeAPIBurst is the QPS burst to use while talking with kubernetes apiserver.
-	KubeAPIBurst int32
 	// schedulerName is name of the scheduler, used to select which pods
 	// will be processed by this scheduler, based on pod's "spec.SchedulerName".
 	SchedulerName string
+	// AlgorithmSource specifies the scheduler algorithm source.
+	AlgorithmSource SchedulerAlgorithmSource
 	// RequiredDuringScheduling affinity is not symmetric, but there is an implicit PreferredDuringScheduling affinity rule
 	// corresponding to every RequiredDuringScheduling affinity rule.
 	// HardPodAffinitySymmetricWeight represents the weight of implicit PreferredDuringScheduling affinity rule, in the range 0-100.
 	HardPodAffinitySymmetricWeight int
+
+	// LeaderElection defines the configuration of leader election client.
+	LeaderElection KubeSchedulerLeaderElectionConfiguration
+
+	// ClientConnection specifies the kubeconfig file and client connection
+	// settings for the proxy server to use when communicating with the apiserver.
+	ClientConnection ClientConnectionConfiguration
+	// HealthzBindAddress is the IP address and port for the health check server to serve on,
+	// defaulting to 0.0.0.0:10251
+	HealthzBindAddress string
+	// MetricsBindAddress is the IP address and port for the metrics server to
+	// serve on, defaulting to 0.0.0.0:10251.
+	MetricsBindAddress string
+	// EnableProfiling enables profiling via web interface on /debug/pprof
+	// handler. Profiling handlers will be handled by metrics server.
+	EnableProfiling bool
+	// EnableContentionProfiling enables lock contention profiling, if
+	// EnableProfiling is true.
+	EnableContentionProfiling bool
+
 	// Indicate the "all topologies" set for empty topologyKey when it's used for PreferredDuringScheduling pod anti-affinity.
 	// DEPRECATED: This is no longer used.
 	FailureDomains string
-	// leaderElection defines the configuration of leader election client.
-	LeaderElection LeaderElectionConfiguration
+}
+
+// KubeSchedulerLeaderElectionConfiguration expands LeaderElectionConfiguration
+// to include scheduler specific configuration.
+type KubeSchedulerLeaderElectionConfiguration struct {
+	LeaderElectionConfiguration
 	// LockObjectNamespace defines the namespace of the lock object
 	LockObjectNamespace string
 	// LockObjectName defines the lock object name
 	LockObjectName string
-	// PolicyConfigMapName is the name of the ConfigMap object that specifies
-	// the scheduler's policy config. If UseLegacyPolicyConfig is true, scheduler
-	// uses PolicyConfigFile. If UseLegacyPolicyConfig is false and
-	// PolicyConfigMapName is not empty, the ConfigMap object with this name must
-	// exist in PolicyConfigMapNamespace before scheduler initialization.
-	PolicyConfigMapName string
-	// PolicyConfigMapNamespace is the namespace where the above policy config map
-	// is located. If none is provided default system namespace ("kube-system")
-	// will be used.
-	PolicyConfigMapNamespace string
-	// UseLegacyPolicyConfig tells the scheduler to ignore Policy ConfigMap and
-	// to use PolicyConfigFile if available.
-	UseLegacyPolicyConfig bool
 }
 
 // LeaderElectionConfiguration defines the configuration of leader election

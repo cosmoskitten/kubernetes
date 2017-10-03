@@ -120,41 +120,59 @@ func SetDefaults_KubeProxyConfiguration(obj *KubeProxyConfiguration) {
 }
 
 func SetDefaults_KubeSchedulerConfiguration(obj *KubeSchedulerConfiguration) {
-	if obj.Port == 0 {
-		obj.Port = ports.SchedulerPort
-	}
-	if obj.Address == "" {
-		obj.Address = "0.0.0.0"
-	}
-	if obj.AlgorithmProvider == "" {
-		obj.AlgorithmProvider = "DefaultProvider"
-	}
-	if obj.ContentType == "" {
-		obj.ContentType = "application/vnd.kubernetes.protobuf"
-	}
-	if obj.KubeAPIQPS == 0 {
-		obj.KubeAPIQPS = 50.0
-	}
-	if obj.KubeAPIBurst == 0 {
-		obj.KubeAPIBurst = 100
-	}
-	if obj.SchedulerName == "" {
+	if len(obj.SchedulerName) == 0 {
 		obj.SchedulerName = api.DefaultSchedulerName
 	}
+
 	if obj.HardPodAffinitySymmetricWeight == 0 {
 		obj.HardPodAffinitySymmetricWeight = api.DefaultHardPodAffinitySymmetricWeight
 	}
-	if obj.FailureDomains == "" {
+
+	if len(obj.AlgorithmSource.Type) == 0 {
+		obj.AlgorithmSource.Type = SchedulerAlgorithmSourcePolicy
+	}
+	if obj.AlgorithmSource.Policy != nil &&
+		obj.AlgorithmSource.Policy.ConfigMap != nil &&
+		len(obj.AlgorithmSource.Policy.ConfigMap.Reference.Namespace) == 0 {
+		obj.AlgorithmSource.Policy.ConfigMap.Reference.Namespace = api.NamespaceSystem
+	}
+	if obj.AlgorithmSource.Type == SchedulerAlgorithmSourceProvider {
+		if obj.AlgorithmSource.Provider == nil || len(*obj.AlgorithmSource.Provider) == 0 {
+			val := SchedulerDefaultProviderName
+			obj.AlgorithmSource.Provider = &val
+		}
+	}
+
+	if len(obj.HealthzBindAddress) == 0 {
+		obj.HealthzBindAddress = fmt.Sprintf("0.0.0.0:%v", ports.SchedulerPort)
+	} else if !strings.Contains(obj.HealthzBindAddress, ":") {
+		obj.HealthzBindAddress += fmt.Sprintf(":%v", ports.SchedulerPort)
+	}
+	if len(obj.MetricsBindAddress) == 0 {
+		obj.MetricsBindAddress = fmt.Sprintf("0.0.0.0:%v", ports.SchedulerPort)
+	} else if !strings.Contains(obj.MetricsBindAddress, ":") {
+		obj.MetricsBindAddress += fmt.Sprintf(":%v", ports.SchedulerPort)
+	}
+
+	if len(obj.ClientConnection.ContentType) == 0 {
+		obj.ClientConnection.ContentType = "application/vnd.kubernetes.protobuf"
+	}
+	if obj.ClientConnection.QPS == 0.0 {
+		obj.ClientConnection.QPS = 50.0
+	}
+	if obj.ClientConnection.Burst == 0 {
+		obj.ClientConnection.Burst = 100
+	}
+
+	if len(obj.LeaderElection.LockObjectNamespace) == 0 {
+		obj.LeaderElection.LockObjectNamespace = SchedulerDefaultLockObjectNamespace
+	}
+	if len(obj.LeaderElection.LockObjectName) == 0 {
+		obj.LeaderElection.LockObjectName = SchedulerDefaultLockObjectName
+	}
+
+	if len(obj.FailureDomains) == 0 {
 		obj.FailureDomains = kubeletapis.DefaultFailureDomains
-	}
-	if obj.LockObjectNamespace == "" {
-		obj.LockObjectNamespace = SchedulerDefaultLockObjectNamespace
-	}
-	if obj.LockObjectName == "" {
-		obj.LockObjectName = SchedulerDefaultLockObjectName
-	}
-	if obj.PolicyConfigMapNamespace == "" {
-		obj.PolicyConfigMapNamespace = api.NamespaceSystem
 	}
 }
 
