@@ -433,12 +433,12 @@ func CreateGCECloud(config *CloudConfig) (*GCECloud, error) {
 		if len(n.IPv4Range) > 0 {
 			// If legacy network, accept missing subnet
 			isLegacyNetwork = true
-		} else if !n.AutoCreateSubnetworks {
-			// If manual network, fail because no subnet is specified
-			return nil, fmt.Errorf("no subnet specified in cloud provider config despite the network %q being manual.", networkURL)
 		} else {
-			// Find subnet if type is auto
+			// Try to find the subnet in the list of subnets
 			subnetURL = findSubnetForRegion(n.Subnetworks, config.Region)
+			if len(subnetURL) > 0 {
+				glog.Infof("Found subnet %q of network %q, region %q because none was specified.", subnetURL, n.Name, config.Region)
+			}
 		}
 	}
 
