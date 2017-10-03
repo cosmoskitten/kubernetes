@@ -92,6 +92,7 @@ func (pvIndex *persistentVolumeOrderedIndex) findByClaim(claim *v1.PersistentVol
 	var smallestVolumeQty resource.Quantity
 	requestedQty := claim.Spec.Resources.Requests[v1.ResourceName(v1.ResourceStorage)]
 	requestedClass := v1helper.GetPersistentVolumeClaimClass(claim)
+	requestedVolumeMode := v1helper.GetPersistentVolumeClaimVolumeMode(claim)
 
 	var selector labels.Selector
 	if claim.Spec.Selector != nil {
@@ -116,12 +117,17 @@ func (pvIndex *persistentVolumeOrderedIndex) findByClaim(claim *v1.PersistentVol
 		// - find the smallest matching one if there is no volume pre-bound to
 		//   the claim.
 		for _, volume := range volumes {
+			pvVolumeMode := v1helper.GetPersistentVolumeVolumeMode(volume)
 			if isVolumeBoundToClaim(volume, claim) {
 				// this claim and volume are pre-bound; return
 				// the volume if the size request is satisfied,
 				// otherwise continue searching for a match
 				volumeQty := volume.Spec.Capacity[v1.ResourceStorage]
 				if volumeQty.Cmp(requestedQty) < 0 {
+					continue
+				}
+				// filter out mismatching volumeModes
+				if pvVolumeMode != requestedVolumeMode {
 					continue
 				}
 				return volume, nil
@@ -131,12 +137,16 @@ func (pvIndex *persistentVolumeOrderedIndex) findByClaim(claim *v1.PersistentVol
 			// - volumes bound to another claim
 			// - volumes whose labels don't match the claim's selector, if specified
 			// - volumes in Class that is not requested
+			// - volumeModes do not match
 			if volume.Spec.ClaimRef != nil {
 				continue
 			} else if selector != nil && !selector.Matches(labels.Set(volume.Labels)) {
 				continue
 			}
 			if v1helper.GetPersistentVolumeClass(volume) != requestedClass {
+				continue
+			}
+			if pvVolumeMode != requestedVolumeMode {
 				continue
 			}
 
