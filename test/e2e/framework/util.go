@@ -4507,11 +4507,11 @@ func LaunchWebserverPod(f *Framework, podName, nodeName string) (ip string) {
 // host. An error will be returned if the host is not reachable from the pod.
 //
 // An empty nodeName will use the schedule to choose where the pod is executed.
-func CheckConnectivityToHost(f *Framework, nodeName, podName, host string, timeout int) error {
+func CheckConnectivityToHost(f *Framework, nodeName, podName, pingCmd, host string, timeout int) error {
 	contName := fmt.Sprintf("%s-container", podName)
 
 	command := []string{
-		"ping",
+		pingCmd,
 		"-c", "3", // send 3 pings
 		"-W", "2", // wait at most 2 seconds for a reply
 		"-w", strconv.Itoa(timeout),
