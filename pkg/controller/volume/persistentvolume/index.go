@@ -92,6 +92,7 @@ func (pvIndex *persistentVolumeOrderedIndex) findByClaim(claim *v1.PersistentVol
 	var smallestVolumeQty resource.Quantity
 	requestedQty := claim.Spec.Resources.Requests[v1.ResourceName(v1.ResourceStorage)]
 	requestedClass := v1helper.GetPersistentVolumeClaimClass(claim)
+	requestedVolumeMode := v1helper.GetPersistentVolumeClaimVolumeMode(claim)
 
 	var selector labels.Selector
 	if claim.Spec.Selector != nil {
@@ -138,6 +139,21 @@ func (pvIndex *persistentVolumeOrderedIndex) findByClaim(claim *v1.PersistentVol
 			}
 			if v1helper.GetPersistentVolumeClass(volume) != requestedClass {
 				continue
+			}
+
+			// filter out based on VolumeMode:
+			// - have pvc Block but no pv volumeMode
+			// - have pv Block but no pvc volumemode
+			// - have pv and pvc volumeModes but they do not match
+			pvVolumeMode := v1helper.GetPersistentVolumeVolumeMode(volume)
+			if len(pvVolumeMode) == 0 && requestedVolumeMode == string(v1.PersistentVolumeBlock) {
+				continue
+			} else if pvVolumeMode == string(v1.PersistentVolumeBlock) && len(requestedVolumeMode) == 0 {
+				continue
+			} else if len(pvVolumeMode) > 0 && len(requestedVolumeMode) > 0 {
+				if pvVolumeMode != requestedVolumeMode {
+					continue
+				}
 			}
 
 			volumeQty := volume.Spec.Capacity[v1.ResourceStorage]

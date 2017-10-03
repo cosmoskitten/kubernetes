@@ -433,6 +433,26 @@ func GetPersistentVolumeClaimClass(claim *v1.PersistentVolumeClaim) string {
 	return ""
 }
 
+// GetPersistentVolumeClaimVolumeMode returns VolumeMode. If no VolumeMode was
+// requested, it returns "".
+func GetPersistentVolumeClaimVolumeMode(claim *v1.PersistentVolumeClaim) string {
+	if claim.Spec.VolumeMode != nil {
+		return string(claim.Spec.VolumeMode)
+	}
+
+	return ""
+}
+
+// GetPersistentVolumeVolumeMode returns VolumeMode. If no VolumeMode was
+// requested, it returns "".
+func GetPersistentVolumeVolumeMode(volume *v1.PersistentVolume) string {
+	if volume.Spec.VolumeMode != nil {
+		return string(volume.Spec.VolumeMode)
+	}
+
+	return ""
+}
+
 // PersistentVolumeClaimHasClass returns true if given claim has set StorageClassName field.
 func PersistentVolumeClaimHasClass(claim *v1.PersistentVolumeClaim) bool {
 	// Use beta annotation first
