@@ -148,8 +148,8 @@ func EnsureCoreDNSAddon(cfg *kubeadmapi.MasterConfiguration, client clientset.In
 	}
 
 	// Get the config file for CoreDNS
-	coreDNSConfigMapBytes, err := kubeadmutil.ParseTemplate(CoreDNSConfigMap, struct{ DNSDomain, Servicecidr string }{
-		Servicecidr: convSubnet(cfg.Networking.ServiceSubnet),
+	coreDNSConfigMapBytes, err := kubeadmutil.ParseTemplate(CoreDNSConfigMap, struct{ DNSDomain, ServiceCIDR string }{
+		ServiceCIDR: convSubnet(cfg.Networking.ServiceSubnet),
 		DNSDomain:   cfg.Networking.DNSDomain,
 	})
 	if err != nil {
@@ -265,9 +265,9 @@ func createCoreDNSAddon(deploymentBytes, serviceBytes, configBytes, clusterroleB
 	return nil
 }
 
-//convSubnet fetches the servicecidr and modifies the mask to the nearest class
+//convSubnet fetches the serviceCIDR and modifies the mask to the nearest class
 //CoreDNS requires CIDR notations for reverse zones as classful.
-func convSubnet(cidr string) (servicecidr string) {
+func convSubnet(cidr string) (serviceCIDR string) {
 	var newMask int
 	mask := strings.Split(cidr, "/")
 	i, _ := strconv.Atoi(mask[1])
@@ -282,9 +282,9 @@ func convSubnet(cidr string) (servicecidr string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	servicecidr = ipv4Net.String()
+	serviceCIDR = ipv4Net.String()
 
-	return servicecidr
+	return serviceCIDR
 }
 
 // getDNSIP fetches the kubernetes service's ClusterIP and appends a "0" to it in order to get the DNS IP
