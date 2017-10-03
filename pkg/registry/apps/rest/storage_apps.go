@@ -123,6 +123,11 @@ func (p RESTStorageProvider) v1Storage(apiResourceConfigSource serverstorage.API
 		storage["daemonsets"] = daemonSetStorage
 		storage["daemonsets/status"] = daemonSetStatusStorage
 	}
+	if apiResourceConfigSource.ResourceEnabled(version.WithResource("replicasets")) {
+		replicaSetStorage := replicasetstore.NewStorage(restOptionsGetter)
+		storage["replicasets"] = replicaSetStorage.ReplicaSet
+		storage["replicasets/status"] = replicaSetStorage.Status
+	}
 	return storage
 }
 

@@ -41,6 +41,8 @@ func addConversionFuncs(scheme *runtime.Scheme) error {
 		Convert_v1_DaemonSetSpec_To_extensions_DaemonSetSpec,
 		Convert_extensions_DaemonSetUpdateStrategy_To_v1_DaemonSetUpdateStrategy,
 		Convert_v1_DaemonSetUpdateStrategy_To_extensions_DaemonSetUpdateStrategy,
+		Convert_extensions_ReplicaSetSpec_To_v1_ReplicaSetSpec,
+		Convert_v1_ReplicaSetSpec_To_extensions_ReplicaSetSpec,
 	)
 	if err != nil {
 		return err
@@ -153,6 +155,29 @@ func Convert_v1_DaemonSetUpdateStrategy_To_extensions_DaemonSetUpdateStrategy(in
 		if err := Convert_v1_RollingUpdateDaemonSet_To_extensions_RollingUpdateDaemonSet(in.RollingUpdate, out.RollingUpdate, s); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func Convert_extensions_ReplicaSetSpec_To_v1_ReplicaSetSpec(in *extensions.ReplicaSetSpec, out *appsv1.ReplicaSetSpec, s conversion.Scope) error {
+	out.Replicas = new(int32)
+	*out.Replicas = int32(in.Replicas)
+	out.MinReadySeconds = in.MinReadySeconds
+	out.Selector = in.Selector
+	if err := k8s_api_v1.Convert_api_PodTemplateSpec_To_v1_PodTemplateSpec(&in.Template, &out.Template, s); err != nil {
+		return err
+	}
+	return nil
+}
+
+func Convert_v1_ReplicaSetSpec_To_extensions_ReplicaSetSpec(in *appsv1.ReplicaSetSpec, out *extensions.ReplicaSetSpec, s conversion.Scope) error {
+	if in.Replicas != nil {
+		out.Replicas = *in.Replicas
+	}
+	out.MinReadySeconds = in.MinReadySeconds
+	out.Selector = in.Selector
+	if err := k8s_api_v1.Convert_v1_PodTemplateSpec_To_api_PodTemplateSpec(&in.Template, &out.Template, s); err != nil {
+		return err
 	}
 	return nil
 }
