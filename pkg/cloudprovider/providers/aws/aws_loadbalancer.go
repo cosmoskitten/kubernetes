@@ -25,6 +25,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/elb"
+	"github.com/aws/aws-sdk-go/service/elbv2"
 	"github.com/golang/glog"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -32,6 +33,13 @@ import (
 )
 
 const ProxyProtocolPolicyName = "k8s-proxyprotocol-enabled"
+
+func isNLB(annotations map[string]string) bool {
+	if annotations[ServiceAnnotationLoadBalancerType] == "nlb" {
+		return true
+	}
+	return false
+}
 
 // getLoadBalancerAdditionalTags converts the comma separated list of key-value
 // pairs in the ServiceAnnotationLoadBalancerAdditionalTags annotation and returns
@@ -60,6 +68,399 @@ func getLoadBalancerAdditionalTags(annotations map[string]string) map[string]str
 	}
 
 	return additionalTags
+}
+
+// ensureLoadBalancerv2 ensures a v2 load balancer is created
+//
+// listeners is a map of frontend to NodePorts
+func (c *Cloud) ensureLoadBalancerv2(namespacedName types.NamespacedName, loadBalancerName string, listeners map[int64]int64, instanceIDs, subnetIDs []string, internalELB bool, annotations map[string]string) (*elbv2.LoadBalancer, error) {
+	loadBalancer, err := c.describeLoadBalancerv2(loadBalancerName)
+	if err != nil {
+		return nil, err
+	}
+
+	dirty := false
+
+	// Get additional tags set by the user
+	tags := getLoadBalancerAdditionalTags(annotations)
+	// Add default tags
+	tags[TagNameKubernetesService] = namespacedName.String()
+	tags = c.tagging.buildTags(ResourceLifecycleOwned, tags)
+
+	if loadBalancer == nil {
+		// Create the LB
+		createRequest := &elbv2.CreateLoadBalancerInput{}
+		createRequest.Name = aws.String(loadBalancerName)
+		if internalELB {
+			createRequest.Scheme = aws.String("internal")
+		}
+
+		// We are supposed to specify one subnet per AZ.
+		// TODO: What happens if we have more than one subnet per AZ?
+		createRequest.SubnetMappings = createSubnetMappings(subnetIDs)
+
+		for k, v := range tags {
+			createRequest.Tags = append(createRequest.Tags, &elbv2.Tag{
+				Key: aws.String(k), Value: aws.String(v),
+			})
+		}
+
+		glog.Infof("Creating load balancer for %v with name: %s", namespacedName, loadBalancerName)
+		createResponse, err := c.elbv2.CreateLoadBalancer(createRequest)
+		if err != nil {
+			return nil, err
+		}
+
+		// Create Target Groups
+		addTagsInput := &elbv2.AddTagsInput{
+			ResourceArns: []*string{},
+			Tags:         []*elbv2.Tag{},
+		}
+
+		// It is way easier to keep track of updates by having possibly
+		// duplicate target groups where the backend port is the same
+		for frontendPort, nodePort := range listeners {
+			_, targetGroupArn, err := c.createListenerV2(createResponse.LoadBalancers[0].LoadBalancerArn, frontendPort, nodePort, namespacedName, instanceIDs, *createResponse.LoadBalancers[0].VpcId)
+			if err != nil {
+				return nil, err
+			}
+			addTagsInput.ResourceArns = append(addTagsInput.ResourceArns, targetGroupArn)
+		}
+
+		// Add tags to targets
+		for k, v := range tags {
+			addTagsInput.Tags = append(addTagsInput.Tags, &elbv2.Tag{
+				Key: aws.String(k), Value: aws.String(v),
+			})
+		}
+		_, err = c.elbv2.AddTags(addTagsInput)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		// TODO: Sync internal vs non-internal
+
+		// sync listeners
+		{
+			// TODO handle paginated response here
+			// TODO micahhausler
+			listenerDescriptions, err := c.elbv2.DescribeListeners(
+				&elbv2.DescribeListenersInput{
+					LoadBalancerArn: loadBalancer.LoadBalancerArn,
+				},
+			)
+			if err != nil {
+				return nil, err
+			}
+			actual := map[int64]*elbv2.Listener{}
+			for _, listener := range listenerDescriptions.Listeners {
+				actual[*listener.Port] = listener
+			}
+
+			actualTargetGroups, err := c.elbv2.DescribeTargetGroups(
+				&elbv2.DescribeTargetGroupsInput{
+					LoadBalancerArn: loadBalancer.LoadBalancerArn,
+				},
+			)
+			if err != nil {
+				glog.Warning("Unable to create load balancer listener")
+				return nil, err
+			}
+			nodePortTargetGroup := map[int64]*elbv2.TargetGroup{}
+			for _, targetGroup := range actualTargetGroups.TargetGroups {
+				nodePortTargetGroup[*targetGroup.Port] = targetGroup
+			}
+
+			// Create Target Groups
+			addTagsInput := &elbv2.AddTagsInput{
+				ResourceArns: []*string{},
+				Tags:         []*elbv2.Tag{},
+			}
+
+			// Handle additions/modifications
+			for frontendPort, nodePort := range listeners {
+
+				// modifications
+				if listener, ok := actual[frontendPort]; ok {
+
+					// nodePort must have changed, we'll need to delete old TG
+					// and recreate
+					if targetGroup, ok := nodePortTargetGroup[nodePort]; !ok {
+						// Create new Target group
+						targetName := createTargetName(namespacedName, frontendPort, nodePort)
+						targetGroup, err = c.ensureTargetGroup(
+							nil,
+							nodePort,
+							instanceIDs,
+							targetName,
+							*loadBalancer.VpcId,
+						)
+						if err != nil {
+							return nil, err
+						}
+
+						// Associate new target group to LB
+						_, err := c.elbv2.ModifyListener(&elbv2.ModifyListenerInput{
+							ListenerArn: listener.ListenerArn,
+							Port:        aws.Int64(frontendPort),
+							Protocol:    aws.String("TCP"),
+							DefaultActions: []*elbv2.Action{{
+								TargetGroupArn: targetGroup.TargetGroupArn,
+								Type:           aws.String("forward"),
+							}},
+						})
+						if err != nil {
+							glog.Warning("Unable to update load balancer listener")
+							return nil, err
+						}
+
+						// Delete old target group
+						_, err = c.elbv2.DeleteTargetGroup(&elbv2.DeleteTargetGroupInput{
+							TargetGroupArn: listener.DefaultActions[0].TargetGroupArn,
+						})
+						if err != nil {
+							glog.Warning("Unable to delete old target group")
+							return nil, err
+						}
+
+					} else {
+
+						// Run ensureTargetGroup to make sure instances in service are up-to-date
+						targetName := createTargetName(namespacedName, frontendPort, nodePort)
+						_, err = c.ensureTargetGroup(
+							targetGroup,
+							nodePort,
+							instanceIDs,
+							targetName,
+							*loadBalancer.VpcId,
+						)
+						if err != nil {
+							return nil, err
+						}
+					}
+					dirty = true
+					continue
+				}
+
+				// Additions
+				_, targetGroupArn, err := c.createListenerV2(loadBalancer.LoadBalancerArn, frontendPort, nodePort, namespacedName, instanceIDs, *loadBalancer.VpcId)
+				if err != nil {
+					return nil, err
+				}
+				addTagsInput.ResourceArns = append(addTagsInput.ResourceArns, targetGroupArn)
+				dirty = true
+			}
+
+			// handle deletions
+			for port, listener := range actual {
+				if _, ok := listeners[port]; !ok {
+					err := c.deleteListenerV2(listener)
+					if err != nil {
+						return nil, err
+					}
+					dirty = true
+				}
+			}
+
+			// Add tags to new targets
+			for k, v := range tags {
+				addTagsInput.Tags = append(addTagsInput.Tags, &elbv2.Tag{
+					Key: aws.String(k), Value: aws.String(v),
+				})
+			}
+			_, err = c.elbv2.AddTags(addTagsInput)
+			if err != nil {
+				return nil, err
+			}
+
+		}
+
+		// Subnets cannot be modified on NLBs
+
+		if dirty {
+			loadBalancers, err := c.elbv2.DescribeLoadBalancers(
+				&elbv2.DescribeLoadBalancersInput{
+					LoadBalancerArns: []*string{
+						loadBalancer.LoadBalancerArn,
+					},
+				},
+			)
+			if err != nil {
+				glog.Warning("Unable to retrieve load balancer after update")
+				return nil, err
+			}
+			loadBalancer = loadBalancers.LoadBalancers[0]
+		}
+	}
+	return loadBalancer, nil
+}
+
+func createTargetName(namespacedName types.NamespacedName, frontendPort, nodePort int64) string {
+	return fmt.Sprintf("%s-%d-%d", namespacedName.String(), frontendPort, nodePort)
+}
+
+func (c *Cloud) createListenerV2(loadBalancerArn *string, frontendPort, nodePort int64, namespacedName types.NamespacedName, instanceIDs []string, vpcID string) (listener *elbv2.Listener, targetGroupArn *string, err error) {
+	targetName := createTargetName(namespacedName, frontendPort, nodePort)
+
+	glog.Infof("Creating load balancer target group for %v with name: %s", namespacedName, targetName)
+	target, err := c.ensureTargetGroup(
+		nil,
+		nodePort,
+		instanceIDs,
+		targetName,
+		vpcID,
+	)
+	if err != nil {
+		return nil, aws.String(""), err
+	}
+
+	createListernerInput := &elbv2.CreateListenerInput{
+		LoadBalancerArn: loadBalancerArn,
+		Port:            aws.Int64(frontendPort),
+		Protocol:        aws.String("TCP"),
+		DefaultActions: []*elbv2.Action{{
+			TargetGroupArn: target.TargetGroupArn,
+			Type:           aws.String("forward"),
+		}},
+	}
+	glog.Infof("Creating load balancer listener for %v", namespacedName)
+	createListenerOutput, err := c.elbv2.CreateListener(createListernerInput)
+	if err != nil {
+		glog.Warning("Unable to create load balancer listener")
+		return nil, aws.String(""), err
+	}
+	return createListenerOutput.Listeners[0], target.TargetGroupArn, nil
+}
+
+// cleans up listener and corresponding target group
+func (c *Cloud) deleteListenerV2(listener *elbv2.Listener) error {
+	_, err := c.elbv2.DeleteListener(&elbv2.DeleteListenerInput{ListenerArn: listener.ListenerArn})
+	if err != nil {
+		glog.Warning("Unable to delete load balancer listener")
+		return err
+	}
+	_, err = c.elbv2.DeleteTargetGroup(&elbv2.DeleteTargetGroupInput{TargetGroupArn: listener.DefaultActions[0].TargetGroupArn})
+	if err != nil {
+		glog.Warning("Unable to delete load balancer target group")
+	}
+	return err
+}
+
+// ensureTargetGroup creates a target group with a set of instances
+func (c *Cloud) ensureTargetGroup(targetGroup *elbv2.TargetGroup, nodePort int64, instances []string, name string, vpcID string) (*elbv2.TargetGroup, error) {
+	dirty := false
+	if targetGroup == nil {
+		input := &elbv2.CreateTargetGroupInput{
+			VpcId:                      aws.String(vpcID),
+			Name:                       aws.String(name),
+			Port:                       aws.Int64(nodePort),
+			Protocol:                   aws.String("TCP"),
+			TargetType:                 aws.String("instance"),
+			HealthCheckIntervalSeconds: aws.Int64(30),
+			HealthCheckPort:            aws.String("traffic-port"),
+			HealthCheckProtocol:        aws.String("TCP"),
+			HealthCheckTimeoutSeconds:  aws.Int64(10),
+			HealthyThresholdCount:      aws.Int64(3),
+			UnhealthyThresholdCount:    aws.Int64(3),
+		}
+
+		result, err := c.elbv2.CreateTargetGroup(input)
+		if err != nil {
+			glog.Warning("Unable to create load balancer target group")
+			return nil, err
+		}
+		if len(result.TargetGroups) != 1 {
+			return nil, fmt.Errorf("Expected only one target group on create!")
+		}
+
+		registerInput := &elbv2.RegisterTargetsInput{
+			TargetGroupArn: result.TargetGroups[0].TargetGroupArn,
+			Targets:        []*elbv2.TargetDescription{},
+		}
+		for _, instanceID := range instances {
+			registerInput.Targets = append(registerInput.Targets, &elbv2.TargetDescription{
+				Id:   aws.String(string(instanceID)),
+				Port: aws.Int64(nodePort),
+			})
+		}
+
+		_, err = c.elbv2.RegisterTargets(registerInput)
+		if err != nil {
+			glog.Warning("Unable register targets for load balancer")
+			return nil, err
+		}
+
+		return result.TargetGroups[0], nil
+	}
+
+	// handle instances in service
+	{
+		healthResponse, err := c.elbv2.DescribeTargetHealth(&elbv2.DescribeTargetHealthInput{TargetGroupArn: targetGroup.TargetGroupArn})
+		if err != nil {
+			glog.Warning("Unable to describe target group health")
+			return nil, err
+		}
+		responseIDs := []string{}
+		for _, healthDescription := range healthResponse.TargetHealthDescriptions {
+			responseIDs = append(responseIDs, *healthDescription.Target.Id)
+		}
+
+		actual := sets.NewString(instances...)
+		expected := sets.NewString(responseIDs...)
+
+		additions := expected.Difference(actual)
+		removals := actual.Difference(expected)
+
+		if len(additions) > 0 {
+			registerInput := &elbv2.RegisterTargetsInput{
+				TargetGroupArn: targetGroup.TargetGroupArn,
+				Targets:        []*elbv2.TargetDescription{},
+			}
+			for instanceID := range additions {
+				registerInput.Targets = append(registerInput.Targets, &elbv2.TargetDescription{
+					Id:   aws.String(string(instanceID)),
+					Port: aws.Int64(nodePort),
+				})
+			}
+			_, err := c.elbv2.RegisterTargets(registerInput)
+			if err != nil {
+				glog.Warning("Unable to register new targets in target group")
+				return nil, err
+			}
+			dirty = true
+		}
+
+		if len(removals) > 0 {
+			deregisterInput := &elbv2.DeregisterTargetsInput{
+				TargetGroupArn: targetGroup.TargetGroupArn,
+				Targets:        []*elbv2.TargetDescription{},
+			}
+			for instanceID := range removals {
+				deregisterInput.Targets = append(deregisterInput.Targets, &elbv2.TargetDescription{
+					Id:   aws.String(string(instanceID)),
+					Port: aws.Int64(nodePort),
+				})
+			}
+			_, err := c.elbv2.DeregisterTargets(deregisterInput)
+			if err != nil {
+				glog.Warning("Unable to deregister targets in target group")
+				return nil, err
+			}
+			dirty = true
+		}
+	}
+	if dirty {
+		result, err := c.elbv2.DescribeTargetGroups(&elbv2.DescribeTargetGroupsInput{
+			Names: []*string{aws.String(name)},
+		})
+		if err != nil {
+			glog.Warning("Unable to retrieve target group after creation/update")
+			return nil, err
+		}
+		targetGroup = result.TargetGroups[0]
+	}
+
+	return targetGroup, nil
 }
 
 func (c *Cloud) ensureLoadBalancer(namespacedName types.NamespacedName, loadBalancerName string, listeners []*elb.Listener, subnetIDs []string, securityGroupIDs []string, internalELB, proxyProtocol bool, loadBalancerAttributes *elb.LoadBalancerAttributes, annotations map[string]string) (*elb.LoadBalancerDescription, error) {
@@ -354,6 +755,17 @@ func (c *Cloud) ensureLoadBalancer(namespacedName types.NamespacedName, loadBala
 	}
 
 	return loadBalancer, nil
+}
+
+func createSubnetMappings(subnetIDs []string) []*elbv2.SubnetMapping {
+	response := []*elbv2.SubnetMapping{}
+
+	for _, id := range subnetIDs {
+		// Ignore AllocationId for now
+		response = append(response, &elbv2.SubnetMapping{SubnetId: aws.String(id)})
+	}
+
+	return response
 }
 
 // elbProtocolsAreEqual checks if two ELB protocol strings are considered the same
