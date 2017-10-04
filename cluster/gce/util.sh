@@ -595,6 +595,17 @@ function create-node-template() {
       done
     fi
   fi
+  #add in optional ones
+  if [[ ! -z ${NODE_LOCAL_SSDS_EXT} ]]; then
+    IFS=";" read -r -a ssdgroups <<< ${NODE_LOCAL_SSDS_EXT}
+    for ssdgroup in "${ssdgroups[@]}"
+    do
+      IFS="," read -r -a ssdopts <<< ${ssdgroup}
+      for i in $(seq ${ssdopts[0]}); do
+        local_ssds="$local_ssds--local-ssd=interface=${ssdopts[1]} "
+      done
+    done
+  fi
 
   local network=$(make-gcloud-network-argument \
     "${NETWORK_PROJECT}" \
