@@ -259,7 +259,7 @@ func TestRefetchSchemaWhenValidationFails(t *testing.T) {
 	requests := map[string]int{}
 
 	c := &manualfake.RESTClient{
-		APIRegistry:          api.Registry,
+		GroupVersion:         api.Registry.GroupOrDie(api.GroupName).GroupVersion,
 		NegotiatedSerializer: testapi.Default.NegotiatedSerializer(),
 		Client: manualfake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch p, m := req.URL.Path, req.Method; {
@@ -320,7 +320,7 @@ func TestValidateCachesSchema(t *testing.T) {
 	requests := map[string]int{}
 
 	c := &manualfake.RESTClient{
-		APIRegistry:          api.Registry,
+		GroupVersion:         api.Registry.GroupOrDie(api.GroupName).GroupVersion,
 		NegotiatedSerializer: testapi.Default.NegotiatedSerializer(),
 		Client: manualfake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch p, m := req.URL.Path, req.Method; {
