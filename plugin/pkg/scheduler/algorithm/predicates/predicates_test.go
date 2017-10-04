@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1helper "k8s.io/kubernetes/pkg/api/v1/helper"
+	"k8s.io/kubernetes/pkg/cloudprovider/providers/gce"
 	kubeletapis "k8s.io/kubernetes/pkg/kubelet/apis"
 	"k8s.io/kubernetes/plugin/pkg/scheduler/algorithm"
 	"k8s.io/kubernetes/plugin/pkg/scheduler/schedulercache"
@@ -1588,6 +1589,189 @@ func TestServiceAffinity(t *testing.T) {
 	}
 }
 
+func TestGCEPDCountConflicts(t *testing.T) {
+
+	var twoPodList_64 []*v1.Pod
+	var onePodList_15 []*v1.Pod
+
+	for i := 0; i < 15; i++ {
+		pdName := fmt.Sprintf("onepd_%d", i)
+		oneVolPod := &v1.Pod{
+			Spec: v1.PodSpec{
+				Volumes: []v1.Volume{
+					{
+						VolumeSource: v1.VolumeSource{
+							GCEPersistentDisk: &v1.GCEPersistentDiskVolumeSource{PDName: pdName},
+						},
+					},
+				},
+			},
+		}
+		onePodList_15 = append(onePodList_15, oneVolPod)
+	}
+
+	for i := 0; i < 32; i++ {
+		pdName1 := fmt.Sprintf("twopd1_%d", i)
+		pdName2 := fmt.Sprintf("twopd2_%d", i)
+		twoVolPod := &v1.Pod{
+			Spec: v1.PodSpec{
+				Volumes: []v1.Volume{
+					{
+						VolumeSource: v1.VolumeSource{
+							GCEPersistentDisk: &v1.GCEPersistentDiskVolumeSource{PDName: pdName1},
+						},
+					},
+					{
+						VolumeSource: v1.VolumeSource{
+							GCEPersistentDisk: &v1.GCEPersistentDiskVolumeSource{PDName: pdName2},
+						},
+					},
+				},
+			},
+		}
+		twoPodList_64 = append(twoPodList_64, twoVolPod)
+	}
+
+	oneVolPod := &v1.Pod{
+		Spec: v1.PodSpec{
+			Volumes: []v1.Volume{
+				{
+					VolumeSource: v1.VolumeSource{
+						GCEPersistentDisk: &v1.GCEPersistentDiskVolumeSource{PDName: "pv1"},
+					},
+				},
+			},
+		},
+	}
+
+	twoVolPod := &v1.Pod{
+		Spec: v1.PodSpec{
+			Volumes: []v1.Volume{
+				{
+					VolumeSource: v1.VolumeSource{
+						GCEPersistentDisk: &v1.GCEPersistentDiskVolumeSource{PDName: "pv2"},
+					},
+				},
+				{
+					VolumeSource: v1.VolumeSource{
+						GCEPersistentDisk: &v1.GCEPersistentDiskVolumeSource{PDName: "pv3"},
+					},
+				},
+			},
+		},
+	}
+
+	standard_1_node := &v1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "hostname",
+			Labels: map[string]string{
+				kubeletapis.LabelInstanceType: "n1-standard-1",
+			},
+		},
+	}
+
+	standard_2_node := &v1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "hostname",
+			Labels: map[string]string{
+				kubeletapis.LabelInstanceType: "n1-standard-2",
+			},
+		},
+	}
+
+	highcpu_8_node := &v1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "hostname",
+			Labels: map[string]string{
+				kubeletapis.LabelInstanceType: "n1-highcpu-8",
+			},
+		},
+	}
+
+	small_node := &v1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "hostname",
+			Labels: map[string]string{
+				kubeletapis.LabelInstanceType: "small-node",
+			},
+		},
+	}
+
+	tests := []struct {
+		newPod       *v1.Pod
+		existingPods []*v1.Pod
+		node         *v1.Node
+		fits         bool
+		test         string
+	}{
+		{
+			newPod:       twoVolPod,
+			existingPods: append(onePodList_15, onePodList_15...),
+			node:         standard_1_node,
+			fits:         true,
+			test:         "fits when node capacity >= new pod's GCE volumes",
+		},
+		{
+			newPod:       twoVolPod,
+			existingPods: twoPodList_64,
+			node:         standard_2_node,
+			fits:         false,
+			test:         "doesn't fit when node capacity < new pod's GCE volumes",
+		},
+		{
+			newPod:       twoVolPod,
+			existingPods: append(onePodList_15, twoPodList_64...),
+			node:         highcpu_8_node,
+			fits:         true,
+			test:         "fits when node capacity >= new pod's GCE volumes",
+		},
+		{
+			newPod:       oneVolPod,
+			existingPods: onePodList_15,
+			node:         small_node,
+			fits:         true,
+			test:         "doesn't fit when node capacity < new pod's GCE volumes",
+		},
+	}
+
+	filter := VolumeFilter{
+		FilterVolume: func(vol *v1.Volume) (string, bool) {
+			if vol.GCEPersistentDisk != nil {
+				return vol.GCEPersistentDisk.PDName, true
+			}
+			return "", false
+		},
+		FilterPersistentVolume: func(pv *v1.PersistentVolume) (string, bool) {
+			if pv.Spec.GCEPersistentDisk != nil {
+				return pv.Spec.GCEPersistentDisk.PDName, true
+			}
+			return "", false
+		},
+	}
+	expectedFailureReasons := []algorithm.PredicateFailureReason{ErrMaxVolumeCountExceeded}
+
+	pvInfo := FakePersistentVolumeInfo{}
+
+	pvcInfo := FakePersistentVolumeClaimInfo{}
+
+	for _, test := range tests {
+		pred := NewMaxPDVolumeCountPredicate(filter, gce.MaxPDCount, pvInfo, pvcInfo)
+		nodeInfo := schedulercache.NewNodeInfo(test.existingPods...)
+		nodeInfo.SetNode(test.node)
+		fits, reasons, err := pred(test.newPod, PredicateMetadata(test.newPod, nil), nodeInfo)
+		if err != nil {
+			t.Errorf("%s: unexpected error: %v", test.test, err)
+		}
+		if !fits && !reflect.DeepEqual(reasons, expectedFailureReasons) {
+			t.Errorf("%s: unexpected failure reasons: %v, want: %v", test.test, reasons, expectedFailureReasons)
+		}
+		if fits != test.fits {
+			t.Errorf("%s: expected %v, got %v", test.test, test.fits, fits)
+		}
+	}
+
+}
+
 func TestEBSVolumeCountConflicts(t *testing.T) {
 	oneVolPod := &v1.Pod{
 		Spec: v1.PodSpec{
@@ -1805,14 +1989,14 @@ func TestEBSVolumeCountConflicts(t *testing.T) {
 	}{
 		{
 			newPod:       oneVolPod,
-			existingPods: []*v1.Pod{twoVolPod, oneVolPod},
+			existingPods: []*v1.Pod{twoVolPod},
 			maxVols:      4,
 			fits:         true,
 			test:         "fits when node capacity >= new pod's EBS volumes",
 		},
 		{
 			newPod:       twoVolPod,
-			existingPods: []*v1.Pod{oneVolPod},
+			existingPods: []*v1.Pod{oneVolPod, twoVolPod, splitVolsPod},
 			maxVols:      2,
 			fits:         false,
 			test:         "doesn't fit when node capacity < new pod's EBS volumes",
@@ -1854,7 +2038,7 @@ func TestEBSVolumeCountConflicts(t *testing.T) {
 		},
 		{
 			newPod:       twoVolPod,
-			existingPods: []*v1.Pod{oneVolPod, twoVolPod, ebsPVCPod},
+			existingPods: []*v1.Pod{twoVolPod, ebsPVCPod},
 			maxVols:      4,
 			fits:         true,
 			test:         "already-mounted EBS volumes are always ok to allow",
@@ -1868,7 +2052,7 @@ func TestEBSVolumeCountConflicts(t *testing.T) {
 		},
 		{
 			newPod:       ebsPVCPod,
-			existingPods: []*v1.Pod{oneVolPod, deletedPVCPod},
+			existingPods: []*v1.Pod{twoVolPod, deletedPVCPod},
 			maxVols:      2,
 			fits:         false,
 			test:         "pod with missing PVC is counted towards the PV limit",
@@ -1889,7 +2073,7 @@ func TestEBSVolumeCountConflicts(t *testing.T) {
 		},
 		{
 			newPod:       ebsPVCPod,
-			existingPods: []*v1.Pod{oneVolPod, deletedPVPod},
+			existingPods: []*v1.Pod{twoVolPod, deletedPVPod},
 			maxVols:      2,
 			fits:         false,
 			test:         "pod with missing PV is counted towards the PV limit",
@@ -1903,21 +2087,21 @@ func TestEBSVolumeCountConflicts(t *testing.T) {
 		},
 		{
 			newPod:       deletedPVPod2,
-			existingPods: []*v1.Pod{oneVolPod, deletedPVPod},
+			existingPods: []*v1.Pod{twoVolPod, deletedPVPod},
 			maxVols:      2,
 			fits:         true,
 			test:         "two pods missing the same PV are counted towards the PV limit only once",
 		},
 		{
 			newPod:       anotherDeletedPVPod,
-			existingPods: []*v1.Pod{oneVolPod, deletedPVPod},
+			existingPods: []*v1.Pod{twoVolPod, deletedPVPod},
 			maxVols:      2,
 			fits:         false,
 			test:         "two pods missing different PVs are counted towards the PV limit twice",
 		},
 		{
 			newPod:       ebsPVCPod,
-			existingPods: []*v1.Pod{oneVolPod, unboundPVCPod},
+			existingPods: []*v1.Pod{twoVolPod, unboundPVCPod},
 			maxVols:      2,
 			fits:         false,
 			test:         "pod with unbound PVC is counted towards the PV limit",
@@ -1938,7 +2122,7 @@ func TestEBSVolumeCountConflicts(t *testing.T) {
 		},
 		{
 			newPod:       anotherUnboundPVCPod,
-			existingPods: []*v1.Pod{oneVolPod, unboundPVCPod},
+			existingPods: []*v1.Pod{twoVolPod, unboundPVCPod},
 			maxVols:      2,
 			fits:         false,
 			test:         "two different unbound PVCs are counted towards the PV limit as two volumes",
@@ -2006,7 +2190,7 @@ func TestEBSVolumeCountConflicts(t *testing.T) {
 	expectedFailureReasons := []algorithm.PredicateFailureReason{ErrMaxVolumeCountExceeded}
 
 	for _, test := range tests {
-		pred := NewMaxPDVolumeCountPredicate(filter, test.maxVols, pvInfo, pvcInfo)
+		pred := NewMaxPDVolumeCountPredicate(filter, MaxPDCount3, pvInfo, pvcInfo)
 		fits, reasons, err := pred(test.newPod, PredicateMetadata(test.newPod, nil), schedulercache.NewNodeInfo(test.existingPods...))
 		if err != nil {
 			t.Errorf("%s: unexpected error: %v", test.test, err)
@@ -2018,6 +2202,10 @@ func TestEBSVolumeCountConflicts(t *testing.T) {
 			t.Errorf("%s: expected %v, got %v", test.test, test.fits, fits)
 		}
 	}
+}
+
+func MaxPDCount3(ndoe *v1.Node) int {
+	return 3
 }
 
 func newPodWithPort(hostPorts ...int) *v1.Pod {

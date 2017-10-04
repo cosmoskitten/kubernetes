@@ -175,7 +175,7 @@ func NoDiskConflict(pod *v1.Pod, meta algorithm.PredicateMetadata, nodeInfo *sch
 
 type MaxPDVolumeCountChecker struct {
 	filter     VolumeFilter
-	maxVolumes int
+	maxPDCount func(*v1.Node) int
 	pvInfo     PersistentVolumeInfo
 	pvcInfo    PersistentVolumeClaimInfo
 }
@@ -194,10 +194,10 @@ type VolumeFilter struct {
 // The predicate looks for both volumes used directly, as well as PVC volumes that are backed by relevant volume
 // types, counts the number of unique volumes, and rejects the new pod if it would place the total count over
 // the maximum.
-func NewMaxPDVolumeCountPredicate(filter VolumeFilter, maxVolumes int, pvInfo PersistentVolumeInfo, pvcInfo PersistentVolumeClaimInfo) algorithm.FitPredicate {
+func NewMaxPDVolumeCountPredicate(filter VolumeFilter, maxPDCount func(*v1.Node) int, pvInfo PersistentVolumeInfo, pvcInfo PersistentVolumeClaimInfo) algorithm.FitPredicate {
 	c := &MaxPDVolumeCountChecker{
 		filter:     filter,
-		maxVolumes: maxVolumes,
+		maxPDCount: maxPDCount,
 		pvInfo:     pvInfo,
 		pvcInfo:    pvcInfo,
 	}
@@ -298,8 +298,9 @@ func (c *MaxPDVolumeCountChecker) predicate(pod *v1.Pod, meta algorithm.Predicat
 	}
 
 	numNewVolumes := len(newVolumes)
+	maxVolumes := c.maxPDCount(nodeInfo.Node())
 
-	if numExistingVolumes+numNewVolumes > c.maxVolumes {
+	if numExistingVolumes+numNewVolumes > maxVolumes {
 		// violates MaxEBSVolumeCount or MaxGCEPDVolumeCount
 		return false, []algorithm.PredicateFailureReason{ErrMaxVolumeCountExceeded}, nil
 	}

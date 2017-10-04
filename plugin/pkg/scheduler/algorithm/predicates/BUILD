@@ -47,6 +47,7 @@ go_test(
     library = ":go_default_library",
     deps = [
         "//pkg/api/v1/helper:go_default_library",
+        "//pkg/cloudprovider/providers/gce:go_default_library",
         "//pkg/kubelet/apis:go_default_library",
         "//plugin/pkg/scheduler/algorithm:go_default_library",
         "//plugin/pkg/scheduler/schedulercache:go_default_library",
