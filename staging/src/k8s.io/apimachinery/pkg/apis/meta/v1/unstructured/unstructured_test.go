@@ -76,3 +76,14 @@ func TestNilDeletionTimestamp(t *testing.T) {
 		t.Errorf("unexpected deletion timestamp field: %q", deletionTimestamp)
 	}
 }
+
+func TestNilCreationTimestamp(t *testing.T) {
+	var u Unstructured
+	u.SetCreationTimestamp(u.GetCreationTimestamp())
+
+	metadata := u.Object["metadata"].(map[string]interface{})
+	creationTimestamp := metadata["creationTimestamp"]
+	if creationTimestamp != nil {
+		t.Errorf("unexpected creation timestamp field: %q", creationTimestamp)
+	}
+}
