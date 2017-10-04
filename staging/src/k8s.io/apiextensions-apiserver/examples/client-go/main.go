@@ -37,11 +37,12 @@ import (
 )
 
 func main() {
+	masterUrl := flag.String("master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 	kubeconfig := flag.String("kubeconfig", "", "Path to a kube config. Only required if out-of-cluster.")
 	flag.Parse()
 
-	// Create the client config. Use kubeconfig if given, otherwise assume in-cluster.
-	config, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
+	// Create the client config. Use masterUrl and kubeconfig if given, otherwise assume in-cluster.
+	config, err := clientcmd.BuildConfigFromFlags(*masterUrl, *kubeconfig)
 	if err != nil {
 		panic(err)
 	}
