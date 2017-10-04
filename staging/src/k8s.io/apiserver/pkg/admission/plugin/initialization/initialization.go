@@ -32,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/admission"
+	"k8s.io/apiserver/pkg/admission/configuration"
 	"k8s.io/apiserver/pkg/authorization/authorizer"
 	"k8s.io/apiserver/pkg/features"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
@@ -40,9 +41,14 @@ import (
 	"k8s.io/kubernetes/pkg/kubeapiserver/admission/configuration"
 )
 
+const (
+	// Name of admission plug-in
+	PluginName = "Initializers"
+)
+
 // Register registers a plugin
 func Register(plugins *admission.Plugins) {
-	plugins.Register("Initializers", func(config io.Reader) (admission.Interface, error) {
+	plugins.Register(PluginName, func(config io.Reader) (admission.Interface, error) {
 		return NewInitializer(), nil
 	})
 }
