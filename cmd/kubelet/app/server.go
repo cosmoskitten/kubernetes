@@ -741,7 +741,7 @@ func startKubelet(k kubelet.Bootstrap, podCfg *config.PodConfig, kubeCfg *kubele
 
 func CreateAndInitKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 	kubeDeps *kubelet.Dependencies,
-	crOptions *options.ContainerRuntimeOptions,
+	crOptions *config.ContainerRuntimeOptions,
 	hostnameOverride,
 	nodeIP,
 	providerID,
@@ -825,7 +825,7 @@ func BootstrapKubeletConfigController(defaultConfig *kubeletconfiginternal.Kubel
 
 // RunDockershim only starts the dockershim in current process. This is only used for cri validate testing purpose
 // TODO(random-liu): Move this to a separate binary.
-func RunDockershim(c *kubeletconfiginternal.KubeletConfiguration, r *options.ContainerRuntimeOptions) error {
+func RunDockershim(c *kubeletconfiginternal.KubeletConfiguration, r *config.ContainerRuntimeOptions) error {
 	// Create docker client.
 	dockerClient := libdocker.ConnectToDockerOrDie(r.DockerEndpoint, c.RuntimeRequestTimeout.Duration,
 		r.ImagePullProgressDeadline.Duration)
