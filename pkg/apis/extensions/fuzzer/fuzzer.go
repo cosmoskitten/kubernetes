@@ -61,6 +61,10 @@ var Funcs = func(codecs runtimeserializer.CodecFactory) []interface{} {
 			psp.RunAsUser.Rule = runAsUserRules[c.Rand.Intn(len(runAsUserRules))]
 			seLinuxRules := []extensions.SELinuxStrategy{extensions.SELinuxStrategyRunAsAny, extensions.SELinuxStrategyMustRunAs}
 			psp.SELinux.Rule = seLinuxRules[c.Rand.Intn(len(seLinuxRules))]
+			if psp.AllowPrivilegeEscalation == nil {
+				t := true
+				psp.AllowPrivilegeEscalation = &t
+			}
 		},
 		func(s *extensions.Scale, c fuzz.Continue) {
 			c.FuzzNoCustom(s) // fuzz self without calling this function again

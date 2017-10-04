@@ -2731,7 +2731,7 @@ func TestValidatePodSecurityPolicy(t *testing.T) {
 	validDefaultAllowPrivilegeEscalation := validPSP()
 	pe = true
 	validDefaultAllowPrivilegeEscalation.Spec.DefaultAllowPrivilegeEscalation = &pe
-	validDefaultAllowPrivilegeEscalation.Spec.AllowPrivilegeEscalation = true
+	validDefaultAllowPrivilegeEscalation.Spec.AllowPrivilegeEscalation = &pe
 
 	successCases := map[string]struct {
 		psp *extensions.PodSecurityPolicy

@@ -936,6 +936,10 @@ func TestGenerateContainerSecurityContextReadOnlyRootFS(t *testing.T) {
 	}
 }
 
+func boolP(b bool) *bool {
+	return &b
+}
+
 func defaultPSP() *extensions.PodSecurityPolicy {
 	return &extensions.PodSecurityPolicy{
 		ObjectMeta: metav1.ObjectMeta{
@@ -955,7 +959,7 @@ func defaultPSP() *extensions.PodSecurityPolicy {
 			SupplementalGroups: extensions.SupplementalGroupsStrategyOptions{
 				Rule: extensions.SupplementalGroupsStrategyRunAsAny,
 			},
-			AllowPrivilegeEscalation: true,
+			AllowPrivilegeEscalation: boolP(true),
 		},
 	}
 }
@@ -1080,7 +1084,7 @@ func TestValidateAllowPrivilegeEscalation(t *testing.T) {
 
 	// create a PSP that does not allow privilege escalation
 	psp := defaultPSP()
-	psp.Spec.AllowPrivilegeEscalation = false
+	psp.Spec.AllowPrivilegeEscalation = boolP(false)
 
 	provider, err := NewSimpleProvider(psp, "namespace", NewSimpleStrategyFactory())
 	if err != nil {
@@ -1098,10 +1102,50 @@ func TestValidateAllowPrivilegeEscalation(t *testing.T) {
 	}
 
 	// now add allowPrivilegeEscalation to the podSecurityPolicy
-	psp.Spec.AllowPrivilegeEscalation = true
+	psp.Spec.AllowPrivilegeEscalation = boolP(true)
 	errs = provider.ValidateContainerSecurityContext(pod, &pod.Spec.Containers[0], field.NewPath(""))
 	if len(errs) != 0 {
 		t.Errorf("directly allowing privilege escalation expected no errors but got %v", errs)
+	}
+}
+
+// TestValidatePrivilegeEscalationBackwardCompatibility will test that when the podSecurityPolicy
+// does not contain AllowPrivilegeEscalation or DefaultAllowPrivilegeEscalation, pods are allowed to request
+// allowPrivilegeEscalation or leave it empty.
+func TestValidatePrivilegeEscalationBackwardCompatibility(t *testing.T) {
+	pod := defaultPod()
+
+	psp := defaultPSP()
+	psp.Spec.AllowPrivilegeEscalation = nil
+	psp.Spec.DefaultAllowPrivilegeEscalation = nil
+
+	provider, err := NewSimpleProvider(psp, "namespace", NewSimpleStrategyFactory())
+	if err != nil {
+		t.Errorf("error creating provider: %v", err.Error())
+	}
+
+	pod.Spec.Containers[0].SecurityContext.AllowPrivilegeEscalation = nil
+	errs := provider.ValidateContainerSecurityContext(pod, &pod.Spec.Containers[0], field.NewPath(""))
+	if len(errs) != 0 {
+		t.Errorf("expected no errors, got %v", errs)
+	} else if pod.Spec.Containers[0].SecurityContext.AllowPrivilegeEscalation != nil {
+		t.Errorf("expected no defaulting, got %v", pod.Spec.Containers[0].SecurityContext.AllowPrivilegeEscalation)
+	}
+
+	pod.Spec.Containers[0].SecurityContext.AllowPrivilegeEscalation = boolP(false)
+	errs = provider.ValidateContainerSecurityContext(pod, &pod.Spec.Containers[0], field.NewPath(""))
+	if len(errs) != 0 {
+		t.Errorf("expected no errors, got %v", errs)
+	} else if *pod.Spec.Containers[0].SecurityContext.AllowPrivilegeEscalation != false {
+		t.Errorf("expected no mutation, got %v", pod.Spec.Containers[0].SecurityContext.AllowPrivilegeEscalation)
+	}
+
+	pod.Spec.Containers[0].SecurityContext.AllowPrivilegeEscalation = boolP(true)
+	errs = provider.ValidateContainerSecurityContext(pod, &pod.Spec.Containers[0], field.NewPath(""))
+	if len(errs) != 0 {
+		t.Errorf("expected no errors, got %v", errs)
+	} else if *pod.Spec.Containers[0].SecurityContext.AllowPrivilegeEscalation != true {
+		t.Errorf("expected no mutation, got %v", pod.Spec.Containers[0].SecurityContext.AllowPrivilegeEscalation)
 	}
 }
 
@@ -1117,7 +1161,7 @@ func TestValidateDefaultAllowPrivilegeEscalation(t *testing.T) {
 	psp := defaultPSP()
 	dpe := false
 	psp.Spec.DefaultAllowPrivilegeEscalation = &dpe
-	psp.Spec.AllowPrivilegeEscalation = false
+	psp.Spec.AllowPrivilegeEscalation = boolP(false)
 
 	provider, err := NewSimpleProvider(psp, "namespace", NewSimpleStrategyFactory())
 	if err != nil {
@@ -1137,7 +1181,7 @@ func TestValidateDefaultAllowPrivilegeEscalation(t *testing.T) {
 	// now add DefaultAllowPrivilegeEscalation to the podSecurityPolicy
 	dpe = true
 	psp.Spec.DefaultAllowPrivilegeEscalation = &dpe
-	psp.Spec.AllowPrivilegeEscalation = false
+	psp.Spec.AllowPrivilegeEscalation = boolP(false)
 
 	// expect a denial for this PSP because we did not allowPrivilege Escalation via the PodSecurityPolicy
 	// and test the error message to ensure it's related to allowPrivilegeEscalation
@@ -1151,14 +1195,14 @@ func TestValidateDefaultAllowPrivilegeEscalation(t *testing.T) {
 	}
 
 	// Now set AllowPrivilegeEscalation
-	psp.Spec.AllowPrivilegeEscalation = true
+	psp.Spec.AllowPrivilegeEscalation = boolP(true)
 	errs = provider.ValidateContainerSecurityContext(pod, &pod.Spec.Containers[0], field.NewPath(""))
 	if len(errs) != 0 {
 		t.Errorf("directly allowing privilege escalation expected no errors but got %v", errs)
 	}
 
 	// Now set the psp spec to false and reset AllowPrivilegeEscalation
-	psp.Spec.AllowPrivilegeEscalation = false
+	psp.Spec.AllowPrivilegeEscalation = boolP(false)
 	pod.Spec.Containers[0].SecurityContext.AllowPrivilegeEscalation = nil
 	errs = provider.ValidateContainerSecurityContext(pod, &pod.Spec.Containers[0], field.NewPath(""))
 	if len(errs) != 1 {
@@ -1170,7 +1214,7 @@ func TestValidateDefaultAllowPrivilegeEscalation(t *testing.T) {
 	}
 
 	// Now unset both AllowPrivilegeEscalation
-	psp.Spec.AllowPrivilegeEscalation = true
+	psp.Spec.AllowPrivilegeEscalation = boolP(true)
 	pod.Spec.Containers[0].SecurityContext.AllowPrivilegeEscalation = nil
 	errs = provider.ValidateContainerSecurityContext(pod, &pod.Spec.Containers[0], field.NewPath(""))
 	if len(errs) != 0 {

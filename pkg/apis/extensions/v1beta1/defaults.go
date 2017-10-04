@@ -63,6 +63,13 @@ func SetDefaults_DaemonSet(obj *extensionsv1beta1.DaemonSet) {
 	}
 }
 
+func SetDefaults_PodSecurityPolicySpec(obj *extensionsv1beta1.PodSecurityPolicySpec) {
+	if obj.AllowPrivilegeEscalation == nil {
+		t := true
+		obj.AllowPrivilegeEscalation = &t
+	}
+}
+
 func SetDefaults_Deployment(obj *extensionsv1beta1.Deployment) {
 	// Default labels and selector to labels from pod template spec.
 	labels := obj.Spec.Template.Labels

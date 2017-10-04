@@ -937,9 +937,9 @@ type PodSecurityPolicySpec struct {
 	// +optional
 	DefaultAllowPrivilegeEscalation *bool
 	// AllowPrivilegeEscalation determines if a pod can request to allow
-	// privilege escalation.
+	// privilege escalation. If unspecified, defaults to true.
 	// +optional
-	AllowPrivilegeEscalation bool
+	AllowPrivilegeEscalation *bool
 	// AllowedHostPaths is a white list of allowed host paths. Empty indicates that all host paths may be used.
 	// +optional
 	AllowedHostPaths []AllowedHostPath

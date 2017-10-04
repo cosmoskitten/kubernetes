@@ -1075,7 +1075,7 @@ func autoConvert_v1beta1_PodSecurityPolicySpec_To_extensions_PodSecurityPolicySp
 	}
 	out.ReadOnlyRootFilesystem = in.ReadOnlyRootFilesystem
 	out.DefaultAllowPrivilegeEscalation = (*bool)(unsafe.Pointer(in.DefaultAllowPrivilegeEscalation))
-	out.AllowPrivilegeEscalation = in.AllowPrivilegeEscalation
+	out.AllowPrivilegeEscalation = (*bool)(unsafe.Pointer(in.AllowPrivilegeEscalation))
 	out.AllowedHostPaths = *(*[]extensions.AllowedHostPath)(unsafe.Pointer(&in.AllowedHostPaths))
 	return nil
 }
@@ -1119,7 +1119,7 @@ func autoConvert_extensions_PodSecurityPolicySpec_To_v1beta1_PodSecurityPolicySp
 	}
 	out.ReadOnlyRootFilesystem = in.ReadOnlyRootFilesystem
 	out.DefaultAllowPrivilegeEscalation = (*bool)(unsafe.Pointer(in.DefaultAllowPrivilegeEscalation))
-	out.AllowPrivilegeEscalation = in.AllowPrivilegeEscalation
+	out.AllowPrivilegeEscalation = (*bool)(unsafe.Pointer(in.AllowPrivilegeEscalation))
 	out.AllowedHostPaths = *(*[]v1beta1.AllowedHostPath)(unsafe.Pointer(&in.AllowedHostPaths))
 	return nil
 }
