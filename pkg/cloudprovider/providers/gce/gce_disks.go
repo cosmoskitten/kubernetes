@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"k8s.io/api/core/v1"
@@ -53,6 +54,8 @@ const (
 
 	replicaZoneURITemplateSingleZone = "%s/zones/%s" // {gce.projectID}/zones/{disk.Zone}
 )
+
+var DiskNumberLimit = []int{16, 32, 64, 128}
 
 type diskServiceManager interface {
 	// Creates a new persistent disk on GCE with the given disk spec.
@@ -105,6 +108,24 @@ type diskServiceManager interface {
 
 type gceServiceManager struct {
 	gce *GCECloud
+}
+
+func MaxPDCount(machineType string) int {
+	if strings.HasPrefix(machineType, "n1-standard-") || strings.HasPrefix(machineType, "n1-highmem-") || strings.HasPrefix(machineType, "n1-highcpu-") {
+		splits := strings.Split(machineType, "-")
+		last := splits[len(splits)-1]
+		if num, err := strconv.Atoi(last); err == nil {
+			if num == 1 {
+				return DiskNumberLimit[1]
+			} else if num < 8 {
+				return DiskNumberLimit[2]
+			} else {
+				return DiskNumberLimit[3]
+			}
+		}
+
+	}
+	return DiskNumberLimit[0]
 }
 
 func (manager *gceServiceManager) CreateDiskOnCloudProvider(

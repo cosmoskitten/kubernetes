@@ -477,6 +477,10 @@ func newAWSSDKProvider(creds *credentials.Credentials) *awsSDKProvider {
 	}
 }
 
+func MaxPDCount(machineType string) int {
+	return DefaultMaxEBSVolumes
+}
+
 func (p *awsSDKProvider) addHandlers(regionName string, h *request.Handlers) {
 	h.Sign.PushFrontNamed(request.NamedHandler{
 		Name: "k8s/logger",

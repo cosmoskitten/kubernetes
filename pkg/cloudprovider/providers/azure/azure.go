@@ -44,7 +44,11 @@ import (
 
 const (
 	// CloudProviderName is the value used for the --cloud-provider flag
-	CloudProviderName      = "azure"
+	CloudProviderName = "azure"
+	// DefaultMaxAzureDiskVolumes defines the maximum number of PD Volumes for Azure
+	// Larger Azure VMs can actually have much more disks attached.
+	// TODO We should determine the max based on VM size
+	DefaultMaxAzureVolumes = 16
 	rateLimitQPSDefault    = 1.0
 	rateLimitBucketDefault = 5
 	backoffRetriesDefault  = 6
@@ -447,4 +451,8 @@ func initDiskControllers(az *Cloud) error {
 	az.controllerCommon = common
 
 	return nil
+}
+
+func MaxPDCount(machineType string) int {
+	return DefaultMaxAzureVolumes
 }
