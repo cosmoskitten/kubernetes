@@ -7,6 +7,7 @@ go_library(
         "framework.go",
         "kubelet.go",
         "kubelet_perf.go",
+        "mount_propagation.go",
         "security_context.go",
     ],
     visibility = ["//visibility:public"],

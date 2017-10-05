@@ -14,29 +14,26 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package e2e_node
+package node
 
 import (
 	"fmt"
-	"os"
-	"os/exec"
-	"strconv"
-	"strings"
 
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/kubernetes/test/e2e/framework"
+	"k8s.io/kubernetes/test/utils/image"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
-func preparePod(name string, propagation v1.MountPropagationMode, hostDir string) *v1.Pod {
+func preparePod(name string, node *v1.Node, propagation v1.MountPropagationMode, hostDir string) *v1.Pod {
 	const containerName = "cntr"
 	bTrue := true
 	var oneSecond int64 = 1
-	// The pod prepares /mnt/test/<podname> and sleeps
+	// The pod prepares /mnt/test/<podname> and sleeps.
 	cmd := fmt.Sprintf("mkdir /mnt/test/%[1]s; sleep 3600", name)
 	pod := &v1.Pod{
 		TypeMeta: metav1.TypeMeta{
@@ -47,10 +44,11 @@ func preparePod(name string, propagation v1.MountPropagationMode, hostDir string
 			Name: name,
 		},
 		Spec: v1.PodSpec{
+			NodeName: node.Name,
 			Containers: []v1.Container{
 				{
 					Name:    containerName,
-					Image:   busyboxImage,
+					Image:   image.GetBusyBoxImage(),
 					Command: []string{"sh", "-c", cmd},
 					VolumeMounts: []v1.VolumeMount{
 						{
@@ -81,30 +79,34 @@ func preparePod(name string, propagation v1.MountPropagationMode, hostDir string
 	return pod
 }
 
-var _ = framework.KubeDescribe("MountPropagation", func() {
-	f := framework.NewDefaultFramework("mount-propagation-test")
+var _ = SIGDescribe("Mount propagation [Feature:MountPropagation]", func() {
+	f := framework.NewDefaultFramework("mount-propagation")
 
 	It("should propagate mounts to the host", func() {
-		// This test runs three pods: master, slave and private with respective
-		// mount propagation on common /var/lib/kubelet/XXXX directory. All of them
-		// mount a tmpfs to a subdirectory there. We check that these mounts are
+		// This test runs two pods: master and slave with respective mount
+		// propagation on common /var/lib/kubelet/XXXX directory. Both mount a
+		// tmpfs to a subdirectory there. We check that these mounts are
 		// propagated to the right places.
 
-		if err := checkMountPropagation(); err != nil {
-			framework.Skipf("cannot test mount propagation: %v", err)
-		}
+		// Pick a node where all pods will run.
+		nodes := framework.GetReadySchedulableNodesOrDie(f.ClientSet)
+		Expect(len(nodes.Items)).NotTo(BeZero(), "No available nodes for scheduling")
+		node := &nodes.Items[0]
 
 		// hostDir is the directory that's shared via HostPath among all pods.
 		// Make sure it's random enough so we don't clash with another test
 		// running in parallel.
 		hostDir := "/var/lib/kubelet/" + f.Namespace.Name
-		defer os.RemoveAll(hostDir)
+		defer func() {
+			cleanCmd := fmt.Sprintf("sudo rm -rf %q", hostDir)
+			framework.IssueSSHCommand(cleanCmd, framework.TestContext.Provider, node)
+		}()
 
 		podClient := f.PodClient()
-		master := podClient.CreateSync(preparePod("master", v1.MountPropagationBidirectional, hostDir))
+		master := podClient.CreateSync(preparePod("master", node, v1.MountPropagationBidirectional, hostDir))
 		defer podClient.Delete(master.Name, nil)
 
-		slave := podClient.CreateSync(preparePod("slave", v1.MountPropagationHostToContainer, hostDir))
+		slave := podClient.CreateSync(preparePod("slave", node, v1.MountPropagationHostToContainer, hostDir))
 		defer podClient.Delete(slave.Name, nil)
 
 		// Check that the pods sees directories of each other. This just checks
@@ -117,86 +119,61 @@ var _ = framework.KubeDescribe("MountPropagation", func() {
 			}
 		}
 
-		// Each pod mounts one tmpfs to /mnt/test/<podname> and puts a file there
+		// Each pod mounts one tmpfs to /mnt/test/<podname> and puts a file there.
 		for _, podName := range podNames {
 			cmd := fmt.Sprintf("mount -t tmpfs e2e-mount-propagation-%[1]s /mnt/test/%[1]s; echo %[1]s > /mnt/test/%[1]s/file", podName)
 			_ = f.ExecShellInPod(podName, cmd)
+
+			// unmount tmpfs when the test finishes
 			cmd = fmt.Sprintf("umount /mnt/test/%s", podName)
 			defer f.ExecShellInPod(podName, cmd)
 		}
 
-		// Now check that mounts are propagated to the right places.
+		// The host mounts one tmpfs to testdir/host and puts a file there so we
+		// can check mount propagation from the host to pods.
+		cmd := fmt.Sprintf("sudo mkdir %[1]q/host; sudo mount -t tmpfs e2e-mount-propagation-host %[1]q/host; echo host > %[1]q/host/file", hostDir)
+		err := framework.IssueSSHCommand(cmd, framework.TestContext.Provider, node)
+		Expect(err).NotTo(HaveOccurred())
+
+		defer func() {
+			cmd := fmt.Sprintf("sudo umount %q/host", hostDir)
+			framework.IssueSSHCommand(cmd, framework.TestContext.Provider, node)
+		}()
+
+		// Now check that mounts are propagated to the right containers.
 		// expectedMounts is map of pod name -> expected mounts visible in the
 		// pod.
 		expectedMounts := map[string]sets.String{
 			// Master sees only its own mount and not the slave's one.
-			"master": sets.NewString("master"),
-			// Slave sees master's mount + itself
-			"slave": sets.NewString("master", "slave"),
+			"master": sets.NewString("master", "host"),
+			// Slave sees master's mount + itself.
+			"slave": sets.NewString("master", "slave", "host"),
 		}
+		dirNames := append(podNames, "host")
 		for podName, mounts := range expectedMounts {
-			for _, mountName := range podNames {
+			for _, mountName := range dirNames {
 				cmd := fmt.Sprintf("cat /mnt/test/%s/file", mountName)
 				stdout, stderr, err := f.ExecShellInPodWithFullOutput(podName, cmd)
 				framework.Logf("pod %s mount %s: stdout: %q, stderr: %q error: %v", podName, mountName, stdout, stderr, err)
 				msg := fmt.Sprintf("When checking pod %s and directory %s", podName, mountName)
 				shouldBeVisible := mounts.Has(mountName)
 				if shouldBeVisible {
-					Expect(err).NotTo(HaveOccurred(), "failed to run %q", cmd, msg)
-					Expect(stdout, Equal(mountName), msg)
+					Expect(err).NotTo(HaveOccurred(), "%s: failed to run %q", msg, cmd)
+					Expect(stdout).To(Equal(mountName), msg)
 				} else {
 					Expect(err).To(HaveOccurred(), msg)
 				}
 			}
 		}
+		// Check that the mounts are/are not propagated to the host.
+		// Host can see mount from master
+		cmd = fmt.Sprintf("test `cat %q/master/file` = master", hostDir)
+		err = framework.IssueSSHCommand(cmd, framework.TestContext.Provider, node)
+		Expect(err).NotTo(HaveOccurred(), "host should see mount from master")
+
+		// Host can't see mount from slave
+		cmd = fmt.Sprintf("test ! -e %q/slave/file", hostDir)
+		err = framework.IssueSSHCommand(cmd, framework.TestContext.Provider, node)
+		Expect(err).NotTo(HaveOccurred(), "host shouldn't see mount from slave")
 	})
 })
-
-// checkMountPropagation returns error if kubernetes and the host operating
-// system looks like it desn't support mount propagation.
-func checkMountPropagation() error {
-	// Check kubelet features
-	cfg, err := getCurrentKubeletConfig()
-	if err != nil {
-		return err
-	}
-	if !strings.Contains(cfg.FeatureGates, "MountPropagation=true") {
-		return fmt.Errorf("mount propagation is disabled by feature gate")
-	}
-
-	// Docker <= 1.12 runs docker daemon in a slave mount namespace ->
-	// no mount propagation.
-	const minimalMajor = 1
-	const minimalMinor = 13
-
-	cmd := exec.Command("docker", "version", "-f", "{{.Server.Version}}")
-	out, err := cmd.Output()
-	if err != nil {
-		// Something failed, probably no docker on the host. Assume it does not
-		// support mount propagation.
-		return fmt.Errorf("error running 'docker version': %v", err)
-	}
-	version := string(out)
-	components := strings.Split(version, ".")
-	if len(components) < 2 {
-		return fmt.Errorf("error parsing docker version %q: expected at least minor.major numbers", version)
-	}
-	major, err := strconv.Atoi(components[0])
-	if err != nil {
-		return fmt.Errorf("error parsing the major part of docker version %q: %v", version, err)
-	}
-	if major > minimalMajor {
-		// version 2 and later do support mount propagation
-		return nil
-	}
-	minor, err := strconv.Atoi(components[1])
-	if err != nil {
-		return fmt.Errorf("error parsing the minor part of docker version %q: %v", version, err)
-	}
-	if minor < minimalMinor {
-		// version 1.12 and lower runs docker daemon in a slave namespace
-		return fmt.Errorf("docker version %q is too low, at least %d.%d is required", version, minimalMajor, minimalMinor)
-	}
-
-	return nil
-}
