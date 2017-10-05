@@ -29,7 +29,7 @@ func TestEnabledPluginNamesMethod(t *testing.T) {
 	}{
 		// scenario 1: check if a call to enabledPluginNames sets expected values.
 		{
-			expectedPluginNames: []string{"NamespaceLifecycle"},
+			expectedPluginNames: []string{"Initializers", "NamespaceLifecycle"},
 		},
 
 		// scenario 2: overwrite RecommendedPluginOrder and set DefaultOffPluginNames
@@ -56,7 +56,7 @@ func TestEnabledPluginNamesMethod(t *testing.T) {
 			actualPluginNames := target.enabledPluginNames()
 
 			if len(actualPluginNames) != len(scenario.expectedPluginNames) {
-				t.Errorf("incorrect number of items, got %d, expected = %d", len(actualPluginNames), len(scenario.expectedPluginNames))
+				t.Fatalf("incorrect number of items, got %d, expected = %d", len(actualPluginNames), len(scenario.expectedPluginNames))
 			}
 			for i := range actualPluginNames {
 				if scenario.expectedPluginNames[i] != actualPluginNames[i] {
