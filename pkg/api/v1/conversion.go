@@ -330,19 +330,11 @@ func Convert_v1_ReplicationControllerSpec_To_api_ReplicationControllerSpec(in *v
 }
 
 func Convert_api_PodTemplateSpec_To_v1_PodTemplateSpec(in *api.PodTemplateSpec, out *v1.PodTemplateSpec, s conversion.Scope) error {
-	if err := autoConvert_api_PodTemplateSpec_To_v1_PodTemplateSpec(in, out, s); err != nil {
-		return err
-	}
-
-	return nil
+	return autoConvert_api_PodTemplateSpec_To_v1_PodTemplateSpec(in, out, s)
 }
 
 func Convert_v1_PodTemplateSpec_To_api_PodTemplateSpec(in *v1.PodTemplateSpec, out *api.PodTemplateSpec, s conversion.Scope) error {
-	if err := autoConvert_v1_PodTemplateSpec_To_api_PodTemplateSpec(in, out, s); err != nil {
-		return err
-	}
-
-	return nil
+	return autoConvert_v1_PodTemplateSpec_To_api_PodTemplateSpec(in, out, s)
 }
 
 // The following two v1.PodSpec conversions are done here to support v1.ServiceAccount
