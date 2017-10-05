@@ -369,6 +369,20 @@ func TestAdmitPreferNonmutating(t *testing.T) {
 	}
 }
 
+func TestFailClosedOnInvalidPod(t *testing.T) {
+	plugin := NewTestAdmission(nil)
+	pod := &v1.Pod{}
+	attrs := kadmission.NewAttributesRecord(pod, nil, kapi.Kind("Pod").WithVersion("version"), pod.Namespace, pod.Name, kapi.Resource("pods").WithVersion("version"), "", kadmission.Create, &user.DefaultInfo{})
+	err := plugin.Admit(attrs)
+
+	if err == nil {
+		t.Fatalf("expected versioned pod object to fail admission")
+	}
+	if !strings.Contains(err.Error(), "unexpected type") {
+		t.Errorf("expected type error but got: %v", err)
+	}
+}
+
 func TestAdmitCaps(t *testing.T) {
 	createPodWithCaps := func(caps *kapi.Capabilities) *kapi.Pod {
 		pod := goodPod()

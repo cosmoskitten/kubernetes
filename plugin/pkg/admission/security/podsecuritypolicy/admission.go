@@ -36,6 +36,7 @@ import (
 	informers "k8s.io/kubernetes/pkg/client/informers/informers_generated/internalversion"
 	extensionslisters "k8s.io/kubernetes/pkg/client/listers/extensions/internalversion"
 	kubeapiserveradmission "k8s.io/kubernetes/pkg/kubeapiserver/admission"
+	rbacregistry "k8s.io/kubernetes/pkg/registry/rbac"
 	psp "k8s.io/kubernetes/pkg/security/podsecuritypolicy"
 	psputil "k8s.io/kubernetes/pkg/security/podsecuritypolicy/util"
 	sc "k8s.io/kubernetes/pkg/securitycontext"
@@ -122,8 +123,17 @@ func (c *podSecurityPolicyPlugin) Admit(a admission.Attributes) error {
 	}
 
 	pod, ok := a.GetObject().(*api.Pod)
-	// if we can't convert then we don't handle this object so just return
+	// if we can't convert then fail closed since we've already checked that this is supposed to be a pod object.
+	// this shouldn't normally happen during admission but could happen if an integrator passes a versioned
+	// pod object rather than an internal object.
 	if !ok {
+		return admission.NewForbidden(a, fmt.Errorf("unexpected type %T", a.GetObject()))
+	}
+
+	// if this is an update, see if we are only updating the ownerRef.  Garbage collection does this
+	// and we should allow it in general, since you had the power to update and the power to delete.
+	// The worst that happens is that you delete something, but you aren't controlling the privileged object itself
+	if a.GetOldObject() != nil && rbacregistry.IsOnlyMutatingGCFields(a.GetObject(), a.GetOldObject(), apiequality.Semantic) {
 		return nil
 	}
 
