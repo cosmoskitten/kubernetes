@@ -38,7 +38,7 @@ import (
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/kubeapiserver/admission/configuration"
+	"k8s.io/apiserver/pkg/admission/configuration"
 )
 
 const (
