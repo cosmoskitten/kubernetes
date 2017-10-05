@@ -97,7 +97,7 @@ var (
 )
 
 const (
-	useOpenAPIPrintColumnFlagLabel = "experimental-use-openapi-print-columns"
+	useOpenAPIPrintColumnFlagLabel = "use-openapi-print-columns"
 )
 
 // NewCmdGet creates a command object for the generic "get" action, which
@@ -581,9 +581,7 @@ func RunGet(f cmdutil.Factory, out, errOut io.Writer, cmd *cobra.Command, args [
 }
 
 func addOpenAPIPrintColumnFlags(cmd *cobra.Command) {
-	cmd.Flags().Bool(useOpenAPIPrintColumnFlagLabel, false, "If true, use x-kubernetes-print-column metadata (if present) from openapi schema for displaying a resource.")
-	// marking it deprecated so that it is hidden from usage/help text.
-	cmd.Flags().MarkDeprecated(useOpenAPIPrintColumnFlagLabel, "It's an experimental feature.")
+	cmd.Flags().Bool(useOpenAPIPrintColumnFlagLabel, true, "If true, use x-kubernetes-print-column metadata (if present) from openapi schema for displaying a resource.")
 }
 
 func shouldGetNewPrinterForMapping(printer printers.ResourcePrinter, lastMapping, mapping *meta.RESTMapping) bool {
@@ -597,7 +595,6 @@ func cmdSpecifiesOutputFmt(cmd *cobra.Command) bool {
 // outputOptsForMappingFromOpenAPI looks for the output format metatadata in the
 // openapi schema and returns the output options for the mapping if found.
 func outputOptsForMappingFromOpenAPI(f cmdutil.Factory, mapping *meta.RESTMapping) (*printers.OutputOptions, bool) {
-
 	// user has not specified any output format, check if OpenAPI has
 	// default specification to print this resource type
 	api, err := f.OpenAPISchema()
