@@ -147,28 +147,11 @@ func TestRecyclerPod(t *testing.T) {
 		},
 		{
 			// Another recycler pod is already running
-			name:        "RecyclerRunning",
-			existingPod: newPod("podOldRecycler", v1.PodRunning, ""),
-			createPod:   newPod("podNewRecycler", v1.PodFailed, "mock message"),
-			eventSequence: []watch.Event{
-				// Old pod succeeds
-				newPodEvent(watch.Modified, "podOldRecycler", v1.PodSucceeded, ""),
-			},
-			// No error = old pod succeeded. If the new pod was used, there
-			// would be error with "mock message".
-			expectedError: "",
-		},
-		{
-			// Another recycler pod is already running and fails
-			name:        "FailedRecyclerRunning",
-			existingPod: newPod("podOldRecycler", v1.PodRunning, ""),
-			createPod:   newPod("podNewRecycler", v1.PodFailed, "mock message"),
-			eventSequence: []watch.Event{
-				// Old pod failure
-				newPodEvent(watch.Modified, "podOldRecycler", v1.PodFailed, "Pod was active on the node longer than specified deadline"),
-			},
-			// If the new pod was used, there would be error with "mock message".
-			expectedError: "Pod was active on the node longer than specified deadline",
+			name:          "RecyclerRunning",
+			existingPod:   newPod("podOldRecycler", v1.PodRunning, ""),
+			createPod:     newPod("podNewRecycler", v1.PodFailed, "mock message"),
+			eventSequence: []watch.Event{},
+			expectedError: "old recycler pod found, will retry later",
 		},
 	}
 
