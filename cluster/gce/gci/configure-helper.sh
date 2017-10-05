@@ -1065,7 +1065,6 @@ function prepare-kube-proxy-manifest-variables {
   fi
   local -r kube_proxy_docker_tag=$(cat /home/kubernetes/kube-docker-files/kube-proxy.docker_tag)
   local api_servers="--master=https://${KUBERNETES_MASTER_NAME}"
-  local service_account_master_url="https://${KUBERNETES_MASTER_NAME}"
   local params="${KUBEPROXY_TEST_LOG_LEVEL:-"--v=2"}"
   if [[ -n "${FEATURE_GATES:-}" ]]; then
     params+=" --feature-gates=${FEATURE_GATES}"
@@ -1096,7 +1095,7 @@ function prepare-kube-proxy-manifest-variables {
   sed -i -e "s@{{pod_priority}}@${pod_priority}@g" ${src_file}
   sed -i -e "s@{{ cpurequest }}@100m@g" ${src_file}
   sed -i -e "s@{{api_servers_with_port}}@${api_servers}@g" ${src_file}
-  sed -i -e "s@{{service_account_master_url}}@${service_account_master_url}@g" ${src_file}
+  sed -i -e "s@{{kubernetes_service_host_env_value}}@${KUBERNETES_MASTER_NAME}@g" ${src_file}
   if [[ -n "${CLUSTER_IP_RANGE:-}" ]]; then
     sed -i -e "s@{{cluster_cidr}}@--cluster-cidr=${CLUSTER_IP_RANGE}@g" ${src_file}
   fi
