@@ -165,7 +165,7 @@ func AddFlags(options *Options, fs *pflag.FlagSet) {
 		options.config.Conntrack.TCPCloseWaitTimeout.Duration,
 		"NAT timeout for TCP connections in the CLOSE_WAIT state")
 	fs.BoolVar(&options.config.EnableProfiling, "profiling", options.config.EnableProfiling, "If true enables profiling via web interface on /debug/pprof handler.")
-	fs.StringVar(&options.config.ServiceAccountMasterURL, "service-account-master-url", options.config.ServiceAccountMasterURL, "Use service account with the specified Kubernetes API server address. This takes precedence over kubeconfig file.")
+	fs.BoolVar(&options.config.UseServiceAccount, "use-service-account", options.config.UseServiceAccount, "Use built-in service account. This takes precedence over kubeconfig file.")
 	fs.StringVar(&options.config.IPVS.Scheduler, "ipvs-scheduler", options.config.IPVS.Scheduler, "The ipvs scheduler type when proxy mode is ipvs")
 	utilfeature.DefaultFeatureGate.AddFlag(fs)
 }
@@ -209,7 +209,7 @@ func (o *Options) Validate(args []string) error {
 		return errs.ToAggregate()
 	}
 
-	if len(o.config.ClientConnection.KubeConfigFile) == 0 && len(o.master) == 0 && len(o.config.ServiceAccountMasterURL) == 0 {
+	if len(o.config.ClientConnection.KubeConfigFile) == 0 && len(o.master) == 0 && !o.config.UseServiceAccount {
 		glog.Warningf("Neither config file nor master URL was specified. Using default API client. This might not work.")
 	}
 
@@ -402,13 +402,11 @@ func createClients(config *componentconfig.KubeProxyConfiguration, masterOverrid
 	var kubeConfig *rest.Config
 	var err error
 
-	if len(config.ServiceAccountMasterURL) > 0 {
-		glog.Info("Using service account with the specified master URL.")
+	if config.UseServiceAccount {
 		kubeConfig, err = rest.InClusterConfig()
 		if err != nil {
 			return nil, nil, err
 		}
-		kubeConfig.Host = config.ServiceAccountMasterURL
 	} else {
 		// This creates a client, first loading any specified kubeconfig
 		// file, and then overriding the Master flag, if non-empty.

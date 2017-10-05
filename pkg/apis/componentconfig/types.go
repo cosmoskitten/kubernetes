@@ -146,9 +146,8 @@ type KubeProxyConfiguration struct {
 	// configSyncPeriod is how often configuration from the apiserver is refreshed. Must be greater
 	// than 0.
 	ConfigSyncPeriod metav1.Duration
-	// serviceAccountMasterURL makes kube-proxy use service account with the specified
-	// Kubernetes API server address.
-	ServiceAccountMasterURL string
+	// useServiceAccount makes kube-proxy use built-in service account.
+	UseServiceAccount bool
 }
 
 // Currently two modes of proxying are available: 'userspace' (older, stable) or 'iptables'
