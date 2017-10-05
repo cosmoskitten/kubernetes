@@ -17,11 +17,15 @@ limitations under the License.
 package services
 
 import (
+	"flag"
 	"fmt"
 	"net"
 
 	apiserver "k8s.io/kubernetes/cmd/kube-apiserver/app"
 	"k8s.io/kubernetes/cmd/kube-apiserver/app/options"
+
+	"github.com/golang/glog"
+	"github.com/spf13/pflag"
 )
 
 const (
@@ -29,6 +33,13 @@ const (
 	apiserverClientURL      = "http://localhost:8080"
 	apiserverHealthCheckURL = apiserverClientURL + "/healthz"
 )
+
+// kubeApiServerFlags is the override kube-apiserver args specified by the test runner.
+var kubeApiServerFlags args
+
+func init() {
+	flag.Var(&kubeApiServerFlags, "kube-apiserver-flags", "Flags passed to kube-apiserver, this will override default kube-apiserver flags in the test. Flags specified in multiple kube-apiserver-flags will be concatenate.")
+}
 
 // APIServer is a server which manages apiserver.
 type APIServer struct{}
@@ -52,6 +63,15 @@ func (a *APIServer) Start() error {
 	}
 	config.ServiceClusterIPRange = *ipnet
 	config.AllowPrivileged = true
+
+	glog.Infof("Using apiserver flags %+v", kubeApiServerFlags)
+	fs := pflag.NewFlagSet("kube-apiserver", pflag.ContinueOnError)
+	config.AddFlags(fs)
+	err = fs.Parse(kubeApiServerFlags)
+	if err != nil {
+		return fmt.Errorf("error parsing --kube-apiserver-flags: %v", err)
+	}
+
 	errCh := make(chan error)
 	go func() {
 		defer close(errCh)
