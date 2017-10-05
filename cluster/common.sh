@@ -680,7 +680,7 @@ PROMETHEUS_TO_SD_PREFIX: $(yaml-quote ${PROMETHEUS_TO_SD_PREFIX:-})
 ENABLE_PROMETHEUS_TO_SD: $(yaml-quote ${ENABLE_PROMETHEUS_TO_SD:-false})
 ENABLE_POD_PRIORITY: $(yaml-quote ${ENABLE_POD_PRIORITY:-})
 NODE_LOCAL_SSDS: $(yaml-quote ${NODE_LOCAL_SSDS:-0})
-NODE_LOCAL_SSDS_EXT: $(yaml-quote ${NODE_LOCAL_SSDS_EXT:-})
+NODE_LOCAL_SSDS_EXT: $(yaml-quote ${NODE_LOCAL_SSDS_EXT:-""})
 EOF
   if [ -n "${KUBELET_PORT:-}" ]; then
     cat >>$file <<EOF

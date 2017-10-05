@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"path"
 	"path/filepath"
+	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -54,6 +55,8 @@ const (
 	DirectoryLocalVolumeType LocalVolumeType = "dir"
 	// creates a tmpfs and mounts it
 	TmpfsLocalVolumeType LocalVolumeType = "tmpfs"
+	// tests based on local ssd at /mnt/disks/by-uuid/
+	GCELocalSSDVolumeType LocalVolumeType = "gcessd"
 )
 
 type localTestVolume struct {
@@ -227,9 +230,13 @@ var _ = SIGDescribe("PersistentVolumes-local [Feature:LocalPersistentVolumes] [S
 		})
 	})
 
-	LocalVolumeTypes := []LocalVolumeType{DirectoryLocalVolumeType, TmpfsLocalVolumeType}
+	LocalVolumeTypes := []LocalVolumeType{DirectoryLocalVolumeType, TmpfsLocalVolumeType, GCELocalSSDVolumeType}
 
 	Context("when two pods mount a local volume at the same time", func() {
+		BeforeEach(func() {
+			framework.SkipUnlessLocalSSDExists("scsi", "fs", config.node0)
+		})
+
 		It("should be able to write from pod1 and read from pod2", func() {
 			for _, testVolType := range LocalVolumeTypes {
 				var testVol *localTestVolume
@@ -242,6 +249,10 @@ var _ = SIGDescribe("PersistentVolumes-local [Feature:LocalPersistentVolumes] [S
 	})
 
 	Context("when two pods mount a local volume one after the other", func() {
+		BeforeEach(func() {
+			framework.SkipUnlessLocalSSDExists("scsi", "fs", config.node0)
+		})
+
 		It("should be able to write from pod1 and read from pod2", func() {
 			for _, testVolType := range LocalVolumeTypes {
 				var testVol *localTestVolume
@@ -254,6 +265,10 @@ var _ = SIGDescribe("PersistentVolumes-local [Feature:LocalPersistentVolumes] [S
 	})
 
 	Context("when pod using local volume with non-existant path", func() {
+		BeforeEach(func() {
+			framework.SkipUnlessLocalSSDExists("scsi", "fs", config.node0)
+		})
+
 		ep := &eventPatterns{
 			reason:  "FailedMount",
 			pattern: make([]string, 2)}
@@ -283,6 +298,7 @@ var _ = SIGDescribe("PersistentVolumes-local [Feature:LocalPersistentVolumes] [S
 			if len(config.nodes.Items) < 2 {
 				framework.Skipf("Runs only when number of nodes >= 2")
 			}
+			framework.SkipUnlessLocalSSDExists("scsi", "fs", config.node0)
 		})
 
 		ep := &eventPatterns{
@@ -311,6 +327,7 @@ var _ = SIGDescribe("PersistentVolumes-local [Feature:LocalPersistentVolumes] [S
 			if len(config.nodes.Items) < 2 {
 				framework.Skipf("Runs only when number of nodes >= 2")
 			}
+			framework.SkipUnlessLocalSSDExists("scsi", "fs", config.node0)
 		})
 
 		ep := &eventPatterns{
@@ -518,8 +535,16 @@ func podNodeName(config *localTestConfig, pod *v1.Pod) (string, error) {
 
 // setupLocalVolume setups a directory to user for local PV
 func setupLocalVolume(config *localTestConfig, localVolumeType LocalVolumeType) *localTestVolume {
-	testDirName := "local-volume-test-" + string(uuid.NewUUID())
-	hostDir := filepath.Join(hostBase, testDirName)
+	var hostDir string
+	if localVolumeType == GCELocalSSDVolumeType {
+		res, err := framework.IssueSSHCommandWithResult("ls /mnt/disks/by-uuid/google-local-ssds-scsi-fs/", framework.TestContext.Provider, config.node0)
+		Expect(err).NotTo(HaveOccurred())
+		dirName := strings.Fields(res.Stdout)[0]
+		hostDir = "/mnt/disks/by-uuid/google-local-ssds-scsi-fs/" + dirName
+	} else {
+		testDirName := "local-volume-test-" + string(uuid.NewUUID())
+		hostDir = filepath.Join(hostBase, testDirName)
+	}
 
 	if localVolumeType == TmpfsLocalVolumeType {
 		createAndMountTmpfsLocalVolume(config, hostDir)
@@ -552,7 +577,12 @@ func cleanupLocalVolume(config *localTestConfig, volume *localTestVolume) {
 	if volume.localVolumeType == TmpfsLocalVolumeType {
 		unmountTmpfsLocalVolume(config, volume.hostDir)
 	}
-
+	if volume.localVolumeType == GCELocalSSDVolumeType {
+		removeCmd := fmt.Sprintf("rm %s", volume.hostDir+"/"+testFile)
+		err := framework.IssueSSHCommand(removeCmd, framework.TestContext.Provider, config.node0)
+		Expect(err).NotTo(HaveOccurred())
+		return
+	}
 	By("Removing the test directory")
 	removeCmd := fmt.Sprintf("rm -r %s", volume.hostDir)
 	err := framework.IssueSSHCommand(removeCmd, framework.TestContext.Provider, config.node0)

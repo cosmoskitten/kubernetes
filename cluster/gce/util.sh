@@ -596,7 +596,7 @@ function create-node-template() {
     fi
   fi
   #add in optional ones
-  if [[ ! -z ${NODE_LOCAL_SSDS_EXT} ]]; then
+  if [[ ! -z ${NODE_LOCAL_SSDS_EXT-""} ]]; then
     IFS=";" read -r -a ssdgroups <<< ${NODE_LOCAL_SSDS_EXT}
     for ssdgroup in "${ssdgroups[@]}"
     do

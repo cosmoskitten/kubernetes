@@ -309,6 +309,17 @@ func Skipf(format string, args ...interface{}) {
 	ginkgowrapper.Skip(nowStamp() + ": " + msg)
 }
 
+func SkipUnlessLocalSSDExists(interf, filesystem string, node *v1.Node) {
+	//TODO(dyzz) make it skip unless we have local ssds on the node.
+	res, err := IssueSSHCommandWithResult("ls -1 /mnt/disks/by-uuid/google-local-ssds-scsi-fs/ | wc -l", TestContext.Provider, node)
+	Expect(err).NotTo(HaveOccurred())
+	num, err := strconv.Atoi(strings.TrimSpace(res.Stdout))
+	Expect(err).NotTo(HaveOccurred())
+	if num < 1 {
+		Skipf("Requires at least 1 %s %s localSSD ", interf, filesystem)
+	}
+}
+
 func SkipUnlessNodeCountIsAtLeast(minNodeCount int) {
 	if TestContext.CloudConfig.NumNodes < minNodeCount {
 		Skipf("Requires at least %d nodes (not %d)", minNodeCount, TestContext.CloudConfig.NumNodes)
