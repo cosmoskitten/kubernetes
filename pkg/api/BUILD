@@ -100,6 +100,7 @@ filegroup(
         "//pkg/api/helper:all-srcs",
         "//pkg/api/install:all-srcs",
         "//pkg/api/persistentvolume:all-srcs",
+        "//pkg/api/persistentvolumeclaim:all-srcs",
         "//pkg/api/pod:all-srcs",
         "//pkg/api/ref:all-srcs",
         "//pkg/api/resource:all-srcs",
