@@ -21,12 +21,26 @@ metadata:
 spec:
   privileged: false
   allowPrivilegeEscalation: false
+  # Drop capabilities that are used for manipulating user IDs (most containers
+  # only need a single user), and capabilities that are seldom used.
+  requiredDropCapabilities:
+    - AUDIT_WRITE
+    - CHOWN
+    - DAC_OVERRIDE
+    - FOWNER
+    - FSETID
+    - KILL
+    - MKNOD
+    - NET_RAW
+    - SETGID
+    - SETUID
+    - SYS_CHROOT
   volumes:
-  - 'configMap'
-  - 'emptyDir'
-  - 'persistentVolumeClaim'
-  - 'projected'
-  - 'secret'
+    - 'configMap'
+    - 'emptyDir'
+    - 'persistentVolumeClaim'
+    - 'projected'
+    - 'secret'
   hostNetwork: false
   hostIPC: false
   hostPID: false
