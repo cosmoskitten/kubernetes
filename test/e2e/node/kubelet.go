@@ -384,7 +384,7 @@ var _ = SIGDescribe("kubelet", func() {
 	})
 
 	// Test host cleanup when disrupting the volume environment.
-	SIGDescribe("host cleanup with volume mounts [sig-storage][HostCleanup][Slow]", func() {
+	SIGDescribe("host cleanup with volume mounts [sig-storage][HostCleanup][Flaky]", func() {
 
 		type hostCleanupTest struct {
 			itDescr string
@@ -423,8 +423,10 @@ var _ = SIGDescribe("kubelet", func() {
 			})
 
 			AfterEach(func() {
-				framework.ExpectNoError(framework.DeletePodWithWait(f, c, pod), "AfterEach: Failed to delete client pod ", pod.Name)
-				framework.ExpectNoError(framework.DeletePodWithWait(f, c, nfsServerPod), "AfterEach: Failed to delete server pod ", nfsServerPod.Name)
+				err := framework.DeletePodWithWait(f, c, pod)
+				Expect(err).NotTo(HaveOccurred(), "AfterEach: Failed to delete client pod ", pod.Name)
+				err = framework.DeletePodWithWait(f, c, nfsServerPod)
+				Expect(err).NotTo(HaveOccurred(), "AfterEach: Failed to delete server pod ", nfsServerPod.Name)
 			})
 
 			// execute It blocks from above table of tests
