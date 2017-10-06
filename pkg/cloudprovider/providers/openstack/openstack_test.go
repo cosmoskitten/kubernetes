@@ -101,6 +101,7 @@ func TestReadConfig(t *testing.T) {
  [BlockStorage]
  bs-version = auto
  trust-device-path = yes
+ add-volume-label = no
  [Metadata]
  search-order = configDrive, metadataService
  `))
@@ -128,6 +129,9 @@ func TestReadConfig(t *testing.T) {
 	}
 	if cfg.BlockStorage.BSVersion != "auto" {
 		t.Errorf("incorrect bs.bs-version: %v", cfg.BlockStorage.BSVersion)
+	}
+	if cfg.BlockStorage.AddLabel == true {
+		t.Errorf("incorrect bs.AddLabel: %v", cfg.BlockStorage.AddLabel)
 	}
 	if cfg.Metadata.SearchOrder != "configDrive, metadataService" {
 		t.Errorf("incorrect md.search-order: %v", cfg.Metadata.SearchOrder)
@@ -514,7 +518,7 @@ func TestVolumes(t *testing.T) {
 	tags := map[string]string{
 		"test": "value",
 	}
-	vol, _, err := os.CreateVolume("kubernetes-test-volume-"+rand.String(10), 1, "", "", &tags)
+	vol, _, err, _ := os.CreateVolume("kubernetes-test-volume-"+rand.String(10), 1, "", "", &tags)
 	if err != nil {
 		t.Fatalf("Cannot create a new Cinder volume: %v", err)
 	}

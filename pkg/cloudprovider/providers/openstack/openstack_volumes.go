@@ -299,11 +299,11 @@ func (os *OpenStack) getVolume(volumeID string) (Volume, error) {
 }
 
 // CreateVolume creates a volume of given size (in GiB)
-func (os *OpenStack) CreateVolume(name string, size int, vtype, availability string, tags *map[string]string) (string, string, error) {
+func (os *OpenStack) CreateVolume(name string, size int, vtype, availability string, tags *map[string]string) (string, string, error, bool) {
 	volumes, err := os.volumeService("")
 	if err != nil || volumes == nil {
 		glog.Errorf("Unable to initialize cinder client for region: %s", os.region)
-		return "", "", err
+		return "", "", err, os.bsOpts.AddLabel
 	}
 
 	opts := VolumeCreateOpts{
@@ -320,11 +320,11 @@ func (os *OpenStack) CreateVolume(name string, size int, vtype, availability str
 
 	if err != nil {
 		glog.Errorf("Failed to create a %d GB volume: %v", size, err)
-		return "", "", err
+		return "", "", err, os.bsOpts.AddLabel
 	}
 
-	glog.Infof("Created volume %v in Availability Zone: %v", volumeID, volumeAZ)
-	return volumeID, volumeAZ, nil
+	glog.Infof("Created volume %v in Availability Zone: %v Add labels: %v", volumeID, volumeAZ, os.bsOpts.AddLabel)
+	return volumeID, volumeAZ, nil, os.bsOpts.AddLabel
 }
 
 // GetDevicePath returns the path of an attached block storage volume, specified by its id.
