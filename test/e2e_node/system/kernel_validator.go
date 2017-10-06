@@ -31,6 +31,7 @@ import (
 
 	"github.com/golang/glog"
 	"k8s.io/apimachinery/pkg/util/errors"
+	"runtime"
 )
 
 var _ Validator = &KernelValidator{}
@@ -61,14 +62,23 @@ const (
 )
 
 func (k *KernelValidator) Validate(spec SysSpec) (error, error) {
-	release, err := exec.Command("uname", "-r").CombinedOutput()
+	var helper KernelValidatorHelper
+	if runtime.GOOS == "windows" {
+		helper = &WindowsKernelValidatorHelper{}
+	} else {
+		helper = &DefaultKernelValidatorHelper{}
+	}
+	release, err := helper.GetKernelRelease()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get kernel release: %v", err)
 	}
 	k.kernelRelease = strings.TrimSpace(string(release))
 	var errs []error
 	errs = append(errs, k.validateKernelVersion(spec.KernelSpec))
-	errs = append(errs, k.validateKernelConfig(spec.KernelSpec))
+	//only validate kernel config when necessary (currently no kernel config for windows)
+	if len(spec.KernelSpec.Required) > 0 || len(spec.KernelSpec.Forbidden) > 0 || len(spec.KernelSpec.Optional) > 0 {
+		errs = append(errs, k.validateKernelConfig(spec.KernelSpec))
+	}
 	return nil, errors.NewAggregate(errs)
 }
 

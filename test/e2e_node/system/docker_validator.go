@@ -23,6 +23,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"golang.org/x/net/context"
+	"runtime"
 )
 
 var _ Validator = &DockerValidator{}
@@ -38,6 +39,7 @@ func (d *DockerValidator) Name() string {
 
 const (
 	dockerEndpoint            = "unix:///var/run/docker.sock"
+	windowsDockerEndpoint     = "npipe:////./pipe/docker_engine"
 	dockerConfigPrefix        = "DOCKER_"
 	maxDockerValidatedVersion = "17.03"
 )
@@ -49,7 +51,14 @@ func (d *DockerValidator) Validate(spec SysSpec) (error, error) {
 		// docker, skip the docker configuration validation.
 		return nil, nil
 	}
-	c, err := client.NewClient(dockerEndpoint, "", nil, nil)
+	var endpoint string
+	if runtime.GOOS != "windows" {
+		endpoint = dockerEndpoint
+	} else {
+		endpoint = windowsDockerEndpoint
+	}
+
+	c, err := client.NewClient(endpoint, "", nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create docker client: %v", err)
 	}

@@ -21,8 +21,10 @@ import (
 	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
+	kruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/kubernetes/cmd/kubeadm/app/constants"
+	"path/filepath"
+	"runtime"
 )
 
 const (
@@ -46,7 +48,7 @@ const (
 	DefaultImageRepository = "gcr.io/google_containers"
 )
 
-func addDefaultingFuncs(scheme *runtime.Scheme) error {
+func addDefaultingFuncs(scheme *kruntime.Scheme) error {
 	return RegisterDefaults(scheme)
 }
 
@@ -94,7 +96,11 @@ func SetDefaults_MasterConfiguration(obj *MasterConfiguration) {
 // SetDefaults_NodeConfiguration assigns default values to a regular node
 func SetDefaults_NodeConfiguration(obj *NodeConfiguration) {
 	if obj.CACertPath == "" {
-		obj.CACertPath = DefaultCACertPath
+		if runtime.GOOS == "windows" {
+			obj.CACertPath = filepath.Join("C:", DefaultCACertPath)
+		} else {
+			obj.CACertPath = DefaultCACertPath
+		}
 	}
 	if len(obj.TLSBootstrapToken) == 0 {
 		obj.TLSBootstrapToken = obj.Token
