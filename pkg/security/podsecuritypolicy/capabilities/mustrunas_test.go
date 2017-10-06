@@ -298,18 +298,12 @@ func TestValidateAdds(t *testing.T) {
 	}
 
 	for k, v := range tests {
-		container := &api.Container{
-			SecurityContext: &api.SecurityContext{
-				Capabilities: v.containerCaps,
-			},
-		}
-
 		strategy, err := NewDefaultCapabilities(v.defaultAddCaps, nil, v.allowedCaps)
 		if err != nil {
 			t.Errorf("%s failed: %v", k, err)
 			continue
 		}
-		errs := strategy.Validate(nil, container)
+		errs := strategy.Validate(nil, nil, v.containerCaps)
 		if v.expectedError == "" && len(errs) > 0 {
 			t.Errorf("%s should have passed but had errors %v", k, errs)
 			continue
@@ -365,18 +359,12 @@ func TestValidateDrops(t *testing.T) {
 	}
 
 	for k, v := range tests {
-		container := &api.Container{
-			SecurityContext: &api.SecurityContext{
-				Capabilities: v.containerCaps,
-			},
-		}
-
 		strategy, err := NewDefaultCapabilities(nil, v.requiredDropCaps, nil)
 		if err != nil {
 			t.Errorf("%s failed: %v", k, err)
 			continue
 		}
-		errs := strategy.Validate(nil, container)
+		errs := strategy.Validate(nil, nil, v.containerCaps)
 		if v.expectedError == "" && len(errs) > 0 {
 			t.Errorf("%s should have passed but had errors %v", k, errs)
 			continue
