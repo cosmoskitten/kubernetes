@@ -318,7 +318,7 @@ function kube::build::has_docker() {
 }
 
 function kube::build::has_ip() {
-  which ip &> /dev/null
+  ip -V | grep -o 'iproute2' &> /dev/null
 }
 
 # Detect if a specific image exists
