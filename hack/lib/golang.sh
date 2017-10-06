@@ -45,6 +45,7 @@ kube::golang::node_targets() {
   local targets=(
     cmd/kube-proxy
     cmd/kubelet
+    cmd/kubeadm
   )
   echo "${targets[@]}"
 }

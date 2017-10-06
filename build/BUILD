@@ -113,6 +113,7 @@ release_filegroup(
     srcs = [
         "//cmd/kube-proxy",
         "//cmd/kubelet",
+	"//cmd/kubeadm",
     ],
 )
 
