@@ -9,6 +9,7 @@ load(
 go_library(
     name = "go_default_library",
     srcs = [
+        "accessors.go",
         "doc.go",
         "fake.go",
         "util.go",
