@@ -300,6 +300,7 @@ func TestSchedulerNoPhantomPodAfterDelete(t *testing.T) {
 	case err := <-errChan:
 		expectErr := &core.FitError{
 			Pod:              secondPod,
+			TotalNodesNum:    1,
 			FailedPredicates: core.FailedPredicateMap{node.Name: []algorithm.PredicateFailureReason{predicates.ErrPodNotFitsHostPorts}},
 		}
 		if !reflect.DeepEqual(expectErr, err) {
@@ -484,6 +485,7 @@ func TestSchedulerFailedSchedulingReasons(t *testing.T) {
 	case err := <-errChan:
 		expectErr := &core.FitError{
 			Pod:              podWithTooBigResourceRequests,
+			TotalNodesNum:    len(nodes),
 			FailedPredicates: failedPredicatesMap,
 		}
 		if len(fmt.Sprint(expectErr)) > 150 {
