@@ -384,7 +384,7 @@ var _ = SIGDescribe("kubelet", func() {
 	})
 
 	// Test host cleanup when disrupting the volume environment.
-	SIGDescribe("host cleanup with volume mounts [sig-storage][HostCleanup][Flaky]", func() {
+	SIGDescribe("host cleanup with volume mounts [sig-storage][HostCleanup][Slow]", func() {
 
 		type hostCleanupTest struct {
 			itDescr string
@@ -423,8 +423,8 @@ var _ = SIGDescribe("kubelet", func() {
 			})
 
 			AfterEach(func() {
-				framework.ExpectNoError(framework.DeletePodWithWait(f, c, pod), "AfterEach: Failed to delete pod ", pod.Name)
-				framework.ExpectNoError(framework.DeletePodWithWait(f, c, nfsServerPod), "AfterEach: Failed to delete pod ", nfsServerPod.Name)
+				framework.ExpectNoError(framework.DeletePodWithWait(f, c, pod), "AfterEach: Failed to delete client pod ", pod.Name)
+				framework.ExpectNoError(framework.DeletePodWithWait(f, c, nfsServerPod), "AfterEach: Failed to delete server pod ", nfsServerPod.Name)
 			})
 
 			// execute It blocks from above table of tests
@@ -435,8 +435,9 @@ var _ = SIGDescribe("kubelet", func() {
 					By("Stop the NFS server")
 					stopNfsServer(nfsServerPod)
 
-					By("Delete the pod mounted to the NFS volume")
-					framework.ExpectNoError(framework.DeletePodWithWait(f, c, pod), "Failed to delete pod ", pod.Name)
+					By("Delete the pod mounted to the NFS volume -- expect failure")
+					err := framework.DeletePodWithWait(f, c, pod)
+					Expect(err).To(HaveOccurred())
 					// pod object is now stale, but is intentionally not nil
 
 					By("Check if pod's host has been cleaned up -- expect not")
@@ -445,7 +446,7 @@ var _ = SIGDescribe("kubelet", func() {
 					By("Restart the nfs server")
 					restartNfsServer(nfsServerPod)
 
-					By("Verify host running the deleted pod is now cleaned up")
+					By("Verify that the deleted client pod is now cleaned up")
 					checkPodCleanup(c, pod, true)
 				})
 			}
