@@ -791,7 +791,6 @@ func (og *operationGenerator) GenerateUnmapVolumeFunc(
 			// On failure, return error. Caller will log and retry.
 			return volumeToUnmount.GenerateErrorDetailed("GetGlobalUnmapPath failed", err)
 		}
-		glog.Infof("#### DEBUG LOG ####: GenerateUnmapVolumeFunc()  deviceToDetach.PodUID: %v\n", volumeToUnmount.PodUID)
 		unmapDeviceErr := util.UnmapDevice(globalUnmapPath, string(volumeToUnmount.PodUID))
 		if unmapDeviceErr != nil {
 			// On failure, return error. Caller will log and retry.
@@ -901,7 +900,6 @@ func (og *operationGenerator) GenerateUnmapDeviceFunc(
 			// On failure, return error. Caller will log and retry.
 			return deviceToDetach.GenerateErrorDetailed("MarkDeviceAsUnmounted failed", markDeviceUnmountedErr)
 		}
-		glog.Infof("#### DEBUG LOG ####: GenerateUnmountDeviceFunc unmapDevice path  globalMapPath: %s", globalMapPath)
 
 		return nil
 	}, blockVolumePlugin.GetPluginName(), nil

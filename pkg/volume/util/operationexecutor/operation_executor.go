@@ -107,19 +107,18 @@ type OperationExecutor interface {
 
 	// MapVolume is used when the volumeMode is 'Block'.
 	// This method creates a symbolic link to the volume from both the pod
-	// specified in volumeToUnmount and global map path.
+	// specified in volumeToMount and global map path.
 	// Specifically it will:
 	// * Wait for the device to finish attaching (for attachable volumes only).
+	// * Update actual state of world to reflect volume is globally mounted/mapped.
 	// * Map volume to global map path using symbolic link.
-	// * Update actual state of world to reflect volume is globally mounted (for
-	//   attachable volumes only).
-	// * Map the volume to the pod specific path using symbolic link.
-	// * Update actual state of world to reflect volume is mounted to the pod
-	//   path.
+	// * Map the volume to the pod device map path using symbolic link.
+	// * Update actual state of world to reflect volume is mounted/mapped to the pod path.
 	MapVolume(waitForAttachTimeout time.Duration, volumeToMount VolumeToMount, actualStateOfWorld ActualStateOfWorldMounterUpdater) error
 
-	// UnmapVolume unmaps symbolic link to the volume from both the pod specified in
-	// volumeToUnmount and global map path. And then, updates the actual state of the world to reflect that.
+	// UnmapVolume unmaps symbolic link to the volume from both the pod device
+	// map path in volumeToUnmount and global map path.
+	// And then, updates the actual state of the world to reflect that.
 	UnmapVolume(volumeToUnmount MountedVolume, actualStateOfWorld ActualStateOfWorldMounterUpdater) error
 
 	// UnmapDevice checks number of symbolic links under global map path.
@@ -333,6 +332,10 @@ type VolumeToMount struct {
 	// ReportedInUse indicates that the volume was successfully added to the
 	// VolumesInUse field in the node's status.
 	ReportedInUse bool
+
+	// VolumeStateHandler defines a set of operations for handling
+	// attached/detached/unmounted volume-related operations.
+	VolumeHandler VolumeStateHandler
 }
 
 // GenerateMsgDetailed returns detailed msgs for volumes to mount
@@ -385,6 +388,10 @@ type AttachedVolume struct {
 	// DevicePath contains the path on the node where the volume is attached.
 	// For non-attachable volumes this is empty.
 	DevicePath string
+
+	// VolumeStateHandler defines a set of operations for handling
+	// attached/detached/unmounted volume-related operations.
+	VolumeHandler VolumeStateHandler
 }
 
 // GenerateMsgDetailed returns detailed msgs for attached volumes
@@ -520,6 +527,10 @@ type MountedVolume struct {
 
 	//
 	BlockVolumeMapper volume.BlockVolumeMapper
+
+	// VolumeStateHandler defines a set of operations for handling
+	// attached/detached/unmounted volume-related operations.
+	VolumeHandler VolumeStateHandler
 
 	// VolumeGidValue contains the value of the GID annotation, if present.
 	VolumeGidValue string
@@ -832,6 +843,111 @@ func (oe *operationExecutor) VerifyControllerAttachedVolume(
 	opCompleteFunc := util.OperationCompleteHook(plugin, "verify_controller_attached_volume")
 	return oe.pendingOperations.Run(
 		volumeToMount.VolumeName, "" /* podName */, verifyControllerAttachedVolumeFunc, opCompleteFunc)
+}
+
+// VolumeStateHandler defines a set of operations for handling attached/detached/unmounted volume-related operations
+type VolumeStateHandler interface {
+	// Volume is mounted/mapped, unmount/unmap it
+	HandleUnmounted(mountedVolume MountedVolume, actualStateOfWorld ActualStateOfWorldMounterUpdater) error
+	// Volume is attached, mount/map it
+	HandleAttachedMounted(waitForAttachTimeout time.Duration, volumeToMount VolumeToMount, actualStateOfWorld ActualStateOfWorldMounterUpdater, isRemount bool, remountingLogStr string) error
+	// Volume is globally mounted/mapped to device, unmount/unmap it
+	HandleDetachedUnmounted(attachedVolume AttachedVolume, actualStateOfWorld ActualStateOfWorldMounterUpdater, mounter mount.Interface) error
+}
+
+// NewVolumeHandler return a new instance of volumeHandler depens on a volumeMode
+
+func NewVolumeHandler(volumeSpec *volume.Spec, oe OperationExecutor) VolumeStateHandler {
+	var volumeHandler VolumeStateHandler
+	// If a persistent volume is nil, we handle this as filesystem volume mode case
+	volumeMode := volumehelper.GetVolumeMode(volumeSpec)
+	if volumeMode == v1.PersistentVolumeFilesystem {
+		volumeHandler = NewFilesystemVolumeHandler(oe)
+	} else {
+		volumeHandler = NewBlockVolumeHandler(oe)
+	}
+	return volumeHandler
+}
+
+// NewFilesystemVolumeHandler returns a new instance of FilesystemVolumeHandler.
+func NewFilesystemVolumeHandler(operationExecutor OperationExecutor) FilesystemVolumeHandler {
+	return FilesystemVolumeHandler{
+		oe: operationExecutor}
+}
+
+// NewBlockVolumeHandler returns a new instance of BlockVolumeHandler.
+func NewBlockVolumeHandler(operationExecutor OperationExecutor) BlockVolumeHandler {
+	return BlockVolumeHandler{
+		oe: operationExecutor}
+}
+
+// FilesystemVolumeHandler is VolumeHandler for Filesystem volume
+type FilesystemVolumeHandler struct {
+	oe OperationExecutor
+}
+
+// BlockVolumeHandler is VolumeHandler for Block volume
+type BlockVolumeHandler struct {
+	oe OperationExecutor
+}
+
+// Volume is mounted, unmount it
+func (f FilesystemVolumeHandler) HandleUnmounted(mountedVolume MountedVolume, actualStateOfWorld ActualStateOfWorldMounterUpdater) error {
+	glog.V(12).Infof(mountedVolume.GenerateMsgDetailed("Starting operationExecutor.UnmountVolume", ""))
+	err := f.oe.UnmountVolume(
+		mountedVolume,
+		actualStateOfWorld)
+	return err
+}
+
+// Volume is attached, mount/remount it
+func (f FilesystemVolumeHandler) HandleAttachedMounted(waitForAttachTimeout time.Duration, volumeToMount VolumeToMount, actualStateOfWorld ActualStateOfWorldMounterUpdater, isRemount bool, remountingLogStr string) error {
+	glog.V(12).Infof(volumeToMount.GenerateMsgDetailed("Starting operationExecutor.MountVolume", remountingLogStr))
+	err := f.oe.MountVolume(
+		waitForAttachTimeout,
+		volumeToMount,
+		actualStateOfWorld,
+		isRemount)
+	return err
+}
+
+// Volume is globally mounted to device, unmount it
+func (f FilesystemVolumeHandler) HandleDetachedUnmounted(attachedVolume AttachedVolume, actualStateOfWorld ActualStateOfWorldMounterUpdater, mounter mount.Interface) error {
+	glog.V(12).Infof(attachedVolume.GenerateMsgDetailed("Starting operationExecutor.UnmountDevice", ""))
+	err := f.oe.UnmountDevice(
+		attachedVolume,
+		actualStateOfWorld,
+		mounter)
+	return err
+}
+
+// Volume is mapped, unmap it
+func (b BlockVolumeHandler) HandleUnmounted(mountedVolume MountedVolume, actualStateOfWorld ActualStateOfWorldMounterUpdater) error {
+	glog.V(12).Infof(mountedVolume.GenerateMsgDetailed("Starting operationExecutor.UnmapVolume", ""))
+	err := b.oe.UnmapVolume(
+		mountedVolume,
+		actualStateOfWorld)
+	return err
+}
+
+// Volume is attached, create map to device
+func (b BlockVolumeHandler) HandleAttachedMounted(waitForAttachTimeout time.Duration, volumeToMount VolumeToMount, actualStateOfWorld ActualStateOfWorldMounterUpdater, _ bool, _ string) error {
+	glog.V(12).Infof(volumeToMount.GenerateMsgDetailed("Starting operationExecutor.MapVolume", ""))
+	err := b.oe.MapVolume(
+		waitForAttachTimeout,
+		volumeToMount,
+		actualStateOfWorld)
+	return err
+}
+
+// Volume is globally mapped to device, unmap it
+func (b BlockVolumeHandler) HandleDetachedUnmounted(attachedVolume AttachedVolume, actualStateOfWorld ActualStateOfWorldMounterUpdater, mounter mount.Interface) error {
+	glog.V(12).Infof(attachedVolume.GenerateMsgDetailed("Starting operationExecutor.UnmapDevice", ""))
+	err := b.oe.UnmapDevice(
+		attachedVolume,
+		actualStateOfWorld,
+		mounter)
+	return err
 }
 
 // TODO: this is a workaround for the unmount device issue caused by gci mounter.

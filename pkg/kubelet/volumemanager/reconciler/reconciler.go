@@ -172,21 +172,8 @@ func (rc *reconciler) reconcile() {
 	// Ensure volumes that should be unmounted are unmounted.
 	for _, mountedVolume := range rc.actualStateOfWorld.GetMountedVolumes() {
 		if !rc.desiredStateOfWorld.PodExistsInVolume(mountedVolume.PodName, mountedVolume.VolumeName) {
-			var err error
-			pvVolumeMode := volumehelper.GetVolumeMode(mountedVolume.MountedVolume.VolumeSpec)
-			if pvVolumeMode != v1.PersistentVolumeBlock {
-				// Volume is mounted, unmount it
-				glog.V(12).Infof(mountedVolume.GenerateMsgDetailed("Starting operationExecutor.UnmountVolume", ""))
-				err = rc.operationExecutor.UnmountVolume(
-					mountedVolume.MountedVolume, rc.actualStateOfWorld)
-				glog.Infof("#### DEBUG LOG ####: reconcile mountedVolume.Mounter case")
-			} else {
-				// Volume is mapped, unmap it
-				glog.V(12).Infof(mountedVolume.GenerateMsgDetailed("Starting operationExecutor.UnmapVolume", ""))
-				err = rc.operationExecutor.UnmapVolume(
-					mountedVolume.MountedVolume, rc.actualStateOfWorld)
-				glog.Infof("#### DEBUG LOG ####: reconcile mountedVolume.BlockVolumeMapper case")
-			}
+			mountedVolume.VolumeHandler = operationexecutor.NewVolumeHandler(mountedVolume.VolumeSpec, rc.operationExecutor)
+			err := mountedVolume.VolumeHandler.HandleUnmounted(mountedVolume.MountedVolume, rc.actualStateOfWorld)
 			if err != nil &&
 				!nestedpendingoperations.IsAlreadyExists(err) &&
 				!exponentialbackoff.IsExponentialBackoff(err) {
@@ -251,26 +238,8 @@ func (rc *reconciler) reconcile() {
 			if isRemount {
 				remountingLogStr = "Volume is already mounted to pod, but remount was requested."
 			}
-
-			pvVolumeMode := volumehelper.GetVolumeMode(volumeToMount.VolumeSpec)
-			if pvVolumeMode != v1.PersistentVolumeBlock {
-				glog.V(12).Infof(volumeToMount.GenerateMsgDetailed("Starting operationExecutor.MountVolume", remountingLogStr))
-				err = rc.operationExecutor.MountVolume(
-					rc.waitForAttachTimeout,
-					volumeToMount.VolumeToMount,
-					rc.actualStateOfWorld,
-					isRemount)
-				glog.Infof("#### DEBUG LOG ####: reconcile attached/mounted, MountVolume case")
-				glog.Infof("#### DEBUG LOG ####: reconcile attached/mounted, MountVolume pv: %v", volumeToMount.VolumeSpec.PersistentVolume)
-			} else {
-				glog.V(12).Infof(volumeToMount.GenerateMsgDetailed("Starting operationExecutor.MapVolume", ""))
-				err = rc.operationExecutor.MapVolume(
-					rc.waitForAttachTimeout,
-					volumeToMount.VolumeToMount,
-					rc.actualStateOfWorld)
-				glog.Infof("#### DEBUG LOG ####: reconcile attached/mounted, MapVolume case")
-				glog.Infof("#### DEBUG LOG ####: reconcile attached/mounted, MapVolume pv: %v", volumeToMount.VolumeSpec.PersistentVolume)
-			}
+			volumeToMount.VolumeHandler = operationexecutor.NewVolumeHandler(volumeToMount.VolumeSpec, rc.operationExecutor)
+			err := volumeToMount.VolumeHandler.HandleAttachedMounted(rc.waitForAttachTimeout, volumeToMount.VolumeToMount, rc.actualStateOfWorld, isRemount, remountingLogStr)
 			if err != nil &&
 				!nestedpendingoperations.IsAlreadyExists(err) &&
 				!exponentialbackoff.IsExponentialBackoff(err) {
@@ -294,21 +263,8 @@ func (rc *reconciler) reconcile() {
 		if !rc.desiredStateOfWorld.VolumeExists(attachedVolume.VolumeName) &&
 			!rc.operationExecutor.IsOperationPending(attachedVolume.VolumeName, nestedpendingoperations.EmptyUniquePodName) {
 			if attachedVolume.GloballyMounted {
-				var err error
-				pvVolumeMode := volumehelper.GetVolumeMode(attachedVolume.VolumeSpec)
-				if pvVolumeMode != v1.PersistentVolumeBlock {
-					// Volume is globally mounted to device, unmount it
-					glog.V(12).Infof(attachedVolume.GenerateMsgDetailed("Starting operationExecutor.UnmountDevice", ""))
-					glog.Infof("#### DEBUG LOG ####: attachedVolume UnmountDevice case: %v\n", attachedVolume.VolumeName)
-					err = rc.operationExecutor.UnmountDevice(
-						attachedVolume.AttachedVolume, rc.actualStateOfWorld, rc.mounter)
-				} else {
-					// Volume is globally mapped to device, unmap it
-					glog.V(12).Infof(attachedVolume.GenerateMsgDetailed("Starting operationExecutor.UnmapDevice", ""))
-					glog.Infof("#### DEBUG LOG ####: attachedVolume Block UnmapDevice case: %v\n", attachedVolume.VolumeName)
-					err = rc.operationExecutor.UnmapDevice(
-						attachedVolume.AttachedVolume, rc.actualStateOfWorld, rc.mounter)
-				}
+				attachedVolume.VolumeHandler = operationexecutor.NewVolumeHandler(attachedVolume.VolumeSpec, rc.operationExecutor)
+				err := attachedVolume.VolumeHandler.HandleDetachedUnmounted(attachedVolume.AttachedVolume, rc.actualStateOfWorld, rc.mounter)
 				if err != nil &&
 					!nestedpendingoperations.IsAlreadyExists(err) &&
 					!exponentialbackoff.IsExponentialBackoff(err) {

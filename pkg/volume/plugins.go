@@ -212,9 +212,14 @@ type ExpandableVolumePlugin interface {
 
 type BlockVolumePlugin interface {
 	VolumePlugin
-	//
+	// NewBlockVolumeMapper creates a new volume.BlockVolumeMapper from an API specification.
+	// Ownership of the spec pointer in *not* transferred.
+	// - spec: The v1.Volume spec
+	// - pod: The enclosing pod
 	NewBlockVolumeMapper(spec *Spec, podRef *v1.Pod, opts VolumeOptions) (BlockVolumeMapper, error)
-	//
+	// NewBlockVolumeUnmapper creates a new volume.BlockVolumeUnmapper from recoverable state.
+	// - name: The volume name, as per the v1.Volume spec.
+	// - podUID: The UID of the enclosing pod
 	NewBlockVolumeUnmapper(name string, podUID types.UID) (BlockVolumeUnmapper, error)
 }
 

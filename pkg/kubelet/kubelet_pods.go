@@ -119,12 +119,12 @@ func (kl *Kubelet) makeBlockVolumes(pod *v1.Pod, container *v1.Container, podVol
 	for _, device := range container.VolumeDevices {
 		vol, ok := podVolumes[device.Name]
 		if !ok || vol.BlockVolumeMapper == nil {
-			glog.Warningf("Block volume cannot be satisfied for container %q, because the volume is missing or the volume mapper is nil: %q", container.Name, device)
-			continue
+			glog.Errorf("Block volume  cannot be satisfied for container %q, because the volume is missing or the volume mapper is nil: %+v", container.Name, device)
+			return nil, fmt.Errorf("Cannot find volume %q to pass into container %q", device.Name, container.Name)
 		}
 		// Get a symbolic link associated to a block device under pod device path
 		dirPath, volName := vol.BlockVolumeMapper.GetPodDeviceMapPath()
-		symlinkPath := dirPath + "/" + volName
+		symlinkPath := path.Join(dirPath, volName)
 		if islinkExist, checkErr := volumeutil.IsSymlinkExist(symlinkPath); checkErr != nil {
 			return nil, checkErr
 		} else if islinkExist {
@@ -426,7 +426,6 @@ func (kl *Kubelet) GenerateRunContainerOptions(pod *v1.Pod, container *v1.Contai
 	opts.PortMappings = kubecontainer.MakePortMappings(container)
 	// TODO(random-liu): Move following convert functions into pkg/kubelet/container
 	devices, err := kl.makeGPUDevices(pod, container)
-
 	if err != nil {
 		return nil, false, err
 	}
