@@ -383,20 +383,12 @@ func (dswp *desiredStateOfWorldPopulator) createVolumeSpec(
 			pvcSource.ClaimName,
 			pvcUID)
 
-		// Error if a container doesn't have volumeDevices but the volumeMode of PVC is Block
-		if len(devicesMap) == 0 && volumeMode == v1.PersistentVolumeBlock {
+		// Error if a container definition doesn't have volumeDevices but the volumeMode of PVC is Block
+		// or if a container definition has volumeDevices but the volumeMode of PVC is Filesystem
+		if (len(devicesMap) == 0 && volumeMode == v1.PersistentVolumeBlock) ||
+			(devicesMap[podVolume.Name] && volumeMode != v1.PersistentVolumeBlock) {
 			return nil, "", fmt.Errorf(
-				"volumeMode must be Filesystem if volumeMount is defined for Pod volumes to pass a filesystem volume, pod: %q/%q, volume name: %v, volumeMode: %v",
-				podNamespace,
-				podName,
-				podVolume.Name,
-				volumeMode)
-		}
-
-		// Error if a container has volumeDevices but the volumeMode of PVC isn't Block
-		if devicesMap[podVolume.Name] == true && volumeMode != v1.PersistentVolumeBlock {
-			return nil, "", fmt.Errorf(
-				"volumeMode must be Block if volumeDevices is defined for Pod volumes to pass a block volume, pod: %q/%q, volume name: %v, volumeMode: %v",
+				"Invalid volumeMode. volumeMounts only supports 'Filesystem' mode and volumeDevices only supports 'Block' mode, pod: %q/%q, volume name: %v, volumeMode: %v",
 				podNamespace,
 				podName,
 				podVolume.Name,
@@ -448,8 +440,8 @@ func (dswp *desiredStateOfWorldPopulator) getPVCExtractPV(
 			pvc.Status.Phase,
 			pvc.Spec.VolumeName)
 	}
-
-	return pvc.Spec.VolumeName, pvc.UID, *pvc.Spec.VolumeMode, nil
+	volumeMode := volumehelper.GetPersistentVolumeClaimVolumeMode(pvc)
+	return pvc.Spec.VolumeName, pvc.UID, volumeMode, nil
 }
 
 // getPVSpec fetches the PV object with the given name from the API server
@@ -499,7 +491,6 @@ func makeVolumeDevicesMap(containers []v1.Container) map[string]bool {
 			continue
 		}
 		for _, device := range container.VolumeDevices {
-			glog.Infof("#### DEBUG LOG ####: makeVolumeDevicesMap: device: %v", device)
 			volumeDevicesMap[device.Name] = true
 		}
 	}

@@ -289,8 +289,9 @@ func MapDevice(devicePath string, mapDir string, linkName string) error {
 	if !filepath.IsAbs(mapDir) {
 		return fmt.Errorf("The map path should be absolute: map path: %s", mapDir)
 	}
-	glog.Errorf("#### DEBUG LOG ####: mapDevice devicePath: %s", devicePath)
-	glog.Errorf("#### DEBUG LOG ####: mapDevice mapDir; %s", mapDir)
+	glog.V(5).Infof("MapDevice: devicePath %s", devicePath)
+	glog.V(5).Infof("MapDevice: mapDir %s", mapDir)
+	glog.V(5).Infof("MapDevice: linkName %s", linkName)
 
 	_, err := os.Stat(mapDir)
 	if err != nil && !os.IsNotExist(err) {
@@ -312,7 +313,6 @@ func MapDevice(devicePath string, mapDir string, linkName string) error {
 	if err := os.Symlink(devicePath, linkPath); err != nil {
 		return err
 	}
-	glog.Errorf("#### DEBUG LOG ####: mapDevice: no error")
 	return nil
 }
 
@@ -321,7 +321,8 @@ func UnmapDevice(mapDir string, linkName string) error {
 	if len(mapDir) == 0 {
 		return fmt.Errorf("Failed to unmap device from map path. mapDir is empty")
 	}
-	glog.Errorf("#### DEBUG LOG ####: unmapDevice mapDir; %s", mapDir)
+	glog.V(5).Infof("UnmapDevice: mapDir %s", mapDir)
+	glog.V(5).Infof("UnmapDevice: linkName %s", linkName)
 
 	// Check symbolic link exists
 	linkPath := mapDir + "/" + string(linkName)
@@ -334,7 +335,6 @@ func UnmapDevice(mapDir string, linkName string) error {
 	if err := os.Remove(linkPath); err != nil {
 		return err
 	}
-	glog.Errorf("#### DEBUG LOG ####: unmapDevice find symlink")
 	return nil
 }
 
@@ -343,12 +343,11 @@ func RemoveMapPath(mapPath string) error {
 	if len(mapPath) == 0 {
 		return fmt.Errorf("Failed to remove map path. mapPath is empty")
 	}
-	glog.Errorf("#### DEBUG LOG ####: RemoveGlobalMapPath mapPath; %s", mapPath)
+	glog.V(5).Infof("RemoveMapPath: mapPath %s", mapPath)
 	err := os.Remove(mapPath)
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
-	glog.Errorf("#### DEBUG LOG ####: RemoveMapPath succeed")
 	return nil
 }
 
