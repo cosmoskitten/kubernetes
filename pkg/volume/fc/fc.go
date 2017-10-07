@@ -28,6 +28,7 @@ import (
 	utilstrings "k8s.io/kubernetes/pkg/util/strings"
 	"k8s.io/kubernetes/pkg/volume"
 	"k8s.io/kubernetes/pkg/volume/util"
+	"k8s.io/kubernetes/pkg/volume/util/volumehelper"
 )
 
 // This is the primary entrypoint for volume plugins.
@@ -104,10 +105,10 @@ func (plugin *fcPlugin) GetAccessModes() []v1.PersistentVolumeAccessMode {
 
 func (plugin *fcPlugin) NewMounter(spec *volume.Spec, pod *v1.Pod, _ volume.VolumeOptions) (volume.Mounter, error) {
 	// Inject real implementations here, test through the internal function.
-	return plugin.newMounterInternal(spec, pod, &FCUtil{}, plugin.host.GetMounter(plugin.GetPluginName()), plugin.host.GetExec(plugin.GetPluginName()))
+	return plugin.newMounterInternal(spec, pod.UID, &FCUtil{}, plugin.host.GetMounter(plugin.GetPluginName()), plugin.host.GetExec(plugin.GetPluginName()))
 }
 
-func (plugin *fcPlugin) newMounterInternal(spec *volume.Spec, pod *v1.Pod, manager diskManager, mounter mount.Interface, exec mount.Exec) (volume.Mounter, error) {
+func (plugin *fcPlugin) newMounterInternal(spec *volume.Spec, podUID types.UID, manager diskManager, mounter mount.Interface, exec mount.Exec) (volume.Mounter, error) {
 	// fc volumes used directly in a pod have a ReadOnly flag set by the pod author.
 	// fc volumes used as a PersistentVolume gets the ReadOnly flag indirectly through the persistent-claim volume used to mount the PV
 	fc, readOnly, err := getVolumeSource(spec)
@@ -120,9 +121,10 @@ func (plugin *fcPlugin) newMounterInternal(spec *volume.Spec, pod *v1.Pod, manag
 		return nil, fmt.Errorf("fc: no fc disk information found. failed to make a new mounter")
 	}
 
+	volumeMode := volumehelper.GetVolumeMode(spec)
 	return &fcDiskMounter{
 		fcDisk: &fcDisk{
-			podUID:  pod.UID,
+			podUID:  podUID,
 			volName: spec.Name(),
 			wwns:    wwns,
 			lun:     lun,
@@ -131,7 +133,7 @@ func (plugin *fcPlugin) newMounterInternal(spec *volume.Spec, pod *v1.Pod, manag
 			io:      &osIOHandler{},
 			plugin:  plugin},
 		fsType:     fc.FSType,
-		volumeMode: v1.PersistentVolumeFilesystem,
+		volumeMode: volumeMode,
 		readOnly:   readOnly,
 		mounter:    &mount.SafeFormatAndMount{Interface: mounter, Exec: exec},
 	}, nil
@@ -139,10 +141,17 @@ func (plugin *fcPlugin) newMounterInternal(spec *volume.Spec, pod *v1.Pod, manag
 
 func (plugin *fcPlugin) NewBlockVolumeMapper(spec *volume.Spec, pod *v1.Pod, _ volume.VolumeOptions) (volume.BlockVolumeMapper, error) {
 	// Inject real implementations here, test through the internal function.
-	return plugin.newBlockVolumeMapperInternal(spec, pod, &FCUtil{}, plugin.host.GetMounter(plugin.GetPluginName()), plugin.host.GetExec(plugin.GetPluginName()))
+
+	// If this called via GenerateUnmapDeviceFunc(), pod is nil.
+	// Pass empty string as dummy uid since uid isn't used in the case.
+	var uid types.UID
+	if pod != nil {
+		uid = pod.UID
+	}
+	return plugin.newBlockVolumeMapperInternal(spec, uid, &FCUtil{}, plugin.host.GetMounter(plugin.GetPluginName()), plugin.host.GetExec(plugin.GetPluginName()))
 }
 
-func (plugin *fcPlugin) newBlockVolumeMapperInternal(spec *volume.Spec, pod *v1.Pod, manager diskManager, mounter mount.Interface, exec mount.Exec) (volume.BlockVolumeMapper, error) {
+func (plugin *fcPlugin) newBlockVolumeMapperInternal(spec *volume.Spec, podUID types.UID, manager diskManager, mounter mount.Interface, exec mount.Exec) (volume.BlockVolumeMapper, error) {
 	// fc volumes used directly in a pod have a ReadOnly flag set by the pod author.
 	// fc volumes used as a PersistentVolume gets the ReadOnly flag indirectly through the persistent-claim volume used to mount the PV
 	fc, readOnly, err := getVolumeSource(spec)
@@ -150,10 +159,6 @@ func (plugin *fcPlugin) newBlockVolumeMapperInternal(spec *volume.Spec, pod *v1.
 		return nil, err
 	}
 
-	var uid types.UID
-	if pod != nil {
-		uid = pod.UID
-	}
 	wwns, lun, wwids, err := getWwnsLunWwids(fc)
 	if err != nil {
 		return nil, fmt.Errorf("fc: no fc disk information found. failed to make a new mounter")
@@ -161,7 +166,7 @@ func (plugin *fcPlugin) newBlockVolumeMapperInternal(spec *volume.Spec, pod *v1.
 
 	return &fcDiskMapper{
 		fcDisk: &fcDisk{
-			podUID:  uid,
+			podUID:  podUID,
 			volName: spec.Name(),
 			wwns:    wwns,
 			lun:     lun,
@@ -327,19 +332,15 @@ func (b *fcDiskMapper) SetUpDevice() (string, error) {
 	return "", nil
 }
 
-func (b *fcDiskMapper) SetUpDeviceAt(dir string) (string, error) {
-	return "", nil
-}
-
-// Return:
-//   path: plugins/kubernetes.io/{PluginName}/volumeDevices/{WWID}/{podUid}
+// GetGlobalMapPath returns global map path and error
+// path: plugins/kubernetes.io/{PluginName}/volumeDevices/{WWID}/{podUid}
 func (b *fcDiskMapper) GetGlobalMapPath(spec *volume.Spec) (string, error) {
 	return b.fcGlobalMapPath(spec)
 }
 
-// Return:
-//   path: pods/{podUid}/volumeDevices/kubernetes.io~fc
-//   volumeName: pv0001
+// GetPodDeviceMapPath returns pod device map path and volume name
+// path: pods/{podUid}/volumeDevices/kubernetes.io~fc
+// volumeName: pv0001
 func (b *fcDiskMapper) GetPodDeviceMapPath() (string, string) {
 	return b.fcPodDeviceMapPath()
 }
@@ -354,19 +355,15 @@ func (c *fcDiskUnmapper) TearDownDevice() error {
 	return nil
 }
 
-func (c *fcDiskUnmapper) TearDownDeviceAt(dir string) error {
-	return nil
-}
-
-// Return:
-//   path: plugins/kubernetes.io/{PluginName}/volumeDevices/{WWID}/{podUid}
+// GetGlobalUnmapPath returns global map path and error
+// path: plugins/kubernetes.io/{PluginName}/volumeDevices/{WWID}/{podUid}
 func (c *fcDiskUnmapper) GetGlobalUnmapPath(spec *volume.Spec) (string, error) {
 	return c.fcGlobalMapPath(spec)
 }
 
-// Return:
-//   path: pods/{podUid}/volumeDevices/kubernetes.io~fc
-//   volumeName: pv0001
+// GetPodDeviceUnmapPath returns pod device map path and volume name
+// path: pods/{podUid}/volumeDevices/kubernetes.io~fc
+// volumeName: pv0001
 func (c *fcDiskUnmapper) GetPodDeviceUnmapPath() (string, string) {
 	return c.fcPodDeviceMapPath()
 }

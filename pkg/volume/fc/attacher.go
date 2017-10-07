@@ -177,7 +177,7 @@ func volumeSpecToMounter(spec *volume.Spec, host volume.VolumeHost) (*fcDiskMoun
 		return nil, fmt.Errorf("fc: no fc disk information found. failed to make a new mounter")
 	}
 	volumeMode := volumehelper.GetVolumeMode(spec)
-	glog.Infof("#### DEBUG LOG ####: newBlockVolumeMapperInternal GetVolumeModeForVolume FC: %s", volumeMode)
+	glog.V(5).Infof("fc: volumeSpecToMounter volumeMode %s", volumeMode)
 	return &fcDiskMounter{
 		fcDisk: &fcDisk{
 			plugin: &fcPlugin{

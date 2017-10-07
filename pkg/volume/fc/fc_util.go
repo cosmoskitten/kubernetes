@@ -22,7 +22,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/golang/glog"
@@ -226,32 +225,15 @@ func searchDisk(b fcDiskMounter) (string, error) {
 	return disk, nil
 }
 
-func GetWwnsLunWwids(fc *v1.FCVolumeSource) ([]string, string, []string, error) {
-	var lun string
-	var wwids []string
-	if fc.Lun != nil && len(fc.TargetWWNs) != 0 {
-		lun = strconv.Itoa(int(*fc.Lun))
-		return fc.TargetWWNs, lun, wwids, nil
-	}
-	if len(fc.WWIDs) != 0 {
-		for _, wwid := range fc.WWIDs {
-			wwids = append(wwids, strings.Replace(wwid, " ", "_", -1))
-		}
-		return fc.TargetWWNs, lun, wwids, nil
-	}
-	return nil, "", nil, fmt.Errorf("fc: no fc disk information found. failed to make a new mounter")
-}
-
 func (util *FCUtil) AttachDisk(b fcDiskMounter) (string, error) {
 	devicePath, err := searchDisk(b)
 	if err != nil {
 		return "", err
 	}
-	glog.Infof("#### DEBUG LOG ####: AttachDisk devicePath: %s", devicePath)
-	glog.Infof("#### DEBUG LOG ####: AttachDisk b.volumeMode: %s", b.volumeMode)
-	glog.Infof("#### DEBUG LOG ####: AttachDisk b: %v", b)
 	// If the volumeMode is 'Block', plugin don't have to format the volume.
 	// The globalPDPath will be created by operationexecutor. Just return devicePath here.
+	glog.V(5).Infof("fc: AttachDisk volumeMode: %s", b.volumeMode)
+	glog.V(5).Infof("fc: AttachDisk devicePath: %s", devicePath)
 	if b.volumeMode == v1.PersistentVolumeBlock {
 		return devicePath, nil
 	}
