@@ -816,7 +816,7 @@ func handleUnmarshal(j []byte) (map[string]interface{}, error) {
 	return m, nil
 }
 
-// StrategicMergePatch applies a strategic merge patch. The original and patch documents
+// StrategicMergeMapPatch applies a strategic merge patch. The original and patch documents
 // must be JSONMap. A patch can be created from an original and modified document by
 // calling CreateTwoWayMergeMapPatch.
 // Warning: the original and patch JSONMap objects are mutated by this function and should not be reused.
@@ -825,6 +825,13 @@ func StrategicMergeMapPatch(original, patch JSONMap, dataStruct interface{}) (JS
 	if err != nil {
 		return nil, err
 	}
+
+	// Since we miss metadata about how to handle each field in a strategic merge patch for Unstructured, we can't easily
+	// do a merge patch here. So we should fail fast and return an error.
+	if t.Name() == "Unstructured" {
+		return nil, mergepatch.ErrUnsupportedStrategicMergePatchFormat
+	}
+
 	mergeOptions := MergeOptions{
 		MergeParallelList:    true,
 		IgnoreUnmatchedNulls: true,
@@ -1054,7 +1061,7 @@ func applyRetainKeysDirective(original, patch map[string]interface{}, options Me
 // Then, sort them by the relative order in setElementOrder, patch list and live list.
 // The precedence is $setElementOrder > order in patch list > order in live list.
 // This function will delete the item after merging it to prevent process it again in the future.
-// Ref: https://git.k8s.io/community/contributors/design-proposals/preserve-order-in-strategic-merge-patch.md
+// Ref: https://git.k8s.io/community/contributors/design-proposals/cli/preserve-order-in-strategic-merge-patch.md
 func mergePatchIntoOriginal(original, patch map[string]interface{}, t reflect.Type, mergeOptions MergeOptions) error {
 	for key, patchV := range patch {
 		// Do nothing if there is no ordering directive
@@ -1520,7 +1527,7 @@ func findMapInSliceBasedOnKeyValue(m []interface{}, key string, value interface{
 	for k, v := range m {
 		typedV, ok := v.(map[string]interface{})
 		if !ok {
-			return nil, 0, false, fmt.Errorf("value for key %v is not a map.", k)
+			return nil, 0, false, fmt.Errorf("value for key %v is not a map", k)
 		}
 
 		valueToMatch, ok := typedV[key]
