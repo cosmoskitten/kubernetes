@@ -22,6 +22,7 @@ package reconciler
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path"
 	"time"
 
@@ -610,22 +611,19 @@ func getVolumesFromPodDir(podDir string) ([]podVolume, error) {
 		// Find both filesystem volume and block volume information
 		// ex. filesystem volume: /pods/{podUid}}/volume/{escapeQualifiedPluginName}/{volumeName}
 		//     block volume:      /pods/{podUid}}/volumeDevices/{escapeQualifiedPluginName}/{volumeName}
-		volumesDirs := []string{path.Join(podDir, options.DefaultKubeletVolumesDirName),
-			path.Join(podDir, options.DefaultKubeletVolumeDevicesDirName)}
-		for _, volumesDir := range volumesDirs {
-			var volumeMode = v1.PersistentVolumeFilesystem
-			volumesDirInfo, err := ioutil.ReadDir(volumesDir)
-			if err != nil {
-				//glog.Errorf("Could not read volume directory %q: %v", volumesDir, err)
+		volumesDirs := map[v1.PersistentVolumeMode]string{
+			v1.PersistentVolumeFilesystem: path.Join(podDir, options.DefaultKubeletVolumesDirName),
+			v1.PersistentVolumeBlock:      path.Join(podDir, options.DefaultKubeletVolumeDevicesDirName),
+		}
+		for volumeMode, volumesDir := range volumesDirs {
+			var volumesDirInfo []os.FileInfo
+			if volumesDirInfo, err = ioutil.ReadDir(volumesDir); err != nil {
+				// Just skip the loop becuase given volumesDir doesn't exist depending on volumeMode
 				continue
-			}
-			if volumesDir == path.Join(podDir, options.DefaultKubeletVolumeDevicesDirName) {
-				volumeMode = v1.PersistentVolumeBlock
 			}
 			for _, volumeDir := range volumesDirInfo {
 				pluginName := volumeDir.Name()
 				volumePluginPath := path.Join(volumesDir, pluginName)
-
 				volumePluginDirs, err := utilfile.ReadDirNoStat(volumePluginPath)
 				if err != nil {
 					glog.Errorf("Could not read volume plugin directory %q: %v", volumePluginPath, err)
@@ -643,8 +641,10 @@ func getVolumesFromPodDir(podDir string) ([]podVolume, error) {
 					})
 				}
 			}
-
 		}
+	}
+	if len(volumes) == 0 {
+		return nil, fmt.Errorf("Could not read volumes under the given pod directory %q", podDir)
 	}
 	glog.V(10).Infof("Get volumes from pod directory %q %+v", podDir, volumes)
 	return volumes, nil
