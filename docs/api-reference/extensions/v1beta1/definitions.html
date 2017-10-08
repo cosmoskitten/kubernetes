@@ -7835,13 +7835,6 @@ Both these may change in the future. Incoming requests are matched against the h
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">runAsGroup</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">runAsGroup is the strategy that will dictate the allowable RunAsGroup values that may be set.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#_v1beta1_runasgroupstrategyoptions">v1beta1.RunAsGroupStrategyOptions</a></p></td>
-<td class="tableblock halign-left valign-top"></td>
-</tr>
-<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">supplementalGroups</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SupplementalGroups is the strategy that will dictate what supplemental groups are used by the SecurityContext.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
@@ -7881,6 +7874,13 @@ Both these may change in the future. Incoming requests are matched against the h
 <td class="tableblock halign-left valign-top"><p class="tableblock">is a white list of allowed host paths. Empty indicates that all host paths may be used.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">false</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#_v1beta1_allowedhostpath">v1beta1.AllowedHostPath</a> array</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">runAsGroup</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">runAsGroup is the strategy that will dictate the allowable RunAsGroup values that may be set.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#_v1beta1_runasgroupstrategyoptions">v1beta1.RunAsGroupStrategyOptions</a></p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 </tbody>

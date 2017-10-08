@@ -10126,9 +10126,9 @@
     "required": [
      "seLinux",
      "runAsUser",
-     "runAsGroup",
      "supplementalGroups",
-     "fsGroup"
+     "fsGroup",
+     "runAsGroup"
     ],
     "properties": {
      "privileged": {
@@ -10190,10 +10190,6 @@
       "$ref": "v1beta1.RunAsUserStrategyOptions",
       "description": "runAsUser is the strategy that will dictate the allowable RunAsUser values that may be set."
      },
-     "runAsGroup": {
-      "$ref": "v1beta1.RunAsGroupStrategyOptions",
-      "description": "runAsGroup is the strategy that will dictate the allowable RunAsGroup values that may be set."
-     },
      "supplementalGroups": {
       "$ref": "v1beta1.SupplementalGroupsStrategyOptions",
       "description": "SupplementalGroups is the strategy that will dictate what supplemental groups are used by the SecurityContext."
@@ -10220,6 +10216,10 @@
        "$ref": "v1beta1.AllowedHostPath"
       },
       "description": "is a white list of allowed host paths. Empty indicates that all host paths may be used."
+     },
+     "runAsGroup": {
+      "$ref": "v1beta1.RunAsGroupStrategyOptions",
+      "description": "runAsGroup is the strategy that will dictate the allowable RunAsGroup values that may be set."
      }
     }
    },
@@ -10304,26 +10304,6 @@
      }
     }
    },
-   "v1beta1.RunAsGroupStrategyOptions": {
-    "id": "v1beta1.RunAsGroupStrategyOptions",
-    "description": "RunAsGroupStrategyOptions defines the strategy type and any options used to create the strategy.",
-    "required": [
-     "rule"
-    ],
-    "properties": {
-     "rule": {
-      "type": "string",
-      "description": "Rule is the strategy that will dictate the allowable RunAsUser values that may be set."
-     },
-     "ranges": {
-      "type": "array",
-      "items": {
-       "$ref": "v1beta1.IDRange"
-      },
-      "description": "Ranges are the allowed ranges of uids that may be used."
-     }
-    }
-   },
    "v1beta1.SupplementalGroupsStrategyOptions": {
     "id": "v1beta1.SupplementalGroupsStrategyOptions",
     "description": "SupplementalGroupsStrategyOptions defines the strategy type and options used to create the strategy.",
@@ -10365,6 +10345,26 @@
      "pathPrefix": {
       "type": "string",
       "description": "is the path prefix that the host volume must match. It does not support `*`. Trailing slashes are trimmed when validating the path prefix with a host path.\n\nExamples: `/foo` would allow `/foo`, `/foo/` and `/foo/bar` `/foo` would not allow `/food` or `/etc/foo`"
+     }
+    }
+   },
+   "v1beta1.RunAsGroupStrategyOptions": {
+    "id": "v1beta1.RunAsGroupStrategyOptions",
+    "description": "RunAsGroupStrategyOptions defines the strategy type and any options used to create the strategy.",
+    "required": [
+     "rule"
+    ],
+    "properties": {
+     "rule": {
+      "type": "string",
+      "description": "Rule is the strategy that will dictate the allowable RunAsUser values that may be set."
+     },
+     "ranges": {
+      "type": "array",
+      "items": {
+       "$ref": "v1beta1.IDRange"
+      },
+      "description": "Ranges are the allowed ranges of uids that may be used."
      }
     }
    },

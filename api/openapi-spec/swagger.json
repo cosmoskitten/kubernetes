@@ -71542,9 +71542,9 @@
     "required": [
      "seLinux",
      "runAsUser",
-     "runAsGroup",
      "supplementalGroups",
-     "fsGroup"
+     "fsGroup",
+     "runAsGroup"
     ],
     "properties": {
      "allowPrivilegeEscalation": {
