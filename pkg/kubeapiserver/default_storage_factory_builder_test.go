@@ -24,8 +24,8 @@ import (
 	extensionsapiv1beta1 "k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	serverstorage "k8s.io/apiserver/pkg/server/storage"
-	"k8s.io/kubernetes/pkg/api"
-	_ "k8s.io/kubernetes/pkg/api/install"
+	api "k8s.io/kubernetes/pkg/apis/core"
+	_ "k8s.io/kubernetes/pkg/apis/core/install"
 	_ "k8s.io/kubernetes/pkg/apis/extensions/install"
 )
 

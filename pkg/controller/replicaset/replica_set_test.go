@@ -47,7 +47,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	utiltesting "k8s.io/client-go/util/testing"
 	"k8s.io/client-go/util/workqueue"
-	"k8s.io/kubernetes/pkg/api"
+	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/securitycontext"
 )

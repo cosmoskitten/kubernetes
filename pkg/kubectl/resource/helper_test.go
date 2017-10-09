@@ -30,9 +30,9 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest/fake"
-	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/testapi"
 	apitesting "k8s.io/kubernetes/pkg/api/testing"
+	api "k8s.io/kubernetes/pkg/apis/core"
 )
 
 func objBody(obj runtime.Object) io.ReadCloser {

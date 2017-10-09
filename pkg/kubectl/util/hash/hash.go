@@ -21,7 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"k8s.io/kubernetes/pkg/api"
+	api "k8s.io/kubernetes/pkg/apis/core"
 )
 
 // ConfigMapHash returns a hash of the ConfigMap.

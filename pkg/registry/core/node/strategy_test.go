@@ -21,8 +21,8 @@ import (
 
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/kubernetes/pkg/api"
 	apitesting "k8s.io/kubernetes/pkg/api/testing"
+	api "k8s.io/kubernetes/pkg/apis/core"
 
 	// install all api groups for testing
 	_ "k8s.io/kubernetes/pkg/api/testapi"

@@ -29,7 +29,7 @@ import (
 
 	apirequest "k8s.io/apiserver/pkg/endpoints/request"
 	genericapiserver "k8s.io/apiserver/pkg/server"
-	"k8s.io/kubernetes/pkg/api"
+	api "k8s.io/kubernetes/pkg/apis/core"
 	openapigen "k8s.io/kubernetes/pkg/generated/openapi"
 
 	"github.com/go-openapi/loads"

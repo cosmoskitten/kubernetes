@@ -24,7 +24,7 @@ import (
 	cmdutil "k8s.io/kubernetes/cmd/kubeadm/app/cmd/util"
 	kubeadmconstants "k8s.io/kubernetes/cmd/kubeadm/app/constants"
 	controlplanephase "k8s.io/kubernetes/cmd/kubeadm/app/phases/controlplane"
-	"k8s.io/kubernetes/pkg/api"
+	api "k8s.io/kubernetes/pkg/apis/core"
 )
 
 // NewCmdControlplane return main command for Controlplane phase

@@ -26,7 +26,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	_ "k8s.io/kubernetes/pkg/api/install"
+	_ "k8s.io/kubernetes/pkg/apis/core/install"
 
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -42,7 +42,7 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/util/workqueue"
-	"k8s.io/kubernetes/pkg/api"
+	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/controller/garbagecollector/metaonly"
 )
 

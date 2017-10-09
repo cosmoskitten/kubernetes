@@ -26,7 +26,7 @@ import (
 	serverstorage "k8s.io/apiserver/pkg/server/storage"
 	"k8s.io/apiserver/pkg/storage/storagebackend"
 	utilflag "k8s.io/apiserver/pkg/util/flag"
-	"k8s.io/kubernetes/pkg/api"
+	api "k8s.io/kubernetes/pkg/apis/core"
 )
 
 // specialDefaultResourcePrefixes are prefixes compiled into Kubernetes.

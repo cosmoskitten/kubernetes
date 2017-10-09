@@ -23,9 +23,9 @@ import (
 	"k8s.io/apiserver/pkg/registry/rest"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	"k8s.io/apiserver/pkg/server/storage"
-	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/apis/autoscaling"
 	_ "k8s.io/kubernetes/pkg/apis/autoscaling/install"
+	api "k8s.io/kubernetes/pkg/apis/core"
 	hpastorage "k8s.io/kubernetes/pkg/registry/autoscaling/horizontalpodautoscaler/storage"
 )
 

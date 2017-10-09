@@ -22,10 +22,10 @@ import (
 	"k8s.io/apimachinery/pkg/apimachinery/announced"
 	"k8s.io/apimachinery/pkg/apimachinery/registered"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/apis/autoscaling"
 	"k8s.io/kubernetes/pkg/apis/autoscaling/v1"
 	"k8s.io/kubernetes/pkg/apis/autoscaling/v2beta1"
+	api "k8s.io/kubernetes/pkg/apis/core"
 )
 
 func init() {

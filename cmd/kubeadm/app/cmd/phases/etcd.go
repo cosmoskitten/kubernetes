@@ -24,7 +24,7 @@ import (
 	cmdutil "k8s.io/kubernetes/cmd/kubeadm/app/cmd/util"
 	kubeadmconstants "k8s.io/kubernetes/cmd/kubeadm/app/constants"
 	etcdphase "k8s.io/kubernetes/cmd/kubeadm/app/phases/etcd"
-	"k8s.io/kubernetes/pkg/api"
+	api "k8s.io/kubernetes/pkg/apis/core"
 )
 
 // NewCmdEtcd return main command for Etcd phase

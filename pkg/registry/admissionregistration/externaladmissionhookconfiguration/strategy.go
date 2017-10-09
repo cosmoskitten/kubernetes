@@ -23,9 +23,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/storage/names"
-	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/apis/admissionregistration"
 	"k8s.io/kubernetes/pkg/apis/admissionregistration/validation"
+	api "k8s.io/kubernetes/pkg/apis/core"
 )
 
 // externaladmissionhookConfigurationStrategy implements verification logic for ExternalAdmissionHookConfiguration.

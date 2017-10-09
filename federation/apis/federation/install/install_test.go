@@ -25,7 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/kubernetes/federation/apis/federation"
 	"k8s.io/kubernetes/federation/apis/federation/v1beta1"
-	"k8s.io/kubernetes/pkg/api"
+	api "k8s.io/kubernetes/pkg/apis/core"
 )
 
 func TestResourceVersioner(t *testing.T) {

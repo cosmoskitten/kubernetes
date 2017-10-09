@@ -28,7 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apiserver/pkg/util/webhook"
 	"k8s.io/client-go/rest"
-	"k8s.io/kubernetes/pkg/api"
+	api "k8s.io/kubernetes/pkg/apis/core"
 )
 
 // policyUndefinedError represents an undefined response from the policy

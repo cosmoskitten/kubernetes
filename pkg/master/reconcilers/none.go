@@ -20,7 +20,7 @@ package reconcilers
 import (
 	"net"
 
-	"k8s.io/kubernetes/pkg/api"
+	api "k8s.io/kubernetes/pkg/apis/core"
 )
 
 // NoneEndpointReconciler allows for the endpoint reconciler to be disabled

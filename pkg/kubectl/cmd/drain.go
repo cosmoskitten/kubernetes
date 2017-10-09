@@ -40,7 +40,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	restclient "k8s.io/client-go/rest"
 
-	"k8s.io/kubernetes/pkg/api"
+	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/apis/policy"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/kubectl"

@@ -22,9 +22,9 @@ import (
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/registry/rest"
 	"k8s.io/apiserver/pkg/storage/names"
-	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/apis/apps"
 	"k8s.io/kubernetes/pkg/apis/apps/validation"
+	api "k8s.io/kubernetes/pkg/apis/core"
 )
 
 // strategy implements behavior for ConfigMap objects

@@ -29,8 +29,8 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/kubernetes/pkg/api"
 	_ "k8s.io/kubernetes/pkg/apis/certificates/install"
+	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/controller/certificates"
 )
 

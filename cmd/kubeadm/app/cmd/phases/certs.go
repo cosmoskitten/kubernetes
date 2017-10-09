@@ -26,7 +26,7 @@ import (
 	certsphase "k8s.io/kubernetes/cmd/kubeadm/app/phases/certs"
 	kubeadmutil "k8s.io/kubernetes/cmd/kubeadm/app/util"
 	configutil "k8s.io/kubernetes/cmd/kubeadm/app/util/config"
-	"k8s.io/kubernetes/pkg/api"
+	api "k8s.io/kubernetes/pkg/apis/core"
 )
 
 // NewCmdCerts return main command for certs phase

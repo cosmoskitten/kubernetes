@@ -30,10 +30,10 @@ import (
 	"k8s.io/apiserver/pkg/registry/rest"
 	"k8s.io/apiserver/pkg/storage"
 	"k8s.io/apiserver/pkg/storage/names"
-	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/pod"
 	"k8s.io/kubernetes/pkg/apis/batch"
 	"k8s.io/kubernetes/pkg/apis/batch/validation"
+	api "k8s.io/kubernetes/pkg/apis/core"
 )
 
 // jobStrategy implements verification logic for Replication Controllers.

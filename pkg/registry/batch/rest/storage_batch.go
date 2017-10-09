@@ -24,8 +24,8 @@ import (
 	"k8s.io/apiserver/pkg/registry/rest"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	serverstorage "k8s.io/apiserver/pkg/server/storage"
-	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/apis/batch"
+	api "k8s.io/kubernetes/pkg/apis/core"
 	cronjobstore "k8s.io/kubernetes/pkg/registry/batch/cronjob/storage"
 	jobstore "k8s.io/kubernetes/pkg/registry/batch/job/storage"
 )

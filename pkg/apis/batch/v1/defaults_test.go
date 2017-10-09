@@ -25,10 +25,10 @@ import (
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/kubernetes/pkg/api"
-	_ "k8s.io/kubernetes/pkg/api/install"
 	_ "k8s.io/kubernetes/pkg/apis/batch/install"
 	. "k8s.io/kubernetes/pkg/apis/batch/v1"
+	api "k8s.io/kubernetes/pkg/apis/core"
+	_ "k8s.io/kubernetes/pkg/apis/core/install"
 )
 
 func TestSetDefaultJob(t *testing.T) {

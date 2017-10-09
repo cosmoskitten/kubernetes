@@ -22,7 +22,7 @@ import (
 	"sort"
 
 	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/kubernetes/pkg/api"
+	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/printers"
 	metricsapi "k8s.io/metrics/pkg/apis/metrics/v1alpha1"
 )
