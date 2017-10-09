@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/kubernetes/pkg/api"
 )
 
 // ProxyProvider is the interface provided by proxier implementations.
@@ -33,7 +34,7 @@ type ProxyProvider interface {
 }
 
 // ServicePortName carries a namespace + name + portname.  This is the unique
-// identfier for a load-balanced service.
+// identifier for a load-balanced service.
 type ServicePortName struct {
 	types.NamespacedName
 	Port string
@@ -41,4 +42,34 @@ type ServicePortName struct {
 
 func (spn ServicePortName) String() string {
 	return fmt.Sprintf("%s:%s", spn.NamespacedName.String(), spn.Port)
+}
+
+// ServiceInfo is an interface which abstracts a service info.
+type ServiceInfo interface {
+	// ClusterIP returns service cluster IP.
+	ClusterIP() string
+	// Port returns service port.
+	Port() int
+	// Protocol returns service protocol.
+	Protocol() api.Protocol
+	// HealthCheckNodePort returns service health check node port.
+	HealthCheckNodePort() int
+}
+
+// EndpointsInfo is an interface which abstracts an endpoints info.
+type EndpointsInfo interface {
+	// Endpoint returns endpoints string.
+	Endpoint() string
+	// IsLocal returns if endpoints is local.
+	IsLocal() bool
+	// IPPart returns IP part of endpoints.
+	IPPart() string
+	// Equal checks if two endpoints are equal.
+	Equal(EndpointsInfo) bool
+}
+
+// EndpointServicePair is an Endpoint and ServicePortName pair.
+type EndpointServicePair struct {
+	Endpoint        string
+	ServicePortName ServicePortName
 }

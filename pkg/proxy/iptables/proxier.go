@@ -155,6 +155,26 @@ type serviceInfo struct {
 	serviceLBChainName       utiliptables.Chain
 }
 
+// ClusterIP is part of interface.
+func (info *serviceInfo) ClusterIP() string {
+	return info.clusterIP.String()
+}
+
+// Port is part of interface.
+func (info *serviceInfo) Port() int {
+	return info.port
+}
+
+// Protocol is part of interface.
+func (info *serviceInfo) Protocol() api.Protocol {
+	return info.protocol
+}
+
+// HealthCheckNodePort is part of interface.
+func (info *serviceInfo) HealthCheckNodePort() int {
+	return info.healthCheckNodePort
+}
+
 // internal struct for endpoints information
 type endpointsInfo struct {
 	endpoint string // TODO: should be an endpointString type
@@ -167,8 +187,32 @@ type endpointsInfo struct {
 }
 
 // IPPart returns just the IP part of the endpoint.
+// Endpoint is part of interface.
+func (e *endpointsInfo) Endpoint() string {
+	return e.endpoint
+}
+
+// IsLocal is part of interface.
+func (e *endpointsInfo) IsLocal() bool {
+	return e.isLocal
+}
+
+// Returns just the IP part of the endpoint.
 func (e *endpointsInfo) IPPart() string {
 	return utilproxy.IPPart(e.endpoint)
+}
+
+// Equal is part of interface.
+func (e *endpointsInfo) Equal(other proxy.EndpointsInfo) bool {
+	o, ok := other.(*endpointsInfo)
+	if !ok {
+		glog.Errorf("Failed to cast endpointsInfo")
+		return false
+	}
+	return e.endpoint == o.endpoint &&
+		e.isLocal == o.isLocal &&
+		e.protocol == o.protocol &&
+		e.chainName == o.chainName
 }
 
 // Returns the endpoint chain name for a given endpointsInfo.
