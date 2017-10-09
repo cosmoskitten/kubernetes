@@ -296,6 +296,15 @@ func (s *ServiceController) createLoadBalancerIfNeeded(key string, service *v1.S
 		s.eventRecorder.Event(service, v1.EventTypeNormal, "EnsuredLoadBalancer", "Ensured load balancer")
 	}
 
+	err = s.updateServiceStatus(service, previousState, newState)
+	if err != nil {
+		return fmt.Errorf("Failed to persist updated status to apiserver, even after retries. Giving up: %v", err), notRetryable
+	}
+
+	return nil, notRetryable
+}
+
+func (s *ServiceController) updateServiceStatus(service *v1.Service, previousState *v1.LoadBalancerStatus, newState *v1.LoadBalancerStatus) error {
 	// Write the state if changed
 	// TODO: Be careful here ... what if there were other changes to the service?
 	if !v1helper.LoadBalancerStatusEqual(previousState, newState) {
@@ -306,13 +315,15 @@ func (s *ServiceController) createLoadBalancerIfNeeded(key string, service *v1.S
 		service.Status.LoadBalancer = *newState
 
 		if err := s.persistUpdate(service); err != nil {
-			return fmt.Errorf("Failed to persist updated status to apiserver, even after retries. Giving up: %v", err), notRetryable
+			return fmt.Errorf("Failed to update service %s/%s status to apiserver: %v",
+				service.Namespace, service.Name, err)
 		}
 	} else {
-		glog.V(2).Infof("Not persisting unchanged LoadBalancerStatus for service %s to registry.", key)
+		glog.V(2).Infof("Not persisting unchanged LoadBalancerStatus for service %s/%s to registry.",
+			service.Namespace, service.Name)
 	}
 
-	return nil, notRetryable
+	return nil
 }
 
 func (s *ServiceController) persistUpdate(service *v1.Service) error {
@@ -347,6 +358,9 @@ func (s *ServiceController) ensureLoadBalancer(service *v1.Service) (*v1.LoadBal
 	nodes, err := s.nodeLister.ListWithPredicate(getNodeConditionPredicate())
 	if err != nil {
 		return nil, err
+	}
+	if len(nodes) == 0 {
+		return nil, fmt.Errorf("There are no available nodes for LoadBalancer service %s/%s", service.Namespace, service.Name)
 	}
 
 	// - Only one protocol supported per service
@@ -581,10 +595,6 @@ func stringSlicesEqual(x, y []string) bool {
 	return true
 }
 
-func includeNodeFromNodeList(node *v1.Node) bool {
-	return !node.Spec.Unschedulable
-}
-
 func getNodeConditionPredicate() corelisters.NodeConditionPredicate {
 	return func(node *v1.Node) bool {
 		// We add the master to the node list, but its unschedulable.  So we use this to filter
@@ -676,7 +686,19 @@ func (s *ServiceController) lockedUpdateLoadBalancerHosts(service *v1.Service, h
 	// This operation doesn't normally take very long (and happens pretty often), so we only record the final event
 	err := s.balancer.UpdateLoadBalancer(s.clusterName, service, hosts)
 	if err == nil {
-		s.eventRecorder.Event(service, v1.EventTypeNormal, "UpdatedLoadBalancer", "Updated load balancer with new hosts")
+		// If there are no available nodes for LoadBalancer service, we need to update service status.
+		if len(hosts) == 0 {
+			previousState := v1helper.LoadBalancerStatusDeepCopy(&service.Status.LoadBalancer)
+			emptyState := &v1.LoadBalancerStatus{}
+			err = s.updateServiceStatus(service, previousState, emptyState)
+			if err != nil {
+				glog.Errorf("Failed to update the status of LoadBalancer service %s/%s", service.Namespace, service.Name)
+			}
+
+			s.eventRecorder.Eventf(service, v1.EventTypeWarning, "UnAvailableService", "There are no available nodes for LoadBalancer service %s/%s", service.Namespace, service.Name)
+		} else {
+			s.eventRecorder.Event(service, v1.EventTypeNormal, "UpdatedLoadBalancer", "Updated load balancer with new hosts")
+		}
 		return nil
 	}
 

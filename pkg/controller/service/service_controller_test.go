@@ -27,6 +27,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/fake"
+	corelisters "k8s.io/client-go/listers/core/v1"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/kubernetes/pkg/api/testapi"
 	fakecloud "k8s.io/kubernetes/pkg/cloudprovider/providers/fake"
@@ -70,7 +72,65 @@ func newController() (*ServiceController, *fakecloud.FakeCloud, *fake.Clientset)
 	return controller, cloud, client
 }
 
+func setNodeLister(controller *ServiceController, nodes []*v1.Node) {
+	nodeStore := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{})
+	for _, node := range nodes {
+		nodeStore.Add(node)
+	}
+	controller.nodeLister = corelisters.NewNodeLister(nodeStore)
+}
+
 func TestCreateExternalLoadBalancer(t *testing.T) {
+	nodeList := []*v1.Node{
+		{
+			Status: v1.NodeStatus{
+				Conditions: []v1.NodeCondition{
+					{Type: v1.NodeReady, Status: v1.ConditionTrue},
+				},
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test_node_1",
+			},
+		},
+	}
+	service := &v1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "basic-service1",
+			Namespace: "default",
+			SelfLink:  testapi.Default.SelfLink("services", "test_service"),
+		},
+		Spec: v1.ServiceSpec{
+			Ports: []v1.ServicePort{{
+				Port:     80,
+				Protocol: v1.ProtocolTCP,
+			}},
+			Type: v1.ServiceTypeLoadBalancer,
+		},
+	}
+	items := []struct {
+		nodes     []*v1.Node
+		expectErr bool
+	}{
+		{
+			nodes:     []*v1.Node{},
+			expectErr: true,
+		},
+		{
+			nodes:     nodeList,
+			expectErr: false,
+		},
+	}
+	for _, item := range items {
+		controller, _, _ := newController()
+		setNodeLister(controller, item.nodes)
+		err, _ := controller.createLoadBalancerIfNeeded("foo/bar", service)
+		if !item.expectErr && err != nil {
+			t.Errorf("unexpected error: %v", err)
+		} else if item.expectErr && err == nil {
+			t.Errorf("expected error creating %v, got nil", service)
+		}
+	}
+
 	table := []struct {
 		service             *v1.Service
 		expectErr           bool
@@ -129,6 +189,7 @@ func TestCreateExternalLoadBalancer(t *testing.T) {
 
 	for _, item := range table {
 		controller, cloud, client := newController()
+		setNodeLister(controller, nodeList)
 		err, _ := controller.createLoadBalancerIfNeeded("foo/bar", item.service)
 		if !item.expectErr && err != nil {
 			t.Errorf("unexpected error: %v", err)
@@ -310,6 +371,18 @@ func TestProcessServiceUpdate(t *testing.T) {
 
 	var controller *ServiceController
 	var cloud *fakecloud.FakeCloud
+	nodeList := []*v1.Node{
+		{
+			Status: v1.NodeStatus{
+				Conditions: []v1.NodeCondition{
+					{Type: v1.NodeReady, Status: v1.ConditionTrue},
+				},
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test_node_1",
+			},
+		},
+	}
 
 	//A pair of old and new loadbalancer IP address
 	oldLBIP := "192.168.1.1"
@@ -329,6 +402,7 @@ func TestProcessServiceUpdate(t *testing.T) {
 			updateFn: func(svc *v1.Service) *v1.Service {
 
 				controller, cloud, _ = newController()
+				setNodeLister(controller, nodeList)
 				controller.cache.getOrCreate("validKey")
 				return svc
 
