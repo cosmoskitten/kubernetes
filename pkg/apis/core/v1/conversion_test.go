@@ -28,8 +28,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/diff"
-	"k8s.io/kubernetes/pkg/api"
-	k8s_api_v1 "k8s.io/kubernetes/pkg/api/v1"
+	"k8s.io/kubernetes/pkg/apis/core"
+	corev1 "k8s.io/kubernetes/pkg/apis/core/v1"
 
 	// enforce that all types are installed
 	_ "k8s.io/kubernetes/pkg/api/testapi"
@@ -51,7 +51,7 @@ func TestPodLogOptions(t *testing.T) {
 		TailLines:    &tailLines,
 		LimitBytes:   &limitBytes,
 	}
-	unversionedLogOptions := &api.PodLogOptions{
+	unversionedLogOptions := &core.PodLogOptions{
 		Container:    "mycontainer",
 		Follow:       true,
 		Previous:     true,
@@ -72,7 +72,7 @@ func TestPodLogOptions(t *testing.T) {
 		"limitBytes":   {"3"},
 	}
 
-	codec := runtime.NewParameterCodec(api.Scheme)
+	codec := runtime.NewParameterCodec(core.Scheme)
 
 	// unversioned -> query params
 	{
@@ -110,7 +110,7 @@ func TestPodLogOptions(t *testing.T) {
 
 	// query params -> unversioned
 	{
-		convertedLogOptions := &api.PodLogOptions{}
+		convertedLogOptions := &core.PodLogOptions{}
 		err := codec.DecodeParameters(expectedParameters, v1.SchemeGroupVersion, convertedLogOptions)
 		if err != nil {
 			t.Fatal(err)
@@ -128,11 +128,11 @@ func TestPodSpecConversion(t *testing.T) {
 
 	// Test internal -> v1. Should have both alias (DeprecatedServiceAccount)
 	// and new field (ServiceAccountName).
-	i := &api.PodSpec{
+	i := &core.PodSpec{
 		ServiceAccountName: name,
 	}
 	v := v1.PodSpec{}
-	if err := api.Scheme.Convert(i, &v, nil); err != nil {
+	if err := core.Scheme.Convert(i, &v, nil); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if v.ServiceAccountName != name {
@@ -156,13 +156,13 @@ func TestPodSpecConversion(t *testing.T) {
 		{ServiceAccountName: name, DeprecatedServiceAccount: other},
 	}
 	for k, v := range testCases {
-		got := api.PodSpec{}
-		err := api.Scheme.Convert(v, &got, nil)
+		got := core.PodSpec{}
+		err := core.Scheme.Convert(v, &got, nil)
 		if err != nil {
 			t.Fatalf("unexpected error for case %d: %v", k, err)
 		}
 		if got.ServiceAccountName != name {
-			t.Fatalf("want api.ServiceAccountName %q, got %q", name, got.ServiceAccountName)
+			t.Fatalf("want core.ServiceAccountName %q, got %q", name, got.ServiceAccountName)
 		}
 	}
 }
@@ -173,7 +173,7 @@ func TestResourceListConversion(t *testing.T) {
 
 	tests := []struct {
 		input    v1.ResourceList
-		expected api.ResourceList
+		expected core.ResourceList
 	}{
 		{ // No changes necessary.
 			input: v1.ResourceList{
@@ -181,10 +181,10 @@ func TestResourceListConversion(t *testing.T) {
 				v1.ResourceCPU:     resource.MustParse("100m"),
 				v1.ResourceStorage: resource.MustParse("1G"),
 			},
-			expected: api.ResourceList{
-				api.ResourceMemory:  resource.MustParse("30M"),
-				api.ResourceCPU:     resource.MustParse("100m"),
-				api.ResourceStorage: resource.MustParse("1G"),
+			expected: core.ResourceList{
+				core.ResourceMemory:  resource.MustParse("30M"),
+				core.ResourceCPU:     resource.MustParse("100m"),
+				core.ResourceStorage: resource.MustParse("1G"),
 			},
 		},
 		{ // Nano-scale values should be rounded up to milli-scale.
@@ -192,9 +192,9 @@ func TestResourceListConversion(t *testing.T) {
 				v1.ResourceCPU:    resource.MustParse("3.000023m"),
 				v1.ResourceMemory: resource.MustParse("500.000050m"),
 			},
-			expected: api.ResourceList{
-				api.ResourceCPU:    resource.MustParse("4m"),
-				api.ResourceMemory: resource.MustParse("501m"),
+			expected: core.ResourceList{
+				core.ResourceCPU:    resource.MustParse("4m"),
+				core.ResourceMemory: resource.MustParse("501m"),
 			},
 		},
 		{ // Large values should still be accurate.
@@ -202,21 +202,21 @@ func TestResourceListConversion(t *testing.T) {
 				v1.ResourceCPU:     *bigMilliQuantity.Copy(),
 				v1.ResourceStorage: *bigMilliQuantity.Copy(),
 			},
-			expected: api.ResourceList{
-				api.ResourceCPU:     *bigMilliQuantity.Copy(),
-				api.ResourceStorage: *bigMilliQuantity.Copy(),
+			expected: core.ResourceList{
+				core.ResourceCPU:     *bigMilliQuantity.Copy(),
+				core.ResourceStorage: *bigMilliQuantity.Copy(),
 			},
 		},
 	}
 
 	for i, test := range tests {
-		output := api.ResourceList{}
+		output := core.ResourceList{}
 
 		// defaulting is a separate step from conversion that is applied when reading from the API or from etcd.
 		// perform that step explicitly.
-		k8s_api_v1.SetDefaults_ResourceList(&test.input)
+		corev1.SetDefaults_ResourceList(&test.input)
 
-		err := api.Scheme.Convert(&test.input, &output, nil)
+		err := core.Scheme.Convert(&test.input, &output, nil)
 		if err != nil {
 			t.Fatalf("unexpected error for case %d: %v", i, err)
 		}
