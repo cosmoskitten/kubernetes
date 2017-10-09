@@ -2604,7 +2604,7 @@ func ValidateAvoidPodsInNodeAnnotations(annotations map[string]string, fldPath *
 		return allErrs
 	}
 	var avoids core.AvoidPods
-	if err := corev1.Convert_v1_AvoidPods_To_api_AvoidPods(&v1Avoids, &avoids, nil); err != nil {
+	if err := corev1.Convert_v1_AvoidPods_To_core_AvoidPods(&v1Avoids, &avoids, nil); err != nil {
 		allErrs = append(allErrs, field.Invalid(fldPath.Child("AvoidPods"), core.PreferAvoidPodsAnnotationKey, err.Error()))
 		return allErrs
 	}
