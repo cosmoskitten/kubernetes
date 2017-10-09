@@ -74,7 +74,7 @@ function get-local-disk-num() {
   local interface=$1
   local format=$2
 
-  total=0
+  localdisknum=0
   if [[ ! -z ${NODE_LOCAL_SSDS_EXT} ]]; then
     IFS=";" read -r -a ssdgroups <<< ${NODE_LOCAL_SSDS_EXT}
     for ssdgroup in "${ssdgroups[@]}"
@@ -85,7 +85,7 @@ function get-local-disk-num() {
       local opformat=${ssdopts[2]}
 
       if [[ ${opformat,,} == ${format,,} && ${opinterface,,} == ${interface,,} ]]; then
-        total=$((total+opnum))
+        localdisknum=$((localdisknum+opnum))
       fi
     done
   fi
@@ -105,10 +105,10 @@ function safe-block-symlink(){
     chmod +w ${ssdmap}
   fi
 
-  # each line looks like "${device} persistent-uuid"
-  if [[ ! -z $(cat ${ssdmap} | grep ${device}) ]]; then
+  # each line of the ssdmap looks like "${device} persistent-uuid"
+  if [[ ! -z $(grep ${device} ${ssdmap}) ]]; then
     #create symlink based on saved uuid
-    local myuuid=$(cat ${ssdmap} | grep ${device} | cut -d ' ' -f 2)
+    local myuuid=$(grep ${device} ${ssdmap} | cut -d ' ' -f 2)
   else
     # generate new uuid and add it to the map
     local myuuid=$(uuidgen)
@@ -153,8 +153,11 @@ function unique-uuid-bind-mount(){
 
   # Get the real UUID of the device
   local item=$(readlink -f ${device} | cut -d '/' -f 3)
-  local myuuid=$(ls -l /dev/disk/by-uuid/ | grep ${item} | tr -s ' ' | cut -d ' ' -f 9) 
+  # item should be the kernel device name e.g. "sdb", "nvme0n1"
+  local myuuid=$(ls -l /dev/disk/by-uuid/ | grep ${item} | tr -s ' ' | cut -d ' ' -f 9)
+  # myuuid should be the uuid of the device as found in /dev/disk/by-uuid/ 
   local bindpoint="${UUID_MNT_PREFIX}-${interface}-fs/local-ssd-${myuuid}"
+  # bindpoint should be the full path of the to-be-bound device
 
   # Mount device to the mountpoint
   mkdir -p "${bindpoint}"
@@ -192,7 +195,7 @@ function mount-ext(){
 # locations
 function ensure-local-ssds() {
   get-local-disk-num "scsi" "block"
-  local scsiblocknum=${total}
+  local scsiblocknum=${localdisknum}
   local i=0
   for ssd in /dev/disk/by-id/google-local-ssd-*; do
     if [ -e "${ssd}" ]; then
@@ -208,6 +211,8 @@ function ensure-local-ssds() {
       echo "No local SSD disks found."
     fi
   done
+
+  # NVMe support can be added here easily as another loop
 }
 
 # Installs logrotate configuration files
