@@ -32,14 +32,18 @@ func init() {
 	spew.Config.DisableMethods = true
 }
 
-func newTokenCleaner() (*TokenCleaner, *fake.Clientset) {
+func newTokenCleaner() (*TokenCleaner, *fake.Clientset, error) {
 	options := DefaultTokenCleanerOptions()
 	cl := fake.NewSimpleClientset()
-	return NewTokenCleaner(cl, options), cl
+	tcc, err := NewTokenCleaner(cl, options)
+	if err != nil {
+		return nil, cl, err
+	}
+	return tcc, cl, nil
 }
 
 func TestCleanerNoExpiration(t *testing.T) {
-	cleaner, cl := newTokenCleaner()
+	cleaner, cl, _ := newTokenCleaner()
 
 	secret := newTokenSecret("tokenID", "tokenSecret")
 	cleaner.secrets.Add(secret)
@@ -52,7 +56,7 @@ func TestCleanerNoExpiration(t *testing.T) {
 }
 
 func TestCleanerExpired(t *testing.T) {
-	cleaner, cl := newTokenCleaner()
+	cleaner, cl, _ := newTokenCleaner()
 
 	secret := newTokenSecret("tokenID", "tokenSecret")
 	addSecretExpiration(secret, timeString(-time.Hour))
@@ -71,7 +75,7 @@ func TestCleanerExpired(t *testing.T) {
 }
 
 func TestCleanerNotExpired(t *testing.T) {
-	cleaner, cl := newTokenCleaner()
+	cleaner, cl, _ := newTokenCleaner()
 
 	secret := newTokenSecret("tokenID", "tokenSecret")
 	addSecretExpiration(secret, timeString(time.Hour))

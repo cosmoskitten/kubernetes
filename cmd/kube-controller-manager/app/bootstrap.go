@@ -35,9 +35,13 @@ func startBootstrapSignerController(ctx ControllerContext) (bool, error) {
 }
 
 func startTokenCleanerController(ctx ControllerContext) (bool, error) {
-	go bootstrap.NewTokenCleaner(
+	tcc, err := bootstrap.NewTokenCleaner(
 		ctx.ClientBuilder.ClientGoClientOrDie("token-cleaner"),
 		bootstrap.DefaultTokenCleanerOptions(),
-	).Run(ctx.Stop)
+	)
+	if err != nil {
+		return false, fmt.Errorf("error creating token cleaner controller: %v", err)
+	}
+	go tcc.Run(ctx.Stop)
 	return true, nil
 }
