@@ -16,13 +16,21 @@ limitations under the License.
 
 package app
 
-import "k8s.io/kubernetes/pkg/controller/bootstrap"
+import (
+	"fmt"
+
+	"k8s.io/kubernetes/pkg/controller/bootstrap"
+)
 
 func startBootstrapSignerController(ctx ControllerContext) (bool, error) {
-	go bootstrap.NewBootstrapSigner(
+	bsc, err := bootstrap.NewBootstrapSigner(
 		ctx.ClientBuilder.ClientGoClientOrDie("bootstrap-signer"),
 		bootstrap.DefaultBootstrapSignerOptions(),
-	).Run(ctx.Stop)
+	)
+	if err != nil {
+		return false, fmt.Errorf("error creating bootstrap signer controller: %v", err)
+	}
+	go bsc.Run(ctx.Stop)
 	return true, nil
 }
 
