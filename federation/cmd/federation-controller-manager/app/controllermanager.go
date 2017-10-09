@@ -51,7 +51,7 @@ import (
 	servicednscontroller "k8s.io/kubernetes/federation/pkg/federation-controller/service/dns"
 	synccontroller "k8s.io/kubernetes/federation/pkg/federation-controller/sync"
 	"k8s.io/kubernetes/federation/pkg/federation-controller/util/eventsink"
-	"k8s.io/kubernetes/pkg/api"
+	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/util/configz"
 	"k8s.io/kubernetes/pkg/version"
 

@@ -19,7 +19,7 @@ package tolerations
 import (
 	"testing"
 
-	"k8s.io/kubernetes/pkg/api"
+	api "k8s.io/kubernetes/pkg/apis/core"
 )
 
 func TestVerifyAgainstWhitelist(t *testing.T) {
