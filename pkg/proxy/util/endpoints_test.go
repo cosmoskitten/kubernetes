@@ -18,7 +18,12 @@ package util
 
 import (
 	"net"
+	"reflect"
 	"testing"
+
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/kubernetes/pkg/proxy"
 )
 
 func TestIPPart(t *testing.T) {
@@ -63,6 +68,118 @@ func TestToCIDR(t *testing.T) {
 		addr := ToCIDR(ip)
 		if addr != tc.expectedAddr {
 			t.Errorf("Unexpected host address for %s: Expected: %s, Got %s", tc.ip, tc.expectedAddr, addr)
+		}
+	}
+}
+
+func makeNSN(namespace, name string) types.NamespacedName {
+	return types.NamespacedName{Namespace: namespace, Name: name}
+}
+
+func makeServicePortName(ns, name, port string) proxy.ServicePortName {
+	return proxy.ServicePortName{
+		NamespacedName: makeNSN(ns, name),
+		Port:           port,
+	}
+}
+
+type fakeEndpointsInfo struct {
+	endpoint string
+	isLocal bool
+}
+
+func (f *fakeEndpointsInfo) Endpoint() string {
+	return f.endpoint
+}
+
+func (f *fakeEndpointsInfo) IsLocal() bool {
+	return f.isLocal
+}
+
+func (f *fakeEndpointsInfo) IPPart() string {
+	return IPPart(f.endpoint)
+}
+
+func (f *fakeEndpointsInfo) Equal(other proxy.EndpointsInfo) bool {
+	return f.Endpoint() == other.Endpoint() &&
+		f.IsLocal() == other.IsLocal() &&
+		f.IPPart() == other.IPPart()
+}
+
+func TestGetLocalIPs(t *testing.T) {
+	testCases := []struct {
+		endpointsMap ProxyEndpointsMap
+		expected     map[types.NamespacedName]sets.String
+	}{{
+		// Case[0]: nothing
+		endpointsMap: ProxyEndpointsMap{},
+		expected:     map[types.NamespacedName]sets.String{},
+	}, {
+		// Case[1]: unnamed port
+		endpointsMap: ProxyEndpointsMap{
+			makeServicePortName("ns1", "ep1", ""): []proxy.EndpointsInfo{
+				&fakeEndpointsInfo{endpoint: "1.1.1.1:11", isLocal: false},
+			},
+		},
+		expected: map[types.NamespacedName]sets.String{},
+	}, {
+		// Case[2]: unnamed port local
+		endpointsMap: ProxyEndpointsMap{
+			makeServicePortName("ns1", "ep1", ""): []proxy.EndpointsInfo{
+				&fakeEndpointsInfo{endpoint: "1.1.1.1:11", isLocal: true},
+			},
+		},
+		expected: map[types.NamespacedName]sets.String{
+			{Namespace: "ns1", Name: "ep1"}: sets.NewString("1.1.1.1"),
+		},
+	}, {
+		// Case[3]: named local and non-local ports for the same IP.
+		endpointsMap: ProxyEndpointsMap{
+			makeServicePortName("ns1", "ep1", "p11"): []proxy.EndpointsInfo{
+				&fakeEndpointsInfo{endpoint: "1.1.1.1:11", isLocal: false},
+				&fakeEndpointsInfo{endpoint: "1.1.1.2:11", isLocal: true},
+			},
+			makeServicePortName("ns1", "ep1", "p12"): []proxy.EndpointsInfo{
+				&fakeEndpointsInfo{endpoint: "1.1.1.1:12", isLocal: false},
+				&fakeEndpointsInfo{endpoint: "1.1.1.2:12", isLocal: true},
+			},
+		},
+		expected: map[types.NamespacedName]sets.String{
+			{Namespace: "ns1", Name: "ep1"}: sets.NewString("1.1.1.2"),
+		},
+	}, {
+		// Case[4]: named local and non-local ports for different IPs.
+		endpointsMap: ProxyEndpointsMap{
+			makeServicePortName("ns1", "ep1", "p11"): []proxy.EndpointsInfo{
+				&fakeEndpointsInfo{endpoint: "1.1.1.1:11", isLocal: false},
+			},
+			makeServicePortName("ns2", "ep2", "p22"): []proxy.EndpointsInfo{
+				&fakeEndpointsInfo{endpoint: "2.2.2.2:22", isLocal: true},
+				&fakeEndpointsInfo{endpoint: "2.2.2.22:22", isLocal: true},
+			},
+			makeServicePortName("ns2", "ep2", "p23"): []proxy.EndpointsInfo{
+				&fakeEndpointsInfo{endpoint: "2.2.2.3:23", isLocal: true},
+			},
+			makeServicePortName("ns4", "ep4", "p44"): []proxy.EndpointsInfo{
+				&fakeEndpointsInfo{endpoint: "4.4.4.4:44", isLocal: true},
+				&fakeEndpointsInfo{endpoint: "4.4.4.5:44", isLocal: false},
+			},
+			makeServicePortName("ns4", "ep4", "p45"): []proxy.EndpointsInfo{
+				&fakeEndpointsInfo{endpoint: "4.4.4.6:45", isLocal: true},
+			},
+		},
+		expected: map[types.NamespacedName]sets.String{
+			{Namespace: "ns2", Name: "ep2"}: sets.NewString("2.2.2.2", "2.2.2.22", "2.2.2.3"),
+			{Namespace: "ns4", Name: "ep4"}: sets.NewString("4.4.4.4", "4.4.4.6"),
+		},
+	}}
+
+	for tci, tc := range testCases {
+		// outputs
+		localIPs := GetLocalIPs(tc.endpointsMap)
+
+		if !reflect.DeepEqual(localIPs, tc.expected) {
+			t.Errorf("[%d] expected %#v, got %#v", tci, tc.expected, localIPs)
 		}
 	}
 }
