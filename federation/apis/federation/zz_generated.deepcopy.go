@@ -24,7 +24,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	conversion "k8s.io/apimachinery/pkg/conversion"
 	runtime "k8s.io/apimachinery/pkg/runtime"
-	api "k8s.io/kubernetes/pkg/apis/core"
+	core "k8s.io/kubernetes/pkg/apis/core"
 	reflect "reflect"
 )
 
@@ -221,7 +221,7 @@ func (in *ClusterSpec) DeepCopyInto(out *ClusterSpec) {
 		if *in == nil {
 			*out = nil
 		} else {
-			*out = new(api.LocalObjectReference)
+			*out = new(core.LocalObjectReference)
 			**out = **in
 		}
 	}
