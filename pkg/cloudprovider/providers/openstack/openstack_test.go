@@ -130,7 +130,7 @@ func TestReadConfig(t *testing.T) {
 	if cfg.BlockStorage.BSVersion != "auto" {
 		t.Errorf("incorrect bs.bs-version: %v", cfg.BlockStorage.BSVersion)
 	}
-	if cfg.BlockStorage.AddLabel == true {
+	if cfg.BlockStorage.AddLabel != false {
 		t.Errorf("incorrect bs.AddLabel: %v", cfg.BlockStorage.AddLabel)
 	}
 	if cfg.Metadata.SearchOrder != "configDrive, metadataService" {
