@@ -110,7 +110,7 @@ func dcSetup(t *testing.T) (*httptest.Server, framework.CloseFunc, *replicaset.R
 	resyncPeriod := 12 * time.Hour
 	informers := informers.NewSharedInformerFactory(clientset.NewForConfigOrDie(restclient.AddUserAgent(&config, "deployment-informers")), resyncPeriod)
 
-	dc := deployment.NewDeploymentController(
+	dc, _ := deployment.NewDeploymentController(
 		informers.Extensions().V1beta1().Deployments(),
 		informers.Extensions().V1beta1().ReplicaSets(),
 		informers.Core().V1().Pods(),
