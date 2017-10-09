@@ -780,8 +780,8 @@ func (s *Server) getRun(request *restful.Request, response *restful.Response) {
 }
 
 func (s *Server) debuggingDisabled(request *restful.Request, response *restful.Response) {
-	message := []byte("Server endpoints for log collection and local running of containers and commands are disabled.")
-	writeJsonResponse(response, message)
+	message := "Server endpoints for log collection and local running of containers and commands are disabled."
+	response.WriteError(http.StatusMethodNotAllowed, fmt.Errorf(message))
 }
 
 // Derived from go-restful writeJSON.
