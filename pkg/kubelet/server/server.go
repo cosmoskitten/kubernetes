@@ -423,71 +423,14 @@ func (s *Server) InstallDebuggingHandlers(criHandler http.Handler) {
 func (s *Server) InstallDebuggingDisabledHandlers() {
 	glog.Infof("Adding debug disabled handlers to kubelet server.")
 
-	ws := new(restful.WebService)
-	ws.
-		Path("/run")
-	ws.Route(ws.POST("/{podNamespace}/{podID}/{containerName}").
-		To(s.debuggingDisabled))
-	ws.Route(ws.POST("/{podNamespace}/{podID}/{uid}/{containerName}").
-		To(s.debuggingDisabled))
-	s.restfulCont.Add(ws)
+	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "Server endpoints for log collection and local running of containers and commands are disabled.", http.StatusMethodNotAllowed)
+	})
 
-	ws = new(restful.WebService)
-	ws.
-		Path("/exec")
-	ws.Route(ws.GET("/{podNamespace}/{podID}/{containerName}").
-		To(s.debuggingDisabled))
-	ws.Route(ws.POST("/{podNamespace}/{podID}/{containerName}").
-		To(s.debuggingDisabled))
-	ws.Route(ws.GET("/{podNamespace}/{podID}/{uid}/{containerName}").
-		To(s.debuggingDisabled))
-	ws.Route(ws.POST("/{podNamespace}/{podID}/{uid}/{containerName}").
-		To(s.debuggingDisabled))
-	s.restfulCont.Add(ws)
-
-	ws = new(restful.WebService)
-	ws.
-		Path("/attach")
-	ws.Route(ws.GET("/{podNamespace}/{podID}/{containerName}").
-		To(s.debuggingDisabled))
-	ws.Route(ws.POST("/{podNamespace}/{podID}/{containerName}").
-		To(s.debuggingDisabled))
-	ws.Route(ws.GET("/{podNamespace}/{podID}/{uid}/{containerName}").
-		To(s.debuggingDisabled))
-	ws.Route(ws.POST("/{podNamespace}/{podID}/{uid}/{containerName}").
-		To(s.debuggingDisabled))
-	s.restfulCont.Add(ws)
-
-	ws = new(restful.WebService)
-	ws.
-		Path("/portForward")
-	ws.Route(ws.GET("/{podNamespace}/{podID}").
-		To(s.debuggingDisabled))
-	ws.Route(ws.POST("/{podNamespace}/{podID}").
-		To(s.debuggingDisabled))
-	ws.Route(ws.GET("/{podNamespace}/{podID}/{uid}").
-		To(s.debuggingDisabled))
-	ws.Route(ws.POST("/{podNamespace}/{podID}/{uid}").
-		To(s.debuggingDisabled))
-	s.restfulCont.Add(ws)
-
-	ws = new(restful.WebService)
-	ws.
-		Path(logsPath)
-	ws.Route(ws.GET("").
-		To(s.debuggingDisabled))
-	ws.Route(ws.GET("/{logpath:*}").
-		To(s.debuggingDisabled))
-	s.restfulCont.Add(ws)
-
-	ws = new(restful.WebService)
-	ws.
-		Path("/containerLogs")
-	ws.Route(ws.GET("/{podNamespace}/{podID}/{containerName}").
-		To(s.debuggingDisabled))
-	s.restfulCont.Add(ws)
-
-	configz.InstallHandler(s.restfulCont)
+	paths := []string{"/run/", "/exec/", "/attach/", "/portForward/", "/containerLogs/", "/runningpods/"}
+	for _, p := range paths {
+		s.restfulCont.Handle(p, h)
+	}
 }
 
 // Checks if kubelet's sync loop  that updates containers is working.
@@ -777,11 +720,6 @@ func (s *Server) getRun(request *restful.Request, response *restful.Response) {
 		return
 	}
 	writeJsonResponse(response, data)
-}
-
-func (s *Server) debuggingDisabled(request *restful.Request, response *restful.Response) {
-	message := "Server endpoints for log collection and local running of containers and commands are disabled."
-	response.WriteError(http.StatusMethodNotAllowed, fmt.Errorf(message))
 }
 
 // Derived from go-restful writeJSON.
