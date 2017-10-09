@@ -25,7 +25,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	conversion "k8s.io/apimachinery/pkg/conversion"
 	runtime "k8s.io/apimachinery/pkg/runtime"
-	api "k8s.io/kubernetes/pkg/apis/core"
+	core "k8s.io/kubernetes/pkg/apis/core"
 	kubeletconfig "k8s.io/kubernetes/pkg/kubelet/apis/kubeletconfig"
 	unsafe "unsafe"
 )
@@ -249,7 +249,7 @@ func autoConvert_v1alpha1_KubeletConfiguration_To_kubeletconfig_KubeletConfigura
 	if err := v1.Convert_Pointer_bool_To_bool(&in.RegisterSchedulable, &out.RegisterSchedulable, s); err != nil {
 		return err
 	}
-	out.RegisterWithTaints = *(*[]api.Taint)(unsafe.Pointer(&in.RegisterWithTaints))
+	out.RegisterWithTaints = *(*[]core.Taint)(unsafe.Pointer(&in.RegisterWithTaints))
 	out.ContentType = in.ContentType
 	if err := v1.Convert_Pointer_int32_To_int32(&in.KubeAPIQPS, &out.KubeAPIQPS, s); err != nil {
 		return err
