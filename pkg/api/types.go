@@ -3247,6 +3247,17 @@ type ContainerImage struct {
 	SizeBytes int64
 }
 
+const (
+	// NodeLabelMasterRole is set to the value "true" indicating a master node.
+	// A master node typically runs kubernetes system components and will not typically run user workloads.
+	// When set to any value other than "true" it is ignored.
+	NodeLabelMasterRole = "node-role.kubernetes.io/master"
+
+	// NodeLabelNodeRole is set to the value "true" indicating a "normal" node.
+	// When set to any value other than "true" it is ignored.
+	NodeLabelNodeRole = "node-role.kubernetes.io/node"
+)
+
 type NodePhase string
 
 // These are the valid phases of node.
