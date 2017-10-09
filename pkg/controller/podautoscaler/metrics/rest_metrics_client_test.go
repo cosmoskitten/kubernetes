@@ -30,7 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	core "k8s.io/client-go/testing"
-	"k8s.io/kubernetes/pkg/api"
+	api "k8s.io/kubernetes/pkg/apis/core"
 	// For api.Registry.RESTMapper()
 	_ "k8s.io/kubernetes/pkg/apis/extensions/install"
 	metricsfake "k8s.io/metrics/pkg/client/clientset_generated/clientset/fake"

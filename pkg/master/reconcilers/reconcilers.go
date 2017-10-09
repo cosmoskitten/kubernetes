@@ -20,7 +20,7 @@ package reconcilers
 import (
 	"net"
 
-	"k8s.io/kubernetes/pkg/api"
+	api "k8s.io/kubernetes/pkg/apis/core"
 )
 
 // EndpointReconciler knows how to reconcile the endpoints for the apiserver service.

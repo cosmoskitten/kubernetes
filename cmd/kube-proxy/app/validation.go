@@ -24,8 +24,8 @@ import (
 
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	apivalidation "k8s.io/kubernetes/pkg/api/validation"
 	"k8s.io/kubernetes/pkg/apis/componentconfig"
+	apivalidation "k8s.io/kubernetes/pkg/apis/core/validation"
 )
 
 // Validate validates the configuration of kube-proxy

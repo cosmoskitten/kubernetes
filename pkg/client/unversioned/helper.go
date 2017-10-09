@@ -19,7 +19,7 @@ package unversioned
 import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	restclient "k8s.io/client-go/rest"
-	"k8s.io/kubernetes/pkg/api"
+	api "k8s.io/kubernetes/pkg/apis/core"
 	// Import solely to initialize client auth plugins.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )

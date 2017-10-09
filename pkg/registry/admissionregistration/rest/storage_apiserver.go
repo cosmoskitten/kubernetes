@@ -22,8 +22,8 @@ import (
 	"k8s.io/apiserver/pkg/registry/rest"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	serverstorage "k8s.io/apiserver/pkg/server/storage"
-	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/apis/admissionregistration"
+	api "k8s.io/kubernetes/pkg/apis/core"
 	externaladmissionhookconfigurationstorage "k8s.io/kubernetes/pkg/registry/admissionregistration/externaladmissionhookconfiguration/storage"
 	initializerconfigurationstorage "k8s.io/kubernetes/pkg/registry/admissionregistration/initializerconfiguration/storage"
 )

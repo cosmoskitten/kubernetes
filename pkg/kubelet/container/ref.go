@@ -21,7 +21,7 @@ import (
 
 	"k8s.io/api/core/v1"
 	ref "k8s.io/client-go/tools/reference"
-	"k8s.io/kubernetes/pkg/api"
+	api "k8s.io/kubernetes/pkg/apis/core"
 )
 
 var ImplicitContainerPrefix string = "implicitly required container "
