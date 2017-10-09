@@ -28,9 +28,9 @@ import (
 	ejson "github.com/exponent-io/jsonpath"
 	"github.com/golang/glog"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/yaml"
-	apiutil "k8s.io/kubernetes/pkg/api/util"
 )
 
 // InvalidTypeError records information about an invalid type.
@@ -200,10 +200,14 @@ func (s *SwaggerSchema) validateItems(items interface{}) []error {
 		if len(itemKind) == 0 {
 			allErrs = append(allErrs, fmt.Errorf("items[%d].kind is empty", i))
 		}
-		version := apiutil.GetVersion(itemVersion)
-		errs := s.ValidateObject(item, "", version+"."+itemKind)
-		if len(errs) >= 1 {
-			allErrs = append(allErrs, errs...)
+		gv, err := schema.ParseGroupVersion(itemVersion)
+		if err != nil {
+			allErrs = append(allErrs, err)
+		} else {
+			errs := s.ValidateObject(item, "", gv.Version+"."+itemKind)
+			if len(errs) >= 1 {
+				allErrs = append(allErrs, errs...)
+			}
 		}
 	}
 
@@ -242,8 +246,11 @@ func (s *SwaggerSchema) ValidateBytes(data []byte) error {
 	if strings.HasSuffix(kind.(string), "List") {
 		return utilerrors.NewAggregate(s.validateList(fields))
 	}
-	version := apiutil.GetVersion(groupVersion.(string))
-	allErrs := s.ValidateObject(obj, "", version+"."+kind.(string))
+	gv, err := schema.ParseGroupVersion(groupVersion.(string))
+	if err != nil {
+		return err
+	}
+	allErrs := s.ValidateObject(obj, "", gv.Version+"."+kind.(string))
 	if len(allErrs) == 1 {
 		return allErrs[0]
 	}
