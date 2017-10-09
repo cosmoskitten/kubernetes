@@ -636,11 +636,22 @@ func (nc *Controller) monitorNodeStatus() error {
 		} else {
 			nc.cancelPodEviction(added[i])
 		}
+
+		instance, isSupported := nc.cloud.Instances()
+		if isSupported {
+			go instance.NodeRegistered(added[i])
+		}
 	}
 
 	for i := range deleted {
 		glog.V(1).Infof("Controller observed a Node deletion: %v", deleted[i].Name)
 		util.RecordNodeEvent(nc.recorder, deleted[i].Name, string(deleted[i].UID), v1.EventTypeNormal, "RemovingNode", fmt.Sprintf("Removing Node %v from Controller", deleted[i].Name))
+
+		instance, isSupported := nc.cloud.Instances()
+		if isSupported {
+			go instance.NodeUnregistered(deleted[i])
+		}
+
 		delete(nc.knownNodeSet, deleted[i].Name)
 	}
 
