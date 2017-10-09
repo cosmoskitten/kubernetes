@@ -293,8 +293,7 @@ func Packages(context *generator.Context, arguments *args.GeneratorArgs) generat
 			context.AddDir(pp)
 			p := context.Universe[pp]
 			if nil == p {
-				glog.Errorf("failed to find pkg: %s ", pp)
-				continue
+				glog.Fatalf("failed to find pkg: %s ", pp)
 			}
 			getManualConversionFunctions(context, p, manualConversions)
 		}
