@@ -178,6 +178,7 @@ func TestPodContainerDeviceAllocation(t *testing.T) {
 	resourceQuantity2 := *resource.NewQuantity(int64(1), resource.DecimalSI)
 	devId3 := "dev3"
 	devId4 := "dev4"
+	nonDevicePluginResource := "domain3.com/resource3"
 
 	m, err := NewDevicePluginManagerTestStub()
 	as := assert.New(t)
@@ -216,9 +217,10 @@ func TestPodContainerDeviceAllocation(t *testing.T) {
 					Name: string(uuid.NewUUID()),
 					Resources: v1.ResourceRequirements{
 						Limits: v1.ResourceList{
-							v1.ResourceName(resourceName1): resourceQuantity1,
-							v1.ResourceName("cpu"):         resourceQuantity1,
-							v1.ResourceName(resourceName2): resourceQuantity2,
+							v1.ResourceName(resourceName1):           resourceQuantity1,
+							v1.ResourceName("cpu"):                   resourceQuantity1,
+							v1.ResourceName(resourceName2):           resourceQuantity2,
+							v1.ResourceName(nonDevicePluginResource): resourceQuantity1,
 						},
 					},
 				},
