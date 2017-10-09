@@ -363,7 +363,6 @@ func (o *ProbeOptions) Run() error {
 			}
 			continue
 		}
-		info.Refresh(obj, true)
 
 		// record this change (for rollout history)
 		if o.Record || cmdutil.ContainsChangeCause(info) {
@@ -376,7 +375,7 @@ func (o *ProbeOptions) Run() error {
 
 		info.Refresh(obj, true)
 
-		if len(o.Output) > 0 {
+		if len(o.Output) > 0 && o.PrintObject != nil {
 			if err := o.PrintObject(o.Cmd, o.Local, o.Mapper, obj, o.Out); err != nil {
 				return err
 			}
