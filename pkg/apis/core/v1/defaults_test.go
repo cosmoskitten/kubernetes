@@ -26,12 +26,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/kubernetes/pkg/api"
-	k8s_api_v1 "k8s.io/kubernetes/pkg/api/v1"
+	"k8s.io/kubernetes/pkg/apis/core"
+	corev1 "k8s.io/kubernetes/pkg/apis/core/v1"
 )
 
 func roundTrip(t *testing.T, obj runtime.Object) runtime.Object {
-	codec := api.Codecs.LegacyCodec(v1.SchemeGroupVersion)
+	codec := core.Codecs.LegacyCodec(corev1.SchemeGroupVersion)
 	data, err := runtime.Encode(codec, obj)
 	if err != nil {
 		t.Errorf("%v\n %#v", err, obj)
@@ -43,7 +43,7 @@ func roundTrip(t *testing.T, obj runtime.Object) runtime.Object {
 		return nil
 	}
 	obj3 := reflect.New(reflect.TypeOf(obj).Elem()).Interface().(runtime.Object)
-	err = api.Scheme.Convert(obj2, obj3, nil)
+	err = core.Scheme.Convert(obj2, obj3, nil)
 	if err != nil {
 		t.Errorf("%v\nSource: %#v", err, obj2)
 		return nil
@@ -1126,7 +1126,7 @@ func TestSetMinimumScalePod(t *testing.T) {
 	pod := &v1.Pod{
 		Spec: s,
 	}
-	k8s_api_v1.SetObjectDefaults_Pod(pod)
+	corev1.SetObjectDefaults_Pod(pod)
 
 	if expect := resource.MustParse("1m"); expect.Cmp(pod.Spec.Containers[0].Resources.Requests[v1.ResourceMemory]) != 0 {
 		t.Errorf("did not round resources: %#v", pod.Spec.Containers[0].Resources)
