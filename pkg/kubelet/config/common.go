@@ -131,7 +131,7 @@ func tryDecodeSinglePod(data []byte, defaultFn defaultFunc) (parsed bool, pod *v
 		return true, pod, err
 	}
 	v1Pod := &v1.Pod{}
-	if err := k8s_api_v1.Convert_api_Pod_To_v1_Pod(newPod, v1Pod, nil); err != nil {
+	if err := k8s_api_v1.Convert_core_Pod_To_v1_Pod(newPod, v1Pod, nil); err != nil {
 		return true, nil, err
 	}
 	return true, v1Pod, nil
@@ -162,7 +162,7 @@ func tryDecodePodList(data []byte, defaultFn defaultFunc) (parsed bool, pods v1.
 		}
 	}
 	v1Pods := &v1.PodList{}
-	if err := k8s_api_v1.Convert_api_PodList_To_v1_PodList(newPods, v1Pods, nil); err != nil {
+	if err := k8s_api_v1.Convert_core_PodList_To_v1_PodList(newPods, v1Pods, nil); err != nil {
 		return true, pods, err
 	}
 	return true, *v1Pods, err
