@@ -545,6 +545,29 @@ function get-template-name-from-version() {
   echo "${NODE_INSTANCE_PREFIX}-template-${1}" | cut -c 1-63 | sed 's/[\.\+]/-/g;s/-*$//g'
 }
 
+# validates the NODE_LOCAL_SSDS_EXT variable 
+function validate-node-local-ssds-ext(){
+  ssdopts=$1
+
+  if [[ -z ${ssdopts[0]} || -z ${ssdopts[1]} || -z ${ssdopts[2]} ]]; then
+	  echo -e "${color_red}Local SSD: NODE_LOCAL_SSDS_EXT is malformed, found ${ssdopts[0]-_},${ssdopts[1]-_},${ssdopts[2]-_} ${color_norm}" >&2
+    exit 2
+  fi
+  if [[ ${ssdopts[1]} != "scsi" && ${ssdopts[1]} != "nvme" ]]; then
+    echo -e "${color_red}Local SSD: Interface must be scsi or nvme, found: ${ssdopts[1]} ${color_norm}" >&2
+    exit 2
+  fi
+  if [[ ${ssdopts[2]} != "fs" && ${ssdopts[2]} != "block" ]]; then
+    echo -e "${color_red}Local SSD: Filesystem type must be fs or block, found: ${ssdopts[2]} ${color_norm}"  >&2
+    exit 2
+  fi
+  local_ssd_count=$((local_ssd_count+ssdopts[0]))
+  if [[ ${local_ssd_count} -gt 8 || ${local_ssd_count} -lt 1 ]]; then
+    echo -e "${color_red}Local SSD: Total number of local ssds must range from 1 to 8, found: ${local_ssd_count} ${color_norm}" >&2
+    exit 2
+  fi
+}
+
 # Robustly try to create an instance template.
 # $1: The name of the instance template.
 # $2: The scopes flag.
@@ -586,21 +609,24 @@ function create-node-template() {
   fi
 
   local local_ssds=""
+  local_ssd_count=0
   if [[ ! -z ${NODE_LOCAL_SSDS+x} ]]; then
     # The NODE_LOCAL_SSDS check below fixes issue #49171
     # Some versions of seq will count down from 1 if "seq 0" is specified
     if [[ ${NODE_LOCAL_SSDS} -ge 1 ]]; then
+      local_ssd_count=$((local_ssd_count+NODE_LOCAL_SSDS))
       for i in $(seq ${NODE_LOCAL_SSDS}); do
         local_ssds="$local_ssds--local-ssd=interface=SCSI "
       done
     fi
   fi
-  #add in optional ones
+
   if [[ ! -z ${NODE_LOCAL_SSDS_EXT-""} ]]; then
     IFS=";" read -r -a ssdgroups <<< ${NODE_LOCAL_SSDS_EXT}
     for ssdgroup in "${ssdgroups[@]}"
     do
       IFS="," read -r -a ssdopts <<< ${ssdgroup}
+      validate-node-local-ssds-ext ${ssdopts}
       for i in $(seq ${ssdopts[0]}); do
         local_ssds="$local_ssds--local-ssd=interface=${ssdopts[1]} "
       done

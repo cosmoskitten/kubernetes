@@ -68,9 +68,11 @@ function create-dirs {
   fi
 }
 
+# Gets the total number of $(1) and $(2) type disks specified
+# by the user in ${NODE_LOCAL_SSDS_EXT}
 function get-local-disk-num() {
-  interface=$1
-  format=$2
+  local interface=$1
+  local format=$2
 
   total=0
   if [[ ! -z ${NODE_LOCAL_SSDS_EXT} ]]; then
@@ -78,22 +80,23 @@ function get-local-disk-num() {
     for ssdgroup in "${ssdgroups[@]}"
     do
       IFS="," read -r -a ssdopts <<< ${ssdgroup}
-      opnum=${ssdopts[0]}
-      opinterface=${ssdopts[1]}
-      opformat=${ssdopts[2]}
+      local opnum=${ssdopts[0]}
+      local opinterface=${ssdopts[1]}
+      local opformat=${ssdopts[2]}
 
       if [[ ${opformat,,} == ${format,,} && ${opinterface,,} == ${interface,,} ]]; then
         total=$((total+opnum))
       fi
     done
   fi
-  
 }
 
+# Creates a symlink for a ($1) so that it may be used as block storage
 function safe-block-symlink(){
-  device=$1
-  interface=$2
-  mkdir -p "${UUID_MNT_PREFIX}-${interface,,}-block"
+  local device=$1
+  local interface=$2
+  
+  mkdir -p "${UUID_MNT_PREFIX}-${interface}-block"
   ssdmap="/home/kubernetes/localssdmap.txt"
   echo "Creating symlink for block devices..."
 
@@ -105,23 +108,25 @@ function safe-block-symlink(){
   # each line looks like "${device} persistent-uuid"
   if [[ ! -z $(cat ${ssdmap} | grep ${device}) ]]; then
     #create symlink based on saved uuid
-    myuuid=$(cat ${ssdmap} | grep ${device} | cut -d ' ' -f 2)
+    local myuuid=$(cat ${ssdmap} | grep ${device} | cut -d ' ' -f 2)
   else
     # generate new uuid and add it to the map
-    myuuid=$(uuidgen)
+    local myuuid=$(uuidgen)
     echo "${device} ${myuuid}" >> ${ssdmap}
   fi
 
-  sym="${UUID_MNT_PREFIX}-${interface,,}-block/local-ssd-${myuuid}"
-  # dont make the exact directory first or else symlink goes 1 directory down
+  local sym="${UUID_MNT_PREFIX}-${interface}-block/local-ssd-${myuuid}"
+  # Do not "mkdir -p ${sym}" as that will cause unintended symlink behavior
   ln -s ${device} ${sym}
   echo "Created a symlink for SSD $ssd at ${sym}"
   chmod a+w ${sym}
 }
 
+#Formats the given device ($1) if needed and mounts it at given mount point
+# ($2).
 function safe-format-and-mount() {
-  device=$1
-  mountpoint=$2
+  local device=$1
+  local mountpoint=$2
 
   # Format only if the disk is not already formatted.
   if ! tune2fs -l "${device}" ; then
@@ -134,10 +139,12 @@ function safe-format-and-mount() {
   mount -o discard,defaults "${device}" "${mountpoint}"
 }
 
+# Creates a bind mounting from the /mnt/disks/ fs mounted folder to
+# a new mountpoint in /mnt/disks/by-uuid/ using the devices UUID 
 function unique-uuid-bind-mount(){
-  device=$1
-  interface=$2
-  mountpoint=$3
+  local device=$1
+  local interface=$2
+  local mountpoint=$3
 
   # Trigger udev refresh so that newly formatted devices are propagated in by-uuid
   udevadm control --reload-rules
@@ -145,9 +152,9 @@ function unique-uuid-bind-mount(){
   udevadm settle
 
   # Get the real UUID of the device
-  item=$(readlink -f ${device} | cut -d '/' -f 3)
-  myuuid=$(ls -l /dev/disk/by-uuid/ | grep ${item} | tr -s ' ' | cut -d ' ' -f 9) 
-  bindpoint="${UUID_MNT_PREFIX}-${interface,,}-fs/local-ssd-${myuuid}"
+  local item=$(readlink -f ${device} | cut -d '/' -f 3)
+  local myuuid=$(ls -l /dev/disk/by-uuid/ | grep ${item} | tr -s ' ' | cut -d ' ' -f 9) 
+  local bindpoint="${UUID_MNT_PREFIX}-${interface}-fs/local-ssd-${myuuid}"
 
   # Mount device to the mountpoint
   mkdir -p "${bindpoint}"
@@ -157,41 +164,44 @@ function unique-uuid-bind-mount(){
 
 }
 
+# Mounts, bindmounts, or symlinks depending on the interface and format
+# of the incoming device
 function mount-ext(){
-  ssd=$1
-  interface=$2
-  format=$3  
+  local ssd=$1
+  local interface=$2
+  local format=$3  
 
-  if [[ ${format,,} == "fs" ]]; then
-    #safe-format-and-mount-by-interface ${ssd} ${interface,,}
-    if [[ ${interface,,} == "scsi" ]]; then
-      scsinum=`echo ${ssd} | sed -e 's/\/dev\/disk\/by-id\/google-local-ssd-\([0-9]*\)/\1/'`
-      mountpoint="/mnt/disks/ssd${scsinum}"
+  if [[ ${format} == "fs" ]]; then
+    if [[ ${interface} == "scsi" ]]; then
+      local scsinum=`echo ${ssd} | sed -e 's/\/dev\/disk\/by-id\/google-local-ssd-\([0-9]*\)/\1/'`
+      local mountpoint="/mnt/disks/ssd${scsinum}"
     else
-      nvmenum=`echo ${ssd} | sed -e 's/\/dev\/disk\/by-id\/google-nvme0n\([0-9]*\)/\1/'`
-      mountpoint="/mnt/disks/ssd-nvme${nvmenum}"
+      local nvmenum=`echo ${ssd} | sed -e 's/\/dev\/disk\/by-id\/google-nvme0n\([0-9]*\)/\1/'`
+      local mountpoint="/mnt/disks/ssd-nvme${nvmenum}"
     fi
     safe-format-and-mount ${ssd} ${mountpoint}
     unique-uuid-bind-mount ${ssd} ${interface} ${mountpoint}
-  elif [[ ${format,,} == "block" ]]; then
-    safe-block-symlink ${ssd} ${interface,,}
+  elif [[ ${format} == "block" ]]; then
+    safe-block-symlink ${ssd} ${interface}
   else
     echo "Disk format must be either fs or block, got ${format}"
   fi
 }
 
-# Local ssds, if present, are mounted TODO(dyzz) finish note
+# Local ssds, if present, are mounted or symlinked to their appropriate
+# locations
 function ensure-local-ssds() {
-  get-local-disk-num "scsi" "fs"
-  scsifsnum=${total}
-  scsifsnum=$((scsifsnum+NODE_LOCAL_SSDS))
-  i=0
+  get-local-disk-num "scsi" "block"
+  local scsiblocknum=${total}
+  local i=0
   for ssd in /dev/disk/by-id/google-local-ssd-*; do
     if [ -e "${ssd}" ]; then
-      if [[ ${i} -lt ${scsifsnum} ]]; then
-        mount-ext ${ssd} "scsi" "fs"
-      else
+      if [[ ${i} -lt ${scsiblocknum} ]]; then
         mount-ext ${ssd} "scsi" "block"
+      else
+        # GKE does not set NODE_LOCAL_SSDS so all non-block devices
+        # are assumed to be filesystem devices
+        mount-ext ${ssd} "scsi" "fs"
       fi
       i=$((i+1))
     else
@@ -240,7 +250,6 @@ function find-master-pd {
   relative_path=${device_info##* }
   MASTER_PD_DEVICE="/dev/disk/by-id/${relative_path}"
 }
-
 
 
 # Mounts a persistent disk (formatting if needed) to store the persistent data

@@ -310,8 +310,7 @@ func Skipf(format string, args ...interface{}) {
 }
 
 func SkipUnlessLocalSSDExists(interf, filesystem string, node *v1.Node) {
-	//TODO(dyzz) make it skip unless we have local ssds on the node.
-	res, err := IssueSSHCommandWithResult("ls -1 /mnt/disks/by-uuid/google-local-ssds-scsi-fs/ | wc -l", TestContext.Provider, node)
+	res, err := IssueSSHCommandWithResult("ls -1 /mnt/disks/by-uuid/google-local-ssds-"+interf+"-"+filesystem+"/ | wc -l", TestContext.Provider, node)
 	Expect(err).NotTo(HaveOccurred())
 	num, err := strconv.Atoi(strings.TrimSpace(res.Stdout))
 	Expect(err).NotTo(HaveOccurred())
