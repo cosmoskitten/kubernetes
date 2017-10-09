@@ -326,7 +326,7 @@ func filterInvalidPods(pods []*v1.Pod, source string, recorder record.EventRecor
 		var errlist field.ErrorList
 		// TODO: remove the conversion when validation is performed on versioned objects.
 		internalPod := &api.Pod{}
-		if err := k8s_api_v1.Convert_v1_Pod_To_api_Pod(pod, internalPod, nil); err != nil {
+		if err := k8s_api_v1.Convert_v1_Pod_To_core_Pod(pod, internalPod, nil); err != nil {
 			glog.Warningf("Pod[%d] (%s) from %s failed to convert to v1, ignoring: %v", i+1, format.Pod(pod), source, err)
 			recorder.Eventf(pod, v1.EventTypeWarning, "FailedConversion", "Error converting pod %s from %s, ignoring: %v", format.Pod(pod), source, err)
 			continue
