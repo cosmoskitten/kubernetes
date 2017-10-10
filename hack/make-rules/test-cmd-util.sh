@@ -3107,6 +3107,23 @@ run_daemonset_tests() {
   set +o errexit
 }
 
+run_rollout_tests() {
+  set -o nounset
+  set -o errexit
+
+  ### Show the status of the rollout
+  # create namespace 'my-namespace'
+  kubectl create namespace "my-namespace"
+  kubectl config set-context "${CONTEXT}" --namespace="my-namespace"
+  kubectl create -f hack/testdata/deployment-rollout-status.yaml
+  kubectl rollout status -f hack/testdata/deployment-rollout-status.yaml
+  # Clean up
+  kubectl delete ns my-namespace
+
+  set -o nounset
+  set -o errexit
+}
+
 run_daemonset_history_tests() {
   set -o nounset
   set -o errexit
@@ -4862,6 +4879,14 @@ runTests() {
   ######################
   if kube::test::if_supports_resource "${nodes}" ; then
     record_command run_cluster_management_tests
+  fi
+
+  ######################
+  # kubectl rollout    #
+  ######################
+
+  if kube::test::if_supports_resource "${daemonsets}" ; then
+    record_command run_rollout_tests
   fi
 
   ###########
