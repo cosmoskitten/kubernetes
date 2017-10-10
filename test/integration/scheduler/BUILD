@@ -28,8 +28,6 @@ go_test(
         "//pkg/controller/node/ipam:go_default_library",
         "//pkg/features:go_default_library",
         "//pkg/kubeapiserver/admission:go_default_library",
-        "//plugin/cmd/kube-scheduler/app:go_default_library",
-        "//plugin/cmd/kube-scheduler/app/options:go_default_library",
         "//plugin/pkg/admission/podtolerationrestriction:go_default_library",
         "//plugin/pkg/admission/podtolerationrestriction/apis/podtolerationrestriction:go_default_library",
         "//plugin/pkg/scheduler:go_default_library",
