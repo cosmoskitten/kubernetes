@@ -34,7 +34,7 @@ go_library(
         "//federation/client/cache:go_default_library",
         "//federation/client/clientset_generated/federation_clientset:go_default_library",
         "//federation/pkg/federation-controller/util:go_default_library",
-        "//pkg/api:go_default_library",
+        "//pkg/apis/core:go_default_library",
         "//pkg/client/clientset_generated/internalclientset:go_default_library",
         "//pkg/controller:go_default_library",
         "//pkg/kubelet/apis:go_default_library",

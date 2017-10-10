@@ -71,12 +71,10 @@ filegroup(
     srcs = [
         ":package-srcs",
         "//pkg/api/v1/endpoints:all-srcs",
-        "//pkg/api/v1/helper:all-srcs",
         "//pkg/api/v1/node:all-srcs",
         "//pkg/api/v1/pod:all-srcs",
         "//pkg/api/v1/resource:all-srcs",
         "//pkg/api/v1/service:all-srcs",
-        "//pkg/api/v1/validation:all-srcs",
     ],
     tags = ["automanaged"],
 )

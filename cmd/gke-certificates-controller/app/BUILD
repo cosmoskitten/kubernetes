@@ -14,7 +14,7 @@ go_library(
         "options.go",
     ],
     deps = [
-        "//pkg/api:go_default_library",
+        "//pkg/api/scheme:go_default_library",
         "//pkg/apis/certificates/install:go_default_library",
         "//pkg/controller:go_default_library",
         "//pkg/controller/certificates:go_default_library",

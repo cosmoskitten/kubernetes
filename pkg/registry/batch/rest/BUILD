@@ -9,7 +9,7 @@ go_library(
     name = "go_default_library",
     srcs = ["storage_batch.go"],
     deps = [
-        "//pkg/api:go_default_library",
+        "//pkg/api/scheme:go_default_library",
         "//pkg/apis/batch:go_default_library",
         "//pkg/registry/batch/cronjob/storage:go_default_library",
         "//pkg/registry/batch/job/storage:go_default_library",

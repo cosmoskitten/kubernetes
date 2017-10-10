@@ -10,7 +10,7 @@ go_library(
     name = "go_default_library",
     srcs = ["admission.go"],
     deps = [
-        "//pkg/api:go_default_library",
+        "//pkg/apis/core:go_default_library",
         "//pkg/apis/extensions:go_default_library",
         "//pkg/client/informers/informers_generated/internalversion:go_default_library",
         "//pkg/client/listers/extensions/internalversion:go_default_library",
@@ -35,8 +35,8 @@ go_test(
     srcs = ["admission_test.go"],
     library = ":go_default_library",
     deps = [
-        "//pkg/api:go_default_library",
-        "//pkg/api/helper:go_default_library",
+        "//pkg/apis/core:go_default_library",
+        "//pkg/apis/core/helper:go_default_library",
         "//pkg/apis/extensions:go_default_library",
         "//pkg/client/informers/informers_generated/internalversion:go_default_library",
         "//pkg/client/listers/extensions/internalversion:go_default_library",

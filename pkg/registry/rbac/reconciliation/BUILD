@@ -14,7 +14,7 @@ go_test(
     ],
     library = ":go_default_library",
     deps = [
-        "//pkg/api/helper:go_default_library",
+        "//pkg/apis/core/helper:go_default_library",
         "//pkg/apis/rbac:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
     ],
@@ -32,7 +32,7 @@ go_library(
         "zz_generated.deepcopy.go",
     ],
     deps = [
-        "//pkg/api:go_default_library",
+        "//pkg/apis/core:go_default_library",
         "//pkg/apis/rbac:go_default_library",
         "//pkg/client/clientset_generated/internalclientset/typed/core/internalversion:go_default_library",
         "//pkg/client/clientset_generated/internalclientset/typed/rbac/internalversion:go_default_library",

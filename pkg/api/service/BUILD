@@ -10,7 +10,7 @@ go_library(
     name = "go_default_library",
     srcs = ["util.go"],
     deps = [
-        "//pkg/api:go_default_library",
+        "//pkg/apis/core:go_default_library",
         "//pkg/util/net/sets:go_default_library",
     ],
 )
@@ -20,7 +20,7 @@ go_test(
     srcs = ["util_test.go"],
     library = ":go_default_library",
     deps = [
-        "//pkg/api:go_default_library",
+        "//pkg/apis/core:go_default_library",
         "//pkg/util/net/sets:go_default_library",
     ],
 )

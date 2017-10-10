@@ -15,7 +15,7 @@ go_library(
         "tokens_controller.go",
     ],
     deps = [
-        "//pkg/api/v1:go_default_library",
+        "//pkg/apis/core/v1:go_default_library",
         "//pkg/controller:go_default_library",
         "//pkg/registry/core/secret:go_default_library",
         "//pkg/registry/core/secret/storage:go_default_library",
@@ -52,7 +52,7 @@ go_test(
     ],
     library = ":go_default_library",
     deps = [
-        "//pkg/api:go_default_library",
+        "//pkg/apis/core:go_default_library",
         "//pkg/controller:go_default_library",
         "//vendor/github.com/davecgh/go-spew/spew:go_default_library",
         "//vendor/github.com/golang/glog:go_default_library",

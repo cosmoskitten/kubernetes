@@ -10,7 +10,7 @@ go_library(
     name = "go_default_library",
     srcs = ["util.go"],
     deps = [
-        "//pkg/api:go_default_library",
+        "//pkg/apis/core:go_default_library",
         "//pkg/util/hash:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/types:go_default_library",
     ],
@@ -21,7 +21,7 @@ go_test(
     srcs = ["util_test.go"],
     library = ":go_default_library",
     deps = [
-        "//pkg/api:go_default_library",
+        "//pkg/apis/core:go_default_library",
         "//vendor/github.com/davecgh/go-spew/spew:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/types:go_default_library",
     ],

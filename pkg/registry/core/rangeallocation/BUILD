@@ -11,7 +11,7 @@ go_library(
         "doc.go",
         "registry.go",
     ],
-    deps = ["//pkg/api:go_default_library"],
+    deps = ["//pkg/apis/core:go_default_library"],
 )
 
 filegroup(

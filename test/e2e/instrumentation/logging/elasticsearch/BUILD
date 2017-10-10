@@ -13,7 +13,7 @@ go_library(
         "utils.go",
     ],
     deps = [
-        "//pkg/api:go_default_library",
+        "//pkg/apis/core:go_default_library",
         "//test/e2e/framework:go_default_library",
         "//test/e2e/instrumentation/common:go_default_library",
         "//test/e2e/instrumentation/logging/utils:go_default_library",

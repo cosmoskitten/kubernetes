@@ -10,7 +10,7 @@ go_library(
     name = "go_default_library",
     srcs = ["initialization.go"],
     deps = [
-        "//pkg/api:go_default_library",
+        "//pkg/apis/core:go_default_library",
         "//pkg/kubeapiserver/admission/configuration:go_default_library",
         "//vendor/github.com/golang/glog:go_default_library",
         "//vendor/k8s.io/api/admissionregistration/v1alpha1:go_default_library",

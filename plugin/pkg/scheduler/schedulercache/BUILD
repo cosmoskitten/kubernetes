@@ -15,7 +15,7 @@ go_library(
         "util.go",
     ],
     deps = [
-        "//pkg/api/v1/helper:go_default_library",
+        "//pkg/apis/core/v1/helper:go_default_library",
         "//plugin/pkg/scheduler/algorithm/priorities/util:go_default_library",
         "//plugin/pkg/scheduler/util:go_default_library",
         "//vendor/github.com/golang/glog:go_default_library",
@@ -32,7 +32,7 @@ go_test(
     srcs = ["cache_test.go"],
     library = ":go_default_library",
     deps = [
-        "//pkg/api/v1/helper:go_default_library",
+        "//pkg/apis/core/v1/helper:go_default_library",
         "//plugin/pkg/scheduler/algorithm/priorities/util:go_default_library",
         "//plugin/pkg/scheduler/util:go_default_library",
         "//vendor/k8s.io/api/core/v1:go_default_library",

@@ -15,7 +15,7 @@ go_library(
     name = "go_default_library",
     srcs = ["cauldron.go"],
     deps = [
-        "//pkg/api:go_default_library",
+        "//pkg/apis/core:go_default_library",
         "//pkg/client/clientset_generated/internalclientset:go_default_library",
         "//test/e2e/framework:go_default_library",
         "//vendor/github.com/golang/glog:go_default_library",

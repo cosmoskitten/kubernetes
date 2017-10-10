@@ -9,7 +9,7 @@ go_library(
     name = "go_default_library",
     srcs = ["storage_certificates.go"],
     deps = [
-        "//pkg/api:go_default_library",
+        "//pkg/api/scheme:go_default_library",
         "//pkg/apis/certificates:go_default_library",
         "//pkg/registry/certificates/certificates/storage:go_default_library",
         "//vendor/k8s.io/api/certificates/v1beta1:go_default_library",

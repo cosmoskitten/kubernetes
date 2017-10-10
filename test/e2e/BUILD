@@ -52,9 +52,9 @@ go_library(
     ],
     deps = [
         "//federation/test/e2e:go_default_library",
-        "//pkg/api:go_default_library",
         "//pkg/api/testapi:go_default_library",
         "//pkg/api/v1/pod:go_default_library",
+        "//pkg/apis/core:go_default_library",
         "//pkg/cloudprovider/providers/azure:go_default_library",
         "//pkg/cloudprovider/providers/gce:go_default_library",
         "//pkg/controller/node:go_default_library",

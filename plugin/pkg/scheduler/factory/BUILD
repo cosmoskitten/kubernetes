@@ -13,8 +13,8 @@ go_library(
         "plugins.go",
     ],
     deps = [
-        "//pkg/api/helper:go_default_library",
         "//pkg/api/v1/pod:go_default_library",
+        "//pkg/apis/core/helper:go_default_library",
         "//pkg/kubelet/apis:go_default_library",
         "//plugin/pkg/scheduler:go_default_library",
         "//plugin/pkg/scheduler/algorithm:go_default_library",
@@ -55,7 +55,7 @@ go_test(
     ],
     library = ":go_default_library",
     deps = [
-        "//pkg/api:go_default_library",
+        "//pkg/api/scheme:go_default_library",
         "//pkg/api/testing:go_default_library",
         "//plugin/pkg/scheduler/algorithm:go_default_library",
         "//plugin/pkg/scheduler/api:go_default_library",
