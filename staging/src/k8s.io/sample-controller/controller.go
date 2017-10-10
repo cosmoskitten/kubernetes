@@ -243,7 +243,6 @@ func (c *Controller) syncHandler(key string) error {
 
 	// Get the Foo resource with this namespace/name
 	foo, err := c.foosLister.Foos(namespace).Get(name)
-
 	if err != nil {
 		// The Foo resource may no longer exist, in which case we stop
 		// processing.
@@ -348,8 +347,17 @@ func (c *Controller) handleObject(obj interface{}) {
 	var object metav1.Object
 	var ok bool
 	if object, ok = obj.(metav1.Object); !ok {
-		glog.Errorf("error decoding object, invalid type")
-		return
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			runtime.HandleError(fmt.Errorf("error decoding object, invalid type"))
+			return
+		}
+		object, ok = tombstone.Obj.(metav1.Object)
+		if !ok {
+			runtime.HandleError(fmt.Errorf("error decoding object tombstone, invalid type"))
+			return
+		}
+		glog.V(4).Infof("Recovered deleted object '%s' from tombstone", object.GetName())
 	}
 	glog.V(4).Infof("Processing object: %s", object.GetName())
 	if ownerRef := metav1.GetControllerOf(object); ownerRef != nil {
