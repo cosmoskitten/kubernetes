@@ -174,7 +174,7 @@ func (o *Options) applyDeprecatedHealthzAddressToConfig() {
 	index := strings.Index(o.config.HealthzBindAddress, ":")
 	if index != -1 {
 		port := o.config.HealthzBindAddress[:index+1]
-		bindAddr := fmt.Sprintf("%s:%d", o.healthzAddress, port)
+		bindAddr := fmt.Sprintf("%s:%s", o.healthzAddress, port)
 		o.config.HealthzBindAddress = bindAddr
 		o.config.MetricsBindAddress = bindAddr
 	}
