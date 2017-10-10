@@ -77,3 +77,11 @@ docker_pull(
     repository = "library/busybox",
     tag = "latest",  # ignored, but kept here for documentation
 )
+
+docker_pull(
+    name = "debian",
+    digest = "sha256:f51cf81db2de8b5e9585300f655549812cdb27c56f8bfb992b8b706378cd517d",
+    registry = "index.docker.io",
+    repository = "library/debian",
+    tag = "jessie",  # ignored, but kept here for documentation
+)
