@@ -33,6 +33,7 @@ import (
 	"github.com/spf13/pflag"
 
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
+	appsv1beta2 "k8s.io/api/apps/v1beta2"
 	batchv2alpha1 "k8s.io/api/batch/v2alpha1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -595,7 +596,7 @@ func FallbackGeneratorNameIfNecessary(
 			return DeploymentBasicV1Beta1GeneratorName
 		}
 	case DaemonsetAppsV1Beta2GeneratorName:
-		if !Contains(resourcesList, batchv2alpha1.SchemeGroupVersion.WithResource("daemonsets")) {
+		if !Contains(resourcesList, appsv1beta2.SchemeGroupVersion.WithResource("daemonsets")) {
 			warning(cmdErr, DaemonsetAppsV1Beta2GeneratorName, DaemonsetExtensionsV1Beta1GeneratorName)
 
 			return DaemonsetExtensionsV1Beta1GeneratorName

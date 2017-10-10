@@ -511,11 +511,6 @@ run_pod_tests() {
   ### Fail creating a pod disruption budget if both maxUnavailable and minAvailable specified
   ! kubectl create pdb test-pdb --selector=app=rails --min-available=2 --max-unavailable=3 --namespace=test-kubectl-describe-pod
 
-  ### Create a daemonset
-  kubectl create daemonset test-ds --image=test-image --namespace=test-kubectl-describe-pod
-  # Post-condition: daemonset exists and has expected values
-  kube::test::get_object_assert 'daemonset/test-ds --namespace=test-kubectl-describe-pod' "{{$id_field}}" 'test-ds'
-
   # Create a pod that consumes secret, configmap, and downward API keys as envs
   kube::test::get_object_assert 'pods --namespace=test-kubectl-describe-pod' "{{range.items}}{{$id_field}}:{{end}}" ''
   kubectl create -f hack/testdata/pod-with-api-env.yaml --namespace=test-kubectl-describe-pod
@@ -529,7 +524,6 @@ run_pod_tests() {
   kubectl delete secret test-secret --namespace=test-kubectl-describe-pod
   kubectl delete configmap test-configmap --namespace=test-kubectl-describe-pod
   kubectl delete pdb/test-pdb-1 pdb/test-pdb-2 pdb/test-pdb-3 pdb/test-pdb-4 --namespace=test-kubectl-describe-pod
-  kubectl delete daemonset test-ds --namespace=test-kubectl-describe-pod
   kubectl delete namespace test-kubectl-describe-pod
 
   ### Create two PODs
@@ -3108,6 +3102,19 @@ run_daemonset_tests() {
 
   # Clean up
   kubectl delete -f hack/testdata/rollingupdate-daemonset.yaml "${kube_flags[@]}"
+
+  ### Create a daemonset
+  kubectl create daemonset test-ds --image=test-image
+  # Post-condition: daemonset exists and has expected values
+  kube::test::get_object_assert 'daemonset test-ds' "{{$id_field}}" 'test-ds'
+  # Ensure we can interact with daemonsets through extensions and apps endpoints
+  output_message=$(kubectl get daemonset.extensions -o=jsonpath='{.items[0].apiVersion}' 2>&1 "${kube_flags[@]}")
+  kube::test::if_has_string "${output_message}" 'extensions/v1beta1'
+  #output_message=$(kubectl get daemonset.apps -o=jsonpath='{.items[0].apiVersion}' 2>&1 "${kube_flags[@]}")
+  #kube::test::if_has_string "${output_message}" 'apps/v1'
+ 
+  # Clean up
+  kubectl delete daemonset test-ds "${kube_flags[@]}"
 
   set +o nounset
   set +o errexit

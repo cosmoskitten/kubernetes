@@ -30,7 +30,25 @@ import (
 
 var (
 	daemonsetLong = templates.LongDesc(i18n.T(`
-	Create a daemonset with the specified name.`))
+	Create a daemonset with the specified name.
+
+	A DaemonSet ensures that all (or some) nodes run a copy of a pod.  As nodes are added to the
+	cluster, pods are added to them.  As nodes are removed from the cluster, those pods are garbage
+	collected.  Deleting a DaemonSet will clean up the pods it created.
+
+	Some typical uses of a DaemonSet are:
+
+	- running a cluster storage daemon, such as 'glusterd', 'ceph', on each node.
+	- running a logs collection daemon on every node, such as 'fluentd' or 'logstash'.
+	- running a node monitoring daemon on every node, such as [Prometheus Node Exporter](
+	  https://github.com/prometheus/node_exporter), 'collectd', Datadog agent, New Relic agent, or Ganglia 'gmond'.
+
+	In a simple case, one DaemonSet, covering all nodes, would be used for each type of daemon.
+	A more complex setup might use multiple DaemonSets for a single type of daemon, but with
+	different flags and/or different memory and cpu requests for different hardware types.
+
+	See more detail information [https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/]
+	`))
 
 	daemonsetExample = templates.Examples(i18n.T(`
 	# Create a new daemonset named my-dea that runs the busybox image.
@@ -64,6 +82,7 @@ func CreateDaemonset(f cmdutil.Factory, cmdOut, cmdErr io.Writer, cmd *cobra.Com
 		return err
 	}
 	generatorName := cmdutil.GetFlagString(cmd, "generator")
+	image := cmdutil.GetFlagStringSlice(cmd, "image")
 
 	clientset, err := f.ClientSet()
 	if err != nil {
@@ -85,14 +104,14 @@ func CreateDaemonset(f cmdutil.Factory, cmdOut, cmdErr io.Writer, cmd *cobra.Com
 		generator = &kubectl.DaemonSetGeneratorExtensionsV1Beta1{
 			BaseGenerator: kubectl.BaseGenerator{
 				Name:   name,
-				Images: cmdutil.GetFlagStringSlice(cmd, "image"),
+				Images: image,
 			},
 		}
 	case cmdutil.DaemonsetAppsV1Beta2GeneratorName:
 		generator = &kubectl.DaemonSetGeneratorAppsV1Beta2{
 			BaseGenerator: kubectl.BaseGenerator{
 				Name:   name,
-				Images: cmdutil.GetFlagStringSlice(cmd, "image"),
+				Images: image,
 			},
 		}
 	default:
