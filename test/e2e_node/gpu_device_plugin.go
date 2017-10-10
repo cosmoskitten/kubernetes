@@ -17,14 +17,17 @@ limitations under the License.
 package e2e_node
 
 import (
+	"fmt"
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"time"
 
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/kubernetes/pkg/kubelet/apis/kubeletconfig"
 	"k8s.io/kubernetes/test/e2e/framework"
@@ -36,6 +39,7 @@ import (
 const (
 	devicePluginFeatureGate = "DevicePlugins=true"
 	testPodNamePrefix       = "nvidia-gpu-"
+	nonDeviceResource       = "test.com/testResource"
 )
 
 // Serial because the test restarts Kubelet
@@ -65,19 +69,33 @@ var _ = framework.KubeDescribe("NVIDIA GPU Device Plugin [Feature:GPUDevicePlugi
 			if framework.NumberOfNVIDIAGPUs(getLocalNode(f)) < 2 {
 				Skip("Not enough GPUs to execute this test (at least two needed)")
 			}
+
+			By("Adding extended resource not managed by device plugin")
+			patch := []byte(fmt.Sprintf(`[{"op": "add", "path": "/status/capacity/%s", "value": "5"}]`, escapeForJSONPatch(nonDeviceResource)))
+			f.ClientSet.CoreV1().RESTClient().Patch(types.JSONPatchType).Resource("nodes").Name(framework.TestContext.NodeName).SubResource("status").Body(patch).Do()
+			Eventually(func() bool {
+				alloc, ok := getLocalNode(f).Status.Allocatable[nonDeviceResource]
+				return ok && alloc.Value() == 5
+			}, 5*time.Minute, framework.Poll).Should(BeTrue())
 		})
 
 		AfterEach(func() {
 			l, err := f.PodClient().List(metav1.ListOptions{})
 			framework.ExpectNoError(err)
-
 			for _, p := range l.Items {
 				if p.Namespace != f.Namespace.Name {
 					continue
 				}
-
 				f.PodClient().Delete(p.Name, &metav1.DeleteOptions{})
 			}
+
+			By("Removing extended resource not managed by device plugin")
+			patch := []byte(fmt.Sprintf(`[{"op": "remove", "path": "/status/capacity/%s", "value": "5"}]`, escapeForJSONPatch(nonDeviceResource)))
+			f.ClientSet.CoreV1().RESTClient().Patch(types.JSONPatchType).Resource("nodes").Name(framework.TestContext.NodeName).SubResource("status").Body(patch).Do()
+			Eventually(func() bool {
+				_, ok := getLocalNode(f).Status.Allocatable[nonDeviceResource]
+				return !ok
+			}, 5*time.Minute, framework.Poll).Should(BeTrue())
 		})
 
 		It("checks that when Kubelet restarts exclusive GPU assignation to pods is kept.", func() {
@@ -125,16 +143,18 @@ func makeCudaPauseImage() *v1.Pod {
 				Command: []string{"sh", "-c", "devs=$(ls /dev/ | egrep '^nvidia[0-9]+$') && echo gpu devices: $devs"},
 
 				Resources: v1.ResourceRequirements{
-					Limits:   newDecimalResourceList(framework.NVIDIAGPUResourceName, 1),
-					Requests: newDecimalResourceList(framework.NVIDIAGPUResourceName, 1),
+					Limits: v1.ResourceList{
+						framework.NVIDIAGPUResourceName: *resource.NewQuantity(1, resource.DecimalSI),
+						nonDeviceResource:               *resource.NewQuantity(1, resource.DecimalSI),
+					},
+					Requests: v1.ResourceList{
+						framework.NVIDIAGPUResourceName: *resource.NewQuantity(1, resource.DecimalSI),
+						nonDeviceResource:               *resource.NewQuantity(1, resource.DecimalSI),
+					},
 				},
 			}},
 		},
 	}
-}
-
-func newDecimalResourceList(name v1.ResourceName, quantity int64) v1.ResourceList {
-	return v1.ResourceList{name: *resource.NewQuantity(quantity, resource.DecimalSI)}
 }
 
 // TODO: Find a uniform way to deal with systemctl/initctl/service operations. #34494
@@ -176,4 +196,10 @@ func getDeviceId(f *framework.Framework, podName string, contName string, restar
 		return ""
 	}
 	return matches[1]
+}
+
+func escapeForJSONPatch(resName v1.ResourceName) string {
+	// Escape forward slashes in the resource name per the JSON Pointer spec.
+	// See https://tools.ietf.org/html/rfc6901#section-3
+	return strings.Replace(string(resName), "/", "~1", -1)
 }
