@@ -24,7 +24,7 @@ import (
 	cmdutil "k8s.io/kubernetes/cmd/kubeadm/app/cmd/util"
 	kubeadmconstants "k8s.io/kubernetes/cmd/kubeadm/app/constants"
 	controlplanephase "k8s.io/kubernetes/cmd/kubeadm/app/phases/controlplane"
-	api "k8s.io/kubernetes/pkg/apis/core"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 )
 
 // NewCmdControlplane return main command for Controlplane phase
@@ -53,7 +53,7 @@ func getControlPlaneSubCommands(outDir, defaultKubernetesVersion string) []*cobr
 	}
 
 	// Default values for the cobra help text
-	api.Scheme.Default(cfg)
+	globalscheme.Scheme.Default(cfg)
 
 	var cfgPath string
 	var subCmds []*cobra.Command

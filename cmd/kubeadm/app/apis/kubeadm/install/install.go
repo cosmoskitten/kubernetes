@@ -22,11 +22,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm"
 	"k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/v1alpha1"
-	api "k8s.io/kubernetes/pkg/apis/core"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 )
 
 func init() {
-	Install(api.GroupFactoryRegistry, api.Registry, api.Scheme)
+	Install(globalscheme.GroupFactoryRegistry, globalscheme.Registry, globalscheme.Scheme)
 }
 
 // Install registers the API group and adds types to a scheme

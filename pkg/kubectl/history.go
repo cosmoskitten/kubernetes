@@ -33,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	clientappsv1beta1 "k8s.io/client-go/kubernetes/typed/apps/v1beta1"
 	clientextensionsv1beta1 "k8s.io/client-go/kubernetes/typed/extensions/v1beta1"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	"k8s.io/kubernetes/pkg/apis/apps"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	apiv1 "k8s.io/kubernetes/pkg/apis/core/v1"
@@ -311,7 +312,7 @@ func controlledHistories(apps clientappsv1beta1.AppsV1beta1Interface, extensions
 
 // applyHistory returns a specific revision of DaemonSet by applying the given history to a copy of the given DaemonSet
 func applyHistory(ds *extensionsv1beta1.DaemonSet, history *appsv1beta1.ControllerRevision) (*extensionsv1beta1.DaemonSet, error) {
-	obj, err := api.Scheme.New(ds.GroupVersionKind())
+	obj, err := globalscheme.Scheme.New(ds.GroupVersionKind())
 	if err != nil {
 		return nil, err
 	}

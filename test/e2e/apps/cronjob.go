@@ -30,8 +30,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	batchinternal "k8s.io/kubernetes/pkg/apis/batch"
-	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/controller/job"
 	"k8s.io/kubernetes/pkg/kubectl"
 	"k8s.io/kubernetes/test/e2e/framework"
@@ -437,7 +437,7 @@ func checkNoEventWithReason(c clientset.Interface, ns, cronJobName string, reaso
 	if err != nil {
 		return fmt.Errorf("Error in getting cronjob %s/%s: %v", ns, cronJobName, err)
 	}
-	events, err := c.Core().Events(ns).Search(api.Scheme, sj)
+	events, err := c.Core().Events(ns).Search(globalscheme.Scheme, sj)
 	if err != nil {
 		return fmt.Errorf("Error in listing events: %s", err)
 	}

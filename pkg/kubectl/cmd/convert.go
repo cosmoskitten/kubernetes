@@ -23,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
@@ -117,11 +118,11 @@ func outputVersion(cmd *cobra.Command, defaultVersion *schema.GroupVersion) (sch
 
 // Complete collects information required to run Convert command from command line.
 func (o *ConvertOptions) Complete(f cmdutil.Factory, out io.Writer, cmd *cobra.Command) (err error) {
-	o.outputVersion, err = outputVersion(cmd, &api.Registry.EnabledVersionsForGroup(api.GroupName)[0])
+	o.outputVersion, err = outputVersion(cmd, &globalscheme.Registry.EnabledVersionsForGroup(api.GroupName)[0])
 	if err != nil {
 		return err
 	}
-	if !api.Registry.IsEnabledVersion(o.outputVersion) {
+	if !globalscheme.Registry.IsEnabledVersion(o.outputVersion) {
 		cmdutil.UsageErrorf(cmd, "'%s' is not a registered version.", o.outputVersion)
 	}
 

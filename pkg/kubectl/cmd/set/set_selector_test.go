@@ -28,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/rest/fake"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	"k8s.io/kubernetes/pkg/apis/batch"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/apis/extensions"
@@ -317,7 +318,7 @@ func TestGetResourcesAndSelector(t *testing.T) {
 func TestSelectorTest(t *testing.T) {
 	f, tf, codec, ns := cmdtesting.NewAPIFactory()
 	tf.Client = &fake.RESTClient{
-		APIRegistry:          api.Registry,
+		APIRegistry:          globalscheme.Registry,
 		NegotiatedSerializer: ns,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			t.Fatalf("unexpected request: %s %#v\n%#v", req.Method, req.URL, req)
@@ -325,7 +326,7 @@ func TestSelectorTest(t *testing.T) {
 		}),
 	}
 	tf.Namespace = "test"
-	tf.ClientConfig = &restclient.Config{ContentConfig: restclient.ContentConfig{GroupVersion: &api.Registry.GroupOrDie(api.GroupName).GroupVersion}}
+	tf.ClientConfig = &restclient.Config{ContentConfig: restclient.ContentConfig{GroupVersion: &globalscheme.Registry.GroupOrDie(api.GroupName).GroupVersion}}
 
 	buf := bytes.NewBuffer([]byte{})
 	cmd := NewCmdSelector(f, buf)

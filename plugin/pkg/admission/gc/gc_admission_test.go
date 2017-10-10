@@ -27,6 +27,7 @@ import (
 	"k8s.io/apiserver/pkg/admission/initializer"
 	"k8s.io/apiserver/pkg/authentication/user"
 	"k8s.io/apiserver/pkg/authorization/authorizer"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	kubeadmission "k8s.io/kubernetes/pkg/kubeapiserver/admission"
 )
@@ -89,7 +90,7 @@ func newGCPermissionsEnforcement() (*gcPermissionsEnforcement, error) {
 	if err != nil {
 		return nil, err
 	}
-	pluginInitializer := kubeadmission.NewPluginInitializer(nil, nil, nil, api.Registry.RESTMapper(), nil)
+	pluginInitializer := kubeadmission.NewPluginInitializer(nil, nil, nil, globalscheme.Registry.RESTMapper(), nil)
 	initializersChain := admission.PluginInitializers{}
 	initializersChain = append(initializersChain, genericPluginInitializer)
 	initializersChain = append(initializersChain, pluginInitializer)

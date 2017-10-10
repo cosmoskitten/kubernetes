@@ -23,9 +23,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/storage/names"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	"k8s.io/kubernetes/pkg/apis/admissionregistration"
 	"k8s.io/kubernetes/pkg/apis/admissionregistration/validation"
-	api "k8s.io/kubernetes/pkg/apis/core"
 )
 
 // externaladmissionhookConfigurationStrategy implements verification logic for ExternalAdmissionHookConfiguration.
@@ -35,7 +35,7 @@ type externaladmissionhookConfigurationStrategy struct {
 }
 
 // Strategy is the default logic that applies when creating and updating ExternalAdmissionHookConfiguration objects.
-var Strategy = externaladmissionhookConfigurationStrategy{api.Scheme, names.SimpleNameGenerator}
+var Strategy = externaladmissionhookConfigurationStrategy{globalscheme.Scheme, names.SimpleNameGenerator}
 
 // NamespaceScoped returns true because all ExternalAdmissionHookConfiguration' need to be within a namespace.
 func (externaladmissionhookConfigurationStrategy) NamespaceScoped() bool {

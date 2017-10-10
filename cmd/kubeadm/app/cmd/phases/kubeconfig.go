@@ -27,7 +27,7 @@ import (
 	cmdutil "k8s.io/kubernetes/cmd/kubeadm/app/cmd/util"
 	kubeadmconstants "k8s.io/kubernetes/cmd/kubeadm/app/constants"
 	kubeconfigphase "k8s.io/kubernetes/cmd/kubeadm/app/phases/kubeconfig"
-	api "k8s.io/kubernetes/pkg/apis/core"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 )
 
 // NewCmdKubeConfig return main command for kubeconfig phase
@@ -55,7 +55,7 @@ func getKubeConfigSubCommands(out io.Writer, outDir, defaultKubernetesVersion st
 	}
 
 	// Default values for the cobra help text
-	api.Scheme.Default(cfg)
+	globalscheme.Scheme.Default(cfg)
 
 	var cfgPath, token, clientName string
 	var subCmds []*cobra.Command

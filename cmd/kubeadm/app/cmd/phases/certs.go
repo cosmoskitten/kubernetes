@@ -26,7 +26,7 @@ import (
 	certsphase "k8s.io/kubernetes/cmd/kubeadm/app/phases/certs"
 	kubeadmutil "k8s.io/kubernetes/cmd/kubeadm/app/util"
 	configutil "k8s.io/kubernetes/cmd/kubeadm/app/util/config"
-	api "k8s.io/kubernetes/pkg/apis/core"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 )
 
 // NewCmdCerts return main command for certs phase
@@ -55,7 +55,7 @@ func getCertsSubCommands(defaultKubernetesVersion string) []*cobra.Command {
 	}
 
 	// Default values for the cobra help text
-	api.Scheme.Default(cfg)
+	globalscheme.Scheme.Default(cfg)
 
 	var cfgPath string
 	var subCmds []*cobra.Command

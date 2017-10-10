@@ -41,7 +41,7 @@ import (
 	genericadmissioninit "k8s.io/apiserver/pkg/admission/initializer"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	api "k8s.io/kubernetes/pkg/apis/core"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	admissioninit "k8s.io/kubernetes/pkg/kubeapiserver/admission"
 	"k8s.io/kubernetes/pkg/kubeapiserver/admission/configuration"
 
@@ -95,7 +95,7 @@ func NewGenericAdmissionWebhook() (*GenericAdmissionWebhook, error) {
 			admission.Update,
 		),
 		negotiatedSerializer: serializer.NegotiatedSerializerWrapper(runtime.SerializerInfo{
-			Serializer: api.Codecs.LegacyCodec(admissionv1alpha1.SchemeGroupVersion),
+			Serializer: globalscheme.Codecs.LegacyCodec(admissionv1alpha1.SchemeGroupVersion),
 		}),
 		serviceResolver: defaultServiceResolver{},
 	}, nil

@@ -27,6 +27,7 @@ import (
 	"k8s.io/apiserver/pkg/registry/generic"
 	apistorage "k8s.io/apiserver/pkg/storage"
 	"k8s.io/apiserver/pkg/storage/names"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/apis/core/validation"
 )
@@ -39,7 +40,7 @@ type namespaceStrategy struct {
 
 // Strategy is the default logic that applies when creating and updating Namespace
 // objects via the REST API.
-var Strategy = namespaceStrategy{api.Scheme, names.SimpleNameGenerator}
+var Strategy = namespaceStrategy{globalscheme.Scheme, names.SimpleNameGenerator}
 
 // NamespaceScoped is false for namespaces.
 func (namespaceStrategy) NamespaceScoped() bool {

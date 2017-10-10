@@ -36,6 +36,7 @@ import (
 	cacheddiscovery "k8s.io/client-go/discovery/cached"
 	"k8s.io/client-go/dynamic"
 	clientset "k8s.io/client-go/kubernetes"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/controller"
 	endpointcontroller "k8s.io/kubernetes/pkg/controller/endpoint"
@@ -269,7 +270,7 @@ func startResourceQuotaController(ctx ControllerContext) (bool, error) {
 
 func startNamespaceController(ctx ControllerContext) (bool, error) {
 	// TODO: should use a dynamic RESTMapper built from the discovery results.
-	restMapper := api.Registry.RESTMapper()
+	restMapper := globalscheme.Registry.RESTMapper()
 
 	// the namespace cleanup controller is very chatty.  It makes lots of discovery calls and then it makes lots of delete calls
 	// the ratelimiter negatively affects its speed.  Deleting 100 total items in a namespace (that's only a few of each resource

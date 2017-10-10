@@ -22,7 +22,7 @@ import (
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/registry/rest"
 	"k8s.io/apiserver/pkg/storage/names"
-	api "k8s.io/kubernetes/pkg/apis/core"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	"k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/apis/extensions/validation"
 )
@@ -35,7 +35,7 @@ type strategy struct {
 
 // Strategy is the default logic that applies when creating and updating PodSecurityPolicy
 // objects via the REST API.
-var Strategy = strategy{api.Scheme, names.SimpleNameGenerator}
+var Strategy = strategy{globalscheme.Scheme, names.SimpleNameGenerator}
 
 var _ = rest.RESTCreateStrategy(Strategy)
 

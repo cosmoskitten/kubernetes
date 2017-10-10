@@ -15,20 +15,20 @@ limitations under the License.
 */
 
 // TODO: Remove this file when namespace controller and garbage collector
-// stops using api.Registry.RESTMapper()
+// stops using globalscheme.Registry.RESTMapper()
 package app
 
 // These imports are the API groups the client will support.
 import (
 	"fmt"
 
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	_ "k8s.io/kubernetes/pkg/apis/apps/install"
 	_ "k8s.io/kubernetes/pkg/apis/authentication/install"
 	_ "k8s.io/kubernetes/pkg/apis/authorization/install"
 	_ "k8s.io/kubernetes/pkg/apis/autoscaling/install"
 	_ "k8s.io/kubernetes/pkg/apis/batch/install"
 	_ "k8s.io/kubernetes/pkg/apis/certificates/install"
-	api "k8s.io/kubernetes/pkg/apis/core"
 	_ "k8s.io/kubernetes/pkg/apis/core/install"
 	_ "k8s.io/kubernetes/pkg/apis/extensions/install"
 	_ "k8s.io/kubernetes/pkg/apis/policy/install"
@@ -39,7 +39,7 @@ import (
 )
 
 func init() {
-	if missingVersions := api.Registry.ValidateEnvRequestedVersions(); len(missingVersions) != 0 {
+	if missingVersions := globalscheme.Registry.ValidateEnvRequestedVersions(); len(missingVersions) != 0 {
 		panic(fmt.Sprintf("KUBE_API_VERSIONS contains versions that are not installed: %q.", missingVersions))
 	}
 }

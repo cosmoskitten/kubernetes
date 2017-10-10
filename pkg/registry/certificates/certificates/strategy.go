@@ -23,9 +23,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/storage/names"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	"k8s.io/kubernetes/pkg/apis/certificates"
 	"k8s.io/kubernetes/pkg/apis/certificates/validation"
-	api "k8s.io/kubernetes/pkg/apis/core"
 )
 
 // csrStrategy implements behavior for CSRs
@@ -36,7 +36,7 @@ type csrStrategy struct {
 
 // csrStrategy is the default logic that applies when creating and updating
 // CSR objects.
-var Strategy = csrStrategy{api.Scheme, names.SimpleNameGenerator}
+var Strategy = csrStrategy{globalscheme.Scheme, names.SimpleNameGenerator}
 
 // NamespaceScoped is true for CSRs.
 func (csrStrategy) NamespaceScoped() bool {

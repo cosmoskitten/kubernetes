@@ -31,7 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientcache "k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
-	api "k8s.io/kubernetes/pkg/apis/core"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	"k8s.io/kubernetes/plugin/pkg/scheduler/algorithm"
 	"k8s.io/kubernetes/plugin/pkg/scheduler/algorithm/predicates"
 	"k8s.io/kubernetes/plugin/pkg/scheduler/core"
@@ -186,7 +186,7 @@ func TestScheduler(t *testing.T) {
 				NextPod: func() *v1.Pod {
 					return item.sendPod
 				},
-				Recorder: eventBroadcaster.NewRecorder(api.Scheme, v1.EventSource{Component: "scheduler"}),
+				Recorder: eventBroadcaster.NewRecorder(globalscheme.Scheme, v1.EventSource{Component: "scheduler"}),
 			},
 		}
 

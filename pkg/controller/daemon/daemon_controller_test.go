@@ -39,6 +39,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	"k8s.io/kubernetes/pkg/api/testapi"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	api "k8s.io/kubernetes/pkg/apis/core"
@@ -146,7 +147,7 @@ func updateStrategies() []*extensions.DaemonSetUpdateStrategy {
 
 func newNode(name string, label map[string]string) *v1.Node {
 	return &v1.Node{
-		TypeMeta: metav1.TypeMeta{APIVersion: api.Registry.GroupOrDie(v1.GroupName).GroupVersion.String()},
+		TypeMeta: metav1.TypeMeta{APIVersion: globalscheme.Registry.GroupOrDie(v1.GroupName).GroupVersion.String()},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Labels:    label,
@@ -196,7 +197,7 @@ func newPod(podName string, nodeName string, label map[string]string, ds *extens
 	}
 
 	pod := &v1.Pod{
-		TypeMeta: metav1.TypeMeta{APIVersion: api.Registry.GroupOrDie(v1.GroupName).GroupVersion.String()},
+		TypeMeta: metav1.TypeMeta{APIVersion: globalscheme.Registry.GroupOrDie(v1.GroupName).GroupVersion.String()},
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: podName,
 			Labels:       newLabels,
@@ -255,7 +256,7 @@ func (f *fakePodControl) CreatePodsOnNode(nodeName, namespace string, template *
 		},
 	}
 
-	if err := api.Scheme.Convert(&template.Spec, &pod.Spec, nil); err != nil {
+	if err := globalscheme.Scheme.Convert(&template.Spec, &pod.Spec, nil); err != nil {
 		return fmt.Errorf("unable to convert pod template: %v", err)
 	}
 	if len(nodeName) != 0 {

@@ -26,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/kubernetes/federation/apis/federation"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	apitesting "k8s.io/kubernetes/pkg/api/testing"
 	api "k8s.io/kubernetes/pkg/apis/core"
 
@@ -159,7 +160,7 @@ func TestMatchCluster(t *testing.T) {
 
 func TestSelectableFieldLabelConversions(t *testing.T) {
 	apitesting.TestSelectableFieldLabelConversionsOfKind(t,
-		api.Registry.GroupOrDie(federation.GroupName).GroupVersion.String(),
+		globalscheme.Registry.GroupOrDie(federation.GroupName).GroupVersion.String(),
 		"Cluster",
 		ClusterToSelectableFields(&federation.Cluster{}),
 		nil,

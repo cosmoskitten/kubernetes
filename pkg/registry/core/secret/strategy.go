@@ -29,6 +29,7 @@ import (
 	"k8s.io/apiserver/pkg/registry/rest"
 	apistorage "k8s.io/apiserver/pkg/storage"
 	"k8s.io/apiserver/pkg/storage/names"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/apis/core/validation"
 )
@@ -41,7 +42,7 @@ type strategy struct {
 
 // Strategy is the default logic that applies when creating and updating Secret
 // objects via the REST API.
-var Strategy = strategy{api.Scheme, names.SimpleNameGenerator}
+var Strategy = strategy{globalscheme.Scheme, names.SimpleNameGenerator}
 
 var _ = rest.RESTCreateStrategy(Strategy)
 

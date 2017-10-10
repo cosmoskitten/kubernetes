@@ -30,6 +30,7 @@ import (
 	"k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/validation"
 	"k8s.io/kubernetes/cmd/kubeadm/app/constants"
 	configutil "k8s.io/kubernetes/cmd/kubeadm/app/util/config"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	api "k8s.io/kubernetes/pkg/apis/core"
 )
 
@@ -86,12 +87,12 @@ func bytesToValidatedMasterConfig(b []byte) (*kubeadmapiext.MasterConfiguration,
 	finalCfg := &kubeadmapiext.MasterConfiguration{}
 	internalcfg := &kubeadmapi.MasterConfiguration{}
 
-	if err := runtime.DecodeInto(api.Codecs.UniversalDecoder(), b, cfg); err != nil {
+	if err := runtime.DecodeInto(globalscheme.Codecs.UniversalDecoder(), b, cfg); err != nil {
 		return nil, fmt.Errorf("unable to decode config from bytes: %v", err)
 	}
 	// Default and convert to the internal version
-	api.Scheme.Default(cfg)
-	api.Scheme.Convert(cfg, internalcfg, nil)
+	globalscheme.Scheme.Default(cfg)
+	globalscheme.Scheme.Convert(cfg, internalcfg, nil)
 
 	// Applies dynamic defaults to settings not provided with flags
 	if err := configutil.SetInitDynamicDefaults(internalcfg); err != nil {
@@ -102,6 +103,6 @@ func bytesToValidatedMasterConfig(b []byte) (*kubeadmapiext.MasterConfiguration,
 		return nil, err
 	}
 	// Finally converts back to the external version
-	api.Scheme.Convert(internalcfg, finalCfg, nil)
+	globalscheme.Scheme.Convert(internalcfg, finalCfg, nil)
 	return finalCfg, nil
 }

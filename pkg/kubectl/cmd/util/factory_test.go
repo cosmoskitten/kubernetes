@@ -44,6 +44,7 @@ import (
 	testcore "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	"k8s.io/kubernetes/pkg/api/testapi"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/apis/extensions"
@@ -231,7 +232,7 @@ func TestFlagUnderscoreRenaming(t *testing.T) {
 }
 
 func loadSchemaForTest() (validation.Schema, error) {
-	pathToSwaggerSpec := "../../../../api/swagger-spec/" + api.Registry.GroupOrDie(api.GroupName).GroupVersion.Version + ".json"
+	pathToSwaggerSpec := "../../../../api/swagger-spec/" + globalscheme.Registry.GroupOrDie(api.GroupName).GroupVersion.Version + ".json"
 	data, err := ioutil.ReadFile(pathToSwaggerSpec)
 	if err != nil {
 		return nil, err
@@ -259,7 +260,7 @@ func TestRefetchSchemaWhenValidationFails(t *testing.T) {
 	requests := map[string]int{}
 
 	c := &manualfake.RESTClient{
-		APIRegistry:          api.Registry,
+		APIRegistry:          globalscheme.Registry,
 		NegotiatedSerializer: testapi.Default.NegotiatedSerializer(),
 		Client: manualfake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch p, m := req.URL.Path, req.Method; {
@@ -320,7 +321,7 @@ func TestValidateCachesSchema(t *testing.T) {
 	requests := map[string]int{}
 
 	c := &manualfake.RESTClient{
-		APIRegistry:          api.Registry,
+		APIRegistry:          globalscheme.Registry,
 		NegotiatedSerializer: testapi.Default.NegotiatedSerializer(),
 		Client: manualfake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch p, m := req.URL.Path, req.Method; {
@@ -751,7 +752,7 @@ func TestDiscoveryReplaceAliases(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unable to create shortcut expander, err = %s", err.Error())
 	}
-	b := resource.NewBuilder(mapper, resource.LegacyCategoryExpander, api.Scheme, fakeClient(), testapi.Default.Codec())
+	b := resource.NewBuilder(mapper, resource.LegacyCategoryExpander, globalscheme.Scheme, fakeClient(), testapi.Default.Codec())
 
 	for _, test := range tests {
 		replaced := b.ReplaceAliases(test.arg)

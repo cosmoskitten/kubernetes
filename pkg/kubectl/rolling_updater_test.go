@@ -36,6 +36,7 @@ import (
 	restclient "k8s.io/client-go/rest"
 	manualfake "k8s.io/client-go/rest/fake"
 	testcore "k8s.io/client-go/testing"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	"k8s.io/kubernetes/pkg/api/testapi"
 	apitesting "k8s.io/kubernetes/pkg/api/testing"
 	api "k8s.io/kubernetes/pkg/apis/core"
@@ -1468,7 +1469,7 @@ func TestUpdateRcWithRetries(t *testing.T) {
 		{StatusCode: 200, Header: header, Body: objBody(codec, rc)},
 	}
 	fakeClient := &manualfake.RESTClient{
-		APIRegistry:          api.Registry,
+		APIRegistry:          globalscheme.Registry,
 		NegotiatedSerializer: testapi.Default.NegotiatedSerializer(),
 		Client: manualfake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch p, m := req.URL.Path, req.Method; {
@@ -1495,7 +1496,7 @@ func TestUpdateRcWithRetries(t *testing.T) {
 			}
 		}),
 	}
-	clientConfig := &restclient.Config{APIPath: "/api", ContentConfig: restclient.ContentConfig{NegotiatedSerializer: api.Codecs, GroupVersion: &api.Registry.GroupOrDie(api.GroupName).GroupVersion}}
+	clientConfig := &restclient.Config{APIPath: "/api", ContentConfig: restclient.ContentConfig{NegotiatedSerializer: globalscheme.Codecs, GroupVersion: &globalscheme.Registry.GroupOrDie(api.GroupName).GroupVersion}}
 	restClient, _ := restclient.RESTClientFor(clientConfig)
 	restClient.Client = fakeClient.Client
 	clientset := internalclientset.New(restClient)
@@ -1561,7 +1562,7 @@ func TestAddDeploymentHash(t *testing.T) {
 	seen := sets.String{}
 	updatedRc := false
 	fakeClient := &manualfake.RESTClient{
-		APIRegistry:          api.Registry,
+		APIRegistry:          globalscheme.Registry,
 		NegotiatedSerializer: testapi.Default.NegotiatedSerializer(),
 		Client: manualfake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			header := http.Header{}
@@ -1596,7 +1597,7 @@ func TestAddDeploymentHash(t *testing.T) {
 			}
 		}),
 	}
-	clientConfig := &restclient.Config{APIPath: "/api", ContentConfig: restclient.ContentConfig{NegotiatedSerializer: api.Codecs, GroupVersion: &api.Registry.GroupOrDie(api.GroupName).GroupVersion}}
+	clientConfig := &restclient.Config{APIPath: "/api", ContentConfig: restclient.ContentConfig{NegotiatedSerializer: globalscheme.Codecs, GroupVersion: &globalscheme.Registry.GroupOrDie(api.GroupName).GroupVersion}}
 	restClient, _ := restclient.RESTClientFor(clientConfig)
 	restClient.Client = fakeClient.Client
 	clientset := internalclientset.New(restClient)

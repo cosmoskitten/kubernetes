@@ -31,13 +31,14 @@ import (
 	"k8s.io/apimachinery/pkg/api/testing/fuzzer"
 	"k8s.io/apimachinery/pkg/runtime"
 	k8syaml "k8s.io/apimachinery/pkg/util/yaml"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	"k8s.io/kubernetes/pkg/api/testapi"
 	kapitesting "k8s.io/kubernetes/pkg/api/testing"
 	api "k8s.io/kubernetes/pkg/apis/core"
 )
 
 func readPod(filename string) ([]byte, error) {
-	data, err := ioutil.ReadFile("testdata/" + api.Registry.GroupOrDie(api.GroupName).GroupVersion.Version + "/" + filename)
+	data, err := ioutil.ReadFile("testdata/" + globalscheme.Registry.GroupOrDie(api.GroupName).GroupVersion.Version + "/" + filename)
 	return data, err
 }
 
@@ -146,7 +147,7 @@ func TestValidateOk(t *testing.T) {
 	}
 
 	seed := rand.Int63()
-	apiObjectFuzzer := fuzzer.FuzzerFor(kapitesting.FuzzerFuncs, rand.NewSource(seed), api.Codecs)
+	apiObjectFuzzer := fuzzer.FuzzerFor(kapitesting.FuzzerFuncs, rand.NewSource(seed), globalscheme.Codecs)
 	for i := 0; i < 5; i++ {
 		for _, test := range tests {
 			testObj := test.obj

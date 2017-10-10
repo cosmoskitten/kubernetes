@@ -37,15 +37,14 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 	clientfake "k8s.io/client-go/kubernetes/fake"
 	core "k8s.io/client-go/testing"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	"k8s.io/kubernetes/pkg/apis/autoscaling"
-	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/controller/podautoscaler/metrics"
-	metricsfake "k8s.io/metrics/pkg/client/clientset_generated/clientset/fake"
-	cmfake "k8s.io/metrics/pkg/client/custom_metrics/fake"
-
 	cmapi "k8s.io/metrics/pkg/apis/custom_metrics/v1beta1"
 	metricsapi "k8s.io/metrics/pkg/apis/metrics/v1beta1"
+	metricsfake "k8s.io/metrics/pkg/client/clientset_generated/clientset/fake"
+	cmfake "k8s.io/metrics/pkg/client/custom_metrics/fake"
 
 	"github.com/stretchr/testify/assert"
 
@@ -486,7 +485,7 @@ func (tc *testCase) prepareTestClient(t *testing.T) (*fake.Clientset, *metricsfa
 		}
 
 		name := getForAction.GetName()
-		mapper := api.Registry.RESTMapper()
+		mapper := globalscheme.Registry.RESTMapper()
 		metrics := &cmapi.MetricValueList{}
 		var matchedTarget *autoscalingv2.MetricSpec
 		for i, target := range tc.metricsTarget {

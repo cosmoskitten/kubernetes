@@ -26,7 +26,7 @@ import (
 
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/rest/fake"
-	api "k8s.io/kubernetes/pkg/apis/core"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	"k8s.io/kubernetes/pkg/kubectl"
 	cmdtesting "k8s.io/kubernetes/pkg/kubectl/cmd/testing"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
@@ -76,7 +76,7 @@ func TestCreateDeployment(t *testing.T) {
 	depName := "jonny-dep"
 	f, tf, _, ns := cmdtesting.NewAPIFactory()
 	tf.Client = &fake.RESTClient{
-		APIRegistry:          api.Registry,
+		APIRegistry:          globalscheme.Registry,
 		NegotiatedSerializer: ns,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			return &http.Response{
@@ -105,7 +105,7 @@ func TestCreateDeploymentNoImage(t *testing.T) {
 	depName := "jonny-dep"
 	f, tf, _, ns := cmdtesting.NewAPIFactory()
 	tf.Client = &fake.RESTClient{
-		APIRegistry:          api.Registry,
+		APIRegistry:          globalscheme.Registry,
 		NegotiatedSerializer: ns,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			return &http.Response{

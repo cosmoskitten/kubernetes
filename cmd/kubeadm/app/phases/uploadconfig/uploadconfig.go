@@ -28,7 +28,7 @@ import (
 	kubeadmapiext "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/v1alpha1"
 	kubeadmconstants "k8s.io/kubernetes/cmd/kubeadm/app/constants"
 	"k8s.io/kubernetes/cmd/kubeadm/app/util/apiclient"
-	api "k8s.io/kubernetes/pkg/apis/core"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 )
 
 // UploadConfiguration saves the MasterConfiguration used for later reference (when upgrading for instance)
@@ -38,7 +38,7 @@ func UploadConfiguration(cfg *kubeadmapi.MasterConfiguration, client clientset.I
 
 	// Convert cfg to the external version as that's the only version of the API that can be deserialized later
 	externalcfg := &kubeadmapiext.MasterConfiguration{}
-	api.Scheme.Convert(cfg, externalcfg, nil)
+	globalscheme.Scheme.Convert(cfg, externalcfg, nil)
 
 	cfgYaml, err := yaml.Marshal(*externalcfg)
 	if err != nil {

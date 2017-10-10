@@ -26,12 +26,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/kubernetes/pkg/apis/core"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	corev1 "k8s.io/kubernetes/pkg/apis/core/v1"
 )
 
 func roundTrip(t *testing.T, obj runtime.Object) runtime.Object {
-	codec := core.Codecs.LegacyCodec(corev1.SchemeGroupVersion)
+	codec := globalscheme.Codecs.LegacyCodec(corev1.SchemeGroupVersion)
 	data, err := runtime.Encode(codec, obj)
 	if err != nil {
 		t.Errorf("%v\n %#v", err, obj)
@@ -43,7 +43,7 @@ func roundTrip(t *testing.T, obj runtime.Object) runtime.Object {
 		return nil
 	}
 	obj3 := reflect.New(reflect.TypeOf(obj).Elem()).Interface().(runtime.Object)
-	err = core.Scheme.Convert(obj2, obj3, nil)
+	err = globalscheme.Scheme.Convert(obj2, obj3, nil)
 	if err != nil {
 		t.Errorf("%v\nSource: %#v", err, obj2)
 		return nil

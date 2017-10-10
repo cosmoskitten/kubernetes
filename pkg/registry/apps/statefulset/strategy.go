@@ -24,9 +24,9 @@ import (
 	"k8s.io/apiserver/pkg/registry/rest"
 	"k8s.io/apiserver/pkg/storage/names"
 	"k8s.io/kubernetes/pkg/api/pod"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	"k8s.io/kubernetes/pkg/apis/apps"
 	"k8s.io/kubernetes/pkg/apis/apps/validation"
-	api "k8s.io/kubernetes/pkg/apis/core"
 )
 
 // statefulSetStrategy implements verification logic for Replication StatefulSets.
@@ -36,7 +36,7 @@ type statefulSetStrategy struct {
 }
 
 // Strategy is the default logic that applies when creating and updating Replication StatefulSet objects.
-var Strategy = statefulSetStrategy{api.Scheme, names.SimpleNameGenerator}
+var Strategy = statefulSetStrategy{globalscheme.Scheme, names.SimpleNameGenerator}
 
 // DefaultGarbageCollectionPolicy returns Orphan because that was the default
 // behavior before the server-side garbage collection was implemented.

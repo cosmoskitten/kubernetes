@@ -36,6 +36,7 @@ import (
 	fedv1beta1 "k8s.io/kubernetes/federation/apis/federation/v1beta1"
 	kubefedtesting "k8s.io/kubernetes/federation/pkg/kubefed/testing"
 	"k8s.io/kubernetes/federation/pkg/kubefed/util"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	"k8s.io/kubernetes/pkg/api/testapi"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	cmdtesting "k8s.io/kubernetes/pkg/kubectl/cmd/testing"
@@ -182,9 +183,9 @@ func testUnjoinFederationFactory(name, server, secret string) cmdutil.Factory {
 	f, tf, _, _ := cmdtesting.NewAPIFactory()
 	codec := testapi.Federation.Codec()
 	tf.ClientConfig = kubefedtesting.DefaultClientConfig()
-	ns := serializer.NegotiatedSerializerWrapper(runtime.SerializerInfo{Serializer: runtime.NewCodec(f.JSONEncoder(), api.Codecs.UniversalDecoder(fedv1beta1.SchemeGroupVersion))})
+	ns := serializer.NegotiatedSerializerWrapper(runtime.SerializerInfo{Serializer: runtime.NewCodec(f.JSONEncoder(), globalscheme.Codecs.UniversalDecoder(fedv1beta1.SchemeGroupVersion))})
 	tf.Client = &fake.RESTClient{
-		APIRegistry:          api.Registry,
+		APIRegistry:          globalscheme.Registry,
 		NegotiatedSerializer: ns,
 		GroupName:            "federation",
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
@@ -241,7 +242,7 @@ func fakeUnjoinHostFactory(clusterName string) cmdutil.Factory {
 	ns := dynamic.ContentConfig().NegotiatedSerializer
 	tf.ClientConfig = kubefedtesting.DefaultClientConfig()
 	tf.Client = &fake.RESTClient{
-		APIRegistry:          api.Registry,
+		APIRegistry:          globalscheme.Registry,
 		NegotiatedSerializer: ns,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch p, m := req.URL.Path, req.Method; {

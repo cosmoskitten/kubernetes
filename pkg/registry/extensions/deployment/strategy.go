@@ -31,7 +31,7 @@ import (
 	"k8s.io/apiserver/pkg/registry/rest"
 	"k8s.io/apiserver/pkg/storage/names"
 	"k8s.io/kubernetes/pkg/api/pod"
-	api "k8s.io/kubernetes/pkg/apis/core"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	"k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/apis/extensions/validation"
 )
@@ -44,7 +44,7 @@ type deploymentStrategy struct {
 
 // Strategy is the default logic that applies when creating and updating Deployment
 // objects via the REST API.
-var Strategy = deploymentStrategy{api.Scheme, names.SimpleNameGenerator}
+var Strategy = deploymentStrategy{globalscheme.Scheme, names.SimpleNameGenerator}
 
 // DefaultGarbageCollectionPolicy returns Orphan because that's the default
 // behavior before the server-side garbage collection is implemented.

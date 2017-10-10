@@ -23,6 +23,7 @@ import (
 	"k8s.io/apiserver/pkg/registry/rest"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	"k8s.io/apiserver/pkg/server/storage"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/apis/extensions"
 	_ "k8s.io/kubernetes/pkg/apis/extensions/install"
@@ -74,16 +75,16 @@ func installExtensionsAPIs(g *genericapiserver.GenericAPIServer, optsGetter gene
 	if !shouldInstallGroup {
 		return
 	}
-	extensionsGroupMeta := api.Registry.GroupOrDie(extensions.GroupName)
+	extensionsGroupMeta := globalscheme.Registry.GroupOrDie(extensions.GroupName)
 	apiGroupInfo := genericapiserver.APIGroupInfo{
 		GroupMeta: *extensionsGroupMeta,
 		VersionedResourcesStorageMap: map[string]map[string]rest.Storage{
 			"v1beta1": resources,
 		},
-		OptionsExternalVersion: &api.Registry.GroupOrDie(api.GroupName).GroupVersion,
-		Scheme:                 api.Scheme,
-		ParameterCodec:         api.ParameterCodec,
-		NegotiatedSerializer:   api.Codecs,
+		OptionsExternalVersion: &globalscheme.Registry.GroupOrDie(api.GroupName).GroupVersion,
+		Scheme:                 globalscheme.Scheme,
+		ParameterCodec:         globalscheme.ParameterCodec,
+		NegotiatedSerializer:   globalscheme.Codecs,
 	}
 	if err := g.InstallAPIGroup(&apiGroupInfo); err != nil {
 		glog.Fatalf("Error in registering group versions: %v", err)
