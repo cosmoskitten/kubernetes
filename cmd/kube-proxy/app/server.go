@@ -46,13 +46,16 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/apis/componentconfig"
-	"k8s.io/kubernetes/pkg/apis/componentconfig/v1alpha1"
 	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	informers "k8s.io/kubernetes/pkg/client/informers/informers_generated/internalversion"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/kubelet/qos"
 	"k8s.io/kubernetes/pkg/master/ports"
 	"k8s.io/kubernetes/pkg/proxy"
+	proxycomponentconfig "k8s.io/kubernetes/pkg/proxy/apis/proxyconfig"
+	proxyscheme "k8s.io/kubernetes/pkg/proxy/apis/proxyconfig/scheme"
+	"k8s.io/kubernetes/pkg/proxy/apis/proxyconfig/v1alpha1"
+	"k8s.io/kubernetes/pkg/proxy/apis/proxyconfig/validation"
 	proxyconfig "k8s.io/kubernetes/pkg/proxy/config"
 	"k8s.io/kubernetes/pkg/proxy/healthcheck"
 	"k8s.io/kubernetes/pkg/proxy/iptables"
@@ -101,10 +104,10 @@ type Options struct {
 	CleanupAndExit bool
 
 	// config is the proxy server's configuration object.
-	config *componentconfig.KubeProxyConfiguration
+	config *proxycomponentconfig.KubeProxyConfiguration
 
 	// The fields below here are placeholders for flags that can't be directly mapped into
-	// componentconfig.KubeProxyConfiguration.
+	// proxycomponentconfig.KubeProxyConfiguration.
 	//
 	// TODO remove these fields once the deprecated flags are removed.
 
@@ -169,15 +172,19 @@ func AddFlags(options *Options, fs *pflag.FlagSet) {
 }
 
 func NewOptions() (*Options, error) {
-	o := &Options{
-		config:      new(componentconfig.KubeProxyConfiguration),
-		healthzPort: ports.ProxyHealthzPort,
+	scheme, codecs, err := proxyscheme.NewSchemeAndCodecs()
+	if err != nil {
+		return nil, err
 	}
 
-	o.scheme = runtime.NewScheme()
-	o.codecs = serializer.NewCodecFactory(o.scheme)
+	o := &Options{
+		config:      new(proxycomponentconfig.KubeProxyConfiguration),
+		healthzPort: ports.ProxyHealthzPort,
+		scheme:      scheme,
+		codecs:      *codecs,
+	}
 
-	if err := componentconfig.AddToScheme(o.scheme); err != nil {
+	if err := proxycomponentconfig.AddToScheme(o.scheme); err != nil {
 		return nil, err
 	}
 	if err := v1alpha1.AddToScheme(o.scheme); err != nil {
@@ -203,7 +210,7 @@ func (o *Options) Validate(args []string) error {
 		return errors.New("no arguments are supported")
 	}
 
-	if errs := Validate(o.config); len(errs) != 0 {
+	if errs := validation.Validate(o.config); len(errs) != 0 {
 		return errs.ToAggregate()
 	}
 
@@ -287,7 +294,7 @@ func (o *Options) applyDeprecatedHealthzPortToConfig() {
 
 // loadConfigFromFile loads the contents of file and decodes it as a
 // KubeProxyConfiguration object.
-func (o *Options) loadConfigFromFile(file string) (*componentconfig.KubeProxyConfiguration, error) {
+func (o *Options) loadConfigFromFile(file string) (*proxycomponentconfig.KubeProxyConfiguration, error) {
 	data, err := ioutil.ReadFile(file)
 	if err != nil {
 		return nil, err
@@ -297,19 +304,19 @@ func (o *Options) loadConfigFromFile(file string) (*componentconfig.KubeProxyCon
 }
 
 // loadConfig decodes data as a KubeProxyConfiguration object.
-func (o *Options) loadConfig(data []byte) (*componentconfig.KubeProxyConfiguration, error) {
+func (o *Options) loadConfig(data []byte) (*proxycomponentconfig.KubeProxyConfiguration, error) {
 	configObj, gvk, err := o.codecs.UniversalDecoder().Decode(data, nil, nil)
 	if err != nil {
 		return nil, err
 	}
-	config, ok := configObj.(*componentconfig.KubeProxyConfiguration)
+	config, ok := configObj.(*proxycomponentconfig.KubeProxyConfiguration)
 	if !ok {
 		return nil, fmt.Errorf("got unexpected config type: %v", gvk)
 	}
 	return config, nil
 }
 
-func (o *Options) ApplyDefaults(in *componentconfig.KubeProxyConfiguration) (*componentconfig.KubeProxyConfiguration, error) {
+func (o *Options) ApplyDefaults(in *proxycomponentconfig.KubeProxyConfiguration) (*proxycomponentconfig.KubeProxyConfiguration, error) {
 	external, err := o.scheme.ConvertToVersion(in, v1alpha1.SchemeGroupVersion)
 	if err != nil {
 		return nil, err
@@ -317,12 +324,12 @@ func (o *Options) ApplyDefaults(in *componentconfig.KubeProxyConfiguration) (*co
 
 	o.scheme.Default(external)
 
-	internal, err := o.scheme.ConvertToVersion(external, componentconfig.SchemeGroupVersion)
+	internal, err := o.scheme.ConvertToVersion(external, proxycomponentconfig.SchemeGroupVersion)
 	if err != nil {
 		return nil, err
 	}
 
-	out := internal.(*componentconfig.KubeProxyConfiguration)
+	out := internal.(*proxycomponentconfig.KubeProxyConfiguration)
 
 	return out, nil
 }
@@ -375,7 +382,7 @@ type ProxyServer struct {
 	Proxier                proxy.ProxyProvider
 	Broadcaster            record.EventBroadcaster
 	Recorder               record.EventRecorder
-	ConntrackConfiguration componentconfig.KubeProxyConntrackConfiguration
+	ConntrackConfiguration proxycomponentconfig.KubeProxyConntrackConfiguration
 	Conntracker            Conntracker // if nil, ignored
 	ProxyMode              string
 	NodeRef                *v1.ObjectReference
@@ -392,7 +399,7 @@ type ProxyServer struct {
 
 // createClients creates a kube client and an event client from the given config and masterOverride.
 // TODO remove masterOverride when CLI flags are removed.
-func createClients(config componentconfig.ClientConnectionConfiguration, masterOverride string) (clientset.Interface, v1core.EventsGetter, error) {
+func createClients(config proxycomponentconfig.ClientConnectionConfiguration, masterOverride string) (clientset.Interface, v1core.EventsGetter, error) {
 	if len(config.KubeConfigFile) == 0 && len(masterOverride) == 0 {
 		glog.Warningf("Neither --kubeconfig nor --master was specified. Using default API client. This might not work.")
 	}
@@ -560,7 +567,7 @@ func (s *ProxyServer) birthCry() {
 	s.Recorder.Eventf(s.NodeRef, api.EventTypeNormal, "Starting", "Starting kube-proxy.")
 }
 
-func getConntrackMax(config componentconfig.KubeProxyConntrackConfiguration) (int, error) {
+func getConntrackMax(config proxycomponentconfig.KubeProxyConntrackConfiguration) (int, error) {
 	if config.Max > 0 {
 		if config.MaxPerCore > 0 {
 			return -1, fmt.Errorf("invalid config: Conntrack Max and Conntrack MaxPerCore are mutually exclusive")

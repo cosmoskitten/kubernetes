@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package app
+package validation
 
 import (
 	"fmt"
@@ -25,11 +25,11 @@ import (
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	apivalidation "k8s.io/kubernetes/pkg/api/validation"
-	"k8s.io/kubernetes/pkg/apis/componentconfig"
+	"k8s.io/kubernetes/pkg/proxy/apis/proxyconfig"
 )
 
 // Validate validates the configuration of kube-proxy
-func Validate(config *componentconfig.KubeProxyConfiguration) field.ErrorList {
+func Validate(config *proxyconfig.KubeProxyConfiguration) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	newPath := field.NewPath("KubeProxyConfiguration")
@@ -69,7 +69,7 @@ func Validate(config *componentconfig.KubeProxyConfiguration) field.ErrorList {
 	return allErrs
 }
 
-func validateKubeProxyIPTablesConfiguration(config componentconfig.KubeProxyIPTablesConfiguration, fldPath *field.Path) field.ErrorList {
+func validateKubeProxyIPTablesConfiguration(config proxyconfig.KubeProxyIPTablesConfiguration, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	if config.MasqueradeBit != nil && (*config.MasqueradeBit < 0 || *config.MasqueradeBit > 31) {
@@ -87,7 +87,7 @@ func validateKubeProxyIPTablesConfiguration(config componentconfig.KubeProxyIPTa
 	return allErrs
 }
 
-func validateKubeProxyConntrackConfiguration(config componentconfig.KubeProxyConntrackConfiguration, fldPath *field.Path) field.ErrorList {
+func validateKubeProxyConntrackConfiguration(config proxyconfig.KubeProxyConntrackConfiguration, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	if config.Max < 0 {
@@ -113,21 +113,21 @@ func validateKubeProxyConntrackConfiguration(config componentconfig.KubeProxyCon
 	return allErrs
 }
 
-func validateProxyMode(mode componentconfig.ProxyMode, fldPath *field.Path) field.ErrorList {
+func validateProxyMode(mode proxyconfig.ProxyMode, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	switch mode {
-	case componentconfig.ProxyModeUserspace:
-	case componentconfig.ProxyModeIPTables:
+	case proxyconfig.ProxyModeUserspace:
+	case proxyconfig.ProxyModeIPTables:
 	case "":
 	default:
-		modes := []string{string(componentconfig.ProxyModeUserspace), string(componentconfig.ProxyModeIPTables)}
+		modes := []string{string(proxyconfig.ProxyModeUserspace), string(proxyconfig.ProxyModeIPTables)}
 		errMsg := fmt.Sprintf("must be %s or blank (blank means the best-available proxy (currently iptables)", strings.Join(modes, ","))
 		allErrs = append(allErrs, field.Invalid(fldPath.Child("ProxyMode"), string(mode), errMsg))
 	}
 	return allErrs
 }
 
-func validateClientConnectionConfiguration(config componentconfig.ClientConnectionConfiguration, fldPath *field.Path) field.ErrorList {
+func validateClientConnectionConfiguration(config proxyconfig.ClientConnectionConfiguration, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, apivalidation.ValidateNonnegativeField(int64(config.Burst), fldPath.Child("Burst"))...)
 	return allErrs
