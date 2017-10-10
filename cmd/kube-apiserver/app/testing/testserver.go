@@ -31,7 +31,7 @@ import (
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/kubernetes/cmd/kube-apiserver/app"
 	"k8s.io/kubernetes/cmd/kube-apiserver/app/options"
-	api "k8s.io/kubernetes/pkg/apis/core"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 )
 
 // TearDownFunc is to be called to tear down a test server.
@@ -63,7 +63,7 @@ func StartTestServer(t *testing.T) (result *restclient.Config, tearDownForCaller
 	}()
 
 	t.Logf("Starting etcd...")
-	etcdServer, storageConfig := etcdtesting.NewUnsecuredEtcd3TestClientServer(t, api.Scheme)
+	etcdServer, storageConfig := etcdtesting.NewUnsecuredEtcd3TestClientServer(t, globalscheme.Scheme)
 
 	tmpDir, err = ioutil.TempDir("", "kubernetes-kube-apiserver")
 	if err != nil {

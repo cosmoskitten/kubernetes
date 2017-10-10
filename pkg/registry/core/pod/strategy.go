@@ -42,6 +42,7 @@ import (
 	"k8s.io/apiserver/pkg/storage/names"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	podutil "k8s.io/kubernetes/pkg/api/pod"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/apis/core/helper/qos"
 	"k8s.io/kubernetes/pkg/apis/core/validation"
@@ -56,7 +57,7 @@ type podStrategy struct {
 
 // Strategy is the default logic that applies when creating and updating Pod
 // objects via the REST API.
-var Strategy = podStrategy{api.Scheme, names.SimpleNameGenerator}
+var Strategy = podStrategy{globalscheme.Scheme, names.SimpleNameGenerator}
 
 // NamespaceScoped is true for pods.
 func (podStrategy) NamespaceScoped() bool {

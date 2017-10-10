@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	"k8s.io/kubernetes/pkg/apis/componentconfig"
 	"k8s.io/kubernetes/pkg/apis/componentconfig/v1alpha1"
 	api "k8s.io/kubernetes/pkg/apis/core"
@@ -55,9 +56,9 @@ type SchedulerServer struct {
 // NewSchedulerServer creates a new SchedulerServer with default parameters
 func NewSchedulerServer() *SchedulerServer {
 	versioned := &v1alpha1.KubeSchedulerConfiguration{}
-	api.Scheme.Default(versioned)
+	globalscheme.Scheme.Default(versioned)
 	cfg := componentconfig.KubeSchedulerConfiguration{}
-	api.Scheme.Convert(versioned, &cfg, nil)
+	globalscheme.Scheme.Convert(versioned, &cfg, nil)
 	cfg.LeaderElection.LeaderElect = true
 	s := SchedulerServer{
 		KubeSchedulerConfiguration: cfg,

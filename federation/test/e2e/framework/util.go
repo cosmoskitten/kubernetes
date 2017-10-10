@@ -32,7 +32,7 @@ import (
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/kubernetes/federation/client/clientset_generated/federation_clientset"
-	api "k8s.io/kubernetes/pkg/apis/core"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	"k8s.io/kubernetes/pkg/apis/core/validation"
 	"k8s.io/kubernetes/test/e2e/framework"
 )
@@ -81,7 +81,7 @@ func LoadFederatedConfig(overrides *clientcmd.ConfigOverrides) (*restclient.Conf
 	cfg, err := clientcmd.NewDefaultClientConfig(*c, &clientcmd.ConfigOverrides{}).ClientConfig()
 	if cfg != nil {
 		//TODO(colhom): this is only here because https://github.com/kubernetes/kubernetes/issues/25422
-		cfg.NegotiatedSerializer = api.Codecs
+		cfg.NegotiatedSerializer = globalscheme.Codecs
 	}
 	if err != nil {
 		return cfg, fmt.Errorf("error creating federation default client config: %v", err.Error())

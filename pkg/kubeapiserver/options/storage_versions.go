@@ -20,7 +20,7 @@ import (
 	"strings"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	api "k8s.io/kubernetes/pkg/apis/core"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 
 	"github.com/spf13/pflag"
 )
@@ -40,8 +40,8 @@ type StorageSerializationOptions struct {
 
 func NewStorageSerializationOptions() *StorageSerializationOptions {
 	return &StorageSerializationOptions{
-		DefaultStorageVersions: api.Registry.AllPreferredGroupVersions(),
-		StorageVersions:        api.Registry.AllPreferredGroupVersions(),
+		DefaultStorageVersions: globalscheme.Registry.AllPreferredGroupVersions(),
+		StorageVersions:        globalscheme.Registry.AllPreferredGroupVersions(),
 	}
 }
 

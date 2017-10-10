@@ -24,6 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	"k8s.io/kubernetes/pkg/apis/core"
 )
 
@@ -66,7 +67,7 @@ func isNamespacedKind(kind, groupVersion string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	g, err := core.Registry.Group(gv.Group)
+	g, err := globalscheme.Registry.Group(gv.Group)
 	if err != nil {
 		return false, err
 	}

@@ -22,14 +22,14 @@ import (
 	"k8s.io/apimachinery/pkg/apimachinery/announced"
 	"k8s.io/apimachinery/pkg/apimachinery/registered"
 	"k8s.io/apimachinery/pkg/runtime"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	"k8s.io/kubernetes/pkg/apis/autoscaling"
 	"k8s.io/kubernetes/pkg/apis/autoscaling/v1"
 	"k8s.io/kubernetes/pkg/apis/autoscaling/v2beta1"
-	api "k8s.io/kubernetes/pkg/apis/core"
 )
 
 func init() {
-	Install(api.GroupFactoryRegistry, api.Registry, api.Scheme)
+	Install(globalscheme.GroupFactoryRegistry, globalscheme.Registry, globalscheme.Scheme)
 }
 
 // Install registers the API group and adds types to a scheme

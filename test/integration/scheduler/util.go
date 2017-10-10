@@ -33,8 +33,8 @@ import (
 	corelisters "k8s.io/client-go/listers/core/v1"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	"k8s.io/kubernetes/pkg/api/testapi"
-	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/plugin/pkg/scheduler"
 	_ "k8s.io/kubernetes/plugin/pkg/scheduler/algorithmprovider"
 	"k8s.io/kubernetes/plugin/pkg/scheduler/factory"
@@ -85,7 +85,7 @@ func initTest(t *testing.T, nsPrefix string) *TestContext {
 		t.Fatalf("Couldn't create scheduler config: %v", err)
 	}
 	eventBroadcaster := record.NewBroadcaster()
-	context.schedulerConfig.Recorder = eventBroadcaster.NewRecorder(api.Scheme, v1.EventSource{Component: v1.DefaultSchedulerName})
+	context.schedulerConfig.Recorder = eventBroadcaster.NewRecorder(globalscheme.Scheme, v1.EventSource{Component: v1.DefaultSchedulerName})
 	eventBroadcaster.StartRecordingToSink(&clientv1core.EventSinkImpl{Interface: clientv1core.New(context.clientSet.CoreV1().RESTClient()).Events("")})
 	context.informerFactory.Start(context.schedulerConfig.StopEverything)
 	context.scheduler, err = scheduler.NewFromConfigurator(&scheduler.FakeConfigurator{Config: context.schedulerConfig}, nil...)

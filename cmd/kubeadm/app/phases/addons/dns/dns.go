@@ -31,7 +31,7 @@ import (
 	kubeadmconstants "k8s.io/kubernetes/cmd/kubeadm/app/constants"
 	kubeadmutil "k8s.io/kubernetes/cmd/kubeadm/app/util"
 	"k8s.io/kubernetes/cmd/kubeadm/app/util/apiclient"
-	api "k8s.io/kubernetes/pkg/apis/core"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	"k8s.io/kubernetes/pkg/util/version"
 )
 
@@ -97,7 +97,7 @@ func CreateServiceAccount(client clientset.Interface) error {
 
 func createKubeDNSAddon(deploymentBytes, serviceBytes []byte, client clientset.Interface) error {
 	kubednsDeployment := &apps.Deployment{}
-	if err := kuberuntime.DecodeInto(api.Codecs.UniversalDecoder(), deploymentBytes, kubednsDeployment); err != nil {
+	if err := kuberuntime.DecodeInto(globalscheme.Codecs.UniversalDecoder(), deploymentBytes, kubednsDeployment); err != nil {
 		return fmt.Errorf("unable to decode kube-dns deployment %v", err)
 	}
 
@@ -107,7 +107,7 @@ func createKubeDNSAddon(deploymentBytes, serviceBytes []byte, client clientset.I
 	}
 
 	kubednsService := &v1.Service{}
-	if err := kuberuntime.DecodeInto(api.Codecs.UniversalDecoder(), serviceBytes, kubednsService); err != nil {
+	if err := kuberuntime.DecodeInto(globalscheme.Codecs.UniversalDecoder(), serviceBytes, kubednsService); err != nil {
 		return fmt.Errorf("unable to decode kube-dns service %v", err)
 	}
 

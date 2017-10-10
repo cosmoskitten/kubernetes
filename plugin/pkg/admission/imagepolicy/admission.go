@@ -28,6 +28,7 @@ import (
 
 	"github.com/golang/glog"
 
+	"k8s.io/api/imagepolicy/v1alpha1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	kubeschema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -36,8 +37,7 @@ import (
 	"k8s.io/apiserver/pkg/admission"
 	"k8s.io/apiserver/pkg/util/webhook"
 	"k8s.io/client-go/rest"
-
-	"k8s.io/api/imagepolicy/v1alpha1"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	api "k8s.io/kubernetes/pkg/apis/core"
 
 	// install the clientgo image policy API for use with api registry
@@ -234,7 +234,7 @@ func NewImagePolicyWebhook(configFile io.Reader) (admission.Interface, error) {
 		return nil, err
 	}
 
-	gw, err := webhook.NewGenericWebhook(api.Registry, api.Codecs, whConfig.KubeConfigFile, groupVersions, whConfig.RetryBackoff)
+	gw, err := webhook.NewGenericWebhook(globalscheme.Registry, globalscheme.Codecs, whConfig.KubeConfigFile, groupVersions, whConfig.RetryBackoff)
 	if err != nil {
 		return nil, err
 	}

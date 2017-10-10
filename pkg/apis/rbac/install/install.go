@@ -23,7 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/apimachinery/registered"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
-	api "k8s.io/kubernetes/pkg/apis/core"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	"k8s.io/kubernetes/pkg/apis/rbac"
 	"k8s.io/kubernetes/pkg/apis/rbac/v1"
 	"k8s.io/kubernetes/pkg/apis/rbac/v1alpha1"
@@ -31,7 +31,7 @@ import (
 )
 
 func init() {
-	Install(api.GroupFactoryRegistry, api.Registry, api.Scheme)
+	Install(globalscheme.GroupFactoryRegistry, globalscheme.Registry, globalscheme.Scheme)
 }
 
 // Install registers the API group and adds types to a scheme

@@ -29,7 +29,7 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	utiltesting "k8s.io/client-go/util/testing"
-	api "k8s.io/kubernetes/pkg/apis/core"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	_ "k8s.io/kubernetes/pkg/apis/core/install"
 	schedulerapi "k8s.io/kubernetes/plugin/pkg/scheduler/api"
 	latestschedulerapi "k8s.io/kubernetes/plugin/pkg/scheduler/api/latest"
@@ -491,7 +491,7 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 		}
 		server := httptest.NewServer(&handler)
 		defer server.Close()
-		client := clientset.NewForConfigOrDie(&restclient.Config{Host: server.URL, ContentConfig: restclient.ContentConfig{GroupVersion: &api.Registry.GroupOrDie(v1.GroupName).GroupVersion}})
+		client := clientset.NewForConfigOrDie(&restclient.Config{Host: server.URL, ContentConfig: restclient.ContentConfig{GroupVersion: &globalscheme.Registry.GroupOrDie(v1.GroupName).GroupVersion}})
 		informerFactory := informers.NewSharedInformerFactory(client, 0)
 
 		if _, err := factory.NewConfigFactory(

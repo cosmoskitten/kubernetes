@@ -33,7 +33,7 @@ import (
 	"k8s.io/kubernetes/cmd/kubeadm/app/util/apiclient"
 	configutil "k8s.io/kubernetes/cmd/kubeadm/app/util/config"
 	dryrunutil "k8s.io/kubernetes/cmd/kubeadm/app/util/dryrun"
-	api "k8s.io/kubernetes/pkg/apis/core"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	"k8s.io/kubernetes/pkg/util/version"
 )
 
@@ -121,7 +121,7 @@ func RunApply(flags *applyFlags) error {
 
 	// Grab the external, versioned configuration and convert it to the internal type for usage here later
 	internalcfg := &kubeadmapi.MasterConfiguration{}
-	api.Scheme.Convert(upgradeVars.cfg, internalcfg, nil)
+	globalscheme.Scheme.Convert(upgradeVars.cfg, internalcfg, nil)
 
 	// Validate requested and validate actual version
 	if err := configutil.NormalizeKubernetesVersion(internalcfg); err != nil {

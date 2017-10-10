@@ -29,6 +29,7 @@ import (
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/watch"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	api "k8s.io/kubernetes/pkg/apis/core"
 )
 
@@ -237,7 +238,7 @@ func AsVersionedObject(infos []*Info, forceList bool, version schema.GroupVersio
 		object = objects[0]
 	} else {
 		object = &api.List{Items: objects}
-		converted, err := TryConvert(api.Scheme, object, version, api.Registry.GroupOrDie(api.GroupName).GroupVersion)
+		converted, err := TryConvert(globalscheme.Scheme, object, version, globalscheme.Registry.GroupOrDie(api.GroupName).GroupVersion)
 		if err != nil {
 			return nil, err
 		}
@@ -265,10 +266,10 @@ func AsVersionedObjects(infos []*Info, version schema.GroupVersion, encoder runt
 			continue
 		}
 
-		// objects that are not part of api.Scheme must be converted to JSON
+		// objects that are not part of globalscheme.Scheme must be converted to JSON
 		// TODO: convert to map[string]interface{}, attach to runtime.Unknown?
 		if !version.Empty() {
-			if _, _, err := api.Scheme.ObjectKinds(info.Object); runtime.IsNotRegisteredError(err) {
+			if _, _, err := globalscheme.Scheme.ObjectKinds(info.Object); runtime.IsNotRegisteredError(err) {
 				// TODO: ideally this would encode to version, but we don't expose multiple codecs here.
 				data, err := runtime.Encode(encoder, info.Object)
 				if err != nil {

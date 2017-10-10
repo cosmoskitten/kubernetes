@@ -32,7 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 	clientset "k8s.io/client-go/kubernetes"
-	api "k8s.io/kubernetes/pkg/apis/core"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	v1helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
 	kubeletapis "k8s.io/kubernetes/pkg/kubelet/apis"
 	"k8s.io/kubernetes/pkg/util/mount"
@@ -233,7 +233,7 @@ func LoadPodFromFile(filePath string) (*v1.Pod, error) {
 	}
 	pod := &v1.Pod{}
 
-	codec := api.Codecs.LegacyCodec(api.Registry.GroupOrDie(v1.GroupName).GroupVersion)
+	codec := globalscheme.Codecs.LegacyCodec(globalscheme.Registry.GroupOrDie(v1.GroupName).GroupVersion)
 	if err := runtime.DecodeInto(codec, podDef, pod); err != nil {
 		return nil, fmt.Errorf("failed decoding file: %v", err)
 	}

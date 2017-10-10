@@ -23,15 +23,15 @@ import (
 	"k8s.io/apiserver/pkg/registry/rest"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	serverstorage "k8s.io/apiserver/pkg/server/storage"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	"k8s.io/kubernetes/pkg/apis/autoscaling"
-	api "k8s.io/kubernetes/pkg/apis/core"
 	horizontalpodautoscalerstore "k8s.io/kubernetes/pkg/registry/autoscaling/horizontalpodautoscaler/storage"
 )
 
 type RESTStorageProvider struct{}
 
 func (p RESTStorageProvider) NewRESTStorage(apiResourceConfigSource serverstorage.APIResourceConfigSource, restOptionsGetter generic.RESTOptionsGetter) (genericapiserver.APIGroupInfo, bool) {
-	apiGroupInfo := genericapiserver.NewDefaultAPIGroupInfo(autoscaling.GroupName, api.Registry, api.Scheme, api.ParameterCodec, api.Codecs)
+	apiGroupInfo := genericapiserver.NewDefaultAPIGroupInfo(autoscaling.GroupName, globalscheme.Registry, globalscheme.Scheme, globalscheme.ParameterCodec, globalscheme.Codecs)
 	// If you add a version here, be sure to add an entry in `k8s.io/kubernetes/cmd/kube-apiserver/app/aggregator.go with specific priorities.
 	// TODO refactor the plumbing to provide the information in the APIGroupInfo
 

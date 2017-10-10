@@ -41,10 +41,10 @@ import (
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	extensionsclient "k8s.io/client-go/kubernetes/typed/extensions/v1beta1"
 	autoscalinglisters "k8s.io/client-go/listers/autoscaling/v1"
+	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
-	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/controller"
 )
 

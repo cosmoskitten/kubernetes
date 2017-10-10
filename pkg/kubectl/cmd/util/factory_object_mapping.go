@@ -35,6 +35,7 @@ import (
 	"k8s.io/client-go/dynamic"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/kubernetes/federation/apis/federation"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	"k8s.io/kubernetes/pkg/apis/apps"
 	"k8s.io/kubernetes/pkg/apis/batch"
 	api "k8s.io/kubernetes/pkg/apis/core"
@@ -73,13 +74,13 @@ func NewObjectMappingFactory(clientAccessFactory ClientAccessFactory) ObjectMapp
 //   return lazy implementations of mapper and typer that don't hit the wire until they are
 //   invoked.
 func (f *ring1Factory) Object() (meta.RESTMapper, runtime.ObjectTyper) {
-	mapper := api.Registry.RESTMapper()
+	mapper := globalscheme.Registry.RESTMapper()
 	discoveryClient, err := f.clientAccessFactory.DiscoveryClient()
 	if err == nil {
 		mapper = meta.FirstHitRESTMapper{
 			MultiRESTMapper: meta.MultiRESTMapper{
-				discovery.NewDeferredDiscoveryRESTMapper(discoveryClient, api.Registry.InterfacesFor),
-				api.Registry.RESTMapper(), // hardcoded fall back
+				discovery.NewDeferredDiscoveryRESTMapper(discoveryClient, globalscheme.Registry.InterfacesFor),
+				globalscheme.Registry.RESTMapper(), // hardcoded fall back
 			},
 		}
 
@@ -89,7 +90,7 @@ func (f *ring1Factory) Object() (meta.RESTMapper, runtime.ObjectTyper) {
 		CheckErr(err)
 	}
 
-	return mapper, api.Scheme
+	return mapper, globalscheme.Scheme
 }
 
 func (f *ring1Factory) UnstructuredObject() (meta.RESTMapper, runtime.ObjectTyper, error) {
@@ -283,7 +284,7 @@ func (f *ring1Factory) LogsForObject(object, options runtime.Object, timeout tim
 		}
 
 	default:
-		gvks, _, err := api.Scheme.ObjectKinds(object)
+		gvks, _, err := globalscheme.Scheme.ObjectKinds(object)
 		if err != nil {
 			return nil, err
 		}
@@ -392,7 +393,7 @@ func (f *ring1Factory) AttachablePodForObject(object runtime.Object, timeout tim
 		return t, nil
 
 	default:
-		gvks, _, err := api.Scheme.ObjectKinds(object)
+		gvks, _, err := globalscheme.Scheme.ObjectKinds(object)
 		if err != nil {
 			return nil, err
 		}

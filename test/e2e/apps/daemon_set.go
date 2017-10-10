@@ -33,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	extensionsinternal "k8s.io/kubernetes/pkg/apis/extensions"
@@ -81,12 +82,12 @@ var _ = SIGDescribe("Daemon set [Serial]", func() {
 			}
 		}
 		if daemonsets, err := f.ClientSet.Extensions().DaemonSets(f.Namespace.Name).List(metav1.ListOptions{}); err == nil {
-			framework.Logf("daemonset: %s", runtime.EncodeOrDie(api.Codecs.LegacyCodec(api.Registry.EnabledVersions()...), daemonsets))
+			framework.Logf("daemonset: %s", runtime.EncodeOrDie(globalscheme.Codecs.LegacyCodec(globalscheme.Registry.EnabledVersions()...), daemonsets))
 		} else {
 			framework.Logf("unable to dump daemonsets: %v", err)
 		}
 		if pods, err := f.ClientSet.Core().Pods(f.Namespace.Name).List(metav1.ListOptions{}); err == nil {
-			framework.Logf("pods: %s", runtime.EncodeOrDie(api.Codecs.LegacyCodec(api.Registry.EnabledVersions()...), pods))
+			framework.Logf("pods: %s", runtime.EncodeOrDie(globalscheme.Codecs.LegacyCodec(globalscheme.Registry.EnabledVersions()...), pods))
 		} else {
 			framework.Logf("unable to dump pods: %v", err)
 		}

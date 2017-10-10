@@ -22,7 +22,7 @@ import (
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/storage/names"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
-	api "k8s.io/kubernetes/pkg/apis/core"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	"k8s.io/kubernetes/pkg/apis/storage"
 	"k8s.io/kubernetes/pkg/apis/storage/validation"
 	"k8s.io/kubernetes/pkg/features"
@@ -36,7 +36,7 @@ type storageClassStrategy struct {
 
 // Strategy is the default logic that applies when creating and updating
 // StorageClass objects via the REST API.
-var Strategy = storageClassStrategy{api.Scheme, names.SimpleNameGenerator}
+var Strategy = storageClassStrategy{globalscheme.Scheme, names.SimpleNameGenerator}
 
 func (storageClassStrategy) NamespaceScoped() bool {
 	return false

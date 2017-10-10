@@ -38,6 +38,7 @@ import (
 	"k8s.io/apiserver/pkg/registry/generic"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/transport"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	"k8s.io/kubernetes/pkg/api/testapi"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	rbacapi "k8s.io/kubernetes/pkg/apis/rbac"
@@ -427,7 +428,7 @@ func TestRBAC(t *testing.T) {
 		_, s, closeFn := framework.RunAMaster(masterConfig)
 		defer closeFn()
 
-		clientConfig := &restclient.Config{Host: s.URL, ContentConfig: restclient.ContentConfig{NegotiatedSerializer: api.Codecs}}
+		clientConfig := &restclient.Config{Host: s.URL, ContentConfig: restclient.ContentConfig{NegotiatedSerializer: globalscheme.Codecs}}
 
 		// Bootstrap the API Server with the test case's initial roles.
 		if err := tc.bootstrapRoles.bootstrap(clientsetForToken(superUser, clientConfig)); err != nil {

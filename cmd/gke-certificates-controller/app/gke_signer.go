@@ -29,8 +29,8 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	_ "k8s.io/kubernetes/pkg/apis/certificates/install"
-	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/controller/certificates"
 )
 
@@ -50,7 +50,7 @@ type GKESigner struct {
 
 // NewGKESigner will create a new instance of a GKESigner.
 func NewGKESigner(kubeConfigFile string, retryBackoff time.Duration, recorder record.EventRecorder, client clientset.Interface) (*GKESigner, error) {
-	webhook, err := webhook.NewGenericWebhook(api.Registry, api.Codecs, kubeConfigFile, groupVersions, retryBackoff)
+	webhook, err := webhook.NewGenericWebhook(globalscheme.Registry, globalscheme.Codecs, kubeConfigFile, groupVersions, retryBackoff)
 	if err != nil {
 		return nil, err
 	}

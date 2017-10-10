@@ -29,6 +29,7 @@ import (
 	"k8s.io/apiserver/pkg/storage/storagebackend"
 	utilconfig "k8s.io/apiserver/pkg/util/flag"
 	restclient "k8s.io/client-go/rest"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	kapi "k8s.io/kubernetes/pkg/apis/core"
 	kubeoptions "k8s.io/kubernetes/pkg/kubeapiserver/options"
 	kubeletclient "k8s.io/kubernetes/pkg/kubelet/client"
@@ -214,8 +215,8 @@ func TestAddFlags(t *testing.T) {
 			CloudProvider:   "azure",
 		},
 		StorageSerialization: &kubeoptions.StorageSerializationOptions{
-			StorageVersions:        kapi.Registry.AllPreferredGroupVersions(),
-			DefaultStorageVersions: kapi.Registry.AllPreferredGroupVersions(),
+			StorageVersions:        globalscheme.Registry.AllPreferredGroupVersions(),
+			DefaultStorageVersions: globalscheme.Registry.AllPreferredGroupVersions(),
 		},
 		APIEnablement: &kubeoptions.APIEnablementOptions{
 			RuntimeConfig: utilconfig.ConfigurationMap{},

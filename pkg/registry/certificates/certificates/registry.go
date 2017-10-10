@@ -23,7 +23,6 @@ import (
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/registry/rest"
 	"k8s.io/kubernetes/pkg/apis/certificates"
-	api "k8s.io/kubernetes/pkg/apis/core"
 )
 
 // Registry is an interface for things that know how to store CSRs.
