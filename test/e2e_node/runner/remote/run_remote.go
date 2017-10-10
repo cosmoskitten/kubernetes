@@ -60,6 +60,7 @@ var instanceMetadata = flag.String("instance-metadata", "", "key/value metadata 
 var gubernator = flag.Bool("gubernator", false, "If true, output Gubernator link to view logs")
 var ginkgoFlags = flag.String("ginkgo-flags", "", "Passed to ginkgo to specify additional flags such as --skip=.")
 var systemSpecName = flag.String("system-spec-name", "", "The name of the system spec used for validating the image in the node conformance test. The specs are at test/e2e_node/system/specs/. If unspecified, the default built-in spec (system.DefaultSpec) will be used.")
+var nodeEnvs = flag.String("node-envs", "", "The list of environment variables separated by ',' passed to instance as metadata. e.g. when '--node-envs=PATH,GOPATH' is specified, there will be extra instance metadata 'PATH=${PATH},GOPATH=${GOPATH}'.")
 
 const (
 	defaultMachine                = "n1-standard-1"
@@ -584,6 +585,8 @@ func createInstance(imageConfig *internalGCEImage) (string, error) {
 		if len(externalIp) > 0 {
 			remote.AddHostnameIp(name, externalIp)
 		}
+		// TODO(random-liu): Remove the docker version check. Use some other command to check
+		// instance readiness.
 		var output string
 		output, err = remote.SSH(name, "docker", "version")
 		if err != nil {
@@ -700,6 +703,12 @@ func parseInstanceMetadata(str string) map[string]string {
 			continue
 		}
 		metadata[kp[0]] = string(v)
+	}
+	envs := strings.TrimSpace(*nodeEnvs)
+	if len(envs) > 0 {
+		for _, e := range strings.Split(envs, ",") {
+			metadata[e] = os.Getenv(e)
+		}
 	}
 	return metadata
 }
