@@ -281,6 +281,8 @@ pkg/probe/exec
 pkg/probe/http
 pkg/probe/tcp
 pkg/proxy
+pkg/proxy/apis/proxyconfig
+pkg/proxy/apis/proxyconfig/v1alpha1
 pkg/proxy/iptables
 pkg/proxy/userspace
 pkg/proxy/util
