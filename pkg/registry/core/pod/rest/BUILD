@@ -13,8 +13,8 @@ go_library(
         "subresources.go",
     ],
     deps = [
-        "//pkg/api:go_default_library",
-        "//pkg/api/validation:go_default_library",
+        "//pkg/apis/core:go_default_library",
+        "//pkg/apis/core/validation:go_default_library",
         "//pkg/capabilities:go_default_library",
         "//pkg/kubelet/client:go_default_library",
         "//pkg/registry/core/pod:go_default_library",
@@ -36,7 +36,7 @@ go_test(
     srcs = ["log_test.go"],
     library = ":go_default_library",
     deps = [
-        "//pkg/api:go_default_library",
+        "//pkg/apis/core:go_default_library",
         "//pkg/registry/registrytest:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/api/errors:go_default_library",
         "//vendor/k8s.io/apiserver/pkg/endpoints/request:go_default_library",

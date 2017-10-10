@@ -50,7 +50,7 @@ go_test(
     srcs = ["helpers_test.go"],
     deps = [
         ":go_default_library",
-        "//pkg/api:go_default_library",
+        "//pkg/api/scheme:go_default_library",
         "//pkg/apis/rbac/install:go_default_library",
         "//pkg/apis/rbac/v1:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/runtime:go_default_library",

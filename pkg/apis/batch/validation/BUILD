@@ -10,9 +10,9 @@ go_library(
     name = "go_default_library",
     srcs = ["validation.go"],
     deps = [
-        "//pkg/api:go_default_library",
-        "//pkg/api/validation:go_default_library",
         "//pkg/apis/batch:go_default_library",
+        "//pkg/apis/core:go_default_library",
+        "//pkg/apis/core/validation:go_default_library",
         "//vendor/github.com/robfig/cron:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/apis/meta/v1/validation:go_default_library",
@@ -27,8 +27,8 @@ go_test(
     srcs = ["validation_test.go"],
     library = ":go_default_library",
     deps = [
-        "//pkg/api:go_default_library",
         "//pkg/apis/batch:go_default_library",
+        "//pkg/apis/core:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/types:go_default_library",
     ],

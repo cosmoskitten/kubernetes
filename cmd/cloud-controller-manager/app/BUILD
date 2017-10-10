@@ -10,7 +10,7 @@ go_library(
     srcs = ["controllermanager.go"],
     deps = [
         "//cmd/cloud-controller-manager/app/options:go_default_library",
-        "//pkg/api:go_default_library",
+        "//pkg/api/scheme:go_default_library",
         "//pkg/cloudprovider:go_default_library",
         "//pkg/controller:go_default_library",
         "//pkg/controller/cloud:go_default_library",

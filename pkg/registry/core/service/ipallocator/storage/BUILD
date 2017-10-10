@@ -11,7 +11,7 @@ go_test(
     srcs = ["storage_test.go"],
     library = ":go_default_library",
     deps = [
-        "//pkg/api:go_default_library",
+        "//pkg/apis/core:go_default_library",
         "//pkg/registry/core/service/allocator:go_default_library",
         "//pkg/registry/core/service/allocator/storage:go_default_library",
         "//pkg/registry/core/service/ipallocator:go_default_library",

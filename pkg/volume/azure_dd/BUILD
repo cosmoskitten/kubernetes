@@ -25,7 +25,7 @@ go_library(
         "//conditions:default": [],
     }),
     deps = [
-        "//pkg/api:go_default_library",
+        "//pkg/apis/core:go_default_library",
         "//pkg/cloudprovider:go_default_library",
         "//pkg/cloudprovider/providers/azure:go_default_library",
         "//pkg/util/keymutex:go_default_library",

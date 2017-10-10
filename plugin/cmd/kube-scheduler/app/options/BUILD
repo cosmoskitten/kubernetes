@@ -9,10 +9,11 @@ go_library(
     name = "go_default_library",
     srcs = ["options.go"],
     deps = [
-        "//pkg/api:go_default_library",
+        "//pkg/api/scheme:go_default_library",
         "//pkg/apis/componentconfig:go_default_library",
         "//pkg/apis/componentconfig/install:go_default_library",
         "//pkg/apis/componentconfig/v1alpha1:go_default_library",
+        "//pkg/apis/core:go_default_library",
         "//pkg/client/leaderelectionconfig:go_default_library",
         "//pkg/features:go_default_library",
         "//pkg/kubelet/apis:go_default_library",

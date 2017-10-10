@@ -11,7 +11,7 @@ go_test(
     srcs = ["storage_test.go"],
     library = ":go_default_library",
     deps = [
-        "//pkg/api:go_default_library",
+        "//pkg/apis/core:go_default_library",
         "//pkg/registry/registrytest:go_default_library",
         "//pkg/securitycontext:go_default_library",
         "//vendor/golang.org/x/net/context:go_default_library",
@@ -43,9 +43,9 @@ go_library(
         "storage.go",
     ],
     deps = [
-        "//pkg/api:go_default_library",
         "//pkg/api/pod:go_default_library",
-        "//pkg/api/validation:go_default_library",
+        "//pkg/apis/core:go_default_library",
+        "//pkg/apis/core/validation:go_default_library",
         "//pkg/apis/policy:go_default_library",
         "//pkg/client/clientset_generated/internalclientset/typed/policy/internalversion:go_default_library",
         "//pkg/kubelet/client:go_default_library",

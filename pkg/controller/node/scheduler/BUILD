@@ -33,8 +33,8 @@ go_library(
         "timed_workers.go",
     ],
     deps = [
-        "//pkg/api/helper:go_default_library",
-        "//pkg/api/v1/helper:go_default_library",
+        "//pkg/apis/core/helper:go_default_library",
+        "//pkg/apis/core/v1/helper:go_default_library",
         "//vendor/github.com/golang/glog:go_default_library",
         "//vendor/k8s.io/api/core/v1:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",

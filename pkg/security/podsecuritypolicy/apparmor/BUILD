@@ -10,7 +10,7 @@ go_library(
     name = "go_default_library",
     srcs = ["strategy.go"],
     deps = [
-        "//pkg/api:go_default_library",
+        "//pkg/apis/core:go_default_library",
         "//pkg/security/apparmor:go_default_library",
         "//pkg/util/maps:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/util/validation/field:go_default_library",
@@ -22,7 +22,7 @@ go_test(
     srcs = ["strategy_test.go"],
     library = ":go_default_library",
     deps = [
-        "//pkg/api:go_default_library",
+        "//pkg/apis/core:go_default_library",
         "//pkg/security/apparmor:go_default_library",
         "//pkg/util/maps:go_default_library",
         "//vendor/github.com/davecgh/go-spew/spew:go_default_library",

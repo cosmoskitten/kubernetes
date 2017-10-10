@@ -9,7 +9,7 @@ go_library(
     name = "go_default_library",
     srcs = ["install.go"],
     deps = [
-        "//pkg/api:go_default_library",
+        "//pkg/api/scheme:go_default_library",
         "//pkg/apis/apps:go_default_library",
         "//pkg/apis/apps/v1:go_default_library",
         "//pkg/apis/apps/v1beta1:go_default_library",

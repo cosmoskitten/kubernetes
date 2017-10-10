@@ -17,7 +17,7 @@ go_library(
         "horizontal_pod_autoscaling.go",
     ],
     deps = [
-        "//pkg/api:go_default_library",
+        "//pkg/apis/core:go_default_library",
         "//test/e2e/common:go_default_library",
         "//test/e2e/framework:go_default_library",
         "//test/e2e/instrumentation/monitoring:go_default_library",

@@ -11,7 +11,7 @@ go_test(
     srcs = ["node_authorizer_test.go"],
     library = ":go_default_library",
     deps = [
-        "//pkg/api:go_default_library",
+        "//pkg/apis/core:go_default_library",
         "//pkg/auth/nodeidentifier:go_default_library",
         "//plugin/pkg/auth/authorizer/rbac/bootstrappolicy:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
@@ -28,9 +28,9 @@ go_library(
         "node_authorizer.go",
     ],
     deps = [
-        "//pkg/api:go_default_library",
         "//pkg/api/persistentvolume:go_default_library",
         "//pkg/api/pod:go_default_library",
+        "//pkg/apis/core:go_default_library",
         "//pkg/apis/rbac:go_default_library",
         "//pkg/auth/nodeidentifier:go_default_library",
         "//pkg/client/informers/informers_generated/internalversion/core/internalversion:go_default_library",

@@ -15,7 +15,7 @@ go_library(
         "types.go",
     ],
     deps = [
-        "//pkg/api:go_default_library",
+        "//pkg/apis/core:go_default_library",
         "//pkg/apis/extensions:go_default_library",
         "//pkg/security/podsecuritypolicy/apparmor:go_default_library",
         "//pkg/security/podsecuritypolicy/capabilities:go_default_library",
@@ -36,8 +36,8 @@ go_test(
     srcs = ["provider_test.go"],
     library = ":go_default_library",
     deps = [
-        "//pkg/api:go_default_library",
-        "//pkg/api/v1:go_default_library",
+        "//pkg/apis/core:go_default_library",
+        "//pkg/apis/core/v1:go_default_library",
         "//pkg/apis/extensions:go_default_library",
         "//pkg/security/apparmor:go_default_library",
         "//pkg/security/podsecuritypolicy/seccomp:go_default_library",

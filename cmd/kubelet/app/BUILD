@@ -28,7 +28,7 @@ go_library(
     }),
     deps = [
         "//cmd/kubelet/app/options:go_default_library",
-        "//pkg/api:go_default_library",
+        "//pkg/api/scheme:go_default_library",
         "//pkg/capabilities:go_default_library",
         "//pkg/client/chaosclient:go_default_library",
         "//pkg/cloudprovider:go_default_library",
