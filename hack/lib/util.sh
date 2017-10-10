@@ -343,7 +343,7 @@ kube::util::group-version-to-pkg-path() {
   case "${group_version}" in
     # both group and version are "", this occurs when we generate deep copies for internal objects of the legacy v1 API.
     __internal)
-      echo "pkg/api"
+      echo "pkg/apis/core"
       ;;
     federation/v1beta1)
       echo "federation/apis/federation/v1beta1"

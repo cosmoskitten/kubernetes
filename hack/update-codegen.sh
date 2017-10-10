@@ -65,7 +65,6 @@ ${clientgen} --output-base "${KUBE_ROOT}/vendor" --clientset-path="k8s.io/client
 ${clientgen} --clientset-name=federation_clientset --clientset-path=k8s.io/kubernetes/federation/client/clientset_generated --input-base="k8s.io/kubernetes/vendor/k8s.io/api" --input="../../../federation/apis/federation/v1beta1","core/v1","extensions/v1beta1","batch/v1","autoscaling/v1" --included-types-overrides="core/v1/Service,core/v1/Namespace,extensions/v1beta1/ReplicaSet,core/v1/Secret,extensions/v1beta1/Ingress,extensions/v1beta1/Deployment,extensions/v1beta1/DaemonSet,core/v1/ConfigMap,core/v1/Event,batch/v1/Job,autoscaling/v1/HorizontalPodAutoscaler"   "$@"
 
 listergen_internal_apis=(
-pkg/api
 $(
   cd ${KUBE_ROOT}
   find pkg/apis -maxdepth 2 -name types.go | xargs -n1 dirname | sort 
@@ -86,7 +85,6 @@ listergen_external_apis_csv=$(IFS=,; echo "${listergen_external_apis[*]}")
 ${listergen} --output-base "${KUBE_ROOT}/vendor" --output-package "k8s.io/client-go/listers" --input-dirs "${listergen_external_apis_csv}" "$@"
 
 informergen_internal_apis=(
-pkg/api
 $(
   cd ${KUBE_ROOT}
   find pkg/apis -maxdepth 2 -name types.go | xargs -n1 dirname | sort 
