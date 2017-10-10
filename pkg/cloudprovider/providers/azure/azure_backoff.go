@@ -102,14 +102,14 @@ func (az *Cloud) CreateOrUpdateLBWithRetry(lb network.LoadBalancer) error {
 }
 
 // CreateOrUpdatePIPWithRetry invokes az.PublicIPAddressesClient.CreateOrUpdate with exponential backoff retry
-func (az *Cloud) CreateOrUpdatePIPWithRetry(pip network.PublicIPAddress) error {
+func (az *Cloud) CreateOrUpdatePIPWithRetry(resourceGroup string, pip network.PublicIPAddress) error {
 	return wait.ExponentialBackoff(az.resourceRequestBackoff, func() (bool, error) {
 		az.operationPollRateLimiter.Accept()
-		glog.V(10).Infof("PublicIPAddressesClient.CreateOrUpdate(%s): start", *pip.Name)
-		respChan, errChan := az.PublicIPAddressesClient.CreateOrUpdate(az.ResourceGroup, *pip.Name, pip, nil)
+		glog.V(10).Infof("PublicIPAddressesClient.CreateOrUpdate(%s, %s): start", resourceGroup, *pip.Name)
+		respChan, errChan := az.PublicIPAddressesClient.CreateOrUpdate(resourceGroup, *pip.Name, pip, nil)
 		resp := <-respChan
 		err := <-errChan
-		glog.V(10).Infof("PublicIPAddressesClient.CreateOrUpdate(%s): end", *pip.Name)
+		glog.V(10).Infof("PublicIPAddressesClient.CreateOrUpdate(%s, %s): end", resourceGroup, *pip.Name)
 		return processRetryResponse(resp.Response, err)
 	})
 }
