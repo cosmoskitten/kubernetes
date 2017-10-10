@@ -136,7 +136,7 @@ if [ $remote = true ] ; then
     --results-dir="$artifacts" --ginkgo-flags="$ginkgoflags" \
     --image-project="$image_project" --instance-name-prefix="$instance_prefix" \
     --delete-instances="$delete_instances" --test_args="$test_args" --instance-metadata="$metadata" \
-    --image-config-file="$image_config_file" --system-spec-name="$system_spec_name" \
+    --image-config-file="$image_config_file" --system-spec-name="$system_spec_name" --node-envs=TEST \
     2>&1 | tee -i "${artifacts}/build-log.txt"
   exit $?
 
