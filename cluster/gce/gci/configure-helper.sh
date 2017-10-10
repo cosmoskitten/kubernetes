@@ -152,7 +152,13 @@ function unique-uuid-bind-mount(){
   udevadm settle
 
   # Get the real UUID of the device
-  local item=$(readlink -f ${device} | cut -d '/' -f 3)
+  if [[ ${interface} == "nvme" ]]; then
+    # This condition is required because the existing Google images does not
+    # expose NVMe devices in /dev/disk/by-id so we are using the /dev/nvme instead
+    local item=$(echo ${device} | cut -d '/' -f 3)
+  else
+    local item=$(readlink -f ${device} | cut -d '/' -f 3)
+  fi
   # item should be the kernel device name e.g. "sdb", "nvme0n1"
   local myuuid=$(ls -l /dev/disk/by-uuid/ | grep ${item} | tr -s ' ' | cut -d ' ' -f 9)
   # myuuid should be the uuid of the device as found in /dev/disk/by-uuid/ 
@@ -179,7 +185,9 @@ function mount-ext(){
       local scsinum=`echo ${ssd} | sed -e 's/\/dev\/disk\/by-id\/google-local-ssd-\([0-9]*\)/\1/'`
       local mountpoint="/mnt/disks/ssd${scsinum}"
     else
-      local nvmenum=`echo ${ssd} | sed -e 's/\/dev\/disk\/by-id\/google-nvme0n\([0-9]*\)/\1/'`
+      # This path is required because the existing Google images do not
+      # expose NVMe devices in /dev/disk/by-id so we are using the /dev/nvme instead
+      local nvmenum=`echo ${ssd} | sed -e 's/\/dev\/nvme0n\([0-9]*\)/\1/'`
       local mountpoint="/mnt/disks/ssd-nvme${nvmenum}"
     fi
     safe-format-and-mount ${ssd} ${mountpoint}
@@ -212,7 +220,26 @@ function ensure-local-ssds() {
     fi
   done
 
-  # NVMe support can be added here easily as another loop
+  # The following mounts or symlinks NVMe devices
+  get-local-disk-num "nvme" "fs"
+  local nvmefsnum=${localdisknum}
+  local i=0
+  for ssd in /dev/nvme*; do
+    if [ -e "${ssd}" ]; then
+      # This workaround to find if the NVMe device is a disk is required because
+      # the existing Google images does not expose NVMe devices in /dev/disk/by-id
+      if [[ `ls -l ${ssd} | tr -s ' ' | cut -d ' ' -f 4` == "disk" ]]; then
+        if [[ ${i} -lt ${nvmefsnum} ]]; then
+          mount-ext ${ssd} "nvme" "fs"
+        else
+          mount-ext ${ssd} "nvme" "block"
+        fi
+        i=$((i+1))
+      fi
+    else
+      echo "No local SSD disks found."
+    fi
+  done
 }
 
 # Installs logrotate configuration files
