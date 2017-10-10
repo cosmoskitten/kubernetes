@@ -164,7 +164,7 @@ func (poc PortOpenCheck) Check() (warnings, errors []error) {
 	return nil, errors
 }
 
-// IsPrivilegedUser verifies user is privileged (linux - root, windows - Administrator)
+// IsPrivilegedUserCheck verifies user is privileged (linux - root, windows - Administrator)
 type IsPrivilegedUserCheck struct{}
 
 // Check validates if an user has elevated (root or administrator) privileges.

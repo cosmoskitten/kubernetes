@@ -112,8 +112,8 @@ release_filegroup(
     name = "node-targets",
     srcs = [
         "//cmd/kube-proxy",
+        "//cmd/kubeadm",
         "//cmd/kubelet",
-	"//cmd/kubeadm",
     ],
 )
 

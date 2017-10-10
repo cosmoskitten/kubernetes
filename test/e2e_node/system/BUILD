@@ -12,6 +12,7 @@ go_library(
         "cgroup_validator.go",
         "docker_validator.go",
         "kernel_validator.go",
+        "kernel_validator_helper.go",
         "os_validator.go",
         "package_validator.go",
         "report.go",

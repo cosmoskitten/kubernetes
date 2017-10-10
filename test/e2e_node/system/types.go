@@ -168,7 +168,7 @@ var DefaultSysSpec = SysSpec{
 var WindowsSysSpec = SysSpec{
 	OS: "Microsoft Windows Server 2016 Datacenter",
 	KernelSpec: KernelSpec{
-		Versions:  []string{`10\.[0-9]\.1439[3-9]*`, `10\.[0-9]\.144[0-9]*`, `10\.[0-9]\.15[0-9]*`, `10\.[0-9]\.2[0-9]*`, }, //requires >= '10.0.14393'
+		Versions:  []string{`10\.[0-9]\.1439[3-9]*`, `10\.[0-9]\.144[0-9]*`, `10\.[0-9]\.15[0-9]*`, `10\.[0-9]\.2[0-9]*`}, //requires >= '10.0.14393'
 		Required:  []KernelConfig{},
 		Optional:  []KernelConfig{},
 		Forbidden: []KernelConfig{},
