@@ -11,7 +11,7 @@ go_test(
     srcs = ["scheduler_test.go"],
     library = ":go_default_library",
     deps = [
-        "//pkg/api:go_default_library",
+        "//pkg/api/scheme:go_default_library",
         "//plugin/pkg/scheduler/algorithm:go_default_library",
         "//plugin/pkg/scheduler/algorithm/predicates:go_default_library",
         "//plugin/pkg/scheduler/core:go_default_library",

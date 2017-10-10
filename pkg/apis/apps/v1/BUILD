@@ -12,7 +12,7 @@ go_library(
     ],
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/api/v1:go_default_library",
+        "//pkg/apis/core/v1:go_default_library",
         "//pkg/apis/extensions:go_default_library",
         "//vendor/k8s.io/api/apps/v1:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
@@ -31,9 +31,10 @@ go_test(
     ],
     deps = [
         ":go_default_library",
-        "//pkg/api:go_default_library",
-        "//pkg/api/install:go_default_library",
+        "//pkg/api/scheme:go_default_library",
         "//pkg/apis/apps/install:go_default_library",
+        "//pkg/apis/core:go_default_library",
+        "//pkg/apis/core/install:go_default_library",
         "//pkg/apis/extensions:go_default_library",
         "//vendor/k8s.io/api/apps/v1:go_default_library",
         "//vendor/k8s.io/api/core/v1:go_default_library",

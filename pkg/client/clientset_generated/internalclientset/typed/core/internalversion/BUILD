@@ -34,9 +34,10 @@ go_library(
         "serviceaccount.go",
     ],
     deps = [
-        "//pkg/api:go_default_library",
         "//pkg/api/ref:go_default_library",
-        "//pkg/api/v1:go_default_library",
+        "//pkg/api/scheme:go_default_library",
+        "//pkg/apis/core:go_default_library",
+        "//pkg/apis/core/v1:go_default_library",
         "//pkg/apis/extensions:go_default_library",
         "//pkg/client/clientset_generated/internalclientset/scheme:go_default_library",
         "//vendor/k8s.io/api/core/v1:go_default_library",

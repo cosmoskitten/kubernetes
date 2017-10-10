@@ -17,7 +17,7 @@ go_library(
         "storage_versions.go",
     ],
     deps = [
-        "//pkg/api:go_default_library",
+        "//pkg/api/scheme:go_default_library",
         "//pkg/client/informers/informers_generated/internalversion:go_default_library",
         "//pkg/cloudprovider:go_default_library",
         "//pkg/kubeapiserver/authenticator:go_default_library",

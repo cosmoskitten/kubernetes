@@ -23,7 +23,7 @@ go_library(
         "policy.go",
     ],
     deps = [
-        "//pkg/api/v1/helper/qos:go_default_library",
+        "//pkg/apis/core/v1/helper/qos:go_default_library",
         "//vendor/k8s.io/api/core/v1:go_default_library",
     ],
 )

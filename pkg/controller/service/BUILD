@@ -14,7 +14,7 @@ go_library(
     ],
     deps = [
         "//cmd/kubeadm/app/constants:go_default_library",
-        "//pkg/api/v1/helper:go_default_library",
+        "//pkg/apis/core/v1/helper:go_default_library",
         "//pkg/cloudprovider:go_default_library",
         "//pkg/controller:go_default_library",
         "//pkg/util/metrics:go_default_library",

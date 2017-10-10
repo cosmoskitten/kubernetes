@@ -15,7 +15,7 @@ go_library(
         "websocket.go",
     ],
     deps = [
-        "//pkg/api:go_default_library",
+        "//pkg/apis/core:go_default_library",
         "//vendor/github.com/golang/glog:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/types:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/util/httpstream:go_default_library",
@@ -34,7 +34,7 @@ go_test(
     ],
     library = ":go_default_library",
     deps = [
-        "//pkg/api:go_default_library",
+        "//pkg/apis/core:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/util/httpstream:go_default_library",
     ],
 )

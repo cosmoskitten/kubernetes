@@ -18,9 +18,10 @@ go_library(
         "@com_coreos_etcd//:etcd",
     ],
     deps = [
-        "//pkg/api:go_default_library",
+        "//pkg/api/scheme:go_default_library",
         "//pkg/api/testapi:go_default_library",
         "//pkg/apis/batch:go_default_library",
+        "//pkg/apis/core:go_default_library",
         "//pkg/apis/policy/v1alpha1:go_default_library",
         "//pkg/client/clientset_generated/internalclientset:go_default_library",
         "//pkg/controller:go_default_library",

@@ -12,8 +12,7 @@ go_library(
     deps = [
         "//federation/apis/federation:go_default_library",
         "//federation/apis/federation/install:go_default_library",
-        "//pkg/api:go_default_library",
-        "//pkg/api/install:go_default_library",
+        "//pkg/api/scheme:go_default_library",
         "//pkg/apis/admission:go_default_library",
         "//pkg/apis/admission/install:go_default_library",
         "//pkg/apis/admissionregistration:go_default_library",
@@ -30,6 +29,8 @@ go_library(
         "//pkg/apis/certificates:go_default_library",
         "//pkg/apis/certificates/install:go_default_library",
         "//pkg/apis/componentconfig/install:go_default_library",
+        "//pkg/apis/core:go_default_library",
+        "//pkg/apis/core/install:go_default_library",
         "//pkg/apis/extensions:go_default_library",
         "//pkg/apis/extensions/install:go_default_library",
         "//pkg/apis/imagepolicy:go_default_library",

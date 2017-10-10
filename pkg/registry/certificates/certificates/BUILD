@@ -14,7 +14,7 @@ go_library(
         "strategy.go",
     ],
     deps = [
-        "//pkg/api:go_default_library",
+        "//pkg/api/scheme:go_default_library",
         "//pkg/apis/certificates:go_default_library",
         "//pkg/apis/certificates/validation:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/apis/meta/internalversion:go_default_library",

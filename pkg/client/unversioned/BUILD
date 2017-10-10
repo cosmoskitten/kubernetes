@@ -13,10 +13,11 @@ go_library(
         "helper.go",
     ],
     deps = [
-        "//pkg/api:go_default_library",
         "//pkg/api/pod:go_default_library",
+        "//pkg/api/scheme:go_default_library",
         "//pkg/apis/apps:go_default_library",
         "//pkg/apis/batch:go_default_library",
+        "//pkg/apis/core:go_default_library",
         "//pkg/apis/extensions:go_default_library",
         "//pkg/client/clientset_generated/internalclientset/typed/apps/internalversion:go_default_library",
         "//pkg/client/clientset_generated/internalclientset/typed/batch/internalversion:go_default_library",
@@ -37,8 +38,9 @@ go_test(
     srcs = ["helper_test.go"],
     library = ":go_default_library",
     deps = [
-        "//pkg/api:go_default_library",
+        "//pkg/api/scheme:go_default_library",
         "//pkg/api/testapi:go_default_library",
+        "//pkg/apis/core:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/runtime:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/runtime/schema:go_default_library",

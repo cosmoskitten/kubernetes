@@ -11,7 +11,7 @@ go_test(
     srcs = ["storage_test.go"],
     library = ":go_default_library",
     deps = [
-        "//pkg/api:go_default_library",
+        "//pkg/apis/core:go_default_library",
         "//pkg/registry/core/service/allocator:go_default_library",
         "//pkg/registry/registrytest:go_default_library",
         "//vendor/golang.org/x/net/context:go_default_library",
@@ -24,7 +24,7 @@ go_library(
     name = "go_default_library",
     srcs = ["storage.go"],
     deps = [
-        "//pkg/api:go_default_library",
+        "//pkg/apis/core:go_default_library",
         "//pkg/registry/core/rangeallocation:go_default_library",
         "//pkg/registry/core/service/allocator:go_default_library",
         "//vendor/golang.org/x/net/context:go_default_library",

@@ -31,8 +31,8 @@ go_test(
     ],
     library = ":go_default_library",
     deps = [
-        "//pkg/api:go_default_library",
-        "//pkg/api/install:go_default_library",
+        "//pkg/api/scheme:go_default_library",
+        "//pkg/apis/core/install:go_default_library",
         "//plugin/pkg/scheduler/api:go_default_library",
         "//plugin/pkg/scheduler/api/latest:go_default_library",
         "//plugin/pkg/scheduler/factory:go_default_library",

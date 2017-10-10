@@ -15,7 +15,6 @@ go_library(
         "replica_calculator.go",
     ],
     deps = [
-        "//pkg/api:go_default_library",
         "//pkg/api/v1/pod:go_default_library",
         "//pkg/controller:go_default_library",
         "//pkg/controller/podautoscaler/metrics:go_default_library",
@@ -40,6 +39,7 @@ go_library(
         "//vendor/k8s.io/client-go/kubernetes/typed/core/v1:go_default_library",
         "//vendor/k8s.io/client-go/kubernetes/typed/extensions/v1beta1:go_default_library",
         "//vendor/k8s.io/client-go/listers/autoscaling/v1:go_default_library",
+        "//vendor/k8s.io/client-go/pkg/api:go_default_library",
         "//vendor/k8s.io/client-go/tools/cache:go_default_library",
         "//vendor/k8s.io/client-go/tools/record:go_default_library",
         "//vendor/k8s.io/client-go/util/workqueue:go_default_library",
@@ -56,7 +56,7 @@ go_test(
     ],
     library = ":go_default_library",
     deps = [
-        "//pkg/api:go_default_library",
+        "//pkg/api/scheme:go_default_library",
         "//pkg/apis/autoscaling:go_default_library",
         "//pkg/apis/autoscaling/install:go_default_library",
         "//pkg/apis/extensions/install:go_default_library",

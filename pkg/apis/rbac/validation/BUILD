@@ -10,7 +10,7 @@ go_library(
     name = "go_default_library",
     srcs = ["validation.go"],
     deps = [
-        "//pkg/api/validation:go_default_library",
+        "//pkg/apis/core/validation:go_default_library",
         "//pkg/apis/rbac:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/api/validation/path:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/util/validation/field:go_default_library",

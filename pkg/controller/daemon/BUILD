@@ -14,8 +14,8 @@ go_library(
         "update.go",
     ],
     deps = [
-        "//pkg/api/v1/helper:go_default_library",
         "//pkg/api/v1/pod:go_default_library",
+        "//pkg/apis/core/v1/helper:go_default_library",
         "//pkg/controller:go_default_library",
         "//pkg/controller/daemon/util:go_default_library",
         "//pkg/features:go_default_library",
@@ -66,9 +66,10 @@ go_test(
     ],
     library = ":go_default_library",
     deps = [
-        "//pkg/api:go_default_library",
+        "//pkg/api/scheme:go_default_library",
         "//pkg/api/testapi:go_default_library",
         "//pkg/api/v1/pod:go_default_library",
+        "//pkg/apis/core:go_default_library",
         "//pkg/controller:go_default_library",
         "//pkg/kubelet/types:go_default_library",
         "//pkg/securitycontext:go_default_library",

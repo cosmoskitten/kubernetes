@@ -28,8 +28,8 @@ go_library(
         "//conditions:default": [],
     }),
     deps = [
-        "//pkg/api:go_default_library",
-        "//pkg/api/v1/helper:go_default_library",
+        "//pkg/api/scheme:go_default_library",
+        "//pkg/apis/core/v1/helper:go_default_library",
         "//pkg/kubelet/apis:go_default_library",
         "//pkg/util/mount:go_default_library",
         "//vendor/github.com/golang/glog:go_default_library",
@@ -66,8 +66,8 @@ go_test(
     }),
     library = ":go_default_library",
     deps = [
-        "//pkg/api/install:go_default_library",
-        "//pkg/api/v1/helper:go_default_library",
+        "//pkg/apis/core/install:go_default_library",
+        "//pkg/apis/core/v1/helper:go_default_library",
         "//vendor/k8s.io/api/core/v1:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/util/sets:go_default_library",

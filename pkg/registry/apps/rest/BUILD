@@ -9,7 +9,7 @@ go_library(
     name = "go_default_library",
     srcs = ["storage_apps.go"],
     deps = [
-        "//pkg/api:go_default_library",
+        "//pkg/api/scheme:go_default_library",
         "//pkg/apis/apps:go_default_library",
         "//pkg/registry/apps/controllerrevision/storage:go_default_library",
         "//pkg/registry/apps/statefulset/storage:go_default_library",

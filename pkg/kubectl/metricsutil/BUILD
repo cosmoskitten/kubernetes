@@ -13,8 +13,9 @@ go_library(
         "//build/visible_to:pkg_kubectl_metricsutil_CONSUMERS",
     ],
     deps = [
-        "//pkg/api:go_default_library",
-        "//pkg/api/validation:go_default_library",
+        "//pkg/api/scheme:go_default_library",
+        "//pkg/apis/core:go_default_library",
+        "//pkg/apis/core/validation:go_default_library",
         "//pkg/client/clientset_generated/internalclientset/typed/core/internalversion:go_default_library",
         "//pkg/printers:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/api/resource:go_default_library",

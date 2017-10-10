@@ -11,7 +11,8 @@ go_library(
     deps = [
         "//federation/client/clientset_generated/federation_clientset:go_default_library",
         "//federation/pkg/kubefed/util:go_default_library",
-        "//pkg/api:go_default_library",
+        "//pkg/api/scheme:go_default_library",
+        "//pkg/apis/core:go_default_library",
         "//pkg/kubectl/cmd/util:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/runtime:go_default_library",
         "//vendor/k8s.io/client-go/rest:go_default_library",

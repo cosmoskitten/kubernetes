@@ -17,7 +17,7 @@ go_library(
         "zz_generated.defaults.go",
     ],
     deps = [
-        "//pkg/api:go_default_library",
+        "//pkg/apis/core:go_default_library",
         "//pkg/kubelet/apis/kubeletconfig:go_default_library",
         "//pkg/kubelet/qos:go_default_library",
         "//pkg/kubelet/types:go_default_library",

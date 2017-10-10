@@ -11,8 +11,8 @@ go_test(
     srcs = ["storage_test.go"],
     library = ":go_default_library",
     deps = [
-        "//pkg/api:go_default_library",
         "//pkg/apis/apps:go_default_library",
+        "//pkg/apis/core:go_default_library",
         "//pkg/apis/extensions:go_default_library",
         "//pkg/registry/registrytest:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/api/equality:go_default_library",

@@ -9,7 +9,7 @@ go_library(
     name = "go_default_library",
     srcs = ["controller_utils.go"],
     deps = [
-        "//pkg/api:go_default_library",
+        "//pkg/apis/core:go_default_library",
         "//pkg/cloudprovider:go_default_library",
         "//pkg/controller:go_default_library",
         "//pkg/kubelet/util/format:go_default_library",

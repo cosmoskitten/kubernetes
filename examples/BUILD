@@ -27,12 +27,12 @@ go_test(
     srcs = ["examples_test.go"],
     tags = ["manual"],  # this test is broken and examples in-tree is deprecated
     deps = [
-        "//pkg/api:go_default_library",
         "//pkg/api/testapi:go_default_library",
-        "//pkg/api/validation:go_default_library",
         "//pkg/apis/apps:go_default_library",
         "//pkg/apis/apps/validation:go_default_library",
         "//pkg/apis/batch:go_default_library",
+        "//pkg/apis/core:go_default_library",
+        "//pkg/apis/core/validation:go_default_library",
         "//pkg/apis/extensions:go_default_library",
         "//pkg/apis/extensions/validation:go_default_library",
         "//pkg/capabilities:go_default_library",

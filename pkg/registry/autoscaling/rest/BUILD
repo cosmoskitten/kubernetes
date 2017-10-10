@@ -9,7 +9,7 @@ go_library(
     name = "go_default_library",
     srcs = ["storage_autoscaling.go"],
     deps = [
-        "//pkg/api:go_default_library",
+        "//pkg/api/scheme:go_default_library",
         "//pkg/apis/autoscaling:go_default_library",
         "//pkg/registry/autoscaling/horizontalpodautoscaler/storage:go_default_library",
         "//vendor/k8s.io/api/autoscaling/v1:go_default_library",

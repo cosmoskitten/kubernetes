@@ -9,7 +9,7 @@ go_library(
     name = "go_default_library",
     srcs = ["storage_authentication.go"],
     deps = [
-        "//pkg/api:go_default_library",
+        "//pkg/api/scheme:go_default_library",
         "//pkg/apis/authentication:go_default_library",
         "//pkg/registry/authentication/tokenreview:go_default_library",
         "//vendor/k8s.io/api/authentication/v1:go_default_library",

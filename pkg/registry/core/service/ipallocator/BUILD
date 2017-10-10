@@ -10,7 +10,7 @@ go_library(
     name = "go_default_library",
     srcs = ["allocator.go"],
     deps = [
-        "//pkg/api:go_default_library",
+        "//pkg/apis/core:go_default_library",
         "//pkg/registry/core/service/allocator:go_default_library",
     ],
 )
@@ -20,7 +20,7 @@ go_test(
     srcs = ["allocator_test.go"],
     library = ":go_default_library",
     deps = [
-        "//pkg/api:go_default_library",
+        "//pkg/apis/core:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/util/sets:go_default_library",
     ],
 )

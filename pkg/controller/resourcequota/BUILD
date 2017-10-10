@@ -14,8 +14,8 @@ go_library(
         "resource_quota_controller.go",
     ],
     deps = [
-        "//pkg/api:go_default_library",
-        "//pkg/api/v1:go_default_library",
+        "//pkg/apis/core:go_default_library",
+        "//pkg/apis/core/v1:go_default_library",
         "//pkg/controller:go_default_library",
         "//pkg/quota:go_default_library",
         "//pkg/quota/evaluator/core:go_default_library",
@@ -48,7 +48,7 @@ go_test(
     ],
     library = ":go_default_library",
     deps = [
-        "//pkg/api:go_default_library",
+        "//pkg/apis/core:go_default_library",
         "//pkg/controller:go_default_library",
         "//pkg/quota/generic:go_default_library",
         "//pkg/quota/install:go_default_library",
