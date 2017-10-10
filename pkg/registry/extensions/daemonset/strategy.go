@@ -19,6 +19,7 @@ package daemonset
 import (
 	"fmt"
 
+	appsv1 "k8s.io/api/apps/v1beta1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -135,7 +136,7 @@ func (daemonSetStrategy) ValidateUpdate(ctx genericapirequest.Context, obj, old 
 		switch groupVersion {
 		case extensionsv1beta1.SchemeGroupVersion:
 			// no-op for compatibility
-		case appsv1beta2.SchemeGroupVersion:
+		case appsv1beta2.SchemeGroupVersion, appsv1.SchemeGroupVersion:
 			// disallow mutation of selector
 			allErrs = append(allErrs, apivalidation.ValidateImmutableField(newDaemonSet.Spec.Selector, oldDaemonSet.Spec.Selector, field.NewPath("spec").Child("selector"))...)
 		default:
