@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/kubernetes/pkg/api"
@@ -130,6 +131,16 @@ func SetDefaults_KubeSchedulerConfiguration(obj *KubeSchedulerConfiguration) {
 
 	if len(obj.AlgorithmSource.Type) == 0 {
 		obj.AlgorithmSource.Type = SchedulerAlgorithmSourcePolicy
+		if obj.AlgorithmSource.Policy == nil {
+			obj.AlgorithmSource.Policy = &SchedulerPolicySource{
+				Type: SchedulerPolicySourceTypeConfigMap,
+				ConfigMap: &SchedulerPolicyConfigMapSource{
+					Reference: corev1.ObjectReference{
+						Namespace: api.NamespaceSystem,
+					},
+				},
+			}
+		}
 	}
 	if obj.AlgorithmSource.Policy != nil &&
 		obj.AlgorithmSource.Policy.ConfigMap != nil &&
