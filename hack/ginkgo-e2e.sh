@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -o errexit
+#set -o errexit
 set -o nounset
 set -o pipefail
 
@@ -156,3 +156,44 @@ export PATH=$(dirname "${e2e_test}"):"${PATH}"
   ${E2E_REPORT_DIR:+"--report-dir=${E2E_REPORT_DIR}"} \
   ${E2E_REPORT_PREFIX:+"--report-prefix=${E2E_REPORT_PREFIX}"} \
   "${@:-}"
+
+if [[ "$KUBERNETES_PROVIDER" == "kubernetes-anywhere" ]];then
+  set -x
+  KUBE_ROOT=$(dirname "${BASH_SOURCE}")/..
+  source "${KUBE_ROOT}/cluster/gce/util.sh"
+
+  env
+
+  detect-project
+  detect-nodes
+  detect-node-names
+
+  echo "================= Start Getting list of Log files from Nodes ============="
+  for node_name in ${NODE_NAMES[@]:-}; do
+    gcloud compute ssh "${node_name}" --zone="${ZONE}" --project="${PROJECT}" \
+        --command="find /var/log/ -name *.log -print"
+
+    ssh-to-node "${node_name}" "sudo chmod 777 /var/logs/" || true
+    ssh-to-node "${node_name}" "sudo chmod 755 /var/logs/*.log" || true
+    ssh-to-node "${node_name}" "sudo ls -altr /var/logs/" || true
+    ssh-to-node "${node_name}" "sudo tar -chvzf /var/log/node-${node_name}-logs.tgz /var/logs/*.log" || true
+
+    ssh-to-node "${node_name}" "sudo chmod 777 /var/log/containers/" || true
+    ssh-to-node "${node_name}" "sudo chmod 755 /var/log/containers/*" || true
+    ssh-to-node "${node_name}" "sudo ls -altr /var/log/containers" || true
+    ssh-to-node "${node_name}" "sudo tar -chvzf /var/log/node-${node_name}-containers.tgz /var/log/containers/*" || true
+
+    ssh-to-node "${node_name}" "sudo chmod 755 /var/lib/docker/containers/" || true
+    ssh-to-node "${node_name}" "sudo chmod 755 /var/lib/docker/containers/*" || true
+    ssh-to-node "${node_name}" "sudo chmod 755 /var/lib/docker/containers/*/*.log" || true
+    ssh-to-node "${node_name}" "sudo ls -altr /var/lib/docker/containers/" || true
+    ssh-to-node "${node_name}" "sudo ls -altr /var/lib/docker/containers/*/*.log" || true
+    ssh-to-node "${node_name}" "sudo tar -chvzf /var/log/node-${node_name}-docker-containers.tgz /var/lib/docker/containers/*" || true
+
+    gcloud compute copy-files --project "${PROJECT}" --zone "${ZONE}" "${node_name}:/var/log/node-${node_name}-logs.tgz" /workspace/_artifacts > /dev/null || true
+    gcloud compute copy-files --project "${PROJECT}" --zone "${ZONE}" "${node_name}:/var/log/node-${node_name}-containers.tgz" /workspace/_artifacts > /dev/null || true
+    gcloud compute copy-files --project "${PROJECT}" --zone "${ZONE}" "${node_name}:/var/log/node-${node_name}-docker-containers.tgz" /workspace/_artifacts > /dev/null || true
+  done
+  echo "================= Stop Getting list of Log files from Nodes ============="
+  exit 1
+fi
