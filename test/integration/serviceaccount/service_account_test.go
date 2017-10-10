@@ -427,7 +427,7 @@ func startServiceAccountTestServer(t *testing.T) (*clientset.Clientset, restclie
 	)
 	go tokenController.Run(1, stopCh)
 
-	serviceAccountController := serviceaccountcontroller.NewServiceAccountsController(
+	serviceAccountController, _ := serviceaccountcontroller.NewServiceAccountsController(
 		informers.Core().V1().ServiceAccounts(),
 		informers.Core().V1().Namespaces(),
 		rootClientset,
