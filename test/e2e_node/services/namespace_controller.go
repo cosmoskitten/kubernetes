@@ -24,7 +24,7 @@ import (
 	"k8s.io/client-go/informers"
 	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
-	api "k8s.io/kubernetes/pkg/apis/core"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	namespacecontroller "k8s.io/kubernetes/pkg/controller/namespace"
 )
 
@@ -56,7 +56,7 @@ func (n *NamespaceController) Start() error {
 	if err != nil {
 		return err
 	}
-	clientPool := dynamic.NewClientPool(config, api.Registry.RESTMapper(), dynamic.LegacyAPIPathResolverFunc)
+	clientPool := dynamic.NewClientPool(config, globalscheme.Registry.RESTMapper(), dynamic.LegacyAPIPathResolverFunc)
 	discoverResourcesFn := client.Discovery().ServerPreferredNamespacedResources
 	informerFactory := informers.NewSharedInformerFactory(client, ncResyncPeriod)
 	nc := namespacecontroller.NewNamespaceController(

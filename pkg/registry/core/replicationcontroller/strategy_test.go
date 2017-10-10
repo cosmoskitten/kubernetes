@@ -22,6 +22,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	apitesting "k8s.io/kubernetes/pkg/api/testing"
 	api "k8s.io/kubernetes/pkg/apis/core"
 
@@ -148,7 +149,7 @@ func TestControllerStatusStrategy(t *testing.T) {
 
 func TestSelectableFieldLabelConversions(t *testing.T) {
 	apitesting.TestSelectableFieldLabelConversionsOfKind(t,
-		api.Registry.GroupOrDie(api.GroupName).GroupVersion.String(),
+		globalscheme.Registry.GroupOrDie(api.GroupName).GroupVersion.String(),
 		"ReplicationController",
 		ControllerToSelectableFields(&api.ReplicationController{}),
 		nil,

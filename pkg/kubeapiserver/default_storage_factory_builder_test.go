@@ -24,6 +24,7 @@ import (
 	extensionsapiv1beta1 "k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	serverstorage "k8s.io/apiserver/pkg/server/storage"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	_ "k8s.io/kubernetes/pkg/apis/core/install"
 	_ "k8s.io/kubernetes/pkg/apis/extensions/install"
@@ -173,7 +174,7 @@ func TestParseRuntimeConfig(t *testing.T) {
 			},
 			expectedAPIConfig: func() *serverstorage.ResourceConfig {
 				config := serverstorage.NewResourceConfig()
-				config.EnableVersions(api.Registry.RegisteredGroupVersions()...)
+				config.EnableVersions(globalscheme.Registry.RegisteredGroupVersions()...)
 				return config
 			},
 			err: false,
@@ -188,7 +189,7 @@ func TestParseRuntimeConfig(t *testing.T) {
 			},
 			expectedAPIConfig: func() *serverstorage.ResourceConfig {
 				config := serverstorage.NewResourceConfig()
-				config.DisableVersions(api.Registry.RegisteredGroupVersions()...)
+				config.DisableVersions(globalscheme.Registry.RegisteredGroupVersions()...)
 				return config
 			},
 			err: false,

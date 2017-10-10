@@ -22,6 +22,7 @@ import (
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/storage/names"
 	endptspkg "k8s.io/kubernetes/pkg/api/endpoints"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/apis/core/validation"
 )
@@ -34,7 +35,7 @@ type endpointsStrategy struct {
 
 // Strategy is the default logic that applies when creating and updating Endpoint
 // objects via the REST API.
-var Strategy = endpointsStrategy{api.Scheme, names.SimpleNameGenerator}
+var Strategy = endpointsStrategy{globalscheme.Scheme, names.SimpleNameGenerator}
 
 // NamespaceScoped is true for endpoints.
 func (endpointsStrategy) NamespaceScoped() bool {

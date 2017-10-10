@@ -21,6 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/storage/names"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/apis/core/validation"
 )
@@ -33,7 +34,7 @@ type resourcequotaStrategy struct {
 
 // Strategy is the default logic that applies when creating and updating ResourceQuota
 // objects via the REST API.
-var Strategy = resourcequotaStrategy{api.Scheme, names.SimpleNameGenerator}
+var Strategy = resourcequotaStrategy{globalscheme.Scheme, names.SimpleNameGenerator}
 
 // NamespaceScoped is true for resourcequotas.
 func (resourcequotaStrategy) NamespaceScoped() bool {

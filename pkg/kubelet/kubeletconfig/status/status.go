@@ -26,6 +26,7 @@ import (
 	kuberuntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	clientset "k8s.io/client-go/kubernetes"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	utilequal "k8s.io/kubernetes/pkg/kubelet/kubeletconfig/util/equal"
 	utillog "k8s.io/kubernetes/pkg/kubelet/kubeletconfig/util/log"
@@ -257,18 +258,18 @@ func (c *configOKCondition) Sync(client clientset.Interface, nodeName string) {
 
 	// generate the patch
 	mediaType := "application/json"
-	info, ok := kuberuntime.SerializerInfoForMediaType(api.Codecs.SupportedMediaTypes(), mediaType)
+	info, ok := kuberuntime.SerializerInfoForMediaType(globalscheme.Codecs.SupportedMediaTypes(), mediaType)
 	if !ok {
 		err = fmt.Errorf("unsupported media type %q", mediaType)
 		return
 	}
-	versions := api.Registry.EnabledVersionsForGroup(api.GroupName)
+	versions := globalscheme.Registry.EnabledVersionsForGroup(api.GroupName)
 	if len(versions) == 0 {
 		err = fmt.Errorf("no enabled versions for group %q", api.GroupName)
 		return
 	}
 	// the "best" version supposedly comes first in the list returned from apiv1.Registry.EnabledVersionsForGroup
-	encoder := api.Codecs.EncoderForVersion(info.Serializer, versions[0])
+	encoder := globalscheme.Codecs.EncoderForVersion(info.Serializer, versions[0])
 
 	before, err := kuberuntime.Encode(encoder, node)
 	if err != nil {

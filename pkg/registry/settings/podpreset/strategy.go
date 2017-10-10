@@ -22,7 +22,7 @@ import (
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/storage/names"
 	"k8s.io/kubernetes/pkg/api/pod"
-	api "k8s.io/kubernetes/pkg/apis/core"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	"k8s.io/kubernetes/pkg/apis/settings"
 	"k8s.io/kubernetes/pkg/apis/settings/validation"
 )
@@ -34,7 +34,7 @@ type podPresetStrategy struct {
 }
 
 // Strategy is the default logic that applies when creating and updating Pod Preset objects.
-var Strategy = podPresetStrategy{api.Scheme, names.SimpleNameGenerator}
+var Strategy = podPresetStrategy{globalscheme.Scheme, names.SimpleNameGenerator}
 
 // NamespaceScoped returns true because all Pod Presets need to be within a namespace.
 func (podPresetStrategy) NamespaceScoped() bool {

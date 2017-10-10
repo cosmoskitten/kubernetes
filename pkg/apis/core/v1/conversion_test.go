@@ -28,6 +28,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/diff"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	"k8s.io/kubernetes/pkg/apis/core"
 	corev1 "k8s.io/kubernetes/pkg/apis/core/v1"
 
@@ -72,7 +73,7 @@ func TestPodLogOptions(t *testing.T) {
 		"limitBytes":   {"3"},
 	}
 
-	codec := runtime.NewParameterCodec(core.Scheme)
+	codec := runtime.NewParameterCodec(globalscheme.Scheme)
 
 	// unversioned -> query params
 	{
@@ -132,7 +133,7 @@ func TestPodSpecConversion(t *testing.T) {
 		ServiceAccountName: name,
 	}
 	v := v1.PodSpec{}
-	if err := core.Scheme.Convert(i, &v, nil); err != nil {
+	if err := globalscheme.Scheme.Convert(i, &v, nil); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if v.ServiceAccountName != name {
@@ -157,7 +158,7 @@ func TestPodSpecConversion(t *testing.T) {
 	}
 	for k, v := range testCases {
 		got := core.PodSpec{}
-		err := core.Scheme.Convert(v, &got, nil)
+		err := globalscheme.Scheme.Convert(v, &got, nil)
 		if err != nil {
 			t.Fatalf("unexpected error for case %d: %v", k, err)
 		}
@@ -216,7 +217,7 @@ func TestResourceListConversion(t *testing.T) {
 		// perform that step explicitly.
 		corev1.SetDefaults_ResourceList(&test.input)
 
-		err := core.Scheme.Convert(&test.input, &output, nil)
+		err := globalscheme.Scheme.Convert(&test.input, &output, nil)
 		if err != nil {
 			t.Fatalf("unexpected error for case %d: %v", i, err)
 		}

@@ -19,6 +19,7 @@ package persistentvolumeclaim
 import (
 	"testing"
 
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	apitesting "k8s.io/kubernetes/pkg/api/testing"
 	api "k8s.io/kubernetes/pkg/apis/core"
 
@@ -28,7 +29,7 @@ import (
 
 func TestSelectableFieldLabelConversions(t *testing.T) {
 	apitesting.TestSelectableFieldLabelConversionsOfKind(t,
-		api.Registry.GroupOrDie(api.GroupName).GroupVersion.String(),
+		globalscheme.Registry.GroupOrDie(api.GroupName).GroupVersion.String(),
 		"PersistentVolumeClaim",
 		PersistentVolumeClaimToSelectableFields(&api.PersistentVolumeClaim{}),
 		map[string]string{"name": "metadata.name"},

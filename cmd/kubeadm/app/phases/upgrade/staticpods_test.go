@@ -31,7 +31,7 @@ import (
 	"k8s.io/kubernetes/cmd/kubeadm/app/constants"
 	"k8s.io/kubernetes/cmd/kubeadm/app/phases/controlplane"
 	"k8s.io/kubernetes/cmd/kubeadm/app/util/apiclient"
-	api "k8s.io/kubernetes/pkg/apis/core"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 )
 
 const (
@@ -349,9 +349,9 @@ func getAPIServerHash(dir string) (string, error) {
 func getConfig(version string) (*kubeadmapi.MasterConfiguration, error) {
 	externalcfg := &kubeadmapiext.MasterConfiguration{}
 	internalcfg := &kubeadmapi.MasterConfiguration{}
-	if err := runtime.DecodeInto(api.Codecs.UniversalDecoder(), []byte(fmt.Sprintf(testConfiguration, version)), externalcfg); err != nil {
+	if err := runtime.DecodeInto(globalscheme.Codecs.UniversalDecoder(), []byte(fmt.Sprintf(testConfiguration, version)), externalcfg); err != nil {
 		return nil, fmt.Errorf("unable to decode config: %v", err)
 	}
-	api.Scheme.Convert(externalcfg, internalcfg, nil)
+	globalscheme.Scheme.Convert(externalcfg, internalcfg, nil)
 	return internalcfg, nil
 }

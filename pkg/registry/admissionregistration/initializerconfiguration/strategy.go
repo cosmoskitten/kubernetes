@@ -23,9 +23,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/storage/names"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	"k8s.io/kubernetes/pkg/apis/admissionregistration"
 	"k8s.io/kubernetes/pkg/apis/admissionregistration/validation"
-	api "k8s.io/kubernetes/pkg/apis/core"
 )
 
 // initializerConfigurationStrategy implements verification logic for InitializerConfigurations.
@@ -35,7 +35,7 @@ type initializerConfigurationStrategy struct {
 }
 
 // Strategy is the default logic that applies when creating and updating InitializerConfiguration objects.
-var Strategy = initializerConfigurationStrategy{api.Scheme, names.SimpleNameGenerator}
+var Strategy = initializerConfigurationStrategy{globalscheme.Scheme, names.SimpleNameGenerator}
 
 // NamespaceScoped returns true because all InitializerConfiguration' need to be within a namespace.
 func (initializerConfigurationStrategy) NamespaceScoped() bool {

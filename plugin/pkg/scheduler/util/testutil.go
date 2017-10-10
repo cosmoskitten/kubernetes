@@ -25,6 +25,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	api "k8s.io/kubernetes/pkg/apis/core"
 
 	_ "k8s.io/kubernetes/pkg/apis/core/install"
@@ -51,7 +52,7 @@ func init() {
 		if err != nil {
 			panic(err)
 		}
-		serializer, ok = runtime.SerializerInfoForMediaType(api.Codecs.SupportedMediaTypes(), mediaType)
+		serializer, ok = runtime.SerializerInfoForMediaType(globalscheme.Codecs.SupportedMediaTypes(), mediaType)
 		if !ok {
 			panic(fmt.Sprintf("no serializer for %s", apiMediaType))
 		}
@@ -72,19 +73,19 @@ func init() {
 			Groups[groupVersion.Group] = TestGroup{
 				externalGroupVersion: groupVersion,
 				internalGroupVersion: internalGroupVersion,
-				internalTypes:        api.Scheme.KnownTypes(internalGroupVersion),
-				externalTypes:        api.Scheme.KnownTypes(groupVersion),
+				internalTypes:        globalscheme.Scheme.KnownTypes(internalGroupVersion),
+				externalTypes:        globalscheme.Scheme.KnownTypes(groupVersion),
 			}
 		}
 	}
 
 	if _, ok := Groups[api.GroupName]; !ok {
-		externalGroupVersion := schema.GroupVersion{Group: api.GroupName, Version: api.Registry.GroupOrDie(api.GroupName).GroupVersion.Version}
+		externalGroupVersion := schema.GroupVersion{Group: api.GroupName, Version: globalscheme.Registry.GroupOrDie(api.GroupName).GroupVersion.Version}
 		Groups[api.GroupName] = TestGroup{
 			externalGroupVersion: externalGroupVersion,
 			internalGroupVersion: api.SchemeGroupVersion,
-			internalTypes:        api.Scheme.KnownTypes(api.SchemeGroupVersion),
-			externalTypes:        api.Scheme.KnownTypes(externalGroupVersion),
+			internalTypes:        globalscheme.Scheme.KnownTypes(api.SchemeGroupVersion),
+			externalTypes:        globalscheme.Scheme.KnownTypes(externalGroupVersion),
 		}
 	}
 
@@ -95,9 +96,9 @@ func init() {
 // KUBE_TEST_API_TYPE env var.
 func (g TestGroup) Codec() runtime.Codec {
 	if serializer.Serializer == nil {
-		return api.Codecs.LegacyCodec(g.externalGroupVersion)
+		return globalscheme.Codecs.LegacyCodec(g.externalGroupVersion)
 	}
-	return api.Codecs.CodecForVersions(serializer.Serializer, api.Codecs.UniversalDeserializer(), schema.GroupVersions{g.externalGroupVersion}, nil)
+	return globalscheme.Codecs.CodecForVersions(serializer.Serializer, globalscheme.Codecs.UniversalDeserializer(), schema.GroupVersions{g.externalGroupVersion}, nil)
 }
 
 // SelfLink returns a self link that will appear to be for the version Version().

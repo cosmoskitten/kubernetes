@@ -74,6 +74,7 @@ import (
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 
 	clientset "k8s.io/client-go/kubernetes"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	"k8s.io/kubernetes/pkg/api/testapi"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	batchinternal "k8s.io/kubernetes/pkg/apis/batch"
@@ -3097,7 +3098,7 @@ func WaitForPodsReady(c clientset.Interface, ns, name string, minReadySeconds in
 // Waits for the number of events on the given object to reach a desired count.
 func WaitForEvents(c clientset.Interface, ns string, objOrRef runtime.Object, desiredEventsCount int) error {
 	return wait.Poll(Poll, 5*time.Minute, func() (bool, error) {
-		events, err := c.Core().Events(ns).Search(api.Scheme, objOrRef)
+		events, err := c.Core().Events(ns).Search(globalscheme.Scheme, objOrRef)
 		if err != nil {
 			return false, fmt.Errorf("error in listing events: %s", err)
 		}
@@ -3116,7 +3117,7 @@ func WaitForEvents(c clientset.Interface, ns string, objOrRef runtime.Object, de
 // Waits for the number of events on the given object to be at least a desired count.
 func WaitForPartialEvents(c clientset.Interface, ns string, objOrRef runtime.Object, atLeastEventsCount int) error {
 	return wait.Poll(Poll, 5*time.Minute, func() (bool, error) {
-		events, err := c.Core().Events(ns).Search(api.Scheme, objOrRef)
+		events, err := c.Core().Events(ns).Search(globalscheme.Scheme, objOrRef)
 		if err != nil {
 			return false, fmt.Errorf("error in listing events: %s", err)
 		}
@@ -5107,7 +5108,7 @@ func DsFromManifest(url string) (*extensions.DaemonSet, error) {
 		return nil, fmt.Errorf("failed to parse data to json: %v", err)
 	}
 
-	err = runtime.DecodeInto(api.Codecs.UniversalDecoder(), json, &controller)
+	err = runtime.DecodeInto(globalscheme.Codecs.UniversalDecoder(), json, &controller)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode DaemonSet spec: %v", err)
 	}

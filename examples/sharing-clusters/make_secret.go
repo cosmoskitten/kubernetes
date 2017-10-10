@@ -25,6 +25,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	api "k8s.io/kubernetes/pkg/apis/core"
 )
 
@@ -59,5 +60,5 @@ func main() {
 			"config": cfg,
 		},
 	}
-	fmt.Printf(runtime.EncodeOrDie(api.Codecs.LegacyCodec(api.Registry.EnabledVersions()...), secret))
+	fmt.Printf(runtime.EncodeOrDie(globalscheme.Codecs.LegacyCodec(globalscheme.Registry.EnabledVersions()...), secret))
 }

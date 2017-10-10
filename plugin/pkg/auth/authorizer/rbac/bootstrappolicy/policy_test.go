@@ -31,6 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/diff"
 	"k8s.io/apimachinery/pkg/util/sets"
+	globalscheme "k8s.io/kubernetes/pkg/api/scheme"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	_ "k8s.io/kubernetes/pkg/apis/core/install"
 	"k8s.io/kubernetes/pkg/apis/rbac"
@@ -280,11 +281,11 @@ func testObjects(t *testing.T, list *api.List, fixtureFilename string) {
 		t.Fatal(err)
 	}
 
-	if err := runtime.EncodeList(api.Codecs.LegacyCodec(v1.SchemeGroupVersion, rbacv1.SchemeGroupVersion), list.Items); err != nil {
+	if err := runtime.EncodeList(globalscheme.Codecs.LegacyCodec(v1.SchemeGroupVersion, rbacv1.SchemeGroupVersion), list.Items); err != nil {
 		t.Fatal(err)
 	}
 
-	jsonData, err := runtime.Encode(api.Codecs.LegacyCodec(v1.SchemeGroupVersion, rbacv1.SchemeGroupVersion), list)
+	jsonData, err := runtime.Encode(globalscheme.Codecs.LegacyCodec(v1.SchemeGroupVersion, rbacv1.SchemeGroupVersion), list)
 	if err != nil {
 		t.Fatal(err)
 	}
