@@ -14,6 +14,7 @@ openapi_library(
         "pkg/apis/abac/v1beta1",
         "pkg/apis/componentconfig/v1alpha1",
         "pkg/kubelet/apis/kubeletconfig/v1alpha1",
+        "pkg/proxy/apis/proxyconfig/v1alpha1",
         "pkg/version",
     ],
     tags = ["automanaged"],

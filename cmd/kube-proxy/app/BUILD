@@ -12,7 +12,6 @@ go_library(
         "conntrack.go",
         "server.go",
         "server_others.go",
-        "validation.go",
     ] + select({
         "@io_bazel_rules_go//go/platform:windows_amd64": [
             "server_windows.go",
@@ -21,9 +20,7 @@ go_library(
     }),
     deps = [
         "//pkg/api:go_default_library",
-        "//pkg/api/validation:go_default_library",
         "//pkg/apis/componentconfig:go_default_library",
-        "//pkg/apis/componentconfig/v1alpha1:go_default_library",
         "//pkg/client/clientset_generated/internalclientset:go_default_library",
         "//pkg/client/informers/informers_generated/internalversion:go_default_library",
         "//pkg/features:go_default_library",
@@ -31,6 +28,10 @@ go_library(
         "//pkg/kubelet/qos:go_default_library",
         "//pkg/master/ports:go_default_library",
         "//pkg/proxy:go_default_library",
+        "//pkg/proxy/apis/proxyconfig:go_default_library",
+        "//pkg/proxy/apis/proxyconfig/scheme:go_default_library",
+        "//pkg/proxy/apis/proxyconfig/v1alpha1:go_default_library",
+        "//pkg/proxy/apis/proxyconfig/validation:go_default_library",
         "//pkg/proxy/config:go_default_library",
         "//pkg/proxy/healthcheck:go_default_library",
         "//pkg/proxy/iptables:go_default_library",
@@ -60,7 +61,6 @@ go_library(
         "//vendor/k8s.io/apimachinery/pkg/types:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/util/net:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/util/runtime:go_default_library",
-        "//vendor/k8s.io/apimachinery/pkg/util/validation/field:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/util/wait:go_default_library",
         "//vendor/k8s.io/apiserver/pkg/server/healthz:go_default_library",
         "//vendor/k8s.io/apiserver/pkg/util/feature:go_default_library",
@@ -82,15 +82,12 @@ go_library(
 
 go_test(
     name = "go_default_test",
-    srcs = [
-        "server_test.go",
-        "validation_test.go",
-    ],
+    srcs = ["server_test.go"],
     library = ":go_default_library",
     deps = [
         "//pkg/api:go_default_library",
-        "//pkg/apis/componentconfig:go_default_library",
-        "//pkg/apis/componentconfig/v1alpha1:go_default_library",
+        "//pkg/proxy/apis/proxyconfig:go_default_library",
+        "//pkg/proxy/apis/proxyconfig/v1alpha1:go_default_library",
         "//pkg/util/configz:go_default_library",
         "//pkg/util/iptables:go_default_library",
         "//pkg/util/pointer:go_default_library",
@@ -98,7 +95,6 @@ go_test(
         "//vendor/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/runtime:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/util/diff:go_default_library",
-        "//vendor/k8s.io/apimachinery/pkg/util/validation/field:go_default_library",
     ],
 )
 
