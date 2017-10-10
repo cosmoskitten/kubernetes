@@ -4036,27 +4036,59 @@ func WaitForMasters(masterPrefix string, c clientset.Interface, size int, timeou
 	return fmt.Errorf("timeout waiting %v for the number of masters to be %d", timeout, size)
 }
 
-// GetHostExternalAddress gets the node for a pod and returns the first External
-// address. Returns an error if the node the pod is on doesn't have an External
-// address.
-func GetHostExternalAddress(client clientset.Interface, p *v1.Pod) (externalAddress string, err error) {
+// GetHostAddressByType gets the node for a pod and returns the first address
+// of a given type (external or internal). Returns an error if that node
+// doesn't have an address of that type.
+func getHostAddressByType(client clientset.Interface, p *v1.Pod, addressType v1.NodeAddressType) (foundAddress string, err error) {
 	node, err := client.Core().Nodes().Get(p.Spec.NodeName, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}
 	for _, address := range node.Status.Addresses {
-		if address.Type == v1.NodeExternalIP {
+		if address.Type == addressType {
 			if address.Address != "" {
-				externalAddress = address.Address
+				foundAddress = address.Address
 				break
 			}
 		}
 	}
-	if externalAddress == "" {
-		err = fmt.Errorf("No external address for pod %v on node %v",
-			p.Name, p.Spec.NodeName)
+	if foundAddress == "" {
+		var typeStr string
+		if addressType == v1.NodeExternalIP {
+			typeStr = "external"
+		} else {
+			typeStr = "internal"
+		}
+		err = fmt.Errorf("No %s address for pod %v on node %v",
+			typeStr, p.Name, p.Spec.NodeName)
 	}
 	return
+}
+
+// GetHostExternalAddress gets the node for a pod and returns the first External
+// address. Returns an error if the node the pod is on doesn't have an External
+// address.
+func GetHostExternalAddress(client clientset.Interface, p *v1.Pod) (externalAddress string, err error) {
+	return getHostAddressByType(client, p, v1.NodeExternalIP)
+}
+
+// GetHostInternalAddress gets the node for a pod and returns the first Internal
+// address. Returns an error if the node the pod is on doesn't have an Internal
+// address.
+func GetHostInternalAddress(client clientset.Interface, p *v1.Pod) (internalAddress string, err error) {
+	return getHostAddressByType(client, p, v1.NodeInternalIP)
+}
+
+// GetHostAddress gets the node for a pod and returns the first External
+// address if one is available, otherwise it returns the first Internal
+// address. If neither external nor internal addresses are available,
+// it returns an error.
+func GetHostAddress(client clientset.Interface, p *v1.Pod) (foundAddress string, err error) {
+	foundAddress, err = GetHostExternalAddress(client, p)
+	if err != nil {
+		foundAddress, err = GetHostInternalAddress(client, p)
+	}
+	return foundAddress, err
 }
 
 type extractRT struct {
