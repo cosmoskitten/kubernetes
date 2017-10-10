@@ -32,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/pkg/api"
 	apiv1 "k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/apis/apps"
@@ -54,20 +55,21 @@ type Rollbacker interface {
 	Rollback(obj runtime.Object, updatedAnnotations map[string]string, toRevision int64, dryRun bool) (string, error)
 }
 
-func RollbackerFor(kind schema.GroupKind, c clientset.Interface) (Rollbacker, error) {
+func RollbackerFor(kind schema.GroupKind, c clientset.Interface, e kubernetes.Interface) (Rollbacker, error) {
 	switch kind {
 	case extensions.Kind("Deployment"), apps.Kind("Deployment"):
-		return &DeploymentRollbacker{c}, nil
+		return &DeploymentRollbacker{c, e}, nil
 	case extensions.Kind("DaemonSet"), apps.Kind("DaemonSet"):
-		return &DaemonSetRollbacker{c}, nil
+		return &DaemonSetRollbacker{c, e}, nil
 	case apps.Kind("StatefulSet"):
-		return &StatefulSetRollbacker{c}, nil
+		return &StatefulSetRollbacker{c, e}, nil
 	}
 	return nil, fmt.Errorf("no rollbacker has been implemented for %q", kind)
 }
 
 type DeploymentRollbacker struct {
-	c clientset.Interface
+	ic clientset.Interface
+	ec kubernetes.Interface
 }
 
 func (r *DeploymentRollbacker) Rollback(obj runtime.Object, updatedAnnotations map[string]string, toRevision int64, dryRun bool) (string, error) {
@@ -76,7 +78,7 @@ func (r *DeploymentRollbacker) Rollback(obj runtime.Object, updatedAnnotations m
 		return "", fmt.Errorf("passed object is not a Deployment: %#v", obj)
 	}
 	if dryRun {
-		return simpleDryRun(d, r.c, toRevision)
+		return simpleDryRun(d, r.ec, toRevision)
 	}
 	if d.Spec.Paused {
 		return "", fmt.Errorf("you cannot rollback a paused deployment; resume it first with 'kubectl rollout resume deployment/%s' and try again", d.Name)
@@ -91,16 +93,16 @@ func (r *DeploymentRollbacker) Rollback(obj runtime.Object, updatedAnnotations m
 	result := ""
 
 	// Get current events
-	events, err := r.c.Core().Events(d.Namespace).List(metav1.ListOptions{})
+	events, err := r.ic.Core().Events(d.Namespace).List(metav1.ListOptions{})
 	if err != nil {
 		return result, err
 	}
 	// Do the rollback
-	if err := r.c.Extensions().Deployments(d.Namespace).Rollback(deploymentRollback); err != nil {
+	if err := r.ic.Extensions().Deployments(d.Namespace).Rollback(deploymentRollback); err != nil {
 		return result, err
 	}
 	// Watch for the changes of events
-	watch, err := r.c.Core().Events(d.Namespace).Watch(metav1.ListOptions{Watch: true, ResourceVersion: events.ResourceVersion})
+	watch, err := r.ic.Core().Events(d.Namespace).Watch(metav1.ListOptions{Watch: true, ResourceVersion: events.ResourceVersion})
 	if err != nil {
 		return result, err
 	}
@@ -149,13 +151,13 @@ func isRollbackEvent(e *api.Event) (bool, string) {
 	return false, ""
 }
 
-func simpleDryRun(deployment *extensions.Deployment, c clientset.Interface, toRevision int64) (string, error) {
+func simpleDryRun(deployment *extensions.Deployment, c kubernetes.Interface, toRevision int64) (string, error) {
 	externalDeployment := &externalextensions.Deployment{}
 	if err := api.Scheme.Convert(deployment, externalDeployment, nil); err != nil {
 		return "", fmt.Errorf("failed to convert deployment, %v", err)
 	}
-	versionedExtensionsClient := versionedExtensionsClientV1beta1(c)
-	_, allOldRSs, newRS, err := deploymentutil.GetAllReplicaSets(externalDeployment, versionedExtensionsClient)
+
+	_, allOldRSs, newRS, err := deploymentutil.GetAllReplicaSets(externalDeployment, c.ExtensionsV1beta1())
 	if err != nil {
 		return "", fmt.Errorf("failed to retrieve replica sets from deployment %s: %v", deployment.Name, err)
 	}
@@ -212,7 +214,8 @@ func simpleDryRun(deployment *extensions.Deployment, c clientset.Interface, toRe
 }
 
 type DaemonSetRollbacker struct {
-	c clientset.Interface
+	ic clientset.Interface
+	ec kubernetes.Interface
 }
 
 func (r *DaemonSetRollbacker) Rollback(obj runtime.Object, updatedAnnotations map[string]string, toRevision int64, dryRun bool) (string, error) {
@@ -224,9 +227,8 @@ func (r *DaemonSetRollbacker) Rollback(obj runtime.Object, updatedAnnotations ma
 	if !ok {
 		return "", fmt.Errorf("passed object is not a DaemonSet: %#v", obj)
 	}
-	versionedAppsClient := versionedAppsClientV1beta1(r.c)
-	versionedExtensionsClient := versionedExtensionsClientV1beta1(r.c)
-	versionedObj, allHistory, err := controlledHistories(versionedAppsClient, versionedExtensionsClient, ds.Namespace, ds.Name, "DaemonSet")
+
+	versionedObj, allHistory, err := controlledHistories(r.ec.AppsV1beta1(), r.ec.ExtensionsV1beta1(), ds.Namespace, ds.Name, "DaemonSet")
 	if err != nil {
 		return "", fmt.Errorf("unable to find history controlled by DaemonSet %s: %v", ds.Name, err)
 	}
@@ -262,7 +264,7 @@ func (r *DaemonSetRollbacker) Rollback(obj runtime.Object, updatedAnnotations ma
 	}
 
 	// Restore revision
-	if _, err = versionedExtensionsClient.DaemonSets(ds.Namespace).Patch(ds.Name, types.StrategicMergePatchType, toHistory.Data.Raw); err != nil {
+	if _, err = r.ec.ExtensionsV1beta1().DaemonSets(ds.Namespace).Patch(ds.Name, types.StrategicMergePatchType, toHistory.Data.Raw); err != nil {
 		return "", fmt.Errorf("failed restoring revision %d: %v", toRevision, err)
 	}
 
@@ -270,7 +272,8 @@ func (r *DaemonSetRollbacker) Rollback(obj runtime.Object, updatedAnnotations ma
 }
 
 type StatefulSetRollbacker struct {
-	c clientset.Interface
+	ic clientset.Interface
+	ec kubernetes.Interface
 }
 
 // toRevision is a non-negative integer, with 0 being reserved to indicate rolling back to previous configuration
@@ -283,9 +286,8 @@ func (r *StatefulSetRollbacker) Rollback(obj runtime.Object, updatedAnnotations 
 	if !ok {
 		return "", fmt.Errorf("passed object is not a StatefulSet: %#v", obj)
 	}
-	versionedAppsClient := versionedAppsClientV1beta1(r.c)
-	versionedExtensionsClient := versionedExtensionsClientV1beta1(r.c)
-	versionedObj, allHistory, err := controlledHistories(versionedAppsClient, versionedExtensionsClient, ss.Namespace, ss.Name, "StatefulSet")
+
+	versionedObj, allHistory, err := controlledHistories(r.ec.AppsV1beta1(), r.ec.ExtensionsV1beta1(), ss.Namespace, ss.Name, "StatefulSet")
 	if err != nil {
 		return "", fmt.Errorf("unable to find history controlled by StatefulSet %s: %v", ss.Name, err)
 	}
@@ -322,7 +324,7 @@ func (r *StatefulSetRollbacker) Rollback(obj runtime.Object, updatedAnnotations 
 	}
 
 	// Restore revision
-	if _, err = versionedAppsClient.StatefulSets(ss.Namespace).Patch(ss.Name, types.StrategicMergePatchType, toHistory.Data.Raw); err != nil {
+	if _, err = r.ec.AppsV1beta1().StatefulSets(ss.Namespace).Patch(ss.Name, types.StrategicMergePatchType, toHistory.Data.Raw); err != nil {
 		return "", fmt.Errorf("failed restoring revision %d: %v", toRevision, err)
 	}
 
