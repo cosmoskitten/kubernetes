@@ -912,6 +912,16 @@ function detect-subnetworks() {
   echo "${color_red}Could not find subnetwork with region ${REGION}, network ${NETWORK}, and project ${NETWORK_PROJECT}"
 }
 
+function delete-all-firewall-rules-in-network() {
+  local -r all_firewalls=`gcloud compute firewall-rules list --project "${NETWORK_PROJECT}" --filter="network=${NETWORK}" --format="value(name)"`
+  if [[ -z "$all_firewalls" ]]; then
+    echo "No firewall rules left to be deleted or failed to list firewall rules."
+  else
+    echo "Deleting remaining firewall rules..."
+    delete-firewall-rules "$all_firewalls"
+  fi
+}
+
 function delete-firewall-rules() {
   for fw in $@; do
     if [[ -n $(gcloud compute firewall-rules --project "${NETWORK_PROJECT}" describe "${fw}" --format='value(name)' 2>/dev/null || true) ]]; then
@@ -1728,6 +1738,8 @@ function kube-down() {
       "${NETWORK}-default-internal"  # Pre-1.5 clusters
 
     if [[ "${KUBE_DELETE_NETWORK}" == "true" ]]; then
+      # Delete all remaining firewall rules in the network.
+      delete-all-firewall-rules-in-network || true
       delete-subnetworks || true
       delete-network || true  # might fail if there are leaked firewall rules
     fi
