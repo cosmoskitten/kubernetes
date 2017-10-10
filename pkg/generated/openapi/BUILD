@@ -61,7 +61,6 @@ openapi_library(
         "k8s.io/metrics/pkg/apis/custom_metrics/v1beta1",
         "k8s.io/metrics/pkg/apis/metrics/v1alpha1",
         "k8s.io/metrics/pkg/apis/metrics/v1beta1",
-        "k8s.io/sample-controller/pkg/apis/samplecontroller/v1alpha1",
     ],
 )
 

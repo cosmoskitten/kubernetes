@@ -21,7 +21,7 @@ import (
 )
 
 // +genclient
-// +k8s:openapi-gen=true
+// +genclient:noStatus
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +resource:path=foo
 
