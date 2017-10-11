@@ -5,12 +5,17 @@ go_library(
     srcs = [
         "backend.go",
         "batch_tx.go",
-        "boltoption_default.go",
+        "config_default.go",
         "doc.go",
         "metrics.go",
+        "read_tx.go",
+        "tx_buffer.go",
     ] + select({
         "@io_bazel_rules_go//go/platform:linux_amd64": [
-            "boltoption_linux.go",
+            "config_linux.go",
+        ],
+        "@io_bazel_rules_go//go/platform:windows_amd64": [
+            "config_windows.go",
         ],
         "//conditions:default": [],
     }),
