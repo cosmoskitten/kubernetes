@@ -115,8 +115,11 @@ func RunServer(server *http.Server, network string, stopCh <-chan struct{}, audi
 	go func() {
 		<-stopCh
 		ln.Close()
-		// Stop audit backend after listener closed
-		close(auditStopCh)
+		// Only secure server need to gracefully shut down audit backend
+		if auditStopCh != nil {
+			// Stop audit backend after listener closed
+			close(auditStopCh)
+		}
 	}()
 
 	go func() {

@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"time"
 
+	"golang.org/x/tools/go/loader"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apimachinery/registered"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -38,7 +39,13 @@ type GenericWebhook struct {
 }
 
 // NewGenericWebhook creates a new GenericWebhook from the provided kubeconfig file.
-func NewGenericWebhook(registry *registered.APIRegistrationManager, codecFactory serializer.CodecFactory, kubeConfigFile string, groupVersions []schema.GroupVersion, initialBackoff time.Duration) (*GenericWebhook, error) {
+func NewGenericWebhook(
+	registry *registered.APIRegistrationManager,
+	codecFactory serializer.CodecFactory,
+	kubeConfigFile string,
+	groupVersions []schema.GroupVersion,
+	initialBackoff time.Duration,
+	timeout string) (*GenericWebhook, error) {
 	for _, groupVersion := range groupVersions {
 		if !registry.IsEnabledVersion(groupVersion) {
 			return nil, fmt.Errorf("webhook plugin requires enabling extension resource: %s", groupVersion)
@@ -47,7 +54,7 @@ func NewGenericWebhook(registry *registered.APIRegistrationManager, codecFactory
 
 	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
 	loadingRules.ExplicitPath = kubeConfigFile
-	loader := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, &clientcmd.ConfigOverrides{})
+	loader := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, &clientcmd.ConfigOverrides{Timeout: timeout})
 
 	clientConfig, err := loader.ClientConfig()
 	if err != nil {
