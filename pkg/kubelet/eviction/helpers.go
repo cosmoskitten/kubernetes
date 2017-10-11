@@ -790,31 +790,33 @@ func makeSignalObservations(summaryProvider stats.SummaryProvider, capacityProvi
 		}
 	}
 
-	ephemeralStorageCapacity, ephemeralStorageAllocatable, exist := getResourceAllocatable(nodeCapacity, allocatableReservation, v1.ResourceEphemeralStorage)
-	if exist {
-		for _, pod := range pods {
-			podStat, ok := statsFunc(pod)
-			if !ok {
-				continue
-			}
+	if utilfeature.DefaultFeatureGate.Enabled(features.LocalStorageCapacityIsolation) {
+		ephemeralStorageCapacity, ephemeralStorageAllocatable, exist := getResourceAllocatable(nodeCapacity, allocatableReservation, v1.ResourceEphemeralStorage)
+		if exist {
+			for _, pod := range pods {
+				podStat, ok := statsFunc(pod)
+				if !ok {
+					continue
+				}
 
-			fsStatsSet := []fsStatsType{}
-			if withImageFs {
-				fsStatsSet = []fsStatsType{fsStatsLogs, fsStatsLocalVolumeSource}
-			} else {
-				fsStatsSet = []fsStatsType{fsStatsRoot, fsStatsLogs, fsStatsLocalVolumeSource}
-			}
+				fsStatsSet := []fsStatsType{}
+				if withImageFs {
+					fsStatsSet = []fsStatsType{fsStatsLogs, fsStatsLocalVolumeSource}
+				} else {
+					fsStatsSet = []fsStatsType{fsStatsRoot, fsStatsLogs, fsStatsLocalVolumeSource}
+				}
 
-			usage, err := podDiskUsage(podStat, pod, fsStatsSet)
-			if err != nil {
-				glog.Warningf("eviction manager: error getting pod disk usage %v", err)
-				continue
+				usage, err := podDiskUsage(podStat, pod, fsStatsSet)
+				if err != nil {
+					glog.Warningf("eviction manager: error getting pod disk usage %v", err)
+					continue
+				}
+				ephemeralStorageAllocatable.Sub(usage[resourceDisk])
 			}
-			ephemeralStorageAllocatable.Sub(usage[resourceDisk])
-		}
-		result[evictionapi.SignalAllocatableNodeFsAvailable] = signalObservation{
-			available: ephemeralStorageAllocatable,
-			capacity:  ephemeralStorageCapacity,
+			result[evictionapi.SignalAllocatableNodeFsAvailable] = signalObservation{
+				available: ephemeralStorageAllocatable,
+				capacity:  ephemeralStorageCapacity,
+			}
 		}
 	}
 
