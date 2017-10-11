@@ -243,6 +243,7 @@ package_group(
         "//cmd/clicheck",
         "//cmd/hyperkube",
         "//cmd/kube-proxy/app",
+        "//plugin/cmd/kube-scheduler/app",
     ],
 )
 
