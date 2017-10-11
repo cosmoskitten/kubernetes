@@ -256,7 +256,7 @@ func TestSchedulerNoPhantomPodAfterExpire(t *testing.T) {
 	case <-waitPodExpireChan:
 	case <-time.After(wait.ForeverTestTimeout):
 		close(timeout)
-		t.Fatalf("timeout after %v", wait.ForeverTestTimeout)
+		t.Fatalf("timeout timeout in waiting pod expire after %v", wait.ForeverTestTimeout)
 	}
 
 	// We use conflicted pod ports to incur fit predicate failure if first pod not removed.
@@ -273,7 +273,7 @@ func TestSchedulerNoPhantomPodAfterExpire(t *testing.T) {
 			t.Errorf("binding want=%v, get=%v", expectBinding, b)
 		}
 	case <-time.After(wait.ForeverTestTimeout):
-		t.Fatalf("timeout after %v", wait.ForeverTestTimeout)
+		t.Fatalf("timeout in binding after %v", wait.ForeverTestTimeout)
 	}
 }
 
@@ -307,7 +307,7 @@ func TestSchedulerNoPhantomPodAfterDelete(t *testing.T) {
 			t.Errorf("err want=%v, get=%v", expectErr, err)
 		}
 	case <-time.After(wait.ForeverTestTimeout):
-		t.Fatalf("timeout after %v", wait.ForeverTestTimeout)
+		t.Fatalf("timeout in fitting after %v", wait.ForeverTestTimeout)
 	}
 
 	// We mimic the workflow of cache behavior when a pod is removed by user.
@@ -334,7 +334,7 @@ func TestSchedulerNoPhantomPodAfterDelete(t *testing.T) {
 			t.Errorf("binding want=%v, get=%v", expectBinding, b)
 		}
 	case <-time.After(wait.ForeverTestTimeout):
-		t.Fatalf("timeout after %v", wait.ForeverTestTimeout)
+		t.Fatalf("timeout in binding after %v", wait.ForeverTestTimeout)
 	}
 }
 
@@ -518,6 +518,7 @@ func setupTestScheduler(queuedPodStore *clientcache.FIFO, scache schedulercache.
 			NodeLister:     nodeLister,
 			Algorithm:      algo,
 			Binder: fakeBinder{func(b *v1.Binding) error {
+				fmt.Println("in fake binder")
 				bindingChan <- b
 				return nil
 			}},

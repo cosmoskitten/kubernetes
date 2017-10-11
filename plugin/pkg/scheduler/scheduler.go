@@ -17,6 +17,7 @@ limitations under the License.
 package scheduler
 
 import (
+	"fmt"
 	"time"
 
 	"k8s.io/api/core/v1"
@@ -174,6 +175,7 @@ func (sched *Scheduler) schedule(pod *v1.Pod) (string, error) {
 	host, err := sched.config.Algorithm.Schedule(pod, sched.config.NodeLister)
 	if err != nil {
 		glog.V(1).Infof("Failed to schedule pod: %v/%v", pod.Namespace, pod.Name)
+		fmt.Println("nimei", err)
 		pod = pod.DeepCopy()
 		sched.config.Error(pod, err)
 		sched.config.Recorder.Eventf(pod, v1.EventTypeWarning, "FailedScheduling", "%v", err)
@@ -323,7 +325,7 @@ func (sched *Scheduler) scheduleOne() {
 	if err != nil {
 		return
 	}
-
+	fmt.Println("before binding")
 	// bind the pod to its host asynchronously (we can do this b/c of the assumption step above).
 	go func() {
 		err := sched.bind(&assumedPod, &v1.Binding{
@@ -333,6 +335,7 @@ func (sched *Scheduler) scheduleOne() {
 				Name: suggestedHost,
 			},
 		})
+		fmt.Println("afterbinding")
 		metrics.E2eSchedulingLatency.Observe(metrics.SinceInMicroseconds(start))
 		if err != nil {
 			glog.Errorf("Internal error binding pod: (%v)", err)

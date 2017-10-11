@@ -847,17 +847,19 @@ func PodFitsHostPorts(pod *v1.Pod, meta algorithm.PredicateMetadata, nodeInfo *s
 	existingPorts := nodeInfo.UsedPorts()
 
 	// try to see whether two hostPorts will conflict or not
-	for existingPort := range existingPorts {
-		existingHostPortInfo := decode(existingPort)
+	for existingPort, isUsed := range existingPorts {
+		if isUsed {
+			existingHostPortInfo := decode(existingPort)
 
-		if existingHostPortInfo.hostIP == "0.0.0.0" {
-			// loop through all the want hostPort to see if there exists a conflict
-			for wantPort := range wantPorts {
-				wantHostPortInfo := decode(wantPort)
+			if existingHostPortInfo.hostIP == "0.0.0.0" {
+				// loop through all the want hostPort to see if there exists a conflict
+				for wantPort := range wantPorts {
+					wantHostPortInfo := decode(wantPort)
 
-				// if there already exists one hostPort whose hostIP is 0.0.0.0, then the other want hostport (which has the same protocol and port) will not fit
-				if wantHostPortInfo.hostPort == existingHostPortInfo.hostPort && wantHostPortInfo.protocol == existingHostPortInfo.protocol {
-					return false, []algorithm.PredicateFailureReason{ErrPodNotFitsHostPorts}, nil
+					// if there already exists one hostPort whose hostIP is 0.0.0.0, then the other want hostport (which has the same protocol and port) will not fit
+					if wantHostPortInfo.hostPort == existingHostPortInfo.hostPort && wantHostPortInfo.protocol == existingHostPortInfo.protocol {
+						return false, []algorithm.PredicateFailureReason{ErrPodNotFitsHostPorts}, nil
+					}
 				}
 			}
 		}
@@ -868,12 +870,14 @@ func PodFitsHostPorts(pod *v1.Pod, meta algorithm.PredicateMetadata, nodeInfo *s
 
 		if wantHostPortInfo.hostIP == "0.0.0.0" {
 			// loop through all the existing hostPort to see if there exists a conflict
-			for existingPort := range existingPorts {
-				existingHostPortInfo := decode(existingPort)
+			for existingPort, isUsed := range existingPorts {
+				if isUsed {
+					existingHostPortInfo := decode(existingPort)
 
-				// if there already exists one hostPort whose hostIP may be 127.0.0.1, then a hostPort (which wants 0.0.0.0 hostIP and has the same protocol and port) will not fit
-				if wantHostPortInfo.hostPort == existingHostPortInfo.hostPort && wantHostPortInfo.protocol == existingHostPortInfo.protocol {
-					return false, []algorithm.PredicateFailureReason{ErrPodNotFitsHostPorts}, nil
+					// if there already exists one hostPort whose hostIP may be 127.0.0.1, then a hostPort (which wants 0.0.0.0 hostIP and has the same protocol and port) will not fit
+					if wantHostPortInfo.hostPort == existingHostPortInfo.hostPort && wantHostPortInfo.protocol == existingHostPortInfo.protocol {
+						return false, []algorithm.PredicateFailureReason{ErrPodNotFitsHostPorts}, nil
+					}
 				}
 			}
 		} else {
