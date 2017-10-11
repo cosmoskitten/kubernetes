@@ -64,6 +64,16 @@ func (f *Fake) OpenAPISchema() (*openapi_v2.Document, error) {
 	return f.document, f.err
 }
 
+// EmptyResources implement a Resources that just doesn't have any resources.
+type EmptyResources struct{}
+
+var _ openapi.Resources = EmptyResources{}
+
+// LookupResource will always return nil. It doesn't have any resources.
+func (f EmptyResources) LookupResource(gvk schema.GroupVersionKind) openapi.Schema {
+	return nil
+}
+
 // FakeClient implements a dummy OpenAPISchemaInterface that uses the
 // fake OpenAPI schema given as a parameter, and count the number of
 // call to the function.
@@ -119,4 +129,11 @@ func (f *FakeResources) LookupResource(gvk schema.GroupVersionKind) openapi.Sche
 		panic(err)
 	}
 	return resources.LookupResource(gvk)
+}
+
+// CreateOpenAPISchemaFunc returns a function useful for the TestFactory.
+func CreateOpenAPISchemaFunc(path string) func() (openapi.Resources, error) {
+	return func() (openapi.Resources, error) {
+		return NewFakeResources(path), nil
+	}
 }
