@@ -17,8 +17,14 @@ go_library(
         "package_validator.go",
         "report.go",
         "types.go",
+        "types_unix.go",
         "validators.go",
-    ],
+    ] + select({
+        "@io_bazel_rules_go//go/platform:windows_amd64": [
+            "types_windows.go",
+        ],
+        "//conditions:default": [],
+    }),
     deps = [
         "//vendor/github.com/blang/semver:go_default_library",
         "//vendor/github.com/docker/docker/api/types:go_default_library",
