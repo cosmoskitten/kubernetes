@@ -27,8 +27,7 @@ type KernelValidatorHelper interface {
 }
 
 // DefaultKernelValidatorHelper is the 'linux' implementation of KernelValidatorHelper
-type DefaultKernelValidatorHelper struct {
-}
+type DefaultKernelValidatorHelper struct{}
 
 func (o *DefaultKernelValidatorHelper) GetKernelRelease() ([]byte, error) {
 	kernel, err := exec.Command("uname", "-r").CombinedOutput()
@@ -36,8 +35,7 @@ func (o *DefaultKernelValidatorHelper) GetKernelRelease() ([]byte, error) {
 }
 
 // WindowsKernelValidatorHelper is the 'windows' implementation of KernelValidatorHelper
-type WindowsKernelValidatorHelper struct {
-}
+type WindowsKernelValidatorHelper struct{}
 
 func (o *WindowsKernelValidatorHelper) GetKernelRelease() ([]byte, error) {
 	args := []string{"(Get-CimInstance Win32_OperatingSystem).Version"}
