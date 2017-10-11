@@ -151,8 +151,9 @@ func formatIfNotFormatted(disk string, fstype string, exec mount.Exec) {
 		if err == nil {
 			// the disk has been formatted successfully try to mount it again.
 			glog.Infof("azureDisk - Disk successfully formatted (mkfs): %s - %s %s", fstype, disk, "tt")
+		} else {
+			glog.Warningf("azureDisk - format of disk %q failed: type:(%q) target:(%q) options:(%q)error:(%v)", disk, fstype, "tt", "o", err)
 		}
-		glog.Warningf("azureDisk - format of disk %q failed: type:(%q) target:(%q) options:(%q)error:(%v)", disk, fstype, "tt", "o", err)
 	} else {
 		if err != nil {
 			glog.Warningf("azureDisk - Failed to check if the disk %s formatted with error %s, will attach anyway", disk, err)
