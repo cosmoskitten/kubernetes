@@ -82,7 +82,8 @@ func (s *storageLeases) UpdateLease(ip string) error {
 			},
 		}
 
-		leaseTime := uint64(s.leaseTime)
+		// leaseTime needs to be in seconds
+		leaseTime := uint64(s.leaseTime / time.Second)
 
 		// NB: GuaranteedUpdate does not perform the store operation unless
 		// something changed between load and store (not including resource
