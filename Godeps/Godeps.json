@@ -1768,18 +1768,18 @@
 		},
 		{
 			"ImportPath": "github.com/grpc-ecosystem/grpc-gateway/runtime",
-			"Comment": "v1.1.0-25-g84398b9",
-			"Rev": "84398b94e188ee336f307779b57b3aa91af7063c"
+			"Comment": "v1.2.2",
+			"Rev": "589b126116b5fc961939b3e156c29e4d9d58222f"
 		},
 		{
 			"ImportPath": "github.com/grpc-ecosystem/grpc-gateway/runtime/internal",
-			"Comment": "v1.1.0-25-g84398b9",
-			"Rev": "84398b94e188ee336f307779b57b3aa91af7063c"
+			"Comment": "v1.2.2",
+			"Rev": "589b126116b5fc961939b3e156c29e4d9d58222f"
 		},
 		{
 			"ImportPath": "github.com/grpc-ecosystem/grpc-gateway/utilities",
-			"Comment": "v1.1.0-25-g84398b9",
-			"Rev": "84398b94e188ee336f307779b57b3aa91af7063c"
+			"Comment": "v1.2.2",
+			"Rev": "589b126116b5fc961939b3e156c29e4d9d58222f"
 		},
 		{
 			"ImportPath": "github.com/hashicorp/golang-lru",
