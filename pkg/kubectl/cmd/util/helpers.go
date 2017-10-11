@@ -25,6 +25,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"reflect"
 	"time"
 
 	jsonpatch "github.com/evanphx/json-patch"
@@ -113,12 +114,21 @@ func fatal(msg string, code int) {
 var ErrExit = fmt.Errorf("exit")
 
 // OperationFailedUnchangedExit may be passed to CheckError to instruct it to operation succeed but unchanged
-var OperationFailedUnchangedExit = fmt.Errorf("apply failed unchanged")
+var OperationFailedUnchangedExit = fmt.Errorf("unchanged error")
 
-// FailedWithUnchanged first check the `exit-failure-unchanged` flag if command set to true
+var unchanged = true
+
+
+func IdempotentOperationObjectCheck(flag bool, objA, objB runtime.Object) {
+	if flag && !reflect.DeepEqual(objA, objB) {
+		unchanged = false
+	}
+}
+
+// IdempotentOperationExitCodeReturn first check the `exit-failure-unchanged` flag if command set to true
 // and then if the command operation applied without any changes or use dry-run mode
 // we will return OperationFailedUnchangedExit error, otherwise return nil
-func FailedWithUnchanged(flag, unchanged, dryRun bool) error {
+func IdempotentOperationExitCodeReturn(flag, dryRun bool) error {
 	if flag && (unchanged || dryRun) {
 		return OperationFailedUnchangedExit
 	}

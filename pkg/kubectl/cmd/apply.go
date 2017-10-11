@@ -19,7 +19,6 @@ package cmd
 import (
 	"fmt"
 	"io"
-	"reflect"
 	"strings"
 	"time"
 
@@ -49,16 +48,16 @@ import (
 )
 
 type ApplyOptions struct {
-	FilenameOptions     resource.FilenameOptions
-	Selector            string
-	Force               bool
-	Prune               bool
-	Cascade             bool
-	GracePeriod         int
-	PruneResources      []pruneResource
-	Timeout             time.Duration
-	cmdBaseName         string
-	FailedWhenUnchanged bool
+	FilenameOptions resource.FilenameOptions
+	Selector        string
+	Force           bool
+	Prune           bool
+	Cascade         bool
+	GracePeriod     int
+	PruneResources  []pruneResource
+	Timeout         time.Duration
+	cmdBaseName     string
+	ErrorUnchanged  bool
 }
 
 const (
@@ -129,7 +128,7 @@ func NewCmdApply(baseName string, f cmdutil.Factory, out, errOut io.Writer) *cob
 	cmd.Flags().StringVarP(&options.Selector, "selector", "l", "", "Selector (label query) to filter on, supports '=', '==', and '!='.(e.g. -l key1=value1,key2=value2)")
 	cmd.Flags().Bool("all", false, "Select all resources in the namespace of the specified resource types.")
 	cmd.Flags().StringArray("prune-whitelist", []string{}, "Overwrite the default whitelist with <group/version/kind> for --prune")
-	cmd.Flags().BoolVar(&options.FailedWhenUnchanged, "exit-failure-unchanged", false, "command exit code will be 2 if no any changes were applied with fail-when-unchanged=true")
+	cmd.Flags().BoolVar(&options.ErrorUnchanged, "error-unchanged", false, "if set to true the exit code will be 3 on no differences found")
 	cmdutil.AddDryRunFlag(cmd)
 	cmdutil.AddPrinterFlags(cmd)
 	cmdutil.AddRecordFlag(cmd)
@@ -246,7 +245,6 @@ func RunApply(f cmdutil.Factory, cmd *cobra.Command, out, errOut io.Writer, opti
 	visitedUids := sets.NewString()
 	visitedNamespaces := sets.NewString()
 
-	unchangedApply := true
 	count := 0
 	err = r.Visit(func(info *resource.Info, err error) error {
 		// In this method, info.Object contains the object retrieved from the server
@@ -337,12 +335,7 @@ func RunApply(f cmdutil.Factory, cmd *cobra.Command, out, errOut io.Writer, opti
 				return cmdutil.AddSourceToErr(fmt.Sprintf("applying patch:\n%s\nto:\n%v\nfor:", patchBytes, info), info.Source, err)
 			}
 
-			// when --exit-failure-unchanged=true and patch operation actually has change object,
-			// set `unchangedApply` to false, otherwise we return exit code 2 at the end
-			// TODO: this could be encapsulated into a generic function to deal with all other declarative commands ?
-			if options.FailedWhenUnchanged && !reflect.DeepEqual(info.Object, patchedObject) {
-				unchangedApply = false
-			}
+			cmdutil.IdempotentOperationObjectCheck(options.ErrorUnchanged, info.Object, patchedObject)
 
 			info.Refresh(patchedObject, true)
 
@@ -368,7 +361,7 @@ func RunApply(f cmdutil.Factory, cmd *cobra.Command, out, errOut io.Writer, opti
 	}
 
 	if !options.Prune {
-		return cmdutil.FailedWithUnchanged(options.FailedWhenUnchanged, unchangedApply, dryRun)
+		return cmdutil.IdempotentOperationExitCodeReturn(options.ErrorUnchanged, dryRun)
 	}
 
 	selector, err := labels.Parse(options.Selector)
@@ -408,7 +401,7 @@ func RunApply(f cmdutil.Factory, cmd *cobra.Command, out, errOut io.Writer, opti
 		}
 	}
 
-	return cmdutil.FailedWithUnchanged(options.FailedWhenUnchanged, unchangedApply, dryRun)
+	return cmdutil.IdempotentOperationExitCodeReturn(options.ErrorUnchanged, unchangedApply, dryRun)
 }
 
 type pruneResource struct {
