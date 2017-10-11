@@ -94,7 +94,7 @@ const (
 	// DefaultEndpointReconcilerTTL is the default TTL timeout for the storage layer
 	DefaultEndpointReconcilerTTL = 15 * time.Second
 	// DefaultStorageEndpoint is the default storage endpoint for the lease controller
-	DefaultStorageEndpoint = "kube-apiserver-endpoint"
+	DefaultStorageEndpoint = "services/endpoints"
 )
 
 type ExtraConfig struct {
