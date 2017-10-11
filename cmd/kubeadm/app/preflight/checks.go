@@ -429,20 +429,15 @@ func (sysver SystemVerificationCheck) Check() (warnings, errors []error) {
 			&system.CgroupsValidator{Reporter: reporter})
 	}
 
-	sysSpec, ok := system.SysSpecsByOS[runtimeOS]
-	if ok {
-		// Run all validators
-		for _, v := range validators {
-			warn, err := v.Validate(sysSpec)
-			if err != nil {
-				errs = append(errs, err)
-			}
-			if warn != nil {
-				warns = append(warns, warn)
-			}
+	// Run all validators
+	for _, v := range validators {
+		warn, err := v.Validate(system.DefaultSysSpec)
+		if err != nil {
+			errs = append(errs, err)
 		}
-	} else {
-		errs = append(errs, fmt.Errorf("couldn't find system spec for os: %s", runtimeOS))
+		if warn != nil {
+			warns = append(warns, warn)
+		}
 	}
 
 	if len(errs) != 0 {

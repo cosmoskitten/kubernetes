@@ -18,13 +18,12 @@ package v1alpha1
 
 import (
 	"net/url"
-	"path/filepath"
-	"runtime"
 	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/kubernetes/cmd/kubeadm/app/constants"
+	"k8s.io/kubernetes/cmd/kubeadm/app/util"
 )
 
 const (
@@ -96,7 +95,7 @@ func SetDefaults_MasterConfiguration(obj *MasterConfiguration) {
 // SetDefaults_NodeConfiguration assigns default values to a regular node
 func SetDefaults_NodeConfiguration(obj *NodeConfiguration) {
 	if obj.CACertPath == "" {
-		obj.CACertPath = getDefaultCACertPath(runtime.GOOS)
+		obj.CACertPath = util.NormalizePath(DefaultCACertPath)
 	}
 	if len(obj.TLSBootstrapToken) == 0 {
 		obj.TLSBootstrapToken = obj.Token
@@ -110,13 +109,5 @@ func SetDefaults_NodeConfiguration(obj *NodeConfiguration) {
 		if err == nil && u.Scheme == "file" {
 			obj.DiscoveryFile = u.Path
 		}
-	}
-}
-
-func getDefaultCACertPath(runtimeOS string) string {
-	if runtimeOS == "windows" {
-		return filepath.Join("C:", DefaultCACertPath)
-	} else {
-		return DefaultCACertPath
 	}
 }

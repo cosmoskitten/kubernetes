@@ -13,9 +13,16 @@ go_library(
         "endpoint.go",
         "error.go",
         "marshal.go",
+        "path.go",
+        "path_test_unix.go",
         "template.go",
         "version.go",
-    ],
+    ] + select({
+        "@io_bazel_rules_go//go/platform:windows_amd64": [
+            "path_test_windows.go",
+        ],
+        "//conditions:default": [],
+    }),
     deps = [
         "//cmd/kubeadm/app/apis/kubeadm:go_default_library",
         "//cmd/kubeadm/app/preflight:go_default_library",
@@ -32,6 +39,7 @@ go_test(
         "arguments_test.go",
         "endpoint_test.go",
         "error_test.go",
+        "path_test.go",
         "template_test.go",
         "version_test.go",
     ],
