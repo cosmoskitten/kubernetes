@@ -28,6 +28,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -163,17 +164,47 @@ func (poc PortOpenCheck) Check() (warnings, errors []error) {
 	return nil, errors
 }
 
-// IsRootCheck verifies user is root
-type IsRootCheck struct{}
+// IsPrivilegedUserCheck verifies user is privileged (linux - root, windows - Administrator)
+type IsPrivilegedUserCheck struct{}
 
-// Check validates if an user has root privileges.
-func (irc IsRootCheck) Check() (warnings, errors []error) {
+// Check validates if an user has elevated (root or administrator) privileges.
+func (ipuc IsPrivilegedUserCheck) Check() (warnings, errors []error) {
 	errors = []error{}
-	if os.Getuid() != 0 {
-		errors = append(errors, fmt.Errorf("user is not running as root"))
+	var err error
+	if runtime.GOOS == "windows" {
+		err = ipuc.windowsPrivilegedCheck()
+	} else {
+		err = ipuc.linuxPrivilegedCheck()
+	}
+	if err != nil {
+		errors = append(errors, err)
 	}
 
 	return nil, errors
+}
+
+func (ipuc IsPrivilegedUserCheck) windowsPrivilegedCheck() error {
+
+	// The "Well-known SID" of Administrator group is S-1-5-32-544
+	// The following powershell will return "True" if run as an administrator, "False" otherwise
+	// See https://msdn.microsoft.com/en-us/library/cc980032.aspx
+	args := []string{"[bool](([System.Security.Principal.WindowsIdentity]::GetCurrent()).groups -match \"S-1-5-32-544\")"}
+	isAdmin, err := exec.Command("powershell", args...).Output()
+
+	if err != nil {
+		return fmt.Errorf("unable to determine if user is running as administrator: %s", err)
+	}
+	if strings.EqualFold(strings.TrimSpace(string(isAdmin)), "false") {
+		return fmt.Errorf("user is not running as administrator")
+	}
+	return nil
+}
+
+func (ipuc IsPrivilegedUserCheck) linuxPrivilegedCheck() error {
+	if os.Getuid() != 0 {
+		return fmt.Errorf("user is not running as root")
+	}
+	return nil
 }
 
 // DirAvailableCheck checks if the given directory either does not exist, or is empty.
@@ -382,26 +413,36 @@ func (sysver SystemVerificationCheck) Check() (warnings, errors []error) {
 	// Run the system verification check, but write to out buffered writer instead of stdout
 	bufw := bufio.NewWriterSize(os.Stdout, 1*1024*1024)
 	reporter := &system.StreamReporter{WriteStream: bufw}
+	runtimeOS := runtime.GOOS
 
 	var errs []error
 	var warns []error
-	// All the validators we'd like to run:
+	// All the common validators we'd like to run:
 	var validators = []system.Validator{
-		&system.OSValidator{Reporter: reporter},
 		&system.KernelValidator{Reporter: reporter},
-		&system.CgroupsValidator{Reporter: reporter},
-		&system.DockerValidator{Reporter: reporter},
+		&system.DockerValidator{Reporter: reporter}}
+
+	if runtimeOS != "windows" {
+		//add non-windows validators
+		validators = append(validators,
+			&system.OSValidator{Reporter: reporter},
+			&system.CgroupsValidator{Reporter: reporter})
 	}
 
-	// Run all validators
-	for _, v := range validators {
-		warn, err := v.Validate(system.DefaultSysSpec)
-		if err != nil {
-			errs = append(errs, err)
+	sysSpec, ok := system.SysSpecsByOS[runtimeOS]
+	if ok {
+		// Run all validators
+		for _, v := range validators {
+			warn, err := v.Validate(sysSpec)
+			if err != nil {
+				errs = append(errs, err)
+			}
+			if warn != nil {
+				warns = append(warns, warn)
+			}
 		}
-		if warn != nil {
-			warns = append(warns, warn)
-		}
+	} else {
+		errs = append(errs, fmt.Errorf("couldn't find system spec for os: %s", runtimeOS))
 	}
 
 	if len(errs) != 0 {
@@ -638,7 +679,7 @@ func RunInitMasterChecks(cfg *kubeadmapi.MasterConfiguration) error {
 	checks := []Checker{
 		KubernetesVersionCheck{KubernetesVersion: cfg.KubernetesVersion, KubeadmVersion: kubeadmversion.Get().GitVersion},
 		SystemVerificationCheck{},
-		IsRootCheck{},
+		IsPrivilegedUserCheck{},
 		HostnameCheck{nodeName: cfg.NodeName},
 		KubeletVersionCheck{},
 		ServiceCheck{Service: "kubelet", CheckIfActive: false},
@@ -703,7 +744,7 @@ func RunJoinNodeChecks(cfg *kubeadmapi.NodeConfiguration) error {
 
 	checks := []Checker{
 		SystemVerificationCheck{},
-		IsRootCheck{},
+		IsPrivilegedUserCheck{},
 		HostnameCheck{cfg.NodeName},
 		KubeletVersionCheck{},
 		ServiceCheck{Service: "kubelet", CheckIfActive: false},
@@ -712,26 +753,30 @@ func RunJoinNodeChecks(cfg *kubeadmapi.NodeConfiguration) error {
 		DirAvailableCheck{Path: filepath.Join(kubeadmconstants.KubernetesDir, kubeadmconstants.ManifestsSubDirName)},
 		FileAvailableCheck{Path: cfg.CACertPath},
 		FileAvailableCheck{Path: filepath.Join(kubeadmconstants.KubernetesDir, kubeadmconstants.KubeletKubeConfigFileName)},
-		FileContentCheck{Path: bridgenf, Content: []byte{'1'}},
-		SwapCheck{},
-		InPathCheck{executable: "ip", mandatory: true},
-		InPathCheck{executable: "iptables", mandatory: true},
-		InPathCheck{executable: "mount", mandatory: true},
-		InPathCheck{executable: "nsenter", mandatory: true},
-		InPathCheck{executable: "ebtables", mandatory: false},
-		InPathCheck{executable: "ethtool", mandatory: false},
-		InPathCheck{executable: "socat", mandatory: false},
-		InPathCheck{executable: "tc", mandatory: false},
-		InPathCheck{executable: "touch", mandatory: false},
+	}
+	//non-windows checks
+	if runtime.GOOS == "linux" {
+		checks = append(checks,
+			FileContentCheck{Path: bridgenf, Content: []byte{'1'}},
+			SwapCheck{},
+			InPathCheck{executable: "ip", mandatory: true},
+			InPathCheck{executable: "iptables", mandatory: true},
+			InPathCheck{executable: "mount", mandatory: true},
+			InPathCheck{executable: "nsenter", mandatory: true},
+			InPathCheck{executable: "ebtables", mandatory: false},
+			InPathCheck{executable: "ethtool", mandatory: false},
+			InPathCheck{executable: "socat", mandatory: false},
+			InPathCheck{executable: "tc", mandatory: false},
+			InPathCheck{executable: "touch", mandatory: false})
 	}
 
 	return RunChecks(checks, os.Stderr)
 }
 
-// RunRootCheckOnly initializes cheks slice of structs and call RunChecks
+// RunRootCheckOnly initializes checks slice of structs and call RunChecks
 func RunRootCheckOnly() error {
 	checks := []Checker{
-		IsRootCheck{},
+		IsPrivilegedUserCheck{},
 	}
 
 	return RunChecks(checks, os.Stderr)
