@@ -26,8 +26,7 @@ import (
 
 	apps "k8s.io/api/apps/v1beta2"
 	"k8s.io/api/core/v1"
-	extensions "k8s.io/api/extensions/v1beta1"
-	"k8s.io/api/rbac/v1beta1"
+	rbac "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kuberuntime "k8s.io/apimachinery/pkg/runtime"
@@ -204,7 +203,7 @@ func createCoreDNSAddon(deploymentBytes, serviceBytes, configBytes, clusterroleB
 		return err
 	}
 
-	coreDNSClusterRoles := &v1beta1.ClusterRole{}
+	coreDNSClusterRoles := &rbac.ClusterRole{}
 	if err := kuberuntime.DecodeInto(api.Codecs.UniversalDecoder(), clusterroleBytes, coreDNSClusterRoles); err != nil {
 		return fmt.Errorf("unable to decode CoreDNS clusterroles %v", err)
 	}
@@ -214,7 +213,7 @@ func createCoreDNSAddon(deploymentBytes, serviceBytes, configBytes, clusterroleB
 		return err
 	}
 
-	coreDNSClusterRolesBinding := &v1beta1.ClusterRoleBinding{}
+	coreDNSClusterRolesBinding := &rbac.ClusterRoleBinding{}
 	if err := kuberuntime.DecodeInto(api.Codecs.UniversalDecoder(), clusterrolebindingBytes, coreDNSClusterRolesBinding); err != nil {
 		return fmt.Errorf("unable to decode CoreDNS clusterrolebindings %v", err)
 	}
@@ -234,7 +233,7 @@ func createCoreDNSAddon(deploymentBytes, serviceBytes, configBytes, clusterroleB
 		return err
 	}
 
-	coreDNSDeployment := &extensions.Deployment{}
+	coreDNSDeployment := &apps.Deployment{}
 	if err := kuberuntime.DecodeInto(api.Codecs.UniversalDecoder(), deploymentBytes, coreDNSDeployment); err != nil {
 		return fmt.Errorf("unable to decode CoreDNS deployment %v", err)
 	}

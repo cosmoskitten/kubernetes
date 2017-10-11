@@ -215,7 +215,7 @@ spec:
 
 	// CoreDNSDeployment is the CoreDNS Deployment manifest
 	CoreDNSDeployment = `
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1beta2
 kind: Deployment
 metadata:
   name: coredns
@@ -332,7 +332,7 @@ data:
 `
 	// CoreDNSClusterRole is the CoreDNS ClusterRole manifest
 	CoreDNSClusterRole = `
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac/v1
 kind: ClusterRole
 metadata:
   labels:
@@ -352,7 +352,7 @@ rules:
 `
 	// CoreDNSClusterRoleBinding is the CoreDNS Clusterrolebinding manifest
 	CoreDNSClusterRoleBinding = `
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac/v1
 kind: ClusterRoleBinding
 metadata:
   annotations:

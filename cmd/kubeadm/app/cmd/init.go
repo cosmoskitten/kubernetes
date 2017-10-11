@@ -392,10 +392,6 @@ func (i *Init) Run(out io.Writer) error {
 
 	// PHASE 6: Install and deploy all addons, and configure things as necessary
 
-	if err := apiconfigphase.CreateRBACRules(client, k8sVersion); err != nil {
-		return err
-	}
-
 	if err := proxyaddonphase.EnsureProxyAddon(i.cfg, client); err != nil {
 		return err
 	}

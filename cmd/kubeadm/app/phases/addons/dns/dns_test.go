@@ -124,9 +124,9 @@ func TestCompileManifests(t *testing.T) {
 		},
 		{
 			manifest: CoreDNSConfigMap,
-			data: struct{ DNSDomain, Servicecidr string }{
+			data: struct{ DNSDomain, ServiceCIDR string }{
 				DNSDomain:   "foo",
-				Servicecidr: "foo",
+				ServiceCIDR: "foo",
 			},
 			expected: true,
 		},
