@@ -1126,6 +1126,17 @@ func shuffle(controllers []*extensions.ReplicaSet) []*extensions.ReplicaSet {
 	return shuffled
 }
 
+// Get a list of names that identify RSs to be enqueued for syncing after a pod event.
+func getExpectedRSNames(t *testing.T, pods []*v1.Pod, informers informers.SharedInformerFactory) []*string {
+	var RSNames []*string
+	for _, pod := range pods {
+		for _, ownerReference := range pod.OwnerReferences {
+			RSNames = append(RSNames, &ownerReference.Name)
+		}
+	}
+	return RSNames
+}
+
 func TestOverlappingRSs(t *testing.T) {
 	client := clientset.NewForConfigOrDie(&restclient.Config{Host: "", ContentConfig: restclient.ContentConfig{GroupVersion: &api.Registry.GroupOrDie(v1.GroupName).GroupVersion}})
 	labelMap := map[string]string{"foo": "bar"}
@@ -1140,7 +1151,7 @@ func TestOverlappingRSs(t *testing.T) {
 	// to handle that.
 	timestamp := metav1.Date(2014, time.December, 0, 0, 0, 0, 0, time.Local)
 	var controllers []*extensions.ReplicaSet
-	for j := 1; j < 10; j++ {
+	for j := 1; j <= 10; j++ {
 		rsSpec := newReplicaSet(1, labelMap)
 		rsSpec.CreationTimestamp = timestamp
 		rsSpec.Name = fmt.Sprintf("rs%d", j)
@@ -1160,12 +1171,20 @@ func TestOverlappingRSs(t *testing.T) {
 	pod.OwnerReferences = []metav1.OwnerReference{
 		{UID: rs.UID, APIVersion: "v1", Kind: "ReplicaSet", Name: rs.Name, Controller: &isController},
 	}
-	rsKey := getKey(rs, t)
-
 	manager.addPod(pod)
+	// Obtain RS names matching the pod manually.
+	expectedNames := getExpectedRSNames(t, []*v1.Pod{pod}, informers)
+	if len(expectedNames) != 1 {
+		t.Fatalf("Expected to find one rs, found %d", len(expectedNames))
+	}
+	// Obtain namespace/name key for RS to be enqueued.
 	queueRS, _ := manager.queue.Get()
-	if queueRS != rsKey {
-		t.Fatalf("Expected to find key %v in queue, found %v", rsKey, queueRS)
+	_, queueRSName, err := cache.SplitMetaNamespaceKey(fmt.Sprintf("%s", queueRS))
+	if err != nil {
+		t.Errorf("Error splitting key: %v", err)
+	}
+	if queueRSName != *expectedNames[0] {
+		t.Fatalf("RS owner of the pod %s has a different name: Expected %v, got %v", pod.Name, *expectedNames[0], queueRSName)
 	}
 }
 
