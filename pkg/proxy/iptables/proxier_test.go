@@ -35,7 +35,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/proxy"
-	utilproxy "k8s.io/kubernetes/pkg/proxy/util"
+	proxyutil "k8s.io/kubernetes/pkg/proxy/util"
 	"k8s.io/kubernetes/pkg/util/async"
 	utiliptables "k8s.io/kubernetes/pkg/util/iptables"
 	iptablestest "k8s.io/kubernetes/pkg/util/iptables/testing"
@@ -239,7 +239,7 @@ func TestDeleteEndpointConnections(t *testing.T) {
 		svcInfo := fakeProxier.serviceMap[testCases[i].servicePortName]
 		if svcInfo.protocol == api.ProtocolUDP {
 			svcIp := svcInfo.clusterIP.String()
-			endpointIp := utilproxy.IPPart(testCases[i].endpoint)
+			endpointIp := proxyutil.IPPart(testCases[i].endpoint)
 			expectCommand := fmt.Sprintf("conntrack -D --orig-dst %s --dst-nat %s -p udp", svcIp, endpointIp)
 			execCommand := strings.Join(fcmd.CombinedOutputLog[expectCommandExecCount], " ")
 			if expectCommand != execCommand {
@@ -265,12 +265,12 @@ func (c *fakeClosable) Close() error {
 
 // fakePortOpener implements portOpener.
 type fakePortOpener struct {
-	openPorts []*utilproxy.LocalPort
+	openPorts []*proxyutil.LocalPort
 }
 
 // OpenLocalPort fakes out the listen() and bind() used by syncProxyRules
 // to lock a local port.
-func (f *fakePortOpener) OpenLocalPort(lp *utilproxy.LocalPort) (utilproxy.Closeable, error) {
+func (f *fakePortOpener) OpenLocalPort(lp *proxyutil.LocalPort) (proxyutil.Closeable, error) {
 	f.openPorts = append(f.openPorts, lp)
 	return nil, nil
 }
@@ -311,8 +311,8 @@ func NewFakeProxier(ipt utiliptables.Interface) *Proxier {
 		iptables:                 ipt,
 		clusterCIDR:              "10.0.0.0/24",
 		hostname:                 testHostname,
-		portsMap:                 make(map[utilproxy.LocalPort]utilproxy.Closeable),
-		portMapper:               &fakePortOpener{[]*utilproxy.LocalPort{}},
+		portsMap:                 make(map[proxyutil.LocalPort]proxyutil.Closeable),
+		portMapper:               &fakePortOpener{[]*proxyutil.LocalPort{}},
 		healthChecker:            newFakeHealthChecker(),
 		precomputedProbabilities: make([]string, 0, 1001),
 		iptablesData:             bytes.NewBuffer(nil),
