@@ -739,3 +739,4 @@ func checkMetadataSearchOrder(order string) error {
 
 	return nil
 }
+
