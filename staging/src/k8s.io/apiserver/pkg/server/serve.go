@@ -39,7 +39,7 @@ const (
 // serveSecurely runs the secure http server. It fails only if certificates cannot
 // be loaded or the initial listen call fails. The actual server loop (stoppable by closing
 // stopCh) runs in a go routine, i.e. serveSecurely does not block.
-func (s *GenericAPIServer) serveSecurely(stopCh <-chan struct{}) error {
+func (s *GenericAPIServer) serveSecurely(stopCh <-chan struct{}, auditStopCh chan<- struct{}) error {
 	secureServer := &http.Server{
 		Addr:           s.SecureServingInfo.BindAddress,
 		Handler:        s.Handler,
@@ -84,13 +84,13 @@ func (s *GenericAPIServer) serveSecurely(stopCh <-chan struct{}) error {
 
 	glog.Infof("Serving securely on %s", s.SecureServingInfo.BindAddress)
 	var err error
-	s.effectiveSecurePort, err = RunServer(secureServer, s.SecureServingInfo.BindNetwork, stopCh)
+	s.effectiveSecurePort, err = RunServer(secureServer, s.SecureServingInfo.BindNetwork, stopCh, auditStopCh)
 	return err
 }
 
 // RunServer listens on the given port, then spawns a go-routine continuously serving
 // until the stopCh is closed. The port is returned. This function does not block.
-func RunServer(server *http.Server, network string, stopCh <-chan struct{}) (int, error) {
+func RunServer(server *http.Server, network string, stopCh <-chan struct{}, auditStopCh chan<- struct{}) (int, error) {
 	if len(server.Addr) == 0 {
 		return 0, errors.New("address cannot be empty")
 	}
@@ -115,6 +115,8 @@ func RunServer(server *http.Server, network string, stopCh <-chan struct{}) (int
 	go func() {
 		<-stopCh
 		ln.Close()
+		// Stop audit backend after listener closed
+		close(auditStopCh)
 	}()
 
 	go func() {
