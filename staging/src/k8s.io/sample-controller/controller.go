@@ -18,7 +18,6 @@ package main
 
 import (
 	"fmt"
-	"reflect"
 	"time"
 
 	"github.com/golang/glog"
@@ -51,7 +50,7 @@ const (
 	SuccessSynced     = "Synced"
 	ErrResourceExists = "ErrResourceExists"
 
-	MessageResourceExists = "Resource '%s' already exists and is not managed by Foo"
+	MessageResourceExists = "Resource %q already exists and is not managed by Foo"
 	MessageResourceSynced = "Foo synced successfully"
 )
 
@@ -115,9 +114,7 @@ func NewController(
 	fooInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: controller.enqueueFoo,
 		UpdateFunc: func(old, new interface{}) {
-			if !reflect.DeepEqual(old, new) {
-				controller.enqueueFoo(new)
-			}
+			controller.enqueueFoo(new)
 		},
 	})
 	// Set up an event handler for when Deployment resources change. This
@@ -129,9 +126,14 @@ func NewController(
 	deploymentInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: controller.handleObject,
 		UpdateFunc: func(old, new interface{}) {
-			if !reflect.DeepEqual(old, new) {
-				controller.handleObject(new)
+			newDepl := old.(*appsv1beta2.Deployment)
+			oldDepl := old.(*appsv1beta2.Deployment)
+			if newDepl.ResourceVersion == oldDepl.ResourceVersion {
+				// Periodic resync will send update events for all known Deployments.
+				// Two different versions of the same Deployment will always have different RVs.
+				return
 			}
+			controller.handleObject(new)
 		},
 		DeleteFunc: controller.handleObject,
 	})

@@ -7,6 +7,16 @@ It makes use of the generators in [k8s.io/code-generator](https://github.com/kub
 to generate a typed client, informers, listers and deep-copy functions. You can
 do this yourself using the `./hack/update-codegen.sh` script.
 
+The `update-codegen` script will automatically generate the following files &
+directories:
+
+* `pkg/apis/samplecontroller/v1alpha1/zz_generated.deepcopy.go`
+* `pkg/client/`
+
+Changes should not be made to these files manually, and when creating your own
+controller based off of this implementation you should not copy these files and
+instead run the `update-codegen` script to generate your own.
+
 # Purpose
 
 This is an example of how to build a kube-like controller with a single type.
