@@ -82,6 +82,7 @@ func NewCmdReplace(f cmdutil.Factory, out io.Writer) *cobra.Command {
 	cmd.Flags().Bool("cascade", false, "Only relevant during a force replace. If true, cascade the deletion of the resources managed by this resource (e.g. Pods created by a ReplicationController).")
 	cmd.Flags().Int("grace-period", -1, "Only relevant during a force replace. Period of time in seconds given to the old resource to terminate gracefully. Ignored if negative.")
 	cmd.Flags().Duration("timeout", 0, "Only relevant during a force replace. The length of time to wait before giving up on a delete of the old resource, zero means determine a timeout from the size of the object. Any other values should contain a corresponding time unit (e.g. 1s, 2m, 3h).")
+	cmd.Flags().Bool("error-unchanged", false, "if set to true the exit code will be 3 on no differences found")
 	cmdutil.AddValidateFlags(cmd)
 	cmdutil.AddOutputFlagsForMutation(cmd)
 	cmdutil.AddApplyAnnotationFlags(cmd)
@@ -102,6 +103,7 @@ func RunReplace(f cmdutil.Factory, out io.Writer, cmd *cobra.Command, args []str
 		return err
 	}
 
+	errorUnchanged := cmdutil.GetFlagBool(cmd, "error-unchanged")
 	force := cmdutil.GetFlagBool(cmd, "force")
 	if cmdutil.IsFilenameSliceEmpty(options.Filenames) {
 		return cmdutil.UsageErrorf(cmd, "Must specify --filename to replace")
@@ -158,15 +160,17 @@ func RunReplace(f cmdutil.Factory, out io.Writer, cmd *cobra.Command, args []str
 		}
 
 		// Serialize the object with the annotation applied.
-		obj, err := resource.NewHelper(info.Client, info.Mapping).Replace(info.Namespace, info.Name, true, info.Object)
+		obj, serverObj, err := resource.NewHelper(info.Client, info.Mapping).Replace(info.Namespace, info.Name, true, info.Object)
 		if err != nil {
 			return cmdutil.AddSourceToErr("replacing", info.Source, err)
 		}
 
+		cmdutil.IdempotentOperationObjectCheck(errorUnchanged, serverObj, obj)
+
 		info.Refresh(obj, true)
 		f.PrintObjectSpecificMessage(obj, out)
 		cmdutil.PrintSuccess(mapper, shortOutput, out, info.Mapping.Resource, info.Name, false, "replaced")
-		return nil
+		return cmdutil.IdempotentOperationErrorReturn(errorUnchanged, false)
 	})
 }
 
