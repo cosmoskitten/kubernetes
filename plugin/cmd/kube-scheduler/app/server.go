@@ -511,7 +511,7 @@ func (s *SchedulerServer) Run() error {
 		// Create the config from a named algorithm provider.
 		sc, err := configurator.CreateFromProvider(*s.AlgorithmSource.Provider)
 		if err != nil {
-			return fmt.Errorf("couldn't create scheduler using provider %q: %v", s.AlgorithmSource.Provider, err)
+			return fmt.Errorf("couldn't create scheduler using provider %q: %v", *s.AlgorithmSource.Provider, err)
 		}
 		schedulerConfig = sc
 	case componentconfig.SchedulerAlgorithmSourcePolicy:
