@@ -54,6 +54,7 @@ import (
 	"k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/features"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	"k8s.io/kubernetes/pkg/master/ports"
 	"k8s.io/kubernetes/pkg/util/configz"
 	"k8s.io/kubernetes/pkg/version"
 	"k8s.io/kubernetes/pkg/version/verflag"
@@ -103,7 +104,7 @@ func AddFlags(options *Options, fs *pflag.FlagSet) {
 
 	// All flags below here are deprecated and will eventually be removed.
 
-	fs.Int32Var(&options.healthzPort, "port", options.healthzPort, "The port that the scheduler's http service runs on")
+	fs.Int32Var(&options.healthzPort, "port", ports.SchedulerPort, "The port that the scheduler's http service runs on")
 	fs.StringVar(&options.healthzAddress, "address", options.healthzAddress, "The IP address to serve on (set to 0.0.0.0 for all interfaces)")
 	fs.StringVar(&options.algorithmProvider, "algorithm-provider", options.algorithmProvider, "The scheduling algorithm provider to use, one of: "+factory.ListAlgorithmProviders())
 	fs.StringVar(&options.policyConfigFile, "policy-config-file", options.policyConfigFile, "File with scheduler policy configuration. This file is used if policy ConfigMap is not provided or --use-legacy-policy-config==true")
@@ -156,6 +157,7 @@ func (o *Options) Complete() error {
 		o.applyDeprecatedHealthzPortToConfig()
 		o.applyDeprecatedAlgorithmSourceOptionsToConfig()
 	}
+
 	return nil
 }
 
@@ -163,7 +165,7 @@ func (o *Options) Complete() error {
 // o.config.MetricsBindAddress from flags passed on the command line based on
 // the following rules:
 //
-// 1. If --healthz-port is 0, leave the config as-is.
+// 1. If --address is empty, leave the config as-is.
 // 2. Otherwise, use the value of --address for the address portion of
 //    o.config.HealthzBindAddress
 func (o *Options) applyDeprecatedHealthzAddressToConfig() {
@@ -184,7 +186,7 @@ func (o *Options) applyDeprecatedHealthzAddressToConfig() {
 // o.config.MetricsBindAddress from flags passed on the command line based on
 // the following rules:
 //
-// 1. If --healthz-port is -1, disable the healthz server.
+// 1. If --port is -1, disable the healthz server.
 // 2. Otherwise, use the value of --port for the port portion of
 //    o.config.HealthzBindAddress
 func (o *Options) applyDeprecatedHealthzPortToConfig() {

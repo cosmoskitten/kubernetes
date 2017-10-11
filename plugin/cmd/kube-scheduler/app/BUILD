@@ -17,6 +17,7 @@ go_library(
         "//pkg/controller:go_default_library",
         "//pkg/features:go_default_library",
         "//pkg/kubectl/cmd/util:go_default_library",
+        "//pkg/master/ports:go_default_library",
         "//pkg/util/configz:go_default_library",
         "//pkg/version:go_default_library",
         "//pkg/version/verflag:go_default_library",
