@@ -145,6 +145,8 @@ func addRunFlags(cmd *cobra.Command) {
 	cmd.Flags().String("service-overrides", "", i18n.T("An inline JSON override for the generated service object. If this is non-empty, it is used to override the generated object. Requires that the object supply a valid apiVersion field.  Only used if --expose is true."))
 	cmd.Flags().Bool("quiet", false, "If true, suppress prompt messages.")
 	cmd.Flags().String("schedule", "", i18n.T("A schedule in the Cron format the job should be run with."))
+	cmd.Flags().Bool("ignore-unchanged", false, "if set to true the exit code will be 0 on no differences apply to server")
+
 }
 
 func RunRun(f cmdutil.Factory, cmdIn io.Reader, cmdOut, cmdErr io.Writer, cmd *cobra.Command, args []string, argsLenAtDash int) error {
@@ -167,6 +169,8 @@ func RunRun(f cmdutil.Factory, cmdIn io.Reader, cmdOut, cmdErr io.Writer, cmd *c
 	if !validImageRef {
 		return fmt.Errorf("Invalid image name %q: %v", imageName, reference.ErrReferenceInvalidFormat)
 	}
+
+	ignoreUnchanged := cmdutil.GetFlagBool(cmd, "ignore-unchanged")
 
 	interactive := cmdutil.GetFlagBool(cmd, "stdin")
 	tty := cmdutil.GetFlagBool(cmd, "tty")
@@ -278,7 +282,7 @@ func RunRun(f cmdutil.Factory, cmdIn io.Reader, cmdOut, cmdErr io.Writer, cmd *c
 	var runObjectMap = map[string]*RunObject{}
 	runObject, err := createGeneratedObject(f, cmd, generator, names, params, cmdutil.GetFlagString(cmd, "overrides"), namespace)
 	if err != nil {
-		return err
+		return cmdutil.NoneIdempotentOperationErrorReturn(ignoreUnchanged, err)
 	}
 	runObjectMap[generatorName] = runObject
 
