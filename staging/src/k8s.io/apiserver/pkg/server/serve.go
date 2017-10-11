@@ -18,18 +18,9 @@ package server
 
 import (
 	"crypto/tls"
-	"crypto/x509"
+
 	"fmt"
-	"net"
-	"net/http"
-	"strings"
-	"time"
-
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/util/validation"
-
 	"github.com/golang/glog"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -115,8 +106,11 @@ func RunServer(server *http.Server, network string, stopCh <-chan struct{}, audi
 	go func() {
 		<-stopCh
 		ln.Close()
-		// Stop audit backend after listener closed
-		close(auditStopCh)
+		// Only Securely server need to notify audit backend graceful shutdown
+		if auditStopCh != nil {
+			// Stop audit backend after listener closed
+			close(auditStopCh)
+		}
 	}()
 
 	go func() {
