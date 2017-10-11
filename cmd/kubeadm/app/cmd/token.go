@@ -53,25 +53,24 @@ func NewCmdToken(out io.Writer, errW io.Writer) *cobra.Command {
 	var dryRun bool
 	tokenCmd := &cobra.Command{
 		Use:   "token",
-		Short: "Manage bootstrap tokens.",
+		Short: "Manage Bootstrap Tokens.",
 		Long: dedent.Dedent(`
-			This command will manage Bootstrap Token for you.
-			  Please note this usage of this command is optional, and mostly for advanced users.
+			This command will manage a Bootstrap Token for you.
+			Please note that the usage of this command is optional and for advanced users.
 
 			In short, Bootstrap Tokens are used for establishing bidirectional trust between a client and a server.
-			A Bootstrap Token can be used when a client (for example a node that's about to join the cluster) needs
+			A Bootstrap Token can be used when a client (for example a node that is about to join the cluster) needs
 			to trust the server it is talking to. Then a Bootstrap Token with the "signing" usage can be used.
 			Bootstrap Tokens can also function as a way to allow short-lived authentication to the API Server
 			(the token serves as a way for the API Server to trust the client), for example for doing the TLS Bootstrap.
 
 			What is a Bootstrap Token more exactly?
 			 - It is a Secret in the kube-system namespace of type "bootstrap.kubernetes.io/token".
-			 - A Bootstrap Token must be of the form "[a-z0-9]{6}.[a-z0-9]{16}"; the former part is the public Token ID,
-			   and the latter is the Token Secret, which must be kept private at all circumstances.
+			 - A Bootstrap Token must be of the form "[a-z0-9]{6}.[a-z0-9]{16}". The former part is the public token ID,
+			   while the latter is the Token Secret and it must be kept private at all circumstances!
 			 - The name of the Secret must be named "bootstrap-token-(token-id)".
 
 			You can read more about Bootstrap Tokens in this proposal:
-
 			  https://git.k8s.io/community/contributors/design-proposals/bootstrap-discovery.md
 		`),
 
@@ -84,7 +83,7 @@ func NewCmdToken(out io.Writer, errW io.Writer) *cobra.Command {
 	}
 
 	tokenCmd.PersistentFlags().StringVar(&kubeConfigFile,
-		"kubeconfig", "/etc/kubernetes/admin.conf", "The KubeConfig file to use for talking to the cluster")
+		"kubeconfig", "/etc/kubernetes/admin.conf", "The KubeConfig file to use when talking to the cluster")
 	tokenCmd.PersistentFlags().BoolVar(&dryRun,
 		"dry-run", dryRun, "Whether to enable dry-run mode or not")
 
@@ -94,10 +93,10 @@ func NewCmdToken(out io.Writer, errW io.Writer) *cobra.Command {
 	var description string
 	createCmd := &cobra.Command{
 		Use:   "create [token]",
-		Short: "Create bootstrap tokens on the server.",
+		Short: "Create Bootstrap Tokens on the server.",
 		Long: dedent.Dedent(`
 			This command will create a Bootstrap Token for you.
-			You can specify the usages for this token, the time to live and an optional human friendly description.
+			You can specify the usages for this token, the "time to live" and an optional human friendly description.
 
 			The [token] is the actual token to write.
 			This should be a securely generated random token of the form "[a-z0-9]{6}.[a-z0-9]{16}".
@@ -116,9 +115,9 @@ func NewCmdToken(out io.Writer, errW io.Writer) *cobra.Command {
 		},
 	}
 	createCmd.Flags().DurationVar(&tokenDuration,
-		"ttl", kubeadmconstants.DefaultTokenDuration, "The duration before the token is automatically deleted (e.g. 1s, 2m, 3h). 0 means 'never expires'.")
+		"ttl", kubeadmconstants.DefaultTokenDuration, "The duration before the token is automatically deleted (e.g. 1s, 2m, 3h). If set to '0', the token will never expire.")
 	createCmd.Flags().StringSliceVar(&usages,
-		"usages", kubeadmconstants.DefaultTokenUsages, "The ways in which this token can be used. Valid options: [signing,authentication].")
+		"usages", kubeadmconstants.DefaultTokenUsages, "The ways in which this token can be used. Valid options are 'signing' and 'authentication'.")
 	createCmd.Flags().StringSliceVar(&extraGroups,
 		"groups", []string{kubeadmconstants.V18NodeBootstrapTokenAuthGroup},
 		fmt.Sprintf("Extra groups that this token will authenticate as when used for authentication. Must match %q.", bootstrapapi.BootstrapGroupPattern))
@@ -146,7 +145,7 @@ func NewCmdToken(out io.Writer, errW io.Writer) *cobra.Command {
 
 	deleteCmd := &cobra.Command{
 		Use:   "delete [token-value]",
-		Short: "Delete bootstrap tokens on the server.",
+		Short: "Delete Bootstrap Tokens on the server.",
 		Long: dedent.Dedent(`
 			This command will delete a given Bootstrap Token for you.
 
@@ -173,16 +172,16 @@ func NewCmdToken(out io.Writer, errW io.Writer) *cobra.Command {
 func NewCmdTokenGenerate(out io.Writer) *cobra.Command {
 	return &cobra.Command{
 		Use:   "generate",
-		Short: "Generate and print a bootstrap token, but do not create it on the server.",
+		Short: "Generate and print a Bootstrap Token, but do not create it on the server.",
 		Long: dedent.Dedent(`
-			This command will print out a randomly-generated bootstrap token that can be used with
+			This command will print out a randomly-generated Bootstrap Token that can be used with
 			the "init" and "join" commands.
 
 			You don't have to use this command in order to generate a token. You can do so
-			yourself as long as it's in the format "[a-z0-9]{6}.[a-z0-9]{16}". This
-			command is provided for convenience to generate tokens in that format.
+			yourself as long as it is in the format "[a-z0-9]{6}.[a-z0-9]{16}". This
+			command is provided for convenience to generate tokens in the given format.
 
-			You can also use "kubeadm init" without specifying a token, and it will
+			You can also use "kubeadm init" without specifying a token and it will
 			generate and print one for you.
 		`),
 		Run: func(cmd *cobra.Command, args []string) {

@@ -48,7 +48,7 @@ func NewCmdReset(out io.Writer) *cobra.Command {
 
 	cmd.PersistentFlags().BoolVar(
 		&skipPreFlight, "skip-preflight-checks", false,
-		"Skip preflight checks normally run before modifying the system.",
+		"Skip preflight checks which normally run before modifying the system.",
 	)
 
 	cmd.PersistentFlags().StringVar(
@@ -87,12 +87,12 @@ func (r *Reset) Run(out io.Writer) error {
 	// Try to stop the kubelet service
 	initSystem, err := initsystem.GetInitSystem()
 	if err != nil {
-		fmt.Println("[reset] WARNING: The kubelet service couldn't be stopped by kubeadm because no supported init system was detected.")
+		fmt.Println("[reset] WARNING: The kubelet service could not be stopped by kubeadm. Unable to detect a supported init system!")
 		fmt.Println("[reset] WARNING: Please ensure kubelet is stopped manually.")
 	} else {
 		fmt.Println("[reset] Stopping the kubelet service.")
 		if err := initSystem.ServiceStop("kubelet"); err != nil {
-			fmt.Printf("[reset] WARNING: The kubelet service couldn't be stopped by kubeadm: [%v]\n", err)
+			fmt.Printf("[reset] WARNING: The kubelet service could not be stopped by kubeadm: [%v]\n", err)
 			fmt.Println("[reset] WARNING: Please ensure kubelet is stopped manually.")
 		}
 	}
@@ -112,7 +112,7 @@ func (r *Reset) Run(out io.Writer) error {
 			fmt.Println("[reset] Failed to stop the running containers.")
 		}
 	} else {
-		fmt.Println("[reset] Docker doesn't seem to be running. Skipping the removal of running Kubernetes containers.")
+		fmt.Println("[reset] It seems that Docker is not running. Skipping the removal of running Kubernetes containers.")
 	}
 
 	dirsToClean := []string{"/var/lib/kubelet", "/etc/cni/net.d", "/var/lib/dockershim", "/var/run/kubernetes"}
@@ -123,7 +123,7 @@ func (r *Reset) Run(out io.Writer) error {
 	if _, err := os.Stat(etcdManifestPath); err == nil {
 		dirsToClean = append(dirsToClean, "/var/lib/etcd")
 	} else {
-		fmt.Printf("[reset] No etcd manifest found in %q, assuming external etcd.\n", etcdManifestPath)
+		fmt.Printf("[reset] No etcd manifest found in %q. Assuming external etcd.\n", etcdManifestPath)
 	}
 
 	// Then clean contents from the stateful kubelet, etcd and cni directories
