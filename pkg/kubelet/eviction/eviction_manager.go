@@ -561,8 +561,8 @@ func (m *managerImpl) containerEphemeralStorageLimitEviction(podStats statsapi.P
 }
 
 func (m *managerImpl) evictPod(pod *v1.Pod, resourceName v1.ResourceName, evictMsg string) bool {
-	if utilfeature.DefaultFeatureGate.Enabled(features.ExperimentalCriticalPodAnnotation) &&
-		kubelettypes.IsCriticalPod(pod) && kubepod.IsStaticPod(pod) {
+	if (utilfeature.DefaultFeatureGate.Enabled(features.ExperimentalCriticalPodAnnotation) &&
+		kubelettypes.IsCriticalPod(pod)) || kubepod.IsStaticPod(pod) {
 		glog.Errorf("eviction manager: cannot evict a critical pod %s", format.Pod(pod))
 		return false
 	}
