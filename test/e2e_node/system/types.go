@@ -123,6 +123,12 @@ type SysSpec struct {
 	PackageSpecOverrides []PackageSpecOverride `json:"packageSpecOverrides,omitempty"`
 }
 
+// SysSpecsByOs is a map of SysSpec's keyed off Runtime.GOOS
+var SysSpecsByOS = map[string]SysSpec{
+	"linux":   DefaultSysSpec,
+	"windows": WindowsSysSpec,
+}
+
 // DefaultSysSpec is the default SysSpec.
 var DefaultSysSpec = SysSpec{
 	OS: "Linux",
@@ -161,6 +167,24 @@ var DefaultSysSpec = SysSpec{
 		DockerSpec: &DockerSpec{
 			Version:     []string{`1\.1[1-3]\..*`, `17\.03\..*`}, // Requires [1.11, 17.03]
 			GraphDriver: []string{"aufs", "overlay", "overlay2", "devicemapper"},
+		},
+	},
+}
+
+// WindowsSysSpec is a windows specific SysSpec
+var WindowsSysSpec = SysSpec{
+	OS: "Microsoft Windows Server 2016",
+	KernelSpec: KernelSpec{
+		Versions:  []string{`10\.[0-9]\.1439[3-9]*`, `10\.[0-9]\.144[0-9]*`, `10\.[0-9]\.15[0-9]*`, `10\.[0-9]\.2[0-9]*`}, //requires >= '10.0.14393'
+		Required:  []KernelConfig{},
+		Optional:  []KernelConfig{},
+		Forbidden: []KernelConfig{},
+	},
+	Cgroups: []string{},
+	RuntimeSpec: RuntimeSpec{
+		DockerSpec: &DockerSpec{
+			Version:     []string{`17\.03\..*`}, //Requires [17.03] or later
+			GraphDriver: []string{"windowsfilter"},
 		},
 	},
 }

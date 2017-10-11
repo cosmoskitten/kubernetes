@@ -19,6 +19,7 @@ package system
 import (
 	"fmt"
 	"regexp"
+	"runtime"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
@@ -37,10 +38,14 @@ func (d *DockerValidator) Name() string {
 }
 
 const (
-	dockerEndpoint            = "unix:///var/run/docker.sock"
 	dockerConfigPrefix        = "DOCKER_"
 	maxDockerValidatedVersion = "17.03"
 )
+
+var dockerEndpointsByOs = map[string]string{
+	"linux":   "unix:///var/run/docker.sock",
+	"windows": "npipe:////./pipe/docker_engine",
+}
 
 // TODO(random-liu): Add more validating items.
 func (d *DockerValidator) Validate(spec SysSpec) (error, error) {
@@ -49,7 +54,9 @@ func (d *DockerValidator) Validate(spec SysSpec) (error, error) {
 		// docker, skip the docker configuration validation.
 		return nil, nil
 	}
-	c, err := client.NewClient(dockerEndpoint, "", nil, nil)
+	var endpoint = dockerEndpointsByOs[runtime.GOOS]
+
+	c, err := client.NewClient(endpoint, "", nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create docker client: %v", err)
 	}
