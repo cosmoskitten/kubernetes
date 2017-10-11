@@ -21,9 +21,8 @@ import (
 	"reflect"
 	"time"
 
-	extensions "k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/kubernetes/pkg/util/version"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/kubernetes/test/e2e/framework"
 	"k8s.io/kubernetes/test/e2e/upgrades"
 
@@ -32,9 +31,9 @@ import (
 )
 
 const (
-	interval = 2 * time.Second
-	timeout  = 1 * time.Minute
-	rsName   = "replicaset-hash-test"
+	interval = 10 * time.Second
+	timeout  = 5 * time.Minute
+	rsName   = "rs"
 )
 
 // TODO: Test that the replicaset stays available during master (and maybe
@@ -42,75 +41,25 @@ const (
 
 // ReplicaSetUpgradeTest tests that a replicaset survives upgrade.
 type ReplicaSetUpgradeTest struct {
-	oldRSStatus extensions.ReplicaSetStatus
-	newRSStatus extensions.ReplicaSetStatus
+	UID types.UID
 }
 
 func (ReplicaSetUpgradeTest) Name() string { return "[sig-apps] replicaset-upgrade" }
 
-func (ReplicaSetUpgradeTest) Skip(upgCtx upgrades.UpgradeContext) bool {
-	// As of 1.8, the client code we call into no longer supports talking to a server <1.7. (see #47685)
-	minVersion := version.MustParseSemantic("v1.7.0")
-
-	for _, vCtx := range upgCtx.Versions {
-		if vCtx.Version.LessThan(minVersion) {
-			return true
-		}
-	}
-	return false
-}
-
-var _ upgrades.Skippable = ReplicaSetUpgradeTest{}
-
-// Setup creates a replicaset and makes sure it has a new and an old replicaset running.
-// This calls in to client code and should not be expected to work against a cluster more than one minor version away from the current version.
 func (r *ReplicaSetUpgradeTest) Setup(f *framework.Framework) {
 	c := f.ClientSet
 	ns := f.Namespace.Name
 	nginxImage := imageutils.GetE2EImage(imageutils.NginxSlim)
 
-	By(fmt.Sprintf("Creating a replicaset %q in namespace %q", rsName, ns))
+	By(fmt.Sprintf("Creating a replicaset %s in namespace %s", rsName, ns))
 	replicaSet := framework.NewReplicaSet(rsName, ns, int32(1), map[string]string{"test": "upgrade"}, "nginx", nginxImage)
 	rs, err := c.Extensions().ReplicaSets(ns).Create(replicaSet)
 	framework.ExpectNoError(err)
 
-	By(fmt.Sprintf("Waiting replicaset %q's container image to be updated", rsName))
-	err = framework.WaitForReplicaSetImage(c, ns, rsName, nginxImage, interval, timeout)
-	framework.ExpectNoError(err)
-
-	By(fmt.Sprintf("Waiting for replicaset %q to have all of its replicas ready.", rsName))
+	By(fmt.Sprintf("Waiting for replicaset %s to have all of its replicas ready.", rsName))
 	framework.ExpectNoError(framework.WaitForReadyReplicaSet(c, ns, rsName))
 
-	// Store the old RS status.
-	r.oldRSStatus = rs.Status
-	oldUID := rs.UID
-
-	// Trigger a new rollout so that we have some history.
-	By(fmt.Sprintf("Triggering a new rollout for replicaset %q", rsName))
-	rs, err = framework.UpdateReplicaSetWithRetries(c, ns, rsName, func(update *extensions.ReplicaSet) {
-		update.Spec.Template.Spec.Containers[0].Name = "updated-nginx"
-	})
-	framework.ExpectNoError(err)
-
-	// Use observedGeneration to determine if the controller noticed the pod template update.
-	framework.Logf("Wait replicaset %q to be observed by the replicaset controller", rsName)
-	framework.ExpectNoError(framework.WaitForObservedReplicaSet(c, ns, rsName, rs.Generation, interval, timeout))
-
-	By(fmt.Sprintf("Waiting for replicaset %q to have all of its replicas ready.", rsName))
-	framework.ExpectNoError(framework.WaitForReadyReplicaSet(c, ns, rsName))
-
-	rs, err = c.Extensions().ReplicaSets(ns).Get(rs.Name, metav1.GetOptions{})
-	framework.ExpectNoError(err)
-	if rs == nil {
-		framework.ExpectNoError(fmt.Errorf("expected a replicaset"))
-	}
-
-	// Store new RS status.
-	r.newRSStatus = rs.Status
-
-	if rs.UID != oldUID {
-		framework.ExpectNoError(fmt.Errorf("expected getting the same replicaset after the new rollout"))
-	}
+	r.UID = rs.UID
 }
 
 // Test checks whether the replicasets are the same after an upgrade.
@@ -119,23 +68,34 @@ func (r *ReplicaSetUpgradeTest) Test(f *framework.Framework, done <-chan struct{
 	ns := f.Namespace.Name
 
 	// Block until upgrade is done
-	By(fmt.Sprintf("Waiting for upgrade to finish before checking replicaset %q", rsName))
+	By(fmt.Sprintf("Waiting for upgrade to finish before checking replicaset %s", rsName))
 	<-done
 
-	By(fmt.Sprintf("Getting new status for replicaset %q after upgrade is done", rsName))
+	// Verify the RS is the same (survives) after the upgrade
+	By(fmt.Sprintf("Getting replicaset %s after upgrade is done", rsName))
 	newRS, err := c.Extensions().ReplicaSets(ns).Get(rsName, metav1.GetOptions{})
 	framework.ExpectNoError(err)
-	if newRS == nil {
-		framework.ExpectNoError(fmt.Errorf("expected a replicaset %q, but got nil", rsName))
-	}
-	newRSStatus := newRS.Status
 
-	By(fmt.Sprintf("Waiting for replicaset %q to have all of its replicas ready.", rsName))
+	By(fmt.Sprintf("Waiting for replicaset %s to have all of its replicas ready.", rsName))
 	framework.ExpectNoError(framework.WaitForReadyReplicaSet(c, ns, rsName))
 
-	By(fmt.Sprintf("Checking that new status of replicaset %q is the same as after the upgrade", rsName))
-	if !reflect.DeepEqual(newRSStatus, r.newRSStatus) {
-		framework.ExpectNoError(fmt.Errorf("expected new replicaset status:\n%#v\ngot:\n%#v\n", r.newRSStatus, newRSStatus))
+	By(fmt.Sprintf("Checking UID to verify replicaset %s is the same after the upgrade", rsName))
+	if !reflect.DeepEqual(newRS.UID, r.UID) {
+		framework.ExpectNoError(fmt.Errorf("expected new replicaset UID: %v got: %v", r.UID, newRS.UID))
+	}
+
+	// Verify the RS is active by scaling up the RS by 1 and ensuring all pods are Ready
+	By(fmt.Sprintf("Scaling up the replicaset %s by 1", rsName))
+	*newRS.Spec.Replicas = 2
+	scaledRS, err := c.Extensions().ReplicaSets(ns).Update(newRS)
+	framework.ExpectNoError(err)
+
+	By(fmt.Sprintf("Waiting for replicaset %s to have all of its replicas are ready.", rsName))
+	framework.ExpectNoError(framework.WaitForReadyReplicaSet(c, ns, rsName))
+
+	By(fmt.Sprintf("Verifying replicaset %s has 2 pods and both are ready.", rsName))
+	if scaledRS.Status.Replicas != 2 && scaledRS.Status.ReadyReplicas != 2 {
+		framework.ExpectNoError(fmt.Errorf("expected 2 ready pods for rs %s, got: %d", rsName, scaledRS.Status.ReadyReplicas))
 	}
 }
 

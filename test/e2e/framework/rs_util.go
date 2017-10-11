@@ -162,41 +162,6 @@ func LogReplicaSet(rs *extensions.ReplicaSet) {
 	}
 }
 
-// WaitForReplicaSetImage waits for the RS's container image to match the given image.
-func WaitForReplicaSetImage(c clientset.Interface, ns, replicaSetName string, image string, pollInterval, pollTimeout time.Duration) error {
-	var rs *extensions.ReplicaSet
-	var reason string
-	err := wait.Poll(pollInterval, pollTimeout, func() (bool, error) {
-		var err error
-		rs, err = c.Extensions().ReplicaSets(ns).Get(replicaSetName, metav1.GetOptions{})
-		if err != nil {
-			return false, err
-		}
-		if rs == nil {
-			reason = fmt.Sprintf("Replicaset %q is yet to be created", rs.Name)
-			Logf(reason)
-			return false, nil
-		}
-		if !containsImage(rs.Spec.Template.Spec.Containers, image) {
-			reason = fmt.Sprintf("Replicaset %q doesn't have the required image %s.", rs.Name, image)
-			Logf(reason)
-			return false, nil
-		}
-		return true, nil
-	})
-	if err == wait.ErrWaitTimeout {
-		LogReplicaSet(rs)
-		err = fmt.Errorf(reason)
-	}
-	if rs == nil {
-		return fmt.Errorf("failed to create new replicaset")
-	}
-	if err != nil {
-		return fmt.Errorf("error waiting for replicaset %q (got %s) image to match expectation (expected %s): %v", rs.Name, rs.Spec.Template.Spec.Containers[0].Image, image, err)
-	}
-	return nil
-}
-
 // WaitForObservedReplicaSet polls for replicaset to be updated so that replicaset.Status.ObservedGeneration >= desiredGeneration.
 // Return error if polling times out.
 func WaitForObservedReplicaSet(c clientset.Interface, ns, replicaSetName string, desiredGeneration int64, interval, timeout time.Duration) error {
@@ -207,13 +172,4 @@ func WaitForObservedReplicaSet(c clientset.Interface, ns, replicaSetName string,
 		}
 		return rs.Status.ObservedGeneration >= desiredGeneration, nil
 	})
-}
-
-func containsImage(containers []v1.Container, imageName string) bool {
-	for _, container := range containers {
-		if container.Image == imageName {
-			return true
-		}
-	}
-	return false
 }
