@@ -26,6 +26,33 @@ import (
 	"github.com/golang/glog"
 )
 
+// ToCIDR returns a host address of the form <ip-address>/32 for
+// IPv4 and <ip-address>/128 for IPv6
+func ToCIDR(ip net.IP) string {
+	len := 32
+	if ip.To4() == nil {
+		len = 128
+	}
+	return fmt.Sprintf("%s/%d", ip.String(), len)
+}
+
+// IPPart returns just the IP part of an IP or IP:port. If the IP
+// part is an IPv6 address enclosed in brackets (e.g. "[fd00:1::5]:9999"),
+// then the brackets are stripped as well.
+func IPPart(s string) string {
+	if ip := net.ParseIP(s); ip != nil {
+		// IP address without port
+		return s
+	}
+	// Must be IP:port
+	ip, _, err := net.SplitHostPort(s)
+	if err != nil {
+		glog.Errorf("Error parsing '%s': %v", s, err)
+		return ""
+	}
+	return ip
+}
+
 func IsLocalIP(ip string) (bool, error) {
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
