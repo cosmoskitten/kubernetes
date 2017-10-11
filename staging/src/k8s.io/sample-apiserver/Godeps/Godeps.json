@@ -28,47 +28,47 @@
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/auth/authpb",
-			"Rev": "0520cb9304cb2385f7e72b8bc02d6e4d3257158a"
+			"Rev": "f1d7dd87da3e8feab4aaf675b8e29c6a5ed5f58b"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/client",
-			"Rev": "0520cb9304cb2385f7e72b8bc02d6e4d3257158a"
+			"Rev": "f1d7dd87da3e8feab4aaf675b8e29c6a5ed5f58b"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/clientv3",
-			"Rev": "0520cb9304cb2385f7e72b8bc02d6e4d3257158a"
+			"Rev": "f1d7dd87da3e8feab4aaf675b8e29c6a5ed5f58b"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes",
-			"Rev": "0520cb9304cb2385f7e72b8bc02d6e4d3257158a"
+			"Rev": "f1d7dd87da3e8feab4aaf675b8e29c6a5ed5f58b"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/etcdserver/etcdserverpb",
-			"Rev": "0520cb9304cb2385f7e72b8bc02d6e4d3257158a"
+			"Rev": "f1d7dd87da3e8feab4aaf675b8e29c6a5ed5f58b"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/mvcc/mvccpb",
-			"Rev": "0520cb9304cb2385f7e72b8bc02d6e4d3257158a"
+			"Rev": "f1d7dd87da3e8feab4aaf675b8e29c6a5ed5f58b"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/pkg/fileutil",
-			"Rev": "0520cb9304cb2385f7e72b8bc02d6e4d3257158a"
+			"Rev": "f1d7dd87da3e8feab4aaf675b8e29c6a5ed5f58b"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/pkg/pathutil",
-			"Rev": "0520cb9304cb2385f7e72b8bc02d6e4d3257158a"
+			"Rev": "f1d7dd87da3e8feab4aaf675b8e29c6a5ed5f58b"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/pkg/tlsutil",
-			"Rev": "0520cb9304cb2385f7e72b8bc02d6e4d3257158a"
+			"Rev": "f1d7dd87da3e8feab4aaf675b8e29c6a5ed5f58b"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/pkg/transport",
-			"Rev": "0520cb9304cb2385f7e72b8bc02d6e4d3257158a"
+			"Rev": "f1d7dd87da3e8feab4aaf675b8e29c6a5ed5f58b"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/pkg/types",
-			"Rev": "0520cb9304cb2385f7e72b8bc02d6e4d3257158a"
+			"Rev": "f1d7dd87da3e8feab4aaf675b8e29c6a5ed5f58b"
 		},
 		{
 			"ImportPath": "github.com/coreos/go-systemd/daemon",
@@ -193,18 +193,6 @@
 		{
 			"ImportPath": "github.com/grpc-ecosystem/go-grpc-prometheus",
 			"Rev": "2500245aa6110c562d17020fb31a2c133d737799"
-		},
-		{
-			"ImportPath": "github.com/grpc-ecosystem/grpc-gateway/runtime",
-			"Rev": "84398b94e188ee336f307779b57b3aa91af7063c"
-		},
-		{
-			"ImportPath": "github.com/grpc-ecosystem/grpc-gateway/runtime/internal",
-			"Rev": "84398b94e188ee336f307779b57b3aa91af7063c"
-		},
-		{
-			"ImportPath": "github.com/grpc-ecosystem/grpc-gateway/utilities",
-			"Rev": "84398b94e188ee336f307779b57b3aa91af7063c"
 		},
 		{
 			"ImportPath": "github.com/hashicorp/golang-lru",

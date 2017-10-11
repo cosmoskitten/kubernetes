@@ -2,10 +2,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "go_default_library",
-    srcs = [
-        "discovery.go",
-        "srv.go",
-    ],
+    srcs = ["discovery.go"],
     visibility = ["//visibility:public"],
     deps = [
         "//vendor/github.com/coreos/etcd/client:go_default_library",
@@ -13,7 +10,6 @@ go_library(
         "//vendor/github.com/coreos/etcd/pkg/types:go_default_library",
         "//vendor/github.com/coreos/pkg/capnslog:go_default_library",
         "//vendor/github.com/jonboulle/clockwork:go_default_library",
-        "//vendor/golang.org/x/net/context:go_default_library",
     ],
 )
 

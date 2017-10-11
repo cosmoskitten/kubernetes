@@ -7,7 +7,6 @@ go_library(
         "schedule.go",
     ],
     visibility = ["//visibility:public"],
-    deps = ["//vendor/golang.org/x/net/context:go_default_library"],
 )
 
 filegroup(

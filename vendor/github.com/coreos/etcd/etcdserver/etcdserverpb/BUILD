@@ -6,19 +6,14 @@ go_library(
         "etcdserver.pb.go",
         "raft_internal.pb.go",
         "rpc.pb.go",
-        "rpc.pb.gw.go",
     ],
     visibility = ["//visibility:public"],
     deps = [
         "//vendor/github.com/coreos/etcd/auth/authpb:go_default_library",
         "//vendor/github.com/coreos/etcd/mvcc/mvccpb:go_default_library",
         "//vendor/github.com/golang/protobuf/proto:go_default_library",
-        "//vendor/github.com/grpc-ecosystem/grpc-gateway/runtime:go_default_library",
-        "//vendor/github.com/grpc-ecosystem/grpc-gateway/utilities:go_default_library",
         "//vendor/golang.org/x/net/context:go_default_library",
         "//vendor/google.golang.org/grpc:go_default_library",
-        "//vendor/google.golang.org/grpc/codes:go_default_library",
-        "//vendor/google.golang.org/grpc/grpclog:go_default_library",
     ],
 )
 
@@ -41,7 +36,10 @@ filegroup(
 
 filegroup(
     name = "all-srcs",
-    srcs = [":package-srcs"],
+    srcs = [
+        ":package-srcs",
+        "//vendor/github.com/coreos/etcd/etcdserver/etcdserverpb/gw:all-srcs",
+    ],
     tags = ["automanaged"],
     visibility = ["//visibility:public"],
 )
