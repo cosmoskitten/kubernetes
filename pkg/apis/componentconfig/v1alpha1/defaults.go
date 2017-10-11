@@ -21,7 +21,6 @@ import (
 	"strings"
 	"time"
 
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/kubernetes/pkg/api"
@@ -130,27 +129,28 @@ func SetDefaults_KubeSchedulerConfiguration(obj *KubeSchedulerConfiguration) {
 	}
 
 	if len(obj.AlgorithmSource.Type) == 0 {
-		obj.AlgorithmSource.Type = SchedulerAlgorithmSourcePolicy
-		if obj.AlgorithmSource.Policy == nil {
-			obj.AlgorithmSource.Policy = &SchedulerPolicySource{
-				Type: SchedulerPolicySourceTypeConfigMap,
-				ConfigMap: &SchedulerPolicyConfigMapSource{
-					Reference: corev1.ObjectReference{
-						Namespace: api.NamespaceSystem,
-					},
-				},
-			}
-		}
+		obj.AlgorithmSource.Type = SchedulerAlgorithmSourceProvider
 	}
-	if obj.AlgorithmSource.Policy != nil &&
-		obj.AlgorithmSource.Policy.ConfigMap != nil &&
-		len(obj.AlgorithmSource.Policy.ConfigMap.Reference.Namespace) == 0 {
-		obj.AlgorithmSource.Policy.ConfigMap.Reference.Namespace = api.NamespaceSystem
-	}
-	if obj.AlgorithmSource.Type == SchedulerAlgorithmSourceProvider {
+
+	switch obj.AlgorithmSource.Type {
+	case SchedulerAlgorithmSourceProvider:
 		if obj.AlgorithmSource.Provider == nil || len(*obj.AlgorithmSource.Provider) == 0 {
 			val := SchedulerDefaultProviderName
 			obj.AlgorithmSource.Provider = &val
+		}
+	case SchedulerAlgorithmSourcePolicy:
+		// There is no default file or config map to apply.
+	}
+
+	if obj.AlgorithmSource.Policy != nil {
+		switch obj.AlgorithmSource.Policy.Type {
+		case SchedulePolicySourceTypeFile:
+			// There is no default file.
+		case SchedulerPolicySourceTypeConfigMap:
+			if obj.AlgorithmSource.Policy.ConfigMap != nil &&
+				len(obj.AlgorithmSource.Policy.ConfigMap.Reference.Namespace) == 0 {
+				obj.AlgorithmSource.Policy.ConfigMap.Reference.Namespace = api.NamespaceSystem
+			}
 		}
 	}
 
