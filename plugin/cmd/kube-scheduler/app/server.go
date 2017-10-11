@@ -121,7 +121,7 @@ func AddFlags(options *Options, fs *pflag.FlagSet) {
 	fs.StringVar(&options.config.SchedulerName, "scheduler-name", options.config.SchedulerName, "Name of the scheduler, used to select which pods will be processed by this scheduler, based on pod's \"spec.SchedulerName\".")
 	fs.StringVar(&options.config.LeaderElection.LockObjectNamespace, "lock-object-namespace", options.config.LeaderElection.LockObjectNamespace, "Define the namespace of the lock object.")
 	fs.StringVar(&options.config.LeaderElection.LockObjectName, "lock-object-name", options.config.LeaderElection.LockObjectName, "Define the name of the lock object.")
-	fs.IntVar(&options.config.HardPodAffinitySymmetricWeight, "hard-pod-affinity-symmetric-weight", api.DefaultHardPodAffinitySymmetricWeight,
+	fs.IntVar(&options.config.HardPodAffinitySymmetricWeight, "hard-pod-affinity-symmetric-weight", options.config.HardPodAffinitySymmetricWeight,
 		"RequiredDuringScheduling affinity is not symmetric, but there is an implicit PreferredDuringScheduling affinity rule corresponding "+
 			"to every RequiredDuringScheduling affinity rule. --hard-pod-affinity-symmetric-weight represents the weight of implicit PreferredDuringScheduling affinity rule.")
 	fs.MarkDeprecated("hard-pod-affinity-symmetric-weight", "This option was moved to the policy configuration file")
@@ -467,15 +467,16 @@ func NewSchedulerServer(config *componentconfig.KubeSchedulerConfiguration, sche
 	}
 
 	return &SchedulerServer{
-		SchedulerName:   config.SchedulerName,
-		Client:          client,
-		AlgorithmSource: config.AlgorithmSource,
-		EventClient:     eventClient,
-		Recorder:        recorder,
-		Broadcaster:     eventBroadcaster,
-		LeaderElection:  leaderElectionConfig,
-		HealthzServer:   healthzServer,
-		MetricsServer:   metricsServer,
+		SchedulerName:                  config.SchedulerName,
+		Client:                         client,
+		AlgorithmSource:                config.AlgorithmSource,
+		HardPodAffinitySymmetricWeight: config.HardPodAffinitySymmetricWeight,
+		EventClient:                    eventClient,
+		Recorder:                       recorder,
+		Broadcaster:                    eventBroadcaster,
+		LeaderElection:                 leaderElectionConfig,
+		HealthzServer:                  healthzServer,
+		MetricsServer:                  metricsServer,
 	}, nil
 }
 
