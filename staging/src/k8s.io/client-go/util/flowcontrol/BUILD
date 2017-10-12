@@ -10,6 +10,7 @@ go_test(
     name = "go_default_test",
     srcs = [
         "backoff_test.go",
+        "ratelimit_test.go",
         "throttle_test.go",
     ],
     library = ":go_default_library",
@@ -20,10 +21,11 @@ go_library(
     name = "go_default_library",
     srcs = [
         "backoff.go",
+        "ratelimit.go",
+        "sleep.go",
         "throttle.go",
     ],
     deps = [
-        "//vendor/github.com/juju/ratelimit:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/util/clock:go_default_library",
         "//vendor/k8s.io/client-go/util/integer:go_default_library",
     ],
@@ -40,4 +42,13 @@ filegroup(
     name = "all-srcs",
     srcs = [":package-srcs"],
     tags = ["automanaged"],
+)
+
+go_test(
+    name = "go_default_xtest",
+    srcs = ["sleep_test.go"],
+    deps = [
+        "//vendor/k8s.io/apimachinery/pkg/util/clock:go_default_library",
+        "//vendor/k8s.io/client-go/util/flowcontrol:go_default_library",
+    ],
 )
