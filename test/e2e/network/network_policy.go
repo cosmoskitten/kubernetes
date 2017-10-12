@@ -277,7 +277,8 @@ var _ = SIGDescribe("NetworkPolicy", func() {
 			testCanConnect(f, f.Namespace, "client-a", service, 80)
 			testCanConnect(f, f.Namespace, "client-b", service, 81)
 		})
-		It("should allow ingress access on one named port", func() {
+
+		It("should allow ingress access on one named port [Feature:NetworkPolicy]", func() {
 			policy := &networking.NetworkPolicy{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "allow-client-a-via-named-port-ingress-rule",
