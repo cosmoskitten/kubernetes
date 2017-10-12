@@ -96,7 +96,7 @@ var _ = SIGDescribe("Networking", func() {
 		if err != nil {
 			framework.Failf("Unable to get endpoints from test containers: %v", err)
 		}
-		By("firstEndpoints: %v", firstEndpoints)
+		By(fmt.Sprintf("firstEndpoints: %v", firstEndpoints))
 		for i := 0; i < framework.SessionAffinityChecks; i++ {
 			eps, err := config.GetEndpointsFromTestContainer("http", config.ClusterIP, framework.ClusterHttpPort, config.MaxTries, 0)
 			if err != nil {
