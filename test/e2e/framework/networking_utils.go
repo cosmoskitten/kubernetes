@@ -225,7 +225,7 @@ func (config *NetworkingTestConfig) GetEndpointsFromTestContainer(protocol, targ
 }
 
 // TODO: REUSE the function above
-func (config *NetworkingTestConfig) GetEndpointsFromContainer(protocol, containerIP, targetIP string, containerHttpPort, targetPort, maxTries, minTries int, expectedEps sets.String) (sets.String) {
+func (config *NetworkingTestConfig) GetEndpointsFromContainer(protocol, containerIP, targetIP string, containerHttpPort, targetPort, maxTries, minTries int, expectedEps sets.String) sets.String {
 	cmd := fmt.Sprintf("curl -q -s 'http://%s:%d/dial?request=hostName&protocol=%s&host=%s&port=%d&tries=1'",
 		containerIP,
 		containerHttpPort,
