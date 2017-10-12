@@ -427,7 +427,7 @@ func createServerPodAndService(f *framework.Framework, namespace *v1.Namespace, 
 			Ports: []v1.ContainerPort{
 				{
 					ContainerPort: int32(port),
-					Name: fmt.Sprintf("serve-%d", port),
+					Name:          fmt.Sprintf("serve-%d", port),
 				},
 			},
 			ReadinessProbe: &v1.Probe{
