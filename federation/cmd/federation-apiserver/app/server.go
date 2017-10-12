@@ -258,7 +258,6 @@ func NonBlockingRun(s *options.ServerRunOptions, stopCh <-chan struct{}) error {
 		return err
 	}
 
-	routes.UIRedirect{}.Install(m.Handler.NonGoRestfulMux)
 	routes.Logs{}.Install(m.Handler.GoRestfulContainer)
 
 	apiResourceConfigSource := storageFactory.APIResourceConfigSource

@@ -109,7 +109,6 @@ type ExtraConfig struct {
 
 	// Used to start and monitor tunneling
 	Tunneler          tunneler.Tunneler
-	EnableUISupport   bool
 	EnableLogsSupport bool
 	ProxyTransport    http.RoundTripper
 
@@ -270,7 +269,7 @@ func (cfg *Config) Complete(informers informers.SharedInformerFactory) Completed
 	}
 
 	// enable swagger UI only if general UI support is on
-	c.GenericConfig.EnableSwaggerUI = c.GenericConfig.EnableSwaggerUI && c.ExtraConfig.EnableUISupport
+	c.GenericConfig.EnableSwaggerUI = c.GenericConfig.EnableSwaggerUI
 
 	if c.ExtraConfig.EndpointReconcilerConfig.Interval == 0 {
 		c.ExtraConfig.EndpointReconcilerConfig.Interval = DefaultEndpointReconcilerInterval
@@ -304,9 +303,6 @@ func (c completedConfig) New(delegationTarget genericapiserver.DelegationTarget)
 		return nil, err
 	}
 
-	if c.ExtraConfig.EnableUISupport {
-		routes.UIRedirect{}.Install(s.Handler.NonGoRestfulMux)
-	}
 	if c.ExtraConfig.EnableLogsSupport {
 		routes.Logs{}.Install(s.Handler.GoRestfulContainer)
 	}
