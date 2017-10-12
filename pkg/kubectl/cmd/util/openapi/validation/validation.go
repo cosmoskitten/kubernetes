@@ -101,7 +101,10 @@ func parse(data []byte) (interface{}, error) {
 }
 
 func getObjectKind(object interface{}) (schema.GroupVersionKind, error) {
-	fields := object.(map[string]interface{})
+	fields, ok := object.(map[string]interface{})
+	if !ok {
+		return schema.GroupVersionKind{}, errors.New("invalid object to validate")
+	}
 	if fields == nil {
 		return schema.GroupVersionKind{}, errors.New("invalid object to validate")
 	}
