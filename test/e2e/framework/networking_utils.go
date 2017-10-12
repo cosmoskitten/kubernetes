@@ -259,13 +259,14 @@ func (config *NetworkingTestConfig) GetEndpointsFromContainer(protocol, containe
 					eps.Insert(trimmed)
 				}
 			}
-			return eps, nil
 		}
+
+		Logf("Waiting for endpoints: %v", expectedEps.Difference(eps))
 
 		// Check against i+1 so we exit if minTries == maxTries.
 		if (eps.Equal(expectedEps) || eps.Len() == 0 && expectedEps.Len() == 0) && i+1 >= minTries {
 			Logf("expectedEps: %v, eps: %v", expectedEps, eps)
-			return eps, nil
+			return eps, err
 		}
 		// TODO: get rid of this delay #36281
 		time.Sleep(hitEndpointRetryDelay)
