@@ -84,16 +84,5 @@ var _ = SIGDescribe("Kubernetes Dashboard", func() {
 			return status == http.StatusOK, nil
 		})
 		Expect(err).NotTo(HaveOccurred())
-
-		By("Checking that the ApiServer /ui endpoint redirects to a valid server.")
-		var status int
-		err = f.ClientSet.Core().RESTClient().Get().
-			AbsPath("/ui").
-			Timeout(framework.SingleCallTimeout).
-			Do().
-			StatusCode(&status).
-			Error()
-		Expect(err).NotTo(HaveOccurred())
-		Expect(status).To(Equal(http.StatusOK), "Unexpected status from /ui")
 	})
 })
