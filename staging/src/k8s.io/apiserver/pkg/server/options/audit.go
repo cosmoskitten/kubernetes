@@ -67,7 +67,7 @@ type AuditLogOptions struct {
 	MaxBackups int
 	MaxSize    int
 	Format     string
-	// Defaults to buffer mode.
+	// Defaults to blocking mode.
 	Mode string
 }
 
@@ -84,7 +84,7 @@ type AuditWebhookOptions struct {
 func NewAuditOptions() *AuditOptions {
 	return &AuditOptions{
 		WebhookOptions: AuditWebhookOptions{Mode: pluginwebhook.ModeBatch},
-		LogOptions:     AuditLogOptions{Format: pluginlog.FormatJson, Mode: pluginlog.ModeBuffered},
+		LogOptions:     AuditLogOptions{Format: pluginlog.FormatJson, Mode: pluginlog.ModeBlocking},
 	}
 }
 
@@ -114,6 +114,18 @@ func (o *AuditOptions) Validate() []error {
 		}
 		if !validMode {
 			allErrors = append(allErrors, fmt.Errorf("invalid audit webhook mode %s, allowed modes are %q", o.WebhookOptions.Mode, strings.Join(pluginwebhook.AllowedModes, ",")))
+		}
+
+		// check log mode
+		validMode = false
+		for _, m := range pluginlog.AllowedModes {
+			if m == o.LogOptions.Mode {
+				validMode = true
+				break
+			}
+		}
+		if !validMode {
+			allErrors = append(allErrors, fmt.Errorf("invalid audit log mode %s, allowed modes are %q", o.LogOptions.Mode, strings.Join(pluginlog.AllowedModes, ",")))
 		}
 
 		// check log format
