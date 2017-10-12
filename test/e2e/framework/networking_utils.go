@@ -242,12 +242,15 @@ func (config *NetworkingTestConfig) GetEndpointsFromContainer(protocol, containe
 			// we confirm unreachability.
 			Logf("Failed to execute %q: %v, stdout: %q, stderr: %q", cmd, err, stdout, stderr)
 		} else {
+			Logf("maxTries: %d, in try: %d, stdout: %v, stderr: %v", maxTries, i, stdout, stderr)
 			var output map[string][]string
 			if err := json.Unmarshal([]byte(stdout), &output); err != nil {
 				Logf("WARNING: Failed to unmarshal curl response. Cmd %v run in %v, output: %s, err: %v",
 					cmd, config.HostTestContainerPod.Name, stdout, err)
 				continue
 			}
+
+			Logf("output: %#v, output[responses]: %v", output, output["responses"])
 
 			for _, hostName := range output["responses"] {
 				trimmed := strings.TrimSpace(hostName)
