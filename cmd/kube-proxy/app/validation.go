@@ -35,6 +35,7 @@ func Validate(config *componentconfig.KubeProxyConfiguration) field.ErrorList {
 	newPath := field.NewPath("KubeProxyConfiguration")
 
 	allErrs = append(allErrs, validateKubeProxyIPTablesConfiguration(config.IPTables, newPath.Child("KubeProxyIPTablesConfiguration"))...)
+	allErrs = append(allErrs, validateKubeProxyIPVSConfiguration(config.IPVS, newPath.Child("KubeProxyIPVSConfiguration"))...)
 	allErrs = append(allErrs, validateKubeProxyConntrackConfiguration(config.Conntrack, newPath.Child("KubeProxyConntrackConfiguration"))...)
 	allErrs = append(allErrs, validateProxyMode(config.Mode, newPath.Child("Mode"))...)
 	allErrs = append(allErrs, validateClientConnectionConfiguration(config.ClientConnection, newPath.Child("ClientConnection"))...)
@@ -87,6 +88,22 @@ func validateKubeProxyIPTablesConfiguration(config componentconfig.KubeProxyIPTa
 	return allErrs
 }
 
+func validateKubeProxyIPVSConfiguration(config componentconfig.KubeProxyIPVSConfiguration, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if config.SyncPeriod.Duration <= 0 {
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("SyncPeriod"), config.SyncPeriod, "must be greater than 0"))
+	}
+
+	if config.MinSyncPeriod.Duration < 0 {
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("MinSyncPeriod"), config.MinSyncPeriod, "must be greater than or equal to 0"))
+	}
+
+	// TODO: Validate IPVS scheduler type
+
+	return allErrs
+}
+
 func validateKubeProxyConntrackConfiguration(config componentconfig.KubeProxyConntrackConfiguration, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
@@ -118,9 +135,10 @@ func validateProxyMode(mode componentconfig.ProxyMode, fldPath *field.Path) fiel
 	switch mode {
 	case componentconfig.ProxyModeUserspace:
 	case componentconfig.ProxyModeIPTables:
+	case componentconfig.ProxyModeIPVS:
 	case "":
 	default:
-		modes := []string{string(componentconfig.ProxyModeUserspace), string(componentconfig.ProxyModeIPTables)}
+		modes := []string{string(componentconfig.ProxyModeUserspace), string(componentconfig.ProxyModeIPTables), string(componentconfig.ProxyModeIPVS)}
 		errMsg := fmt.Sprintf("must be %s or blank (blank means the best-available proxy (currently iptables)", strings.Join(modes, ","))
 		allErrs = append(allErrs, field.Invalid(fldPath.Child("ProxyMode"), string(mode), errMsg))
 	}

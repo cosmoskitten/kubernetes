@@ -40,6 +40,10 @@ func TestValidateKubeProxyConfiguration(t *testing.T) {
 				SyncPeriod:    metav1.Duration{Duration: 5 * time.Second},
 				MinSyncPeriod: metav1.Duration{Duration: 2 * time.Second},
 			},
+			IPVS: componentconfig.KubeProxyIPVSConfiguration{
+				SyncPeriod:    metav1.Duration{Duration: 10 * time.Second},
+				MinSyncPeriod: metav1.Duration{Duration: 5 * time.Second},
+			},
 			Conntrack: componentconfig.KubeProxyConntrackConfiguration{
 				Max:        int32(2),
 				MaxPerCore: int32(1),
@@ -74,6 +78,10 @@ func TestValidateKubeProxyConfiguration(t *testing.T) {
 					SyncPeriod:    metav1.Duration{Duration: 5 * time.Second},
 					MinSyncPeriod: metav1.Duration{Duration: 2 * time.Second},
 				},
+				IPVS: componentconfig.KubeProxyIPVSConfiguration{
+					SyncPeriod:    metav1.Duration{Duration: 10 * time.Second},
+					MinSyncPeriod: metav1.Duration{Duration: 5 * time.Second},
+				},
 				Conntrack: componentconfig.KubeProxyConntrackConfiguration{
 					Max:        int32(2),
 					MaxPerCore: int32(1),
@@ -97,6 +105,10 @@ func TestValidateKubeProxyConfiguration(t *testing.T) {
 					MasqueradeAll: true,
 					SyncPeriod:    metav1.Duration{Duration: 5 * time.Second},
 					MinSyncPeriod: metav1.Duration{Duration: 2 * time.Second},
+				},
+				IPVS: componentconfig.KubeProxyIPVSConfiguration{
+					SyncPeriod:    metav1.Duration{Duration: 10 * time.Second},
+					MinSyncPeriod: metav1.Duration{Duration: 5 * time.Second},
 				},
 				Conntrack: componentconfig.KubeProxyConntrackConfiguration{
 					Max:        int32(2),
@@ -122,6 +134,10 @@ func TestValidateKubeProxyConfiguration(t *testing.T) {
 					SyncPeriod:    metav1.Duration{Duration: 5 * time.Second},
 					MinSyncPeriod: metav1.Duration{Duration: 2 * time.Second},
 				},
+				IPVS: componentconfig.KubeProxyIPVSConfiguration{
+					SyncPeriod:    metav1.Duration{Duration: 10 * time.Second},
+					MinSyncPeriod: metav1.Duration{Duration: 5 * time.Second},
+				},
 				Conntrack: componentconfig.KubeProxyConntrackConfiguration{
 					Max:        int32(2),
 					MaxPerCore: int32(1),
@@ -145,6 +161,10 @@ func TestValidateKubeProxyConfiguration(t *testing.T) {
 					MasqueradeAll: true,
 					SyncPeriod:    metav1.Duration{Duration: 5 * time.Second},
 					MinSyncPeriod: metav1.Duration{Duration: 2 * time.Second},
+				},
+				IPVS: componentconfig.KubeProxyIPVSConfiguration{
+					SyncPeriod:    metav1.Duration{Duration: 10 * time.Second},
+					MinSyncPeriod: metav1.Duration{Duration: 5 * time.Second},
 				},
 				Conntrack: componentconfig.KubeProxyConntrackConfiguration{
 					Max:        int32(2),
@@ -170,6 +190,10 @@ func TestValidateKubeProxyConfiguration(t *testing.T) {
 					SyncPeriod:    metav1.Duration{Duration: 5 * time.Second},
 					MinSyncPeriod: metav1.Duration{Duration: 2 * time.Second},
 				},
+				IPVS: componentconfig.KubeProxyIPVSConfiguration{
+					SyncPeriod:    metav1.Duration{Duration: 10 * time.Second},
+					MinSyncPeriod: metav1.Duration{Duration: 5 * time.Second},
+				},
 				Conntrack: componentconfig.KubeProxyConntrackConfiguration{
 					Max:        int32(2),
 					MaxPerCore: int32(1),
@@ -193,6 +217,10 @@ func TestValidateKubeProxyConfiguration(t *testing.T) {
 					MasqueradeAll: true,
 					SyncPeriod:    metav1.Duration{Duration: 5 * time.Second},
 					MinSyncPeriod: metav1.Duration{Duration: 2 * time.Second},
+				},
+				IPVS: componentconfig.KubeProxyIPVSConfiguration{
+					SyncPeriod:    metav1.Duration{Duration: 10 * time.Second},
+					MinSyncPeriod: metav1.Duration{Duration: 5 * time.Second},
 				},
 				Conntrack: componentconfig.KubeProxyConntrackConfiguration{
 					Max:        int32(2),
@@ -275,6 +303,64 @@ func TestValidateKubeProxyIPTablesConfiguration(t *testing.T) {
 			t.Errorf("expected failure for %s", errorCase.msg)
 		} else if !strings.Contains(errs[0].Error(), errorCase.msg) {
 			t.Errorf("unexpected error: %v, expected: %s", errs[0], errorCase.msg)
+		}
+	}
+}
+
+func TestValidateKubeProxyIPVSConfiguration(t *testing.T) {
+	newPath := field.NewPath("KubeProxyConfiguration")
+	testCases := []struct {
+		config    componentconfig.KubeProxyIPVSConfiguration
+		expectErr bool
+		reason    string
+	}{
+		{
+			config: componentconfig.KubeProxyIPVSConfiguration{
+				SyncPeriod:    metav1.Duration{Duration: -5 * time.Second},
+				MinSyncPeriod: metav1.Duration{Duration: 2 * time.Second},
+			},
+			expectErr: true,
+			reason:    "syncPeriod must be greater than 0",
+		},
+		{
+			config: componentconfig.KubeProxyIPVSConfiguration{
+				SyncPeriod:    metav1.Duration{Duration: 0 * time.Second},
+				MinSyncPeriod: metav1.Duration{Duration: 10 * time.Second},
+			},
+			expectErr: true,
+			reason:    "syncPeriod must be greater than 0",
+		},
+		{
+			config: componentconfig.KubeProxyIPVSConfiguration{
+				SyncPeriod:    metav1.Duration{Duration: 5 * time.Second},
+				MinSyncPeriod: metav1.Duration{Duration: -1 * time.Second},
+			},
+			expectErr: true,
+			reason:    "MinSyncPeriod must be greater than or equal to 0",
+		},
+		{
+			config: componentconfig.KubeProxyIPVSConfiguration{
+				SyncPeriod:    metav1.Duration{Duration: 10 * time.Second},
+				MinSyncPeriod: metav1.Duration{Duration: 5 * time.Second},
+			},
+			expectErr: false,
+		},
+		{
+			config: componentconfig.KubeProxyIPVSConfiguration{
+				SyncPeriod:    metav1.Duration{Duration: 5 * time.Second},
+				MinSyncPeriod: metav1.Duration{Duration: 0 * time.Second},
+			},
+			expectErr: false,
+		},
+	}
+
+	for _, test := range testCases {
+		errs := validateKubeProxyIPVSConfiguration(test.config, newPath.Child("KubeProxyIPVSConfiguration"))
+		if len(errs) == 0 && test.expectErr {
+			t.Errorf("Expect error, got nil, reason: %s", test.reason)
+		}
+		if len(errs) > 0 && !test.expectErr {
+			t.Errorf("Unexpected error: %v", errs)
 		}
 	}
 }
@@ -374,6 +460,7 @@ func TestValidateProxyMode(t *testing.T) {
 	successCases := []componentconfig.ProxyMode{
 		componentconfig.ProxyModeUserspace,
 		componentconfig.ProxyModeIPTables,
+		componentconfig.ProxyModeIPVS,
 		componentconfig.ProxyMode(""),
 	}
 
