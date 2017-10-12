@@ -21,8 +21,6 @@ go_library(
         "//build/visible_to:pkg_kubectl_cmd_util_CONSUMERS",
     ],
     deps = [
-        "//federation/apis/federation:go_default_library",
-        "//federation/client/clientset_generated/federation_clientset:go_default_library",
         "//pkg/api:go_default_library",
         "//pkg/api/v1:go_default_library",
         "//pkg/apis/apps:go_default_library",

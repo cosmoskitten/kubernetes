@@ -41,7 +41,6 @@ func TestGroupVersions(t *testing.T) {
 		"batch",
 		"componentconfig",
 		"extensions",
-		"federation",
 		"policy",
 	)
 

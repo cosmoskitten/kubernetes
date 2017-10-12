@@ -15,8 +15,6 @@ go_test(
     ],
     library = ":go_default_library",
     deps = [
-        "//federation/apis/federation/v1beta1:go_default_library",
-        "//federation/client/clientset_generated/federation_clientset/fake:go_default_library",
         "//pkg/api:go_default_library",
         "//pkg/api/testapi:go_default_library",
         "//pkg/apis/apps:go_default_library",
@@ -55,9 +53,6 @@ go_library(
         "printers.go",
     ],
     deps = [
-        "//federation/apis/federation:go_default_library",
-        "//federation/apis/federation/v1beta1:go_default_library",
-        "//federation/client/clientset_generated/federation_clientset:go_default_library",
         "//pkg/api:go_default_library",
         "//pkg/api/events:go_default_library",
         "//pkg/api/helper:go_default_library",

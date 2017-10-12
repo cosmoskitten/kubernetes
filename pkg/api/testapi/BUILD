@@ -10,8 +10,6 @@ go_library(
     name = "go_default_library",
     srcs = ["testapi.go"],
     deps = [
-        "//federation/apis/federation:go_default_library",
-        "//federation/apis/federation/install:go_default_library",
         "//pkg/api:go_default_library",
         "//pkg/api/install:go_default_library",
         "//pkg/apis/admission:go_default_library",

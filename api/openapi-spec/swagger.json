@@ -74448,11 +74448,6 @@
       "version": "v1beta1"
      },
      {
-      "group": "federation",
-      "kind": "DeleteOptions",
-      "version": "v1beta1"
-     },
-     {
       "group": "imagepolicy.k8s.io",
       "kind": "DeleteOptions",
       "version": "v1alpha1"
@@ -74963,11 +74958,6 @@
      },
      {
       "group": "extensions",
-      "kind": "WatchEvent",
-      "version": "v1beta1"
-     },
-     {
-      "group": "federation",
       "kind": "WatchEvent",
       "version": "v1beta1"
      },

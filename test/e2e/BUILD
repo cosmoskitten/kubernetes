@@ -51,7 +51,6 @@ go_library(
         "ssh.go",
     ],
     deps = [
-        "//federation/test/e2e:go_default_library",
         "//pkg/api:go_default_library",
         "//pkg/api/testapi:go_default_library",
         "//pkg/api/v1/pod:go_default_library",

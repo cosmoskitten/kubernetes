@@ -12,7 +12,6 @@ go_library(
         "cleanup.go",
         "deployment_util.go",
         "exec_util.go",
-        "federation_util.go",
         "firewall_util.go",
         "framework.go",
         "get-kubemark-resource-usage.go",
@@ -40,7 +39,6 @@ go_library(
         "volume_util.go",
     ],
     deps = [
-        "//federation/apis/federation/v1beta1:go_default_library",
         "//pkg/api:go_default_library",
         "//pkg/api/testapi:go_default_library",
         "//pkg/api/v1/helper:go_default_library",
