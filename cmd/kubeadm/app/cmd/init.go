@@ -119,8 +119,7 @@ func NewCmdInit(out io.Writer) *cobra.Command {
 			if cfg.FeatureGates, err = features.NewFeatureGate(&features.InitFeatureGates, featureGatesString); err != nil {
 				kubeadmutil.CheckErr(err)
 			}
-
-			api.Scheme.Default(cfg)
+			
 			internalcfg := &kubeadmapi.MasterConfiguration{}
 			api.Scheme.Convert(cfg, internalcfg, nil)
 
