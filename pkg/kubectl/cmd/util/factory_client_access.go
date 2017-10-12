@@ -44,7 +44,6 @@ import (
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
-	fedclientset "k8s.io/kubernetes/federation/client/clientset_generated/federation_clientset"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/apis/apps"
 	"k8s.io/kubernetes/pkg/apis/batch"
@@ -209,14 +208,6 @@ func (f *ring0Factory) RESTClient() (*restclient.RESTClient, error) {
 		return nil, err
 	}
 	return restclient.RESTClientFor(clientConfig)
-}
-
-func (f *ring0Factory) FederationClientSetForVersion(version *schema.GroupVersion) (fedclientset.Interface, error) {
-	return f.clientCache.FederationClientSetForVersion(version)
-}
-
-func (f *ring0Factory) FederationClientForVersion(version *schema.GroupVersion) (*restclient.RESTClient, error) {
-	return f.clientCache.FederationClientForVersion(version)
 }
 
 func (f *ring0Factory) Decoder(toInternal bool) runtime.Decoder {
