@@ -59,7 +59,7 @@ func (v *SchemaValidation) ValidateBytes(data []byte) error {
 func (v *SchemaValidation) validateList(object interface{}) []error {
 	fields, ok := object.(map[string]interface{})
 	if !ok || fields == nil {
-		return schema.GroupVersionKind{}, errors.New("invalid object to validate")
+		return []error(errors.New("invalid object to validate"))
 	}
 
 	errs := []error{}
