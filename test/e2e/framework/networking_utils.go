@@ -220,11 +220,11 @@ func (config *NetworkingTestConfig) DialFromContainer(protocol, containerIP, tar
 	Failf("Failed to find expected endpoints:\nTries %d\nCommand %v\nretrieved %v\nexpected %v\n", maxTries, cmd, eps, expectedEps)
 }
 
-func (config *NetworkingTestConfig) GetEndpointsFromTestContainer(protocol, targetIP string, targetPort, maxTries, minTries int) (sets.String, error) {
-	return config.GetEndpointsFromContainer(protocol, config.TestContainerPod.Status.PodIP, targetIP, TestContainerHttpPort, targetPort, maxTries, minTries)
+func (config *NetworkingTestConfig) GetEndpointsFromTestContainer(protocol, targetIP string, targetPort, maxTries, minTries int, expectedEps sets.String) (sets.String, error) {
+	return config.GetEndpointsFromContainer(protocol, config.TestContainerPod.Status.PodIP, targetIP, TestContainerHttpPort, targetPort, maxTries, minTries, expectedEps)
 }
 
-func (config *NetworkingTestConfig) GetEndpointsFromContainer(protocol, containerIP, targetIP string, containerHttpPort, targetPort, maxTries, minTries int) (sets.String, error) {
+func (config *NetworkingTestConfig) GetEndpointsFromContainer(protocol, containerIP, targetIP string, containerHttpPort, targetPort, maxTries, minTries int, expectedEps sets.String) (sets.String, error) {
 	cmd := fmt.Sprintf("curl -q -s 'http://%s:%d/dial?request=hostName&protocol=%s&host=%s&port=%d&tries=1'",
 		containerIP,
 		containerHttpPort,
@@ -260,6 +260,14 @@ func (config *NetworkingTestConfig) GetEndpointsFromContainer(protocol, containe
 			}
 			return eps, nil
 		}
+
+		// Check against i+1 so we exit if minTries == maxTries.
+		if (eps.Equal(expectedEps) || eps.Len() == 0 && expectedEps.Len() == 0) && i+1 >= minTries {
+			Logf("expectedEps: %v, eps: %v", expectedEps, eps)
+			return
+		}
+		// TODO: get rid of this delay #36281
+		time.Sleep(hitEndpointRetryDelay)
 	}
 	return nil, fmt.Errorf("Failed to get endpoints:\nTries %d\nCommand %v\n", minTries, cmd)
 }

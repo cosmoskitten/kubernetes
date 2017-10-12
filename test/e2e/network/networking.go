@@ -94,13 +94,13 @@ var _ = SIGDescribe("Networking", func() {
 		updateService, err := framework.UpdateService(f.ClientSet, config.NodePortService.Namespace, config.NodePortService.Name, updateSessionAffinity)
 		By(fmt.Sprintf("updateService: %#v, error: %v", updateService, err))
 
-		firstEndpoints, err := config.GetEndpointsFromTestContainer("http", config.ClusterIP, framework.ClusterHttpPort, config.MaxTries, 0)
+		firstEndpoints, err := config.GetEndpointsFromTestContainer("http", config.ClusterIP, framework.ClusterHttpPort, config.MaxTries, 0, config.EndpointHostnames())
 		if err != nil {
 			framework.Failf("Unable to get endpoints from test containers: %v", err)
 		}
 		By(fmt.Sprintf("firstEndpoints: %v", firstEndpoints))
 		for i := 0; i < framework.SessionAffinityChecks; i++ {
-			eps, err := config.GetEndpointsFromTestContainer("http", config.ClusterIP, framework.ClusterHttpPort, config.MaxTries, 0)
+			eps, err := config.GetEndpointsFromTestContainer("http", config.ClusterIP, framework.ClusterHttpPort, config.MaxTries, 0, config.EndpointHostnames())
 			if err != nil {
 				framework.Failf("Unable to get endpoints from test containers: %v", err)
 			}
@@ -119,13 +119,13 @@ var _ = SIGDescribe("Networking", func() {
 		updateService, err := framework.UpdateService(f.ClientSet, config.NodePortService.Namespace, config.NodePortService.Name, updateSessionAffinity)
 		By(fmt.Sprintf("updateService: %#v, error: %v", updateService, err))
 
-		firstEndpoints, err := config.GetEndpointsFromTestContainer("udp", config.ClusterIP, framework.ClusterUdpPort, config.MaxTries, 0)
+		firstEndpoints, err := config.GetEndpointsFromTestContainer("udp", config.ClusterIP, framework.ClusterUdpPort, config.MaxTries, 0, config.EndpointHostnames())
 		if err != nil {
 			framework.Failf("Unable to get endpoints from test containers: %v", err)
 		}
 		By(fmt.Sprintf("firstEndpoints: %v", firstEndpoints))
 		for i := 0; i < framework.SessionAffinityChecks; i++ {
-			eps, err := config.GetEndpointsFromTestContainer("udp", config.ClusterIP, framework.ClusterUdpPort, config.MaxTries, 0)
+			eps, err := config.GetEndpointsFromTestContainer("udp", config.ClusterIP, framework.ClusterUdpPort, config.MaxTries, 0, config.EndpointHostnames())
 			if err != nil {
 				framework.Failf("Unable to get endpoints from test containers: %v", err)
 			}
