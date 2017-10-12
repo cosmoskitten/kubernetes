@@ -126,10 +126,10 @@ message VersionResponse {
 message DNSConfig {
     // List of DNS servers of the cluster.
     repeated string servers = 1;
-    // List of DNS search domains of the cluster.
+    // List of DNS search domains of the cluster. Optional.
     repeated string searches = 2;
-    // List of DNS options. See https://linux.die.net/man/5/resolv.conf
-    // for all available options.
+    // List of DNS options. Optional.
+    // See https://linux.die.net/man/5/resolv.conf for all available options.
     repeated string options = 3;
 }
 
@@ -170,7 +170,7 @@ message Mount {
     bool readonly = 3;
     // If set, the mount needs SELinux relabeling.
     bool selinux_relabel = 4;
-    // Requested propagation mode.
+    // Requested propagation mode. Optional.
     MountPropagation propagation = 5;
 }
 
@@ -196,17 +196,17 @@ message Int64Value {
 // 2) It may not be applicable to a PodSandbox which does not contain any running
 //    process.
 message LinuxSandboxSecurityContext {
-    // Configurations for the sandbox's namespaces.
+    // Configurations for the sandbox's namespaces. Optional.
     // This will be used only if the PodSandbox uses namespace for isolation.
     NamespaceOption namespace_options = 1;
-    // Optional SELinux context to be applied.
+    // Optional SELinux context to be applied. Optional.
     SELinuxOption selinux_options = 2;
-    // UID to run sandbox processes as, when applicable.
+    // UID to run sandbox processes as, when applicable. Optional.
     Int64Value run_as_user = 3;
     // If set, the root filesystem of the sandbox is read-only.
     bool readonly_rootfs = 4;
     // List of groups applied to the first process run in the sandbox, in
-    // addition to the sandbox's primary GID.
+    // addition to the sandbox's primary GID. Optional.
     repeated int64 supplemental_groups = 5;
     // Indicates whether the sandbox will be asked to run a privileged
     // container. If a privileged container is to be executed within it, this
@@ -230,9 +230,9 @@ message LinuxPodSandboxConfig {
     // The cgroupfs style syntax will be used, but the container runtime can
     // convert it to systemd semantics if needed.
     string cgroup_parent = 1;
-    // LinuxSandboxSecurityContext holds sandbox security attributes.
+    // LinuxSandboxSecurityContext holds sandbox security attributes. Optional.
     LinuxSandboxSecurityContext security_context = 2;
-    // Sysctls holds linux sysctls config for the sandbox.
+    // Sysctls holds linux sysctls config for the sandbox. Optional.
     map<string, string> sysctls = 3;
 }
 
@@ -279,9 +279,10 @@ message PodSandboxConfig {
     string log_directory = 3;
     // DNS config for the sandbox.
     DNSConfig dns_config = 4;
-    // Port mappings for the sandbox.
+    // Port mappings for the sandbox. Optional.
     repeated PortMapping port_mappings = 5;
     // Key-value pairs that may be used to scope and select individual resources.
+    // Optional.
     map<string, string> labels = 6;
     // Unstructured key-value map that may be set by the kubelet to store and
     // retrieve arbitrary metadata. This will include any annotations set on a
@@ -370,7 +371,8 @@ message PodSandboxStatus {
     PodSandboxNetworkStatus network = 5;
     // Linux-specific status to a pod sandbox.
     LinuxPodSandboxStatus linux = 6;
-    // Labels are key-value pairs that may be used to scope and select individual resources.
+    // Labels are key-value pairs that may be used to scope and select individual
+    // resources. Optional.
     map<string, string> labels = 7;
     // Unstructured key-value map holding arbitrary metadata.
     // Annotations MUST NOT be altered by the runtime; the value of this field
@@ -397,7 +399,7 @@ message PodSandboxFilter {
     string id = 1;
     // State of the sandbox.
     PodSandboxStateValue state = 2;
-    // LabelSelector to select matches.
+    // LabelSelector to select matches. Optional.
     // Only api.MatchLabels is supported for now and the requirements
     // are ANDed. MatchExpressions is not supported yet.
     map<string, string> label_selector = 3;
@@ -419,7 +421,7 @@ message PodSandbox {
     PodSandboxState state = 3;
     // Creation timestamps of the PodSandbox in nanoseconds. Must be > 0.
     int64 created_at = 4;
-    // Labels of the PodSandbox.
+    // Labels of the PodSandbox. Optional.
     map<string, string> labels = 5;
     // Unstructured key-value map holding arbitrary metadata.
     // Annotations MUST NOT be altered by the runtime; the value of this field
@@ -484,7 +486,7 @@ message Capability {
 
 // LinuxContainerSecurityContext holds linux security configuration that will be applied to a container.
 message LinuxContainerSecurityContext {
-    // Capabilities to add or drop.
+    // Capabilities to add or drop. Optional.
     Capability capabilities = 1;
     // If set, run container in privileged mode.
     // Privileged mode is incompatible with the following options. If
@@ -504,13 +506,13 @@ message LinuxContainerSecurityContext {
     // 7. All devices from the host's /dev are available within the container.
     // 8. SELinux restrictions are not applied (e.g. label=disabled).
     bool privileged = 2;
-    // Configurations for the container's namespaces.
+    // Configurations for the container's namespaces. Optional.
     // Only used if the container uses namespace for isolation.
     NamespaceOption namespace_options = 3;
-    // SELinux context to be optionally applied.
+    // SELinux context to be optionally applied. Optional.
     SELinuxOption selinux_options = 4;
     // UID to run the container process as. Only one of run_as_user and
-    // run_as_username can be specified at a time.
+    // run_as_username can be specified at a time.  Optional.
     Int64Value run_as_user = 5;
     // User name to run the container process as. If specified, the user MUST
     // exist in the container image (i.e. in the /etc/passwd inside the image),
@@ -519,7 +521,7 @@ message LinuxContainerSecurityContext {
     // If set, the root filesystem of the container is read-only.
     bool readonly_rootfs = 7;
     // List of groups applied to the first process run in the container, in
-    // addition to the container's primary GID.
+    // addition to the container's primary GID. Optional.
     repeated int64 supplemental_groups = 8;
     // AppArmor profile for the container, candidate values are:
     // * runtime/default: equivalent to not specifying a profile.
@@ -545,7 +547,7 @@ message LinuxContainerSecurityContext {
 message LinuxContainerConfig {
     // Resources specification for the container.
     LinuxContainerResources resources = 1;
-    // LinuxContainerSecurityContext configuration for the container.
+    // LinuxContainerSecurityContext configuration for the container. Optional.
     LinuxContainerSecurityContext security_context = 2;
 }
 
@@ -584,19 +586,20 @@ message ContainerConfig {
     ContainerMetadata metadata = 1 ;
     // Image to use.
     ImageSpec image = 2;
-    // Command to execute (i.e., entrypoint for docker)
+    // Command to execute (i.e., entrypoint for docker). Optional.
     repeated string command = 3;
-    // Args for the Command (i.e., command for docker)
+    // Args for the Command (i.e., command for docker). Optional.
     repeated string args = 4;
     // Current working directory of the command.
     string working_dir = 5;
-    // List of environment variable to set in the container.
+    // List of environment variable to set in the container. Optional.
     repeated KeyValue envs = 6;
-    // Mounts for the container.
+    // Mounts for the container. Optional.
     repeated Mount mounts = 7;
-    // Devices for the container.
+    // Devices for the container. Optional.
     repeated Device devices = 8;
     // Key-value pairs that may be used to scope and select individual resources.
+    // Optional.
     // Label keys are of the form:
     //     label-key ::= prefixed-name | name
     //     prefixed-name ::= prefix '/' name
@@ -697,11 +700,11 @@ message ContainerStateValue {
 message ContainerFilter {
     // ID of the container.
     string id = 1;
-    // State of the container.
+    // State of the container. Optional.
     ContainerStateValue state = 2;
     // ID of the PodSandbox.
     string pod_sandbox_id = 3;
-    // LabelSelector to select matches.
+    // LabelSelector to select matches. Optional.
     // Only api.MatchLabels is supported for now and the requirements
     // are ANDed. MatchExpressions is not supported yet.
     map<string, string> label_selector = 4;
@@ -889,7 +892,7 @@ message ImageFilter {
 }
 
 message ListImagesRequest {
-    // Filter to list images.
+    // Filter to list images. Optional.
     ImageFilter filter = 1;
 }
 
@@ -903,12 +906,13 @@ message Image {
     repeated string repo_digests = 3;
     // Size of the image in bytes. Must be > 0.
     uint64 size = 4;
-    // UID that will run the command(s). This is used as a default if no user is
-    // specified when creating the container. UID and the following user name
-    // are mutually exclusive.
+    // UID that will run the command(s). Optional.
+    // This is used as a default if no user is specified when creating the
+    // container. UID and the following user name are mutually exclusive.
     Int64Value uid = 5;
-    // User name that will run the command(s). This is used if UID is not set
-    // and no user is specified when creating container.
+    // User name that will run the command(s). Optional.
+    // This is used if UID is not set and no user is specified when creating
+    // container.
     string username = 6;
 }
 
@@ -934,16 +938,16 @@ message AuthConfig {
     string auth = 3;
     string server_address = 4;
     // IdentityToken is used to authenticate the user and get
-    // an access token for the registry.
+    // an access token for the registry. Optional.
     string identity_token = 5;
-    // RegistryToken is a bearer token to be sent to a registry
+    // RegistryToken is a bearer token to be sent to a registry. Optional.
     string registry_token = 6;
 }
 
 message PullImageRequest {
     // Spec of the image.
     ImageSpec image = 1;
-    // Authentication configuration for pulling the image.
+    // Authentication configuration for pulling the image. Optional.
     AuthConfig auth = 2;
     // Config of the PodSandbox, which is used to pull image in PodSandbox context.
     PodSandboxConfig sandbox_config = 3;
@@ -1034,11 +1038,11 @@ message FilesystemUsage {
     int64 timestamp = 1;
     // The underlying storage of the filesystem.
     StorageIdentifier storage_id = 2;
-    // UsedBytes represents the bytes used for images on the filesystem.
+    // UsedBytes represents the bytes used for images on the filesystem. Optional.
     // This may differ from the total bytes used on the filesystem and may not
     // equal CapacityBytes - AvailableBytes.
     UInt64Value used_bytes = 3;
-    // InodesUsed represents the inodes used by the images.
+    // InodesUsed represents the inodes used by the images. Optional.
     // This may not equal InodesCapacity - InodesAvailable because the underlying
     // filesystem may also be used for purposes other than storing images.
     UInt64Value inodes_used = 4;
@@ -1071,7 +1075,7 @@ message ContainerStatsFilter {
     string id = 1;
     // ID of the PodSandbox.
     string pod_sandbox_id = 2;
-    // LabelSelector to select matches.
+    // LabelSelector to select matches. Optional.
     // Only api.MatchLabels is supported for now and the requirements
     // are ANDed. MatchExpressions is not supported yet.
     map<string, string> label_selector = 3;
@@ -1089,6 +1093,7 @@ message ContainerAttributes {
     // Metadata of the container.
     ContainerMetadata metadata = 2;
     // Key-value pairs that may be used to scope and select individual resources.
+    // Optional.
     map<string,string> labels = 3;
     // Unstructured key-value map holding arbitrary metadata.
     // Annotations MUST NOT be altered by the runtime; the value of this field
@@ -1113,7 +1118,7 @@ message ContainerStats {
 message CpuUsage {
     // Timestamp in nanoseconds at which the information were collected. Must be > 0.
     int64 timestamp = 1;
-    // Cumulative CPU usage (sum across all cores) since object creation.
+    // Cumulative CPU usage (sum across all cores) since object creation. Optional.
     UInt64Value usage_core_nano_seconds = 2;
 }
 
@@ -1121,6 +1126,6 @@ message CpuUsage {
 message MemoryUsage {
     // Timestamp in nanoseconds at which the information were collected. Must be > 0.
     int64 timestamp = 1;
-    // The amount of working set memory in bytes.
+    // The amount of working set memory in bytes. Optional.
     UInt64Value working_set_bytes = 2;
 }
