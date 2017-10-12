@@ -224,6 +224,7 @@ func (config *NetworkingTestConfig) GetEndpointsFromTestContainer(protocol, targ
 	return config.GetEndpointsFromContainer(protocol, config.TestContainerPod.Status.PodIP, targetIP, TestContainerHttpPort, targetPort, maxTries, minTries, expectedEps)
 }
 
+// TODO: REUSE the function above
 func (config *NetworkingTestConfig) GetEndpointsFromContainer(protocol, containerIP, targetIP string, containerHttpPort, targetPort, maxTries, minTries int, expectedEps sets.String) (sets.String, error) {
 	cmd := fmt.Sprintf("curl -q -s 'http://%s:%d/dial?request=hostName&protocol=%s&host=%s&port=%d&tries=1'",
 		containerIP,
@@ -264,7 +265,7 @@ func (config *NetworkingTestConfig) GetEndpointsFromContainer(protocol, containe
 		// Check against i+1 so we exit if minTries == maxTries.
 		if (eps.Equal(expectedEps) || eps.Len() == 0 && expectedEps.Len() == 0) && i+1 >= minTries {
 			Logf("expectedEps: %v, eps: %v", expectedEps, eps)
-			return
+			return eps, nil
 		}
 		// TODO: get rid of this delay #36281
 		time.Sleep(hitEndpointRetryDelay)
