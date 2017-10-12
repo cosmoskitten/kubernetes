@@ -402,7 +402,7 @@ func TestUnschedulableNodes(t *testing.T) {
 		mod.makeSchedulable(t, schedNode, nodeLister, context.clientSet)
 
 		// Wait until the pod is scheduled.
-		if err := waitForPodToSchedule(context.clientSet, myPod); err != nil {
+		if err := waitForPodToScheduleWithTimeout(context.clientSet, myPod, 2*time.Second); err != nil {
 			t.Errorf("Test %d: failed to schedule a pod: %v", i, err)
 		} else {
 			t.Logf("Test %d: Pod got scheduled on a schedulable node", i)
