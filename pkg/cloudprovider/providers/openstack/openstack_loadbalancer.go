@@ -371,8 +371,14 @@ func popMember(members []v2pools.Member, addr string, port int) []v2pools.Member
 	return members
 }
 
-func getSecurityGroupName(clusterName string, service *v1.Service) string {
-	return fmt.Sprintf("lb-sg-%s-%s-%s", clusterName, service.Namespace, service.Name)
+func getSecurityGroupName(service *v1.Service) string {
+	securityGroupName := fmt.Sprintf("lb-sg-%s-%s-%s", service.UID, service.Namespace, service.Name)
+	//OpenStack requires that the name of a security group is shorter than 255 bytes.
+	if len(securityGroupName) > 255 {
+		securityGroupName = securityGroupName[:255]
+	}
+
+	return securityGroupName
 }
 
 func getSecurityGroupRules(client *gophercloud.ServiceClient, opts rules.ListOpts) ([]rules.SecGroupRule, error) {
@@ -918,8 +924,8 @@ func (lbaas *LbaasV2) EnsureLoadBalancer(clusterName string, apiService *v1.Serv
 
 	if lbaas.opts.ManageSecurityGroups {
 		lbSecGroupCreateOpts := groups.CreateOpts{
-			Name:        getSecurityGroupName(clusterName, apiService),
-			Description: fmt.Sprintf("Securty Group for %v Service LoadBalancer", apiService.Name),
+			Name:        getSecurityGroupName(apiService),
+			Description: fmt.Sprintf("Securty Group for %s/%s Service LoadBalancer in cluster %s", apiService.Namespace, apiService.Name, clusterName),
 		}
 
 		lbSecGroup, err := groups.Create(lbaas.network, lbSecGroupCreateOpts).Extract()
@@ -1258,7 +1264,7 @@ func (lbaas *LbaasV2) EnsureLoadBalancerDeleted(clusterName string, service *v1.
 	// Delete the Security Group
 	if lbaas.opts.ManageSecurityGroups {
 		// Generate Name
-		lbSecGroupName := getSecurityGroupName(clusterName, service)
+		lbSecGroupName := getSecurityGroupName(service)
 		lbSecGroupID, err := groups.IDFromName(lbaas.network, lbSecGroupName)
 		if err != nil {
 			glog.V(1).Infof("Error occurred finding security group: %s: %v", lbSecGroupName, err)
